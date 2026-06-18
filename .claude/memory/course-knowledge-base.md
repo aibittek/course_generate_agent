@@ -1,15 +1,15 @@
 ---
 name: 具身智能实验课程知识库
-description: 存储资源开发列表.xlsx中11门实验课程的详细内容、知识点、技能要求
+description: 存储 input/course_spec.xlsx 中11门实验课程的详细内容、知识点、技能要求
 type: knowledge-base
 last_updated: 2026-06-11
-source: 资源开发列表.xlsx
+source: input/course_spec.xlsx
 ---
 
 # 具身智能实验课程知识库
 
 ## 概述
-本知识库存储资源开发列表.xlsx中指定的全部11门实验课程的核心内容，是课程资源生成的权威数据来源。
+本知识库存储 input/course_spec.xlsx 中指定的全部11门实验课程的核心内容，是课程资源生成的权威数据来源。
 
 ---
 
@@ -404,4 +404,4 @@ source: 资源开发列表.xlsx
 
 | 日期 | 更新内容 | 更新人 |
 |------|---------|-------|
-| 2026-06-11 | 初始版本，基于资源开发列表.xlsx | Agent |
+| 2026-06-11 | 初始版本，基于 input/course_spec.xlsx | Agent |

@@ -36,7 +36,7 @@ Each course produces four core documents plus metadata under `courses/{sheet1|sh
 
 ## Single source of truth — non-negotiable
 
-`具身智能人培方案SOP/课程逻辑/资源开发列表.xlsx` is the **only** authoritative source for course content. The constraint is enforced by `.claude/rules/source-constraint-rule.md`:
+`input/course_spec.xlsx` is the **only** authoritative source for course content. The constraint is enforced by `.claude/rules/source-constraint-rule.md`:
 
 1. Never generate course content from generic knowledge before the xlsx has been parsed.
 2. `ResourceParserAgent` must run first; it produces `_meta/course-spec.yaml`.
@@ -108,7 +108,7 @@ Each document carries a YAML front-matter `version` field plus a `## 更新日�
 
 ## Working with the .xlsx and .docx sources
 
-Source materials under `具身智能人培方案SOP/` are binary Office files. The path contains Chinese characters, which breaks some shell tools on this Windows/Git-Bash environment — prefer the `Read`/`Glob` tools over `ls`/`cat`. To extract text from `.docx`, the project uses a Python `read_docx.py` script invoked via `python` (paths permitted in `.claude/settings.local.json`). The xlsx parsing happens inside `ResourceParserAgent`; do not attempt to re-parse it ad hoc — let the agent produce `course-spec.yaml` and read that instead.
+Source materials under `input/` are the xlsx files (course_spec.xlsx). To extract text from `.docx`, the project uses a Python `read_docx.py` script invoked via `python` (paths permitted in `.claude/settings.local.json`). The xlsx parsing happens inside `ResourceParserAgent`; do not attempt to re-parse it ad hoc — let the agent produce `course-spec.yaml` and read that instead.
 
 ## Language
 

@@ -1,6 +1,6 @@
 ---
 name: 源数据约束规则
-description: 确保所有课程内容生成必须基于资源开发列表.xlsx
+description: 确保所有课程内容生成必须基于 input/course_spec.xlsx
 priority: critical
 ---
 
@@ -14,7 +14,7 @@ priority: critical
 
 ### 1.1 唯一可信源
 
-⚠️ **资源开发列表.xlsx是课程内容的唯一可信源**
+⚠️ **input/course_spec.xlsx是课程内容的唯一可信源**
 
 所有Agent生成课程内容时，必须：
 1. 首先通过ResourceParserAgent读取资源列表

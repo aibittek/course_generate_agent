@@ -96,7 +96,7 @@ experiments:
 
 # 元数据
 generated_at: 2026-06-11T10:00:00
-source_file: 具身智能人培方案SOP/课程逻辑/资源开发列表.xlsx
+source_file: input/course_spec.xlsx
 source_sheet: Sheet1
 ```
 
@@ -150,7 +150,7 @@ modules:
 
 # 元数据
 generated_at: 2026-06-11T10:00:00
-source_file: 具身智能人培方案SOP/课程逻辑/资源开发列表.xlsx
+source_file: input/course_spec.xlsx
 source_sheet: Sheet2
 ```
 

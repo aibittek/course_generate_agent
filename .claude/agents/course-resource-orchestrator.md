@@ -17,7 +17,7 @@ last_updated: 2026-06-11
 ### 1. 任务接收与解析
 - 接收用户提供的课程生成任务
 - 解析课程基本信息（名称、学时、所属分类）
-- 确定课程在资源开发列表.xlsx中的位置（Sheet1核心实验室/Sheet2行业创新应用）
+- 确定课程在 input/course_spec.xlsx 中的位置（Sheet1核心实验室/Sheet2行业创新应用）
 
 ### 2. 工作流程编排
 - 按照预定的工作流协调Sub-Agents的执行
@@ -52,7 +52,7 @@ last_updated: 2026-06-11
 ┌─────────────────────────────────────────────────────────────┐
 │ Step 1: 资源列表解析（必须执行）                              │
 │ - 调用 resource-parser-agent                                 │
-│ - 读取资源开发列表.xlsx → 生成 course-spec.yaml              │
+│ - 读取 input/course_spec.xlsx → 生成 course-spec.yaml              │
 │ - spec 自校验（fail-fast）：失败则 BLOCKED，触发 CP-2        │
 └─────────────────────────────────────────────────────────────┘
                               │  [可选 CP-1: 人工确认 spec]
