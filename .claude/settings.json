@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "mode": "auto",
+    "allowedTools": [],
+    "allowedCommands": []
+  },
+  "model": "sonnet",
+  "hooks": {},
+  "customInstructions": ""
+}

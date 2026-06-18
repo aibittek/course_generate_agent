@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>具身智能产业-岗位-技能-课程关系图</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .container { max-width: 1400px; margin: 0 auto; width: 100%; }
+    .header { margin-bottom: 2rem; }
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .pulse-dot {
+      width: 12px; height: 12px;
+      background: #22d3ee;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto;
+    }
+    svg { width: 100%; height: auto; display: block; }
+    .diagram-container { max-height: none; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 0.75rem;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+    }
+    .card-header {
+      display: flex; align-items: center;
+      gap: 0.5rem; margin-bottom: 0.75rem;
+    }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+    .toolbar {
+      display: flex; gap: 0.5rem;
+      margin-left: auto; flex-shrink: 0; align-items: center;
+    }
+    .toolbar-toggle {
+      background: transparent; border: none; color: #475569;
+      cursor: pointer; font-size: 1.25rem; line-height: 1;
+      padding: 0.25rem 0.5rem; border-radius: 0.375rem;
+      transition: color 0.2s, background 0.2s;
+    }
+    .toolbar-toggle:hover { color: #94a3b8; background: rgba(30,41,59,0.5); }
+    .toolbar-actions { display: none; gap: 0.5rem; }
+    .toolbar.expanded .toolbar-actions { display: flex; }
+    .toolbar-actions button {
+      background: rgba(30,41,59,0.8); border: 1px solid #334155;
+      color: #94a3b8; padding: 0.375rem 0.75rem; border-radius: 0.375rem;
+      font-family: inherit; font-size: 0.75rem; cursor: pointer;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .toolbar-actions button:hover { background: rgba(51,65,85,0.8); color: white; border-color: #475569; }
+    @media print {
+      body { background: #020617; padding: 1rem; }
+      .toolbar { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="report-container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-row">
+      <div class="pulse-dot"></div>
+      <h1>具身智能 产业 · 岗位 · 技能 · 课程 关系图</h1>
+      <div class="toolbar">
+        <div class="toolbar-actions">
+          <button onclick="copyAsImage(this)">📋 Copy</button>
+          <button onclick="downloadPNG(this)">🖼️ PNG</button>
+          <button onclick="downloadPDF(this)">📄 PDF</button>
+        </div>
+        <button class="toolbar-toggle" onclick="this.parentElement.classList.toggle('expanded')" title="Export options" aria-label="Export options">⋯</button>
+      </div>
+    </div>
+    <p class="subtitle">基于具身智能产业分析报告 · 产业链 → 岗位方向 → 核心技能 → 对应课程 · 本科 / 高职双线培养</p>
+  </div>
+
+  <!-- Main Diagram -->
+  <div class="diagram-container">
+    <!--
+      布局规划（自上而下4层）：
+      Layer 1: 产业链（4列）         y=60~140
+      Layer 2: 岗位方向（5列）        y=220~340
+      Layer 3: 核心技能模块（5列）     y=420~540
+      Layer 4: 对应课程（5列）         y=620~820
+
+      viewBox: 0 0 1400 920
+      列宽: ~260px，列间距: ~20px
+    -->
+    <svg viewBox="0 0 1500 1060">
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+        </marker>
+        <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee"/>
+        </marker>
+        <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24"/>
+        </marker>
+        <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#34d399"/>
+        </marker>
+        <marker id="arrowhead-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa"/>
+        </marker>
+        <marker id="arrowhead-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185"/>
+        </marker>
+        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+
+      <!-- Background -->
+      <rect width="100%" height="100%" fill="url(#grid)"/>
+
+      <!-- ============================================================
+           LAYER 1: 产业链（5个板块，与层2的5个岗位方向一一对应）
+           列x: 150, 370, 620, 860, 1100
+           宽度: 180, 210, 200, 200, 210
+           高度: 135
+           ============================================================ -->
+
+      <!-- 1. 上游硬件（对应 基础理论研究）— rose -->
+      <rect x="150" y="48" width="180" height="135" rx="6" fill="#0f172a"/>
+      <rect x="150" y="48" width="180" height="135" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+      <text x="240" y="70" fill="white" font-size="12" font-weight="600" text-anchor="middle">上游硬件</text>
+      <text x="240" y="86" fill="#fb7185" font-size="9" text-anchor="middle">基础设施层</text>
+      <text x="240" y="104" fill="#94a3b8" font-size="10" text-anchor="middle">• 执行系统</text>
+      <text x="240" y="120" fill="#94a3b8" font-size="10" text-anchor="middle">• 传感系统</text>
+      <text x="240" y="136" fill="#94a3b8" font-size="10" text-anchor="middle">• 计算芯片</text>
+      <text x="240" y="152" fill="#94a3b8" font-size="10" text-anchor="middle">• 开发工具链</text>
+      <text x="240" y="173" fill="#fb7185" font-size="9" text-anchor="middle">157 家企业</text>
+
+      <!-- 2. 感知算法（对应 感知·决策·控制算法）— amber -->
+      <rect x="370" y="48" width="210" height="135" rx="6" fill="#0f172a"/>
+      <rect x="370" y="48" width="210" height="135" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="475" y="70" fill="white" font-size="12" font-weight="600" text-anchor="middle">感知算法</text>
+      <text x="475" y="86" fill="#fbbf24" font-size="9" text-anchor="middle">核心技术层</text>
+      <text x="475" y="104" fill="#94a3b8" font-size="10" text-anchor="middle">• 具身大模型</text>
+      <text x="475" y="120" fill="#94a3b8" font-size="10" text-anchor="middle">• 世界模型</text>
+      <text x="475" y="136" fill="#94a3b8" font-size="10" text-anchor="middle">• 感知融合</text>
+      <text x="475" y="152" fill="#94a3b8" font-size="10" text-anchor="middle">• 运动控制</text>
+      <text x="475" y="173" fill="#fbbf24" font-size="9" text-anchor="middle">40 家企业</text>
+
+      <!-- 3. 产品平台（对应 软硬件·系统架构）— emerald -->
+      <rect x="620" y="48" width="200" height="135" rx="6" fill="#0f172a"/>
+      <rect x="620" y="48" width="200" height="135" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="720" y="70" fill="white" font-size="12" font-weight="600" text-anchor="middle">产品平台</text>
+      <text x="720" y="86" fill="#34d399" font-size="9" text-anchor="middle">中游产品层</text>
+      <text x="720" y="104" fill="#94a3b8" font-size="10" text-anchor="middle">• 人形机器人</text>
+      <text x="720" y="120" fill="#94a3b8" font-size="10" text-anchor="middle">• 移动机器人</text>
+      <text x="720" y="136" fill="#94a3b8" font-size="10" text-anchor="middle">• 协作机器人</text>
+      <text x="720" y="152" fill="#94a3b8" font-size="10" text-anchor="middle">• 智能运载</text>
+      <text x="720" y="173" fill="#34d399" font-size="9" text-anchor="middle">167 家企业</text>
+
+      <!-- 4. 数据服务（对应 仿真·测试·数据工程）— cyan -->
+      <rect x="860" y="48" width="200" height="135" rx="6" fill="#0f172a"/>
+      <rect x="860" y="48" width="200" height="135" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="960" y="70" fill="white" font-size="12" font-weight="600" text-anchor="middle">数据服务</text>
+      <text x="960" y="86" fill="#22d3ee" font-size="9" text-anchor="middle">技术服务层</text>
+      <text x="960" y="104" fill="#94a3b8" font-size="10" text-anchor="middle">• 仿真平台</text>
+      <text x="960" y="120" fill="#94a3b8" font-size="10" text-anchor="middle">• 数据标注</text>
+      <text x="960" y="136" fill="#94a3b8" font-size="10" text-anchor="middle">• 数据治理</text>
+      <text x="960" y="152" fill="#94a3b8" font-size="10" text-anchor="middle">• 模型评测</text>
+      <text x="960" y="173" fill="#22d3ee" font-size="9" text-anchor="middle">34 家企业</text>
+
+      <!-- 5. 行业应用（对应 部署·运维·技术支持）— violet -->
+      <rect x="1100" y="48" width="210" height="135" rx="6" fill="#0f172a"/>
+      <rect x="1100" y="48" width="210" height="135" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="1205" y="70" fill="white" font-size="12" font-weight="600" text-anchor="middle">行业应用</text>
+      <text x="1205" y="86" fill="#a78bfa" font-size="9" text-anchor="middle">下游应用层</text>
+      <text x="1205" y="104" fill="#94a3b8" font-size="10" text-anchor="middle">• 工业制造</text>
+      <text x="1205" y="120" fill="#94a3b8" font-size="10" text-anchor="middle">• 家庭服务</text>
+      <text x="1205" y="136" fill="#94a3b8" font-size="10" text-anchor="middle">• 商业服务</text>
+      <text x="1205" y="152" fill="#94a3b8" font-size="10" text-anchor="middle">• 应急特种</text>
+      <text x="1205" y="173" fill="#a78bfa" font-size="9" text-anchor="middle">147 家企业</text>
+
+      <!-- ============================================================
+           层1→层2 连接箭头（5条垂直箭头，颜色与层1/层2框图完全匹配）
+           ============================================================ -->
+      <!-- 上游硬件 → 基础理论研究（rose） -->
+      <line x1="240" y1="183" x2="240" y2="253" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead-rose)"/>
+      <!-- 感知算法 → 感知·决策·控制算法（amber） -->
+      <line x1="475" y1="183" x2="475" y2="253" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+      <!-- 产品平台 → 软硬件·系统架构（emerald） -->
+      <line x1="720" y1="183" x2="720" y2="253" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+      <!-- 数据服务 → 仿真·测试·数据工程（cyan） -->
+      <line x1="960" y1="183" x2="960" y2="253" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+      <!-- 行业应用 → 部署·运维·技术支持（violet） -->
+      <line x1="1205" y1="183" x2="1205" y2="253" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead-violet)"/>
+
+      <!-- ============================================================
+           LAYER 2: 岗位方向（5列）
+           列x: 150, 410, 670, 930, 1190
+           宽: 200, 高: 120
+           ============================================================ -->
+
+      <!-- 1. 基础理论与前沿研究 -->
+      <rect x="150" y="263" width="180" height="130" rx="6" fill="#0f172a"/>
+      <rect x="150" y="263" width="180" height="130" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+      <text x="240" y="283" fill="white" font-size="12" font-weight="600" text-anchor="middle">基础理论研究</text>
+      <text x="240" y="297" fill="#fb7185" font-size="10" text-anchor="middle">硕博层次</text>
+      <text x="240" y="313" fill="#94a3b8" font-size="10" text-anchor="middle">• 机器人学研究员</text>
+      <text x="240" y="327" fill="#94a3b8" font-size="10" text-anchor="middle">• 具身智能研究员</text>
+      <text x="240" y="345" fill="#fb7185" font-size="10" text-anchor="middle">月薪 35000+</text>
+      <text x="240" y="361" fill="#94a3b8" font-size="9" text-anchor="middle">需求增速 120%</text>
+      <text x="240" y="377" fill="#94a3b8" font-size="9" text-anchor="middle">方向：世界模型/强化学习</text>
+
+      <!-- 2. 感知·决策·控制算法 -->
+      <rect x="370" y="263" width="210" height="130" rx="6" fill="#0f172a"/>
+      <rect x="370" y="263" width="210" height="130" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="475" y="283" fill="white" font-size="12" font-weight="600" text-anchor="middle">感知·决策·控制算法</text>
+      <text x="475" y="297" fill="#fbbf24" font-size="10" text-anchor="middle">本科 / 硕博</text>
+      <text x="475" y="313" fill="#94a3b8" font-size="10" text-anchor="middle">• 感知融合工程师</text>
+      <text x="475" y="327" fill="#94a3b8" font-size="10" text-anchor="middle">• 定位建图工程师（SLAM）</text>
+      <text x="475" y="341" fill="#94a3b8" font-size="10" text-anchor="middle">• 运动控制工程师</text>
+      <text x="475" y="355" fill="#fbbf24" font-size="10" text-anchor="middle">月薪 25368  增速 479%</text>
+      <text x="475" y="377" fill="#94a3b8" font-size="9" text-anchor="middle">★ 需求增速最快</text>
+
+      <!-- 3. 软硬件·系统架构 -->
+      <rect x="620" y="263" width="200" height="130" rx="6" fill="#0f172a"/>
+      <rect x="620" y="263" width="200" height="130" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="720" y="283" fill="white" font-size="12" font-weight="600" text-anchor="middle">软硬件·系统架构</text>
+      <text x="720" y="297" fill="#34d399" font-size="10" text-anchor="middle">本科</text>
+      <text x="720" y="313" fill="#94a3b8" font-size="10" text-anchor="middle">• 系统架构师</text>
+      <text x="720" y="327" fill="#94a3b8" font-size="10" text-anchor="middle">• 嵌入式开发工程师</text>
+      <text x="720" y="341" fill="#94a3b8" font-size="10" text-anchor="middle">• ROS开发工程师</text>
+      <text x="720" y="355" fill="#34d399" font-size="10" text-anchor="middle">月薪 19169  增速 239%</text>
+      <text x="720" y="377" fill="#94a3b8" font-size="9" text-anchor="middle">方向：C++/Python/硬件设计</text>
+
+      <!-- 4. 仿真·测试·数据工程 -->
+      <rect x="860" y="263" width="200" height="130" rx="6" fill="#0f172a"/>
+      <rect x="860" y="263" width="200" height="130" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="960" y="283" fill="white" font-size="12" font-weight="600" text-anchor="middle">仿真·测试·数据工程</text>
+      <text x="960" y="297" fill="#22d3ee" font-size="10" text-anchor="middle">本科 / 高职</text>
+      <text x="960" y="313" fill="#94a3b8" font-size="10" text-anchor="middle">• 仿真工程师</text>
+      <text x="960" y="327" fill="#94a3b8" font-size="10" text-anchor="middle">• 模型评测工程师</text>
+      <text x="960" y="341" fill="#94a3b8" font-size="10" text-anchor="middle">• 数据治理工程师</text>
+      <text x="960" y="355" fill="#22d3ee" font-size="10" text-anchor="middle">月薪 18500  增速 22%</text>
+      <text x="960" y="377" fill="#94a3b8" font-size="9" text-anchor="middle">方向：仿真建模/自动化测试</text>
+
+      <!-- 5. 部署·运维·技术支持 -->
+      <rect x="1100" y="263" width="210" height="130" rx="6" fill="#0f172a"/>
+      <rect x="1100" y="263" width="210" height="130" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="1205" y="283" fill="white" font-size="12" font-weight="600" text-anchor="middle">部署·运维·技术支持</text>
+      <text x="1205" y="297" fill="#a78bfa" font-size="10" text-anchor="middle">高职 / 本科</text>
+      <text x="1205" y="313" fill="#94a3b8" font-size="10" text-anchor="middle">• 现场部署工程师（FAE）</text>
+      <text x="1205" y="327" fill="#94a3b8" font-size="10" text-anchor="middle">• 运维工程师（RobotOps）</text>
+      <text x="1205" y="341" fill="#94a3b8" font-size="10" text-anchor="middle">• 维修技师</text>
+      <text x="1205" y="355" fill="#a78bfa" font-size="10" text-anchor="middle">月薪 12000  增速 45%</text>
+      <text x="1205" y="377" fill="#94a3b8" font-size="9" text-anchor="middle">★ 高职核心就业方向</text>
+
+      <!-- ============================================================
+           层2→层3 连接箭头
+           ============================================================ -->
+      <line x1="240" y1="393" x2="240" y2="463" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead-rose)"/>
+      <line x1="475" y1="393" x2="475" y2="463" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+      <line x1="720" y1="393" x2="720" y2="463" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+      <line x1="960" y1="393" x2="960" y2="463" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+      <line x1="1205" y1="393" x2="1205" y2="463" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead-violet)"/>
+
+      <!-- ============================================================
+           LAYER 3: 核心技能模块（5列）
+           高度: 140
+           ============================================================ -->
+
+      <!-- 技能1: 机器人学·数学基础 -->
+      <rect x="150" y="473" width="180" height="140" rx="6" fill="#0f172a"/>
+      <rect x="150" y="473" width="180" height="140" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+      <text x="240" y="493" fill="white" font-size="12" font-weight="600" text-anchor="middle">机器人学·数学基础</text>
+      <text x="240" y="511" fill="#94a3b8" font-size="10" text-anchor="middle">• 机器人运动学/动力学</text>
+      <text x="240" y="525" fill="#94a3b8" font-size="10" text-anchor="middle">• 高等数学/线性代数</text>
+      <text x="240" y="539" fill="#94a3b8" font-size="10" text-anchor="middle">• 深度学习/强化学习</text>
+      <text x="240" y="553" fill="#94a3b8" font-size="10" text-anchor="middle">• 世界模型原理</text>
+      <text x="240" y="571" fill="#fb7185" font-size="9" text-anchor="middle">理论深度要求高</text>
+      <text x="240" y="585" fill="#94a3b8" font-size="9" text-anchor="middle">本科/硕博重点培养</text>
+      <text x="240" y="603" fill="#94a3b8" font-size="9" text-anchor="middle">数学建模 · 算法推导</text>
+
+      <!-- 技能2: 感知·SLAM·算法 -->
+      <rect x="370" y="473" width="210" height="140" rx="6" fill="#0f172a"/>
+      <rect x="370" y="473" width="210" height="140" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="475" y="493" fill="white" font-size="12" font-weight="600" text-anchor="middle">感知·SLAM·控制算法</text>
+      <text x="475" y="511" fill="#94a3b8" font-size="10" text-anchor="middle">• 多模态感知融合</text>
+      <text x="475" y="525" fill="#94a3b8" font-size="10" text-anchor="middle">• SLAM定位建图</text>
+      <text x="475" y="539" fill="#94a3b8" font-size="10" text-anchor="middle">• 运动规划与控制</text>
+      <text x="475" y="553" fill="#94a3b8" font-size="10" text-anchor="middle">• 强化学习应用</text>
+      <text x="475" y="567" fill="#94a3b8" font-size="10" text-anchor="middle">• PyTorch / 大模型应用</text>
+      <text x="475" y="585" fill="#fbbf24" font-size="9" text-anchor="middle">本科侧重算法研发</text>
+      <text x="475" y="603" fill="#94a3b8" font-size="9" text-anchor="middle">参数调优 · 模型优化</text>
+
+      <!-- 技能3: ROS·嵌入式·系统开发 -->
+      <rect x="620" y="473" width="200" height="140" rx="6" fill="#0f172a"/>
+      <rect x="620" y="473" width="200" height="140" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="720" y="493" fill="white" font-size="12" font-weight="600" text-anchor="middle">ROS·嵌入式·系统开发</text>
+      <text x="720" y="511" fill="#94a3b8" font-size="10" text-anchor="middle">• ROS2开发（C++/Python）</text>
+      <text x="720" y="525" fill="#94a3b8" font-size="10" text-anchor="middle">• 嵌入式系统（RTOS）</text>
+      <text x="720" y="539" fill="#94a3b8" font-size="10" text-anchor="middle">• 硬件设计与调试</text>
+      <text x="720" y="553" fill="#94a3b8" font-size="10" text-anchor="middle">• Linux系统编程</text>
+      <text x="720" y="567" fill="#94a3b8" font-size="10" text-anchor="middle">• 系统架构设计</text>
+      <text x="720" y="585" fill="#34d399" font-size="9" text-anchor="middle">本科侧重底层开发</text>
+      <text x="720" y="603" fill="#94a3b8" font-size="9" text-anchor="middle">高职侧重应用开发</text>
+
+      <!-- 技能4: 仿真·测试·数据 -->
+      <rect x="860" y="473" width="200" height="140" rx="6" fill="#0f172a"/>
+      <rect x="860" y="473" width="200" height="140" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="960" y="493" fill="white" font-size="12" font-weight="600" text-anchor="middle">仿真·测试·数据工程</text>
+      <text x="960" y="511" fill="#94a3b8" font-size="10" text-anchor="middle">• Gazebo / Isaac仿真建模</text>
+      <text x="960" y="525" fill="#94a3b8" font-size="10" text-anchor="middle">• 自动化测试框架</text>
+      <text x="960" y="539" fill="#94a3b8" font-size="10" text-anchor="middle">• 数据采集与标注</text>
+      <text x="960" y="553" fill="#94a3b8" font-size="10" text-anchor="middle">• 数据治理与安全验证</text>
+      <text x="960" y="567" fill="#94a3b8" font-size="10" text-anchor="middle">• 模型评测方法</text>
+      <text x="960" y="585" fill="#22d3ee" font-size="9" text-anchor="middle">本科/高职均可入门</text>
+      <text x="960" y="603" fill="#94a3b8" font-size="9" text-anchor="middle">偏工具应用型技能</text>
+
+      <!-- 技能5: 部署·运维·故障排查 -->
+      <rect x="1100" y="473" width="210" height="140" rx="6" fill="#0f172a"/>
+      <rect x="1100" y="473" width="210" height="140" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="1205" y="493" fill="white" font-size="12" font-weight="600" text-anchor="middle">部署·运维·故障排查</text>
+      <text x="1205" y="511" fill="#94a3b8" font-size="10" text-anchor="middle">• 现场部署与传感器标定</text>
+      <text x="1205" y="525" fill="#94a3b8" font-size="10" text-anchor="middle">• RobotOps集群运维</text>
+      <text x="1205" y="539" fill="#94a3b8" font-size="10" text-anchor="middle">• OTA升级管理</text>
+      <text x="1205" y="553" fill="#94a3b8" font-size="10" text-anchor="middle">• 故障诊断与维修</text>
+      <text x="1205" y="567" fill="#94a3b8" font-size="10" text-anchor="middle">• Linux基础操作</text>
+      <text x="1205" y="585" fill="#a78bfa" font-size="9" text-anchor="middle">高职核心技能方向</text>
+      <text x="1205" y="603" fill="#94a3b8" font-size="9" text-anchor="middle">实操性强 · 快速就业</text>
+
+      <!-- ============================================================
+           层3→层4 连接箭头
+           ============================================================ -->
+      <line x1="240" y1="613" x2="240" y2="683" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead-rose)"/>
+      <line x1="475" y1="613" x2="475" y2="683" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+      <line x1="720" y1="613" x2="720" y2="683" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+      <line x1="960" y1="613" x2="960" y2="683" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+      <line x1="1205" y1="613" x2="1205" y2="683" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead-violet)"/>
+
+      <!-- ============================================================
+           LAYER 4: 对应课程（5列）
+           高度: 230
+           ============================================================ -->
+
+      <!-- 课程1: 理论研究方向课程 -->
+      <rect x="150" y="693" width="180" height="280" rx="6" fill="#0f172a"/>
+      <rect x="150" y="693" width="180" height="280" rx="6" fill="rgba(136,19,55,0.25)" stroke="#fb7185" stroke-width="1.5"/>
+      <text x="240" y="713" fill="white" font-size="12" font-weight="600" text-anchor="middle">理论研究方向课程</text>
+      <text x="240" y="731" fill="#fb7185" font-size="10" text-anchor="middle">● 本科/硕博</text>
+      <text x="240" y="751" fill="#94a3b8" font-size="10" text-anchor="middle">具身智能导论</text>
+      <text x="240" y="767" fill="#94a3b8" font-size="10" text-anchor="middle">高等数学</text>
+      <text x="240" y="783" fill="#94a3b8" font-size="10" text-anchor="middle">线性代数</text>
+      <text x="240" y="799" fill="#94a3b8" font-size="10" text-anchor="middle">机器人学基础</text>
+      <text x="240" y="815" fill="#94a3b8" font-size="10" text-anchor="middle">深度学习基础</text>
+      <text x="240" y="831" fill="#94a3b8" font-size="10" text-anchor="middle">强化学习基础</text>
+      <text x="240" y="847" fill="#94a3b8" font-size="10" text-anchor="middle">世界模型导论</text>
+      <text x="240" y="867" fill="#94a3b8" font-size="9" text-anchor="middle">— — — — — — —</text>
+      <text x="240" y="883" fill="#fb7185" font-size="9" text-anchor="middle">本科 7 门核心课</text>
+      <text x="240" y="899" fill="#94a3b8" font-size="9" text-anchor="middle">理论深度·数学建模</text>
+      <text x="240" y="915" fill="#94a3b8" font-size="9" text-anchor="middle">算法推导·科研能力</text>
+      <text x="240" y="933" fill="#94a3b8" font-size="9" text-anchor="middle">衔接研究生阶段培养</text>
+      <text x="240" y="953" fill="#94a3b8" font-size="9" text-anchor="middle">高职: 基础认知模块</text>
+
+      <!-- 课程2: 感知控制算法课程 -->
+      <rect x="370" y="693" width="210" height="280" rx="6" fill="#0f172a"/>
+      <rect x="370" y="693" width="210" height="280" rx="6" fill="rgba(120,53,15,0.25)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="475" y="713" fill="white" font-size="12" font-weight="600" text-anchor="middle">感知控制算法课程</text>
+      <text x="475" y="731" fill="#fbbf24" font-size="10" text-anchor="middle">● 本科核心 / 高职应用</text>
+      <text x="475" y="751" fill="#94a3b8" font-size="10" text-anchor="middle">传感器技术</text>
+      <text x="475" y="767" fill="#94a3b8" font-size="10" text-anchor="middle">多模态感知与信息融合</text>
+      <text x="475" y="783" fill="#94a3b8" font-size="10" text-anchor="middle">SLAM技术与实践</text>
+      <text x="475" y="799" fill="#94a3b8" font-size="10" text-anchor="middle">机器人运动控制</text>
+      <text x="475" y="815" fill="#94a3b8" font-size="10" text-anchor="middle">强化学习基础（应用）</text>
+      <text x="475" y="831" fill="#94a3b8" font-size="10" text-anchor="middle">多模态大模型应用</text>
+      <text x="475" y="851" fill="#94a3b8" font-size="9" text-anchor="middle">— — — — — — —</text>
+      <text x="475" y="867" fill="#fbbf24" font-size="9" text-anchor="middle">本科: 算法研发 · 模型优化</text>
+      <text x="475" y="883" fill="#94a3b8" font-size="9" text-anchor="middle">高职: 传感器选型 · 标定</text>
+      <text x="475" y="899" fill="#94a3b8" font-size="9" text-anchor="middle">高职: 参数调优实操</text>
+      <text x="475" y="915" fill="#94a3b8" font-size="9" text-anchor="middle">共同: Python编程基础</text>
+      <text x="475" y="933" fill="#94a3b8" font-size="9" text-anchor="middle">差异: 理论推导深度不同</text>
+      <text x="475" y="953" fill="#94a3b8" font-size="9" text-anchor="middle">实训: 传感器实验平台</text>
+
+      <!-- 课程3: 软硬件系统开发课程 -->
+      <rect x="620" y="693" width="200" height="280" rx="6" fill="#0f172a"/>
+      <rect x="620" y="693" width="200" height="280" rx="6" fill="rgba(6,78,59,0.25)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="720" y="713" fill="white" font-size="12" font-weight="600" text-anchor="middle">软硬件系统开发课程</text>
+      <text x="720" y="731" fill="#34d399" font-size="10" text-anchor="middle">● 本科核心 / 高职基础</text>
+      <text x="720" y="751" fill="#94a3b8" font-size="10" text-anchor="middle">Python编程基础</text>
+      <text x="720" y="767" fill="#94a3b8" font-size="10" text-anchor="middle">C/C++程序设计</text>
+      <text x="720" y="783" fill="#94a3b8" font-size="10" text-anchor="middle">Linux系统基础</text>
+      <text x="720" y="799" fill="#94a3b8" font-size="10" text-anchor="middle">ROS机器人开发</text>
+      <text x="720" y="815" fill="#94a3b8" font-size="10" text-anchor="middle">嵌入式系统原理</text>
+      <text x="720" y="831" fill="#94a3b8" font-size="10" text-anchor="middle">硬件设计基础</text>
+      <text x="720" y="851" fill="#94a3b8" font-size="9" text-anchor="middle">— — — — — — —</text>
+      <text x="720" y="867" fill="#34d399" font-size="9" text-anchor="middle">本科: 系统架构 · 底层开发</text>
+      <text x="720" y="883" fill="#94a3b8" font-size="9" text-anchor="middle">高职: ROS应用 · 硬件调试</text>
+      <text x="720" y="899" fill="#94a3b8" font-size="9" text-anchor="middle">本科: 自动控制原理</text>
+      <text x="720" y="915" fill="#94a3b8" font-size="9" text-anchor="middle">本科: 微机原理与接口</text>
+      <text x="720" y="933" fill="#94a3b8" font-size="9" text-anchor="middle">高职: 单片机/PLC应用</text>
+      <text x="720" y="953" fill="#94a3b8" font-size="9" text-anchor="middle">实训: 机器人开发套件</text>
+
+      <!-- 课程4: 仿真测试数据课程 -->
+      <rect x="860" y="693" width="200" height="280" rx="6" fill="#0f172a"/>
+      <rect x="860" y="693" width="200" height="280" rx="6" fill="rgba(8,51,68,0.25)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="960" y="713" fill="white" font-size="12" font-weight="600" text-anchor="middle">仿真测试数据课程</text>
+      <text x="960" y="731" fill="#22d3ee" font-size="10" text-anchor="middle">● 本科 / 高职均可</text>
+      <text x="960" y="751" fill="#94a3b8" font-size="10" text-anchor="middle">机器人仿真技术</text>
+      <text x="960" y="767" fill="#94a3b8" font-size="10" text-anchor="middle">Gazebo/Isaac仿真实训</text>
+      <text x="960" y="783" fill="#94a3b8" font-size="10" text-anchor="middle">软件测试基础</text>
+      <text x="960" y="799" fill="#94a3b8" font-size="10" text-anchor="middle">自动化测试实践</text>
+      <text x="960" y="815" fill="#94a3b8" font-size="10" text-anchor="middle">数据采集与处理</text>
+      <text x="960" y="831" fill="#94a3b8" font-size="10" text-anchor="middle">AI数据治理基础</text>
+      <text x="960" y="851" fill="#94a3b8" font-size="9" text-anchor="middle">— — — — — — —</text>
+      <text x="960" y="867" fill="#22d3ee" font-size="9" text-anchor="middle">本科: 仿真建模设计</text>
+      <text x="960" y="883" fill="#94a3b8" font-size="9" text-anchor="middle">高职: 仿真工具操作</text>
+      <text x="960" y="899" fill="#94a3b8" font-size="9" text-anchor="middle">共同: 真实场景数据集</text>
+      <text x="960" y="915" fill="#94a3b8" font-size="9" text-anchor="middle">实训: 虚实结合平台</text>
+      <text x="960" y="933" fill="#94a3b8" font-size="9" text-anchor="middle">偏工具应用 · 上手快</text>
+      <text x="960" y="953" fill="#94a3b8" font-size="9" text-anchor="middle">可与企业联合开发题库</text>
+
+      <!-- 课程5: 部署运维实操课程 -->
+      <rect x="1100" y="693" width="210" height="280" rx="6" fill="#0f172a"/>
+      <rect x="1100" y="693" width="210" height="280" rx="6" fill="rgba(76,29,149,0.25)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="1205" y="713" fill="white" font-size="12" font-weight="600" text-anchor="middle">部署运维实操课程</text>
+      <text x="1205" y="731" fill="#a78bfa" font-size="10" text-anchor="middle">● 高职核心方向</text>
+      <text x="1205" y="751" fill="#94a3b8" font-size="10" text-anchor="middle">机器人运维技术</text>
+      <text x="1205" y="767" fill="#94a3b8" font-size="10" text-anchor="middle">现场部署实务</text>
+      <text x="1205" y="783" fill="#94a3b8" font-size="10" text-anchor="middle">故障诊断与维修</text>
+      <text x="1205" y="799" fill="#94a3b8" font-size="10" text-anchor="middle">Linux运维基础</text>
+      <text x="1205" y="815" fill="#94a3b8" font-size="10" text-anchor="middle">ROS基础应用</text>
+      <text x="1205" y="831" fill="#94a3b8" font-size="10" text-anchor="middle">传感器安装与标定</text>
+      <text x="1205" y="851" fill="#94a3b8" font-size="9" text-anchor="middle">— — — — — — —</text>
+      <text x="1205" y="867" fill="#a78bfa" font-size="9" text-anchor="middle">高职: 快速岗位适配</text>
+      <text x="1205" y="883" fill="#94a3b8" font-size="9" text-anchor="middle">实训比例 ≥ 50%</text>
+      <text x="1205" y="899" fill="#94a3b8" font-size="9" text-anchor="middle">引入企业真实项目</text>
+      <text x="1205" y="915" fill="#94a3b8" font-size="9" text-anchor="middle">对接头部企业认证</text>
+      <text x="1205" y="933" fill="#94a3b8" font-size="9" text-anchor="middle">订单班 · 产教融合</text>
+      <text x="1205" y="953" fill="#94a3b8" font-size="9" text-anchor="middle">实训: 人形/移动机器人</text>
+
+      <!-- ============================================================
+           图例 (Legend) - 放在顶部右侧，与 Layer 1 卡片完全分离
+           ============================================================ -->
+      <rect x="1340" y="30" width="150" height="200" rx="6" fill="rgba(15,23,42,0.95)" stroke="#475569" stroke-width="1"/>
+      <text x="1415" y="50" fill="white" font-size="12" font-weight="600" text-anchor="middle">图例</text>
+
+      <rect x="1355" y="62" width="14" height="10" rx="2" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1"/>
+      <text x="1373" y="71" fill="#94a3b8" font-size="10">上游硬件</text>
+
+      <rect x="1355" y="78" width="14" height="10" rx="2" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="1373" y="87" fill="#94a3b8" font-size="10">感知算法</text>
+
+      <rect x="1355" y="94" width="14" height="10" rx="2" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1"/>
+      <text x="1373" y="103" fill="#94a3b8" font-size="10">产品平台</text>
+
+      <rect x="1355" y="110" width="14" height="10" rx="2" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="1373" y="119" fill="#94a3b8" font-size="10">数据服务</text>
+
+      <rect x="1355" y="126" width="14" height="10" rx="2" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="1373" y="135" fill="#94a3b8" font-size="10">行业应用</text>
+
+      <line x1="1355" y1="150" x2="1369" y2="150" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+      <text x="1375" y="154" fill="#94a3b8" font-size="10">层级映射关系</text>
+
+      <text x="1415" y="174" fill="#94a3b8" font-size="9" text-anchor="middle">★ 本科 · 高职 双轨</text>
+      <text x="1415" y="188" fill="#94a3b8" font-size="9" text-anchor="middle">产业 → 岗 → 技 → 课</text>
+      <text x="1415" y="202" fill="#94a3b8" font-size="9" text-anchor="middle">2026 具身智能方向</text>
+
+      <!-- ============================================================
+           LAYER 0 标签（绘制在所有卡片之上，避免被覆盖）
+           ============================================================ -->
+      <rect x="15" y="30" width="120" height="22" rx="4" fill="rgba(30,41,59,0.95)" stroke="#475569" stroke-width="1"/>
+      <text x="75" y="45" fill="#e2e8f0" font-size="12" font-weight="600" text-anchor="middle">产业链</text>
+
+      <rect x="15" y="255" width="120" height="22" rx="4" fill="rgba(30,41,59,0.95)" stroke="#475569" stroke-width="1"/>
+      <text x="75" y="270" fill="#e2e8f0" font-size="12" font-weight="600" text-anchor="middle">岗位方向</text>
+
+      <rect x="15" y="465" width="120" height="22" rx="4" fill="rgba(30,41,59,0.95)" stroke="#475569" stroke-width="1"/>
+      <text x="75" y="480" fill="#e2e8f0" font-size="12" font-weight="600" text-anchor="middle">核心技能</text>
+
+      <rect x="15" y="685" width="120" height="22" rx="4" fill="rgba(30,41,59,0.95)" stroke="#475569" stroke-width="1"/>
+      <text x="75" y="700" fill="#e2e8f0" font-size="12" font-weight="600" text-anchor="middle">对应课程</text>
+
+    </svg>
+  </div>
+
+  <!-- Info Cards -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot amber"></div>
+        <h3>产业规模与需求</h3>
+      </div>
+      <ul>
+        <li>• 全国机器人相关企业 45.17 万家（+207%）</li>
+        <li>• 人形机器人招聘需求同比增长 409%</li>
+        <li>• 算法工程师缺口增速 479%，月薪均值 25368</li>
+        <li>• 技术岗位占比超 60%，本科及以上为主</li>
+        <li>• 2030年三大赛道市场规模 3398 亿美元</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot emerald"></div>
+        <h3>本科 vs 高职培养差异</h3>
+      </div>
+      <ul>
+        <li>• 本科：算法研发 / 系统设计 / 方案规划</li>
+        <li>• 高职：现场部署 / 调试运维 / 装配测试</li>
+        <li>• 本科实训比例 30-40%，高职 ≥ 50%</li>
+        <li>• 高职对标行业岗位能力标准</li>
+        <li>• 两层次课程复用率约 40%，差异化设计</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot violet"></div>
+        <h3>专业建设关键路径</h3>
+      </div>
+      <ul>
+        <li>• 原有专业 70% 课程可直接复用</li>
+        <li>• 新增 30% 具身智能特色课程即可转型</li>
+        <li>• 优先建设：仿真平台 + 机器人实训台</li>
+        <li>• 引入企业项目，推行校企订单班模式</li>
+        <li>• 双师型教师队伍：理论+实践双资质</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <p class="footer">
+    具身智能产业人才培养体系 · 数据来源：中国信通院 / 智联招聘 2026 · 本科 &amp; 高职双线培养方案
+  </p>
+
+</div>
+
+<script>
+  async function copyAsImage(btn) {
+    const orig = btn.textContent;
+    try {
+      const el = document.getElementById('report-container');
+      const r = el.getBoundingClientRect();
+      const pad = 32;
+      const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      btn.textContent = '✓ Copied!';
+    } catch (e) { btn.textContent = '✗ Failed'; }
+    setTimeout(() => btn.textContent = orig, 2000);
+  }
+
+  async function downloadPNG(btn) {
+    const orig = btn.textContent;
+    btn.textContent = '⏳ ...';
+    try {
+      const el = document.getElementById('report-container');
+      const r = el.getBoundingClientRect();
+      const pad = 32;
+      const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+      const link = document.createElement('a');
+      link.download = '具身智能产业岗位技能课程关系图.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      btn.textContent = '✓ Done!';
+    } catch (e) { btn.textContent = '✗ Failed'; }
+    setTimeout(() => btn.textContent = orig, 2000);
+  }
+
+  async function downloadPDF(btn) {
+    const orig = btn.textContent;
+    btn.textContent = '⏳ ...';
+    try {
+      const el = document.getElementById('report-container');
+      const r = el.getBoundingClientRect();
+      const pad = 32;
+      const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const orientation = canvas.width > canvas.height ? 'landscape' : 'portrait';
+      const pdf = new jsPDF({ orientation, unit: 'px', format: [canvas.width, canvas.height], hotfixes: ['px_scaling'] });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save('具身智能产业岗位技能课程关系图.pdf');
+      btn.textContent = '✓ Done!';
+    } catch (e) { btn.textContent = '✗ Failed'; }
+    setTimeout(() => btn.textContent = orig, 2000);
+  }
+</script>
+</body>
+</html>

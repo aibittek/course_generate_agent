@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Node
+node_modules/
+*.log
+
+# Course outputs
+courses/
+
+# Media outputs
+*.mp4
+*.mp3
+*.wav
+*.png
+*.jpg
+*.pdf
+
+# AI Models
+models/
+
+# Temp
+temp/
+tmp/
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code (project definition - DO NOT IGNORE)
+.claude/agent-memory/        # Agent runtime memory (generated)
+.claude/settings.local.json # Local overrides
+
+# Environment
+.env
+.env.local
