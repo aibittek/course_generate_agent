@@ -94,7 +94,7 @@ When editing one document, run the corresponding check on the others or call `Co
 - `v1.0` — first human-reviewed release
 - Major bump (`v2.0`) only on structural changes (chapters added/removed, scope shifts)
 
-Each document carries a YAML front-matter `version` field plus a `## 更新日志` table. Historical versions are archived as `{name}_v{version}.md`. The `cv_practice` folder currently contains `v3` artifacts — preserve the `_vN` suffix when iterating.
+Each document carries a YAML front-matter `version` field plus a `## 更新日志` table. Historical versions are archived under `courses_archive/`.
 
 ## Output formatting
 

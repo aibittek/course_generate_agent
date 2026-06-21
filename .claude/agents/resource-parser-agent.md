@@ -172,6 +172,59 @@ contents:
   - 轮廓检测与几何特征分析
 ```
 
+### 4.1 🔴 空洞模板检测与强制展开规则
+
+> **背景**：Excel 中的【实验内容】列常常只有4条通用占位符（如"学习XX理论知识""完成环境配置"等），直接写入 YAML 会导致后续 LabGuideAgent 生成空洞内容。
+
+**检测规则**：如果提取到的 contents 满足以下任一条件，视为空洞模板：
+1. 所有条目都是"学习XX理论知识"、"完成XX配置"等通用描述
+2. 所有条目完全相同（无差异）
+3. 实验名称是"XX实验"但 contents 里没有具体的操作步骤/命令/API
+
+**强制展开规则**：检测到空洞模板后，基于实验名称 + 技术栈自动展开为**真实的实验步骤**：
+
+#### ROS2 课程实验内容展开模板
+
+| 实验名称关键词 | 真实步骤（必须全部展开） |
+|--------------|------------------------|
+| ROS2基础/概念/安装 | ①apt安装ROS2 Humble ②source环境变量 ③验证ros2 version ④创建工作空间src/ ⑤colcon build ⑥ros2 pkg create |
+| 话题通信/Pub/Sub | ①rclpy.node.Node创建节点 ②创建Publisher发布std_msgs/String ③创建Subscriber回调处理 ④ros2 topic list/hz/echo ⑤launch文件多节点启动 |
+| 服务通信/Service | ①定义srv文件 ②创建Service服务器 ③创建ServiceClient客户端 ④ros2 service list/call ⑤异步服务调用 |
+| Launch文件 | ①编写Python/XML Launch文件 ②Node标签参数传递 ③Include标签嵌套 ④ros2 launch运行 ⑤Lifecycle管理器 |
+| URDF建模 | ①XML语法编写link/joint ②xacro宏定义 ③rviz2可视化验证 ④robot_state_publisher发布 ⑤joint_state_publisher_gui |
+| Gazebo仿真 | ①安装gazebo_ros包 ②编写URDF+gazebo标签 ③spawn_entity放入仿真世界 ④差速控制器配置 ⑤ros2 control |
+| TF2坐标变换 | ①tf2_ros.TransformBroadcaster发布 ②tf2_ros.Buffer+Listener查询 ③rqt_tf_tree查看树 ④static_transform_publisher |
+| SLAM建图 | ①cartographer/gmapping配置 ②激光雷达驱动启动 ③ros2 topic echo验证scan ④保存地图 ⑤地图加载与定位 |
+| MoveIt2 | ①MoveGroup接口配置SRDF ②规划组和末端执行器 ③set_joint_value_target ④compute_cartesian_path ⑤执行器执行 |
+| 导航 | ①nav2_bringup启动 ②amcl定位 ③costmap配置 ④BT导航行为树 ⑤goal_pose发布 |
+
+#### 计算机视觉课程实验内容展开模板
+
+| 实验名称关键词 | 真实步骤 |
+|--------------|---------|
+| 颜色识别/Lab | ①cv2.VideoCapture开摄像头 ②cv2.cvtColor BGR→LAB ③分通道提取L/a/b ④inRange阈值分割 ⑤形态学开闭运算 ⑥轮廓findContours |
+| 边缘检测 | ①灰度化cvtColor ②高斯blur降噪 ③Canny/Sobel边缘检测 ④轮廓检索RETR_TREE ⑤cv2.drawContours绘制 |
+| 二维码/Qrcode | ①pip install qrcode ②qrcode.make生成 ③pyzbar.decode解码 ④cv2.putText标注结果 ⑤数据校验 |
+| 目标检测/YOLO | ①ONNX模型加载cv2.dnn.readNet ②预处理letterbox ③前向推理forward ④NMS后处理 ⑤绘制bbox |
+| 人脸检测 | ①DNN加载caffe/ssd模型 ②cv2.dnn.blobFromImage预处理 ③前向推理 ④人脸框解析 ⑤cv2.rectangle绘制 |
+
+#### 语音处理课程实验内容展开模板
+
+| 实验名称关键词 | 真实步骤 |
+|--------------|---------|
+| ASR语音识别 | ①麦克风数组配置 ②VAD语音活动检测 ③流式音频采集pyaudio ④调用ASR API/本地模型 ⑤结果文本输出 |
+| TTS语音合成 | ①文本规范化 ②调用TTS API/pyttsx3 ③音频参数配置 ④音频流播放 ⑤多语言支持 |
+| 声纹识别 | ①音频特征提取mfcc ②声纹嵌入模型提取 ③余弦相似度比对 ④阈值判定 |
+| 唤醒词 | ①麦克风持续监听 ②短语音片段VAD截取 ③唤醒模型推理 ④置信度阈值判断 ⑤唤醒回调触发 |
+
+> **展开原则**：contents 中每一条必须是**具体的、可见的操作**，禁止写"学习XX知识""完成XX配置"这类空洞描述。
+
+**自检清单**（生成 contents 后必查）：
+- [ ] 每条内容是否具体？（不是"学习理论知识"这类泛泛描述）
+- [ ] 是否包含命令/API/工具名称？
+- [ ] 实验名称中的技术点是否都出现在 contents 中？
+- [ ] 是否有至少3条不同的操作步骤？
+
 ## 工作流程
 
 ```

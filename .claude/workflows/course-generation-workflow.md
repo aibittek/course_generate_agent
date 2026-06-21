@@ -164,7 +164,10 @@ Agent 2: syllabus-agent（必须读取course-spec.yaml）
 
 **执行顺序（强制串行）**:
 ```
-1. lab-guide-agent (先执行)
+1. lab-guide-orchestrator-agent (先执行)
+   ├── 生成文档头部（环境配置 + 使用说明）
+   ├── 并行/串行调用 lab-guide-experiment-agent × N（每实验一次）
+   └── 生成文档尾部（FAQ + 硬件速查表 + 更新日志）
 2. quiz-agent (后执行)
 ```
 
@@ -172,11 +175,41 @@ Agent 2: syllabus-agent（必须读取course-spec.yaml）
 - 依赖 Step 2 的产出（知识图谱 + 大纲）
 - **quiz-agent 额外依赖 lab-guide-agent 的产出**：编程题强制取材于实验指导书的实际实验任务（相同 API/硬件接口），单选/多选/简答可参考实验原理解释。因此 quiz 不可与 lab-guide 并行。
 
+**调用示例**:
+```python
+# 新架构（推荐，2026-06-21 起启用）
+Agent(
+  description="生成实验指导书",
+  subagent_type="LabGuideOrchestratorAgent",
+  prompt="基于 course-spec.yaml 和 knowledge_graph.md 生成完整实验指导书..."
+)
+
+# 旧架构（保留备用，如遇问题可回退）
+# Agent(
+#   description="生成实验指导书",
+#   subagent_type="LabGuideAgent",
+#   prompt="..."
+# )
+```
+
+**LabGuideOrchestratorAgent 内部流程**:
+1. 读取 course-spec.yaml 获取实验列表（N 个）
+2. 写入文档头部到 `_parts/header.md`
+3. **并行**调用 N 次 LabGuideExperimentAgent（推荐，节约时间）：
+   - 每次传入单个实验的 context（id/name/hours/objectives/contents/知识点）
+   - 产出写入 `_parts/experiment-{id}.md`
+4. 写入文档尾部到 `_parts/footer.md`
+5. 拼接所有片段：header + exp1 + exp2 + ... + expN + footer → `{course_id}_lab_guide.md`
+6. 质量检查（实验数、总学时、每实验≥200行）
+
 **输出文件**:
-- `lab_guide.md` - 实验指导书
+- `lab_guide.md` - 实验指导书（完整版，含文档级章节）
+- `_parts/` - 分部产出（可选保留，用于增量修改）
 - `quiz.md` - 练测题库
 
-**预计耗时**: 3-5分钟
+**预计耗时**: 
+- 串行模式: 5-8分钟（N 个实验依次生成）
+- 并行模式: 2-3分钟（N 个实验同时生成）
 
 ---
 
@@ -236,8 +269,9 @@ resource-integrator-agent
 **操作**:
 1. 创建目录结构
 2. 移动/重命名文件
-3. 生成元数据文件
-4. 生成README
+3. **清理临时目录 `_parts/`**（可选保留用于调试）
+4. 生成元数据文件
+5. 生成README
 
 **输出目录**:
 ```
