@@ -36,15 +36,15 @@ Each course produces four core documents plus metadata under `courses/{sheet1|sh
 
 ## Single source of truth — non-negotiable
 
-`input/course_spec.xlsx` is the **only** authoritative source for course content. The constraint is enforced by `.claude/rules/source-constraint-rule.md`:
+`input/course_spec.csv` is the **only** authoritative source for course content. The constraint is enforced by `.claude/rules/source-constraint-rule.md`:
 
-1. Never generate course content from generic knowledge before the xlsx has been parsed.
-2. `ResourceParserAgent` must run first; it produces `_meta/course-spec.yaml`.
+1. Never generate course content from generic knowledge before the csv has been parsed.
+2. `ResourceParserAgent` must run first; it invokes `.claude/skills/spec-parser-skill/` (fixed Python parser, not LLM) to produce `_meta/course-spec.yaml`. The agent itself does not parse — it only triggers the skill and validates the result.
 3. All downstream agents (knowledge-graph, syllabus, lab-guide, quiz) read `course-spec.yaml` and must respect its `experiments[]`, `total_hours`, `tech_stack`, and `prerequisites`.
-4. Experts may *add* frontier content (e.g. YOLOv8) but must label it `专家建议` with a reason — they may not *reduce* what the xlsx specifies.
-5. `ContentAuditAgent` re-checks generated output against the xlsx; mismatches block the pipeline.
+4. Experts may *add* frontier content (e.g. YOLOv8) but must label it `专家建议` with a reason — they may not *reduce* what the csv specifies.
+5. `ContentAuditAgent` re-checks generated output against the csv (via the parsed yaml); mismatches block the pipeline.
 
-If a user asks to generate or edit course content without referencing the xlsx, route them through the parser first.
+If a user asks to generate or edit course content without referencing the csv, route them through the parser first.
 
 ## Course catalog
 
@@ -106,9 +106,11 @@ Each document carries a YAML front-matter `version` field plus a `## 更新日�
 
 `.claude/rules/content-accuracy.md` additionally forbids ROS1-specific APIs in ROS2 contexts (e.g. use `rclpy.node.Node`, not `rospy.Subscriber`) and exaggerated specs.
 
-## Working with the .xlsx and .docx sources
+## Working with the .csv and .docx sources
 
-Source materials under `input/` are the xlsx files (course_spec.xlsx). To extract text from `.docx`, the project uses a Python `read_docx.py` script invoked via `python` (paths permitted in `.claude/settings.local.json`). The xlsx parsing happens inside `ResourceParserAgent`; do not attempt to re-parse it ad hoc — let the agent produce `course-spec.yaml` and read that instead.
+The course spec lives at `input/course_spec.csv` (single-table flat layout, one row per experiment, list fields separated by `;`). Parsing is handled by `.claude/skills/spec-parser-skill/parser.py` — a fixed Python parser invoked through `ResourceParserAgent`; do not parse the csv ad hoc, let the skill produce `course-spec.yaml` and read that instead. Field semantics live in `.claude/skills/spec-parser-skill/schema.yaml`; validation rules in `validator.py`.
+
+For `.docx` extraction, the project uses a Python `read_docx.py` script invoked via `python` (paths permitted in `.claude/settings.local.json`).
 
 ## Language
 

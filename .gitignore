@@ -44,7 +44,7 @@ Thumbs.db
 .claude/agent-memory/        # Agent runtime memory (generated)
 .claude/settings.local.json # Local overrides
 
-# Environment
-.env
-.env.local
+# Source codes (temporary ignore for commit)
+source-codes/
+src/
 .claude/settings.local.json

@@ -1,18 +1,44 @@
 ---
 name: course-generation-workflow
-description: 端到端课程资源生成工作流 - 从课程信息到完整资源包
+description: 端到端课程资源生成工作流 - 从课程信息到完整资源包（含源码仓库+HOOK机制+增量更新）
 trigger: /生成课程、生成课程资源、生成{course_name}
 ---
 
 # 课程资源生成工作流
 
-本文档定义从课程信息到完整课程资源包的端到端工作流程。
+本文档定义从课程信息到完整课程资源包的端到端工作流程，包括全量生成和增量更新两种模式。
 
 ---
 
-## 一、工作流概述
+## 工作流模式
 
-### 1.1 流程图（已优化 v2.0）
+### 模式1: 全量生成（本文档）
+- 适用场景: 新课程生成、大范围结构调整
+- 执行时间: 10-30分钟
+- 触发方式: `/生成课程 {course_id}` 或 `生成 {course_name}`
+
+### 模式2: 增量更新（见 IncrementalUpdateAgent）
+- 适用场景: 单实验/单章节修改
+- 执行时间: 1-5分钟
+- 触发方式: `更新 {course_id} 实验{N}` 或 `/incremental-update`
+
+---
+
+## 引用Skill
+
+- `.claude/skills/spec-parser-skill/SKILL.md` — **CSV → course-spec.yaml 固定解析器（Step 1 唯一执行器）**
+- `.claude/skills/source-code-hook-skill/SKILL.md` — **源码HOOK检查（强制执行）**
+
+## 核心设计原则
+
+1. **源码是内容的锚点** — 所有实验内容必须基于源码分析生成
+2. **HOOK是强制门控** — 未经HOOK通过的实验，不得生成内容
+3. **状态持久化** — 所有状态写入文件，断点可恢复
+
+---
+
+## 一、流程图
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         启动                                     │
@@ -21,64 +47,82 @@ trigger: /生成课程、生成课程资源、生成{course_name}
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ Step 1: 资源列表解析（新增）                                     │
-│           resource-parser-agent                                  │
-│  - 读取 input/course_spec.xlsx                                         │
-│  - 生成course-spec.yaml（唯一可信源）                            │
-│  - 提取实验项目、学时、技术栈                                     │
+│ Step 1: 资源列表解析                                             │
+│           resource-parser-agent ── 调用 spec-parser-skill        │
+│  - 读取 input/course_spec.csv                                    │
+│  - parser.py: csv → course-spec.yaml（唯一可信源）                │
+│  - validator.py: 字段校验 + 课程目录硬比对                         │
 └─────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ Step 2: 知识图谱 + 教学大纲 (并行)                               │
-│ ┌─────────────────────┐  ┌─────────────────────┐                 │
-│ │ knowledge-graph-    │  │   syllabus-agent   │                 │
-│ │ agent              │  │                    │                 │
-│ │ 基于course-spec    │  │  基于course-spec   │                 │
-│ └─────────────────────┘  └─────────────────────┘                 │
+│ ┌─────────────────────┐  ┌─────────────────────┐               │
+│ │ knowledge-graph-    │  │   syllabus-agent   │               │
+│ │ agent              │  │                    │               │
+│ └─────────────────────┘  └─────────────────────┘               │
 └─────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ Step 3: 实验指导书 → 练测题 (串行，依赖关系强制)                 │
-│ ┌─────────────────────┐      ┌─────────────────────┐            │
-│ │  lab-guide-agent   │  →   │    quiz-agent      │            │
-│ │ 基于course-spec    │      │ 基于knowledge-graph│            │
-│ │ +knowledge-graph   │      │ +lab_guide(编程题) │            │
-│ └─────────────────────┘      └─────────────────────┘            │
-│ 注：quiz 编程题取材于实验指导书，故必须在 lab-guide 之后        │
+│ Step 3: 源码仓库初始化                                           │
+│           LabGuideOrchestratorAgent                             │
+│  - 创建 source-codes/ 目录结构                                   │
+│  - 初始化 _registry.yaml                                        │
+│  - 扫描已有源码，更新 code_status                               │
 └─────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ Step 4: 内容审核（优化）                                         │
-│           content-audit-agent（新增）                            │
-│  - 对照资源列表检查完整性                                        │
-│  - 检查数据一致性                                                │
-│  - 提出专家级补充建议                                            │
+│ Step 4: 实验生成（源码HOOK + 内容生成）                          │
+│                                                                   │
+│  for each experiment:                                            │
+│    ┌─────────────────────────────────────────────────────┐      │
+│    │ ★ HOOK: 源码检查（引用 source-code-hook-skill） ★  │      │
+│    │   ├─ code_status=analyzed → ✅ 直接生成             │      │
+│    │   ├─ code_status=pending → ⚡ 触发分析Agent       │      │
+│    │   └─ code_status=missing → 🔴 硬阻塞              │      │
+│    └─────────────────────────────────────────────────────┘      │
+│                            │                                     │
+│                            ▼                                     │
+│    ┌──────────────────────────────────────────────────────┐   │
+│    │ SourceCodeAnalysisAgent × N（并行，HOOK触发）          │   │
+│    │  ├─ 读取源码文件                                       │   │
+│    │  ├─ 输出：code-analysis-report.md                    │   │
+│    │  └─ 更新：analysis-status.yaml → completed           │   │
+│    └──────────────────────────────────────────────────────┘   │
+│                            │                                     │
+│                            ▼                                     │
+│    ┌──────────────────────────────────────────────────────┐   │
+│    │ LabGuideExperimentAgent × N（HOOK通过后执行）         │   │
+│    │  ├─ 输入：experiment_context + source_code_analysis   │   │
+│    │  ├─ 原理→源码位置对应                                │   │
+│    │  └─ 输出：_parts/experiment-{id}.md                 │   │
+│    └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ Step 5: 质量审核                                                 │
-│           quality-review-agent                                   │
-│           (审核技术准确性)                                       │
+│ Step 5: 练测题生成（串行，依赖实验内容）                        │
+│           quiz-agent                                            │
 └─────────────────────────────────────────────────────────────────┘
                                   │
-                    ┌─────────────┴─────────────┐
-                    │                           │
-                    ▼                           ▼
-              ┌──────────┐                ┌──────────┐
-              │ 通过审核  │                │ 未通过   │
-              └────┬─────┘                └────┬─────┘
-                   │                           │
-                   ▼                           ▼
+                                  ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ Step 6: 资源整合输出                                             │
-│       resource-integrator-agent                                  │
-│       - 整合4个文档                                              │
-│       - 生成元数据                                               │
-│       - 输出到courses/目录                                       │
+│ Step 6: 内容审核                                                 │
+│           content-audit-agent                                   │
+└─────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 7: 质量审核                                                 │
+│           quality-review-agent                                  │
+└─────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 8: 资源整合输出                                             │
+│           resource-integrator-agent                              │
 └─────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
@@ -92,432 +136,180 @@ trigger: /生成课程、生成课程资源、生成{course_name}
 
 ## 二、详细步骤
 
-### Step 1: 资源列表解析（新增）
+### Step 1: 资源列表解析
 
 **调用Agent**: `resource-parser-agent`
 
-**输入**:
-```
-用户: 生成 ROS机器人实践
-```
+**核心动作**：触发 `.claude/skills/spec-parser-skill/`，本身不解析。
 
 **操作**:
-1. 解析课程名称 → `ROS机器人实践`
-2. 匹配课程编号 → `EXP003`
-3. **读取 input/course_spec.xlsx**（关键步骤）
-4. 解析所有实验项目（8个实验）
-5. 识别技术栈（ROS2）
-6. 生成course-spec.yaml
+1. `python .claude/skills/spec-parser-skill/parser.py` — 读取 `input/course_spec.csv`，写出 `course-spec.yaml`
+2. `python .claude/skills/spec-parser-skill/validator.py` — 字段校验（errors / warnings）
+3. 课程目录硬比对：`len(experiments) == 预期` 且 `total_hours == 预期`
+4. 校验通过 → 写入 `spec_validation` 块；失败 → spec.status=blocked，触发 CP-2
 
-**输出**: `courses/sheet1/ros_practice/_meta/course-spec.yaml`
-```yaml
-course_code: EXP003
-course_name: ROS机器人实践
-category: sheet1
-prerequisites:
-  - C++或Python编程
-  - Linux系统应用
-total_hours: 48
-lab_hours: 48
-tech_stack: [ROS2]
-experiments:
-  - id: 1
-    name: ROS2系统搭建与节点通信实验
-    hours: 6
-    tech_stack: [ROS2]
-    objectives: [...]
-    contents: [...]
-  # ... 其余7个实验
-```
-
-⚠️ **关键变化**: 不再凭通识知识，必须基于资源列表
+> ⚠️ 任意失败都不进入 Step 2；spec.yaml 不就绪 → 下游禁止启动。
 
 ---
 
-### Step 2: 并行生成 - 知识图谱 + 教学大纲
+### Step 2: 知识图谱 + 教学大纲（并行）
 
-**并行执行**:
+**调用Agent**:
+- `knowledge-graph-agent`
+- `syllabus-agent`
+
+两者都基于 `course-spec.yaml` 生成。
+
+---
+
+### Step 3: 源码仓库初始化
+
+**调用Agent**: `LabGuideOrchestratorAgent`
+
+**操作**:
+1. 检查 `source-codes/` 是否存在
+   - 不存在 → 创建目录骨架 + 初始化 `_registry.yaml`（所有实验 = missing）
+   - 存在 → 扫描并更新 `_registry.yaml`
+2. 输出源码状态摘要
+
+**输出**:
 ```
-Agent 1: knowledge-graph-agent（必须读取course-spec.yaml）
-Agent 2: syllabus-agent（必须读取course-spec.yaml）
+源码状态摘要：
+- 已分析：2个（exp1, exp5）
+- 待分析：3个（exp2, exp3, exp4）
+- 缺失源码：2个（exp6, exp7）→ 🔴 内容生成阻塞
+```
+
+---
+
+### Step 4: 实验生成（源码HOOK + 内容生成）
+
+#### 4.1 HOOK检查（引用 source-code-hook-skill）
+
+**对每个实验执行 HOOK**：
+
+读取 `source-codes/_registry.yaml`，根据决策矩阵执行：
+
+| code_status | analysis_status | 决策 |
+|------------|----------------|------|
+| analyzed | completed | ✅ 直接生成 |
+| pending | pending | ⚡ 触发分析 |
+| pending | analyzing | ⏳ 轮询等待 |
+| missing | not_started | 🔴 硬阻塞 |
+
+#### 4.2 触发源码分析（HOOK → SourceCodeAnalysisAgent）
+
+**调用Agent**: `SourceCodeAnalysisAgent`
+
+**分析维度**:
+
+| 维度 | 输出内容 |
+|------|---------|
+| 代码架构 | 文件结构 + 核心模块职责 + Mermaid数据流 |
+| 原理分析 | 算法/数学原理 + 公式 + **源码落点（文件名+行号）** |
+| 学习路径 | 阶段一：能运行（30min）→ 阶段二：能理解（60min）→ 阶段三：能改造（30min） |
+| 易错清单 | ≥5个：错误现象 + 原因 + 解决方法 |
+
+**输出文件**:
+- `source-codes/exp{xx}/code-analysis/code-analysis-report.md`
+- `source-codes/exp{xx}/code-analysis/analysis-status.yaml`（status → completed）
+
+#### 4.3 生成实验内容（LabGuideExperimentAgent）
+
+**调用Agent**: `LabGuideExperimentAgent × N`
+
+**输入（来自 HOOK）**:
+```yaml
+experiment_context:
+  id: 6
+  name: 基于MediaPipe的人机交互实验
+  # ... spec字段
+
+  # ★ 来自HOOK的源码分析
+  source_code_analysis:
+    report_path: "source-codes/exp6/code-analysis/code-analysis-report.md"
+    principles:
+      - id: "3.1.1"
+        name: "MediaPipe Hands"
+        code_location: "hands_tracker.py L30-35"  # ★ 必须有
+    common_mistakes:
+      - phenomenon: "关键点不显示"
+        solution: "降低置信度阈值"
+        code_location: "config.py L3"
 ```
 
 **强制约束**:
-- ✅ 必须基于course-spec.yaml生成
-- ✅ 知识图谱必须覆盖所有实验
-- ✅ 总学时必须=course-spec.total_hours
-- ❌ 禁止凭通识知识生成
-
-**调用Skills**:
-- `.claude/skills/embodied-ai-domain/`
-- `.claude/skills/course-design-expert/`
-
-**输出文件**:
-- `knowledge_graph.md` - 三级知识结构
-- `syllabus.md` - 教学大纲
-
-**预计耗时**: 2-3分钟
+- 原理讲解必须引用 `code_location`（源码落点）
+- 易错点必须引用 `common_mistakes` 清单
+- 学习步骤必须遵循三阶段规划
 
 ---
 
-### Step 3: 串行生成 - 实验指导书 → 练测题
+### Step 5: 练测题生成
 
-**执行顺序（强制串行）**:
-```
-1. lab-guide-orchestrator-agent (先执行)
-   ├── 生成文档头部（环境配置 + 使用说明）
-   ├── 并行/串行调用 lab-guide-experiment-agent × N（每实验一次）
-   └── 生成文档尾部（FAQ + 硬件速查表 + 更新日志）
-2. quiz-agent (后执行)
-```
+**调用Agent**: `quiz-agent`
 
-**依赖**:
-- 依赖 Step 2 的产出（知识图谱 + 大纲）
-- **quiz-agent 额外依赖 lab-guide-agent 的产出**：编程题强制取材于实验指导书的实际实验任务（相同 API/硬件接口），单选/多选/简答可参考实验原理解释。因此 quiz 不可与 lab-guide 并行。
-
-**调用示例**:
-```python
-# 新架构（推荐，2026-06-21 起启用）
-Agent(
-  description="生成实验指导书",
-  subagent_type="LabGuideOrchestratorAgent",
-  prompt="基于 course-spec.yaml 和 knowledge_graph.md 生成完整实验指导书..."
-)
-
-# 旧架构（保留备用，如遇问题可回退）
-# Agent(
-#   description="生成实验指导书",
-#   subagent_type="LabGuideAgent",
-#   prompt="..."
-# )
-```
-
-**LabGuideOrchestratorAgent 内部流程**:
-1. 读取 course-spec.yaml 获取实验列表（N 个）
-2. 写入文档头部到 `_parts/header.md`
-3. **并行**调用 N 次 LabGuideExperimentAgent（推荐，节约时间）：
-   - 每次传入单个实验的 context（id/name/hours/objectives/contents/知识点）
-   - 产出写入 `_parts/experiment-{id}.md`
-4. 写入文档尾部到 `_parts/footer.md`
-5. 拼接所有片段：header + exp1 + exp2 + ... + expN + footer → `{course_id}_lab_guide.md`
-6. 质量检查（实验数、总学时、每实验≥200行）
-
-**输出文件**:
-- `lab_guide.md` - 实验指导书（完整版，含文档级章节）
-- `_parts/` - 分部产出（可选保留，用于增量修改）
-- `quiz.md` - 练测题库
-
-**预计耗时**: 
-- 串行模式: 5-8分钟（N 个实验依次生成）
-- 并行模式: 2-3分钟（N 个实验同时生成）
+**依赖**: 实验指导书（编程题强制取材于实验内容）
 
 ---
 
-### Step 4: 内容审核（新增）
+### Step 6-8: 审核与整合
 
-**调用Agent**: `content-audit-agent`
-
-**审核维度**:
-1. **完整性审核**：
-   - 实验数量≥资源列表要求
-   - 总学时=资源列表要求
-   - 技术栈覆盖率≥95%
-
-2. **数据一致性审核**：
-   - 学时数据在所有文档中一致
-   - 练测题数量统计准确
-   - 知识点编号无重复
-
-3. **专家补充建议**：
-   - 基于行业前沿提出补充内容
-   - 标注优先级和理由
-
-**输出**: `content-audit-report.md`
+- **Step 6**: `content-audit-agent` — 完整性 + 一致性审核
+- **Step 7**: `quality-review-agent` — 技术准确性审核
+- **Step 8**: `resource-integrator-agent` — 资源整合输出
 
 ---
 
-### Step 5: 质量审核
+## 三、输出目录结构
 
-**调用Agent**: `quality-review-agent`
-
-**审核维度**:
-| 维度 | 权重 |
-|------|------|
-| 准确性 | 40% |
-| 可操作性 | 30% |
-| 规范性 | 30% |
-
-**评级标准**:
-| 评级 | 说明 | 行动 |
-|------|------|------|
-| A级 | 优秀 | 直接输出 |
-| B级 | 良好 | 微调后输出 |
-| C级 | 一般 | 返回修改 |
-| D级 | 较差 | 重新生成 |
-
-**输出**: `quality-review-report.md`
-
----
-
-### Step 6: 资源整合输出
-
-**调用Agent**:
 ```
-resource-integrator-agent
-```
-
-**操作**:
-1. 创建目录结构
-2. 移动/重命名文件
-3. **清理临时目录 `_parts/`**（可选保留用于调试）
-4. 生成元数据文件
-5. 生成README
-
-**输出目录**:
-```
-courses/sheet1/ros_practice/
+courses/sheet1/{course_id}/
 ├── _meta/
 │   ├── course-info.yaml
 │   └── generation-log.md
-├── ros_practice_knowledge_graph.md
-├── ros_practice_syllabus.md
-├── ros_practice_lab_guide.md
-├── ros_practice_quiz.md
-└── README.md
+├── {course_id}_knowledge_graph.md
+├── {course_id}_syllabus.md
+├── {course_id}_lab_guide.md
+├── {course_id}_quiz.md
+├── README.md
+└── source-codes/                      # 源码仓库
+    ├── _registry.yaml                    # 源码索引
+    ├── exp01/
+    │   ├── demo_*.py
+    │   ├── requirements.txt
+    │   ├── _meta.yaml
+    │   └── code-analysis/
+    │       ├── code-analysis-report.md
+    │       └── analysis-status.yaml
+    └── exp02/ ...
 ```
 
 ---
 
-## 三、执行时间估算
+## 四、异常处理
 
-| 步骤 | Agent | 预计耗时 |
-|------|-------|---------|
-| Step 1 | resource-parser-agent | 30秒 |
-| Step 2 | 2个Agent并行 | 2-3分钟 |
-| Step 3 | 2个Agent串行 | 3-5分钟 |
-| Step 4 | content-audit-agent | 1分钟 |
-| Step 5 | quality-review-agent | 1-2分钟 |
-| Step 6 | integrator-agent | 30秒 |
-| **总计** | - | **8-12分钟** |
+| 错误类型 | 处理 |
+|---------|------|
+| `missing_code` | 🔴 硬阻塞，要求人工补充源码 |
+| `analysis_timeout` | 🔴 硬阻塞，要求检查源码 |
+| `analysis_failed` | 🔴 硬阻塞，要求修复源码 |
+| `agent_runtime_error` | 重试3次，仍失败则暂停 |
+| `quality_reject` | 定向回退，最多2轮，仍失败则人工介入 |
 
 ---
 
-## 四、异常处理与恢复
+## 五、Agent上下文契约
 
-> 设计目标：(1) 错误按类型分级处理，不再统一"重试3次"；(2) 失败可从断点恢复，不重跑已完成步骤；(3) 审核不过时定向回退到具体 Agent，不全量重做。
-
-### 4.1 统一 Agent 返回结构
-
-每个 Sub-Agent 执行后必须返回统一状态，供管家决策（而非把全部产出塞回管家上下文）：
-
-```yaml
-agent_result:
-  agent: lab-guide-agent
-  status: success        # success / warning / error
-  error_type: null       # parse_error / agent_runtime_error / consistency_error / quality_reject
-  output_file: courses/sheet1/ros_practice/ros_practice_lab_guide.md
-  summary: "8个实验，覆盖知识点 1.1.1–4.2.3"
-  warnings: []
-```
-
-管家只读 `status` / `error_type` / `output_file` / `summary` 做编排，**产出正文留在磁盘**，不回灌管家上下文（见 §六 上下文契约）。
-
-### 4.2 错误分级与处理策略
-
-| 错误类型 | 触发场景 | 处理策略 | 重试 | 人工介入 |
-|---------|---------|---------|------|---------|
-| `parse_error` | Step1 xlsx 读不了 / 字段缺失 / spec 自校验阻塞 | 🔴 硬停，不进入 Step2 | 否 | **CP-2 强制** |
-| `agent_runtime_error` | Agent 超时 / 崩溃 / 写文件失败 | 重试，指数退避 | 最多3次 | 3次后标记 `需人工干预` 并暂停 |
-| `consistency_error` | 学时/编号/数量对不上（一致性硬检查） | 定向修复对应 Agent | 自动修复1次 | 再失败转 quality_reject 流程 |
-| `quality_reject` | Step5 评级 C/D | 带缺陷清单定向回退 | 最多2轮 | 2轮仍 C/D → **CP-3 强制** |
-
-```yaml
-retry_policy:
-  agent_runtime_error: { max_attempts: 3, delay_seconds: 2, backoff: exponential }
-  consistency_error:   { max_attempts: 1, then: directed_rollback }
-  quality_reject:      { max_rounds: 2, then: checkpoint_CP3 }
-  parse_error:         { max_attempts: 0, then: checkpoint_CP2 }
-```
-
-**关键原则**：任何错误在重试/回退耗尽后，**绝不静默输出低质内容**，一律暂停 + 写 run-state 留痕，交人工。
-
-### 4.3 定向回退（审核不过时）
-
-ContentAuditAgent / QualityReviewAgent 输出**结构化缺陷清单**（见各 Agent 的 `failed_items`），管家按 `target_agent` 只触发对应 Agent 的局部重做，并把 `issue` 作为输入上下文传入。未被点名的 Agent 不动。
-
-```yaml
-# 审核返回示例
-review_result:
-  grade: C
-  failed_items:
-    - target_agent: KnowledgeGraphAgent
-      issue: "知识点 3.2.1 描述超过50字"
-      severity: 🟡
-    - target_agent: QuizAgent
-      issue: "题库引用了不存在的知识点 4.1.1"
-      severity: 🔴
-```
-
-回退路径（对照流程图 C/D 级返回箭头）：
-
-```
-quality_reject(C/D)
-   └─ 解析 failed_items
-        ├─ 仅 KnowledgeGraph/Syllabus 缺陷 → 回退 Step2 对应 Agent → 重跑 Step3(因依赖)
-        ├─ 仅 LabGuide 缺陷            → 回退 lab-guide → 重跑 quiz(因依赖)
-        ├─ 仅 Quiz 缺陷               → 仅回退 quiz
-        └─ 重新执行 Step4/Step5 审核
-   └─ 满 2 轮仍 C/D → CP-3 人工裁决
-```
-
-### 4.4 断点恢复（run-state 检查点）
-
-每门课程在 `_meta/run-state.yaml` 维护断点，每步完成即落盘。中断/失败后重新触发该课程，从最后一个 `done` 步骤的下一步继续，已完成步骤不重跑。
-
-```yaml
-# courses/{sheet}/{course_id}/_meta/run-state.yaml
-course_code: EXP003
-workflow_version: v2.1
-updated_at: 2026-06-13T10:30:00
-current_step: Step3
-status: in_progress      # in_progress / blocked / done / failed
-steps:
-  Step1_parse:        { status: done,    output: _meta/course-spec.yaml }
-  Step2a_kg:          { status: done,    output: ros_practice_knowledge_graph.md }
-  Step2b_syllabus:    { status: done,    output: ros_practice_syllabus.md }
-  Step3a_lab:         { status: done,    output: ros_practice_lab_guide.md }
-  Step3b_quiz:        { status: failed,  error_type: agent_runtime_error, attempts: 2 }
-  Step4_audit:        { status: pending }
-  Step5_quality:      { status: pending }
-  Step6_integrate:    { status: pending }
-rollback_rounds: 0
-```
-
-**恢复规则**：
-- `status: blocked` → 等人工解除（通常是 CP-2 spec 问题），人工修正后从 Step1 重验。
-- 某步 `failed` 且重试未耗尽 → 从该步重试。
-- 定向回退会把目标步骤及其下游依赖步骤重置为 `pending`，其余保持 `done`。
-
-### 4.5 人工检查点（CP）
-
-| 检查点 | 位置 | 类型 | 触发条件 | 批量生成时 |
-|-------|------|------|---------|-----------|
-| **CP-1** spec 确认 | Step1 之后 | 可选 | 解析成功后，由人确认 spec 符合预期再开始昂贵生成 | 默认**关闭**（避免频繁打断） |
-| **CP-2** 解析失败 | Step1 失败 | **强制阻塞** | xlsx 读不了 / 字段缺失 / spec 自校验阻塞 | 强制保留，跳过该课程继续其余 |
-| **CP-3** 质量兜底 | Step5 之后 | **强制阻塞** | 定向回退满2轮仍为 C/D 级 | 强制保留，该课程挂起待人工 |
-
-- **单门课**：建议开启 CP-1，生成前先让人过一眼 spec。
-- **批量生成**（生成Sheet1全部）：默认仅保留 CP-2 / CP-3 两个强制阻塞点；遇阻塞课程**跳过并继续**其余课程，最后汇总 `BLOCKED` 清单交人工，不中断整批。
-
-### 4.6 挂起 / 阻塞后的留痕
-
-进入 CP-2 / CP-3 或重试耗尽时，必须：
-1. 将 run-state `status` 置为 `blocked` / `failed`，写明 `error_type` 与详情；
-2. 在 `.claude/memory/generation-progress.md` 对应课程行标记 ⚠️/❌ 并备注卡点步骤；
-3. 输出给用户：卡在哪一步、为什么、人工需要做什么。
-
----
-
-## 五、使用示例
-
-### 示例1: 生成单门课程
-```
-用户: 生成 ROS机器人实践
-
-系统:
-1. ✅ 识别课程: EXP003 ROS机器人实践 (sheet1)
-2. 🔄 启动并行任务...
-   - knowledge-graph-agent: 执行中...
-   - syllabus-agent: 执行中...
-3. 🔄 串行生成...
-   - lab-guide-agent: 执行中...
-   - quiz-agent: 执行中...
-4. 🔄 质量审核中...
-5. 🔄 资源整合中...
-
-✅ 完成！
-
-📦 课程资源包已生成:
-   courses/sheet1/ros_practice/
-
-📄 产出清单:
-├── ros_practice_knowledge_graph.md (知识图谱)
-├── ros_practice_syllabus.md (教学大纲)
-├── ros_practice_lab_guide.md (实验指导书)
-└── ros_practice_quiz.md (练测题库)
-```
-
-### 示例2: 批量生成
-```
-用户: 生成Sheet1全部课程
-
-系统:
-1. ✅ 识别任务: 批量生成Sheet1的7门课程
-2. 🔄 按顺序生成...
-   [1/7] 计算机视觉实践 - ✅
-   [2/7] 语音交互实践 - ✅
-   [3/7] ROS机器人实践 - ✅
-   ...
-
-✅ 全部完成！7门课程已生成。
-```
-
----
-
-## 六、上下文依赖
-
-### 激活的Memory
-- `.claude/memory/course-scope-memory.md` - 课程规格数据（新增）
-- `.claude/memory/course-knowledge-base.md` - 课程知识库
-- `.claude/memory/generation-progress.md` - 生成进度
-
-### 激活的Rules
-- `.claude/rules/source-constraint-rule.md` - 源数据约束（新增）
-- `.claude/rules/data-consistency-rule.md` - 数据一致性（新增）
-- `.claude/rules/naming-convention.md` - 命名规范
-- `.claude/rules/output-format.md` - 输出格式
-- `.claude/rules/quality-standard.md` - 质量标准
-
-### 激活的Skills
-- `.claude/skills/embodied-ai-domain/` - 领域知识
-- `.claude/skills/course-design-expert/` - 教学设计
-- `.claude/skills/knowledge-graph-drawing/` - 图谱绘制
-
----
-
-## 六之二、Agent 上下文契约（防上下文膨胀/压缩）
-
-> 问题：若管家把每个子 Agent 的完整产出（动辄数千行 Markdown）都收进自己的上下文，多步之后上下文会被压缩，导致编排决策出错、引用丢失。
-
-### 设计原则
-
-1. **磁盘是唯一交接介质**：子 Agent 产出写入文件，管家与下游 Agent 通过**文件路径**交接，不传正文。
-2. **管家只持有摘要**：管家上下文里每个 Agent 只保留 `agent_result`（status / 路径 / 一行 summary），不保留产出全文。
-3. **子 Agent 按需读取最小输入**：每个子 Agent 启动时只读它声明的必需输入文件，不继承管家的完整历史。
-
-### 各 Agent 输入契约（最小必要集）
-
-| Agent | 必需读取 | 不需要读取 |
-|-------|---------|-----------|
-| ResourceParser | xlsx | 其他文档 |
-| KnowledgeGraph | course-spec.yaml | 大纲/实验/题库 |
-| Syllabus | course-spec.yaml | 实验/题库 |
-| LabGuide | course-spec.yaml + knowledge_graph.md + hardware-platform-spec.md | 大纲/题库 |
-| Quiz | knowledge_graph.md + lab_guide.md（编程题）| course-spec 全文（只需知识点编号） |
-| ContentAudit | course-spec.yaml + 4份产出 | — |
-| QualityReview | 4份产出 + quality-standard.md | xlsx |
-| ResourceIntegrator | 4份产出 + 审核报告 | xlsx |
-
-### 批量生成的上下文隔离
-
-- 每门课程是**独立的编排单元**，完成后管家**清理该课程的中间摘要**，只在 `generation-progress.md` 留一行状态后再开始下一门。
-- 跨课程共享的只有 Memory（硬件规格、知识库、进度），不跨课程携带产出正文。这样批量生成 11 门课程时，管家上下文不会随课程数线性膨胀。
-
----
-
-## 七、更新日志
-| 日期 | 更新内容 |
-|------|---------|
-| 2026-06-13 | v2.1 工程化优化：错误分级处理+断点恢复(run-state)+定向回退+人工检查点CP-1/2/3；Step1后spec自校验fail-fast；quiz串行依赖lab-guide；新增Agent上下文契约防膨胀 |
-| 2026-06-11 | v2.0 优化版本：新增ResourceParserAgent和ContentAuditAgent，强制基于资源列表生成 |
-| 2026-06-11 | v1.0 初始版本 |
+| Agent | 必需读取 |
+|-------|---------|
+| ResourceParser | input/course_spec.csv（经 spec-parser-skill 解析） |
+| KnowledgeGraph | course-spec.yaml |
+| Syllabus | course-spec.yaml |
+| SourceCodeAnalysis | source-codes/exp{xx}/ 下的源码文件 |
+| LabGuideOrchestrator | course-spec + knowledge_graph + _registry.yaml |
+| LabGuideExperiment | experiment_context + source_code_analysis |
+| Quiz | knowledge_graph + lab_guide |
+| ContentAudit | course-spec + 5份产出 |
+| QualityReview | 5份产出 + quality-standard.md |
+| ResourceIntegrator | 5份产出 + 源码仓库 |

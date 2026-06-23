@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit
+#
+# 在 git commit 之前触发。
+# 行为：
+#   - 若本次 commit 改动了 input/course_spec.csv，但没有对应改动 courses/**/course-spec.yaml
+#     或 courses/**/*_{knowledge_graph,syllabus,lab_guide,quiz}.md，则警告但不阻塞
+#   - 默认非阻塞：用 SKIP_CSV_DRIFT_BLOCK=1 可强制非阻塞；用 STRICT_CSV_DRIFT=1 切换为阻塞
+#
+# 设计原则：commit 是高频操作，默认提示而非拒绝；用户可显式 opt-in 阻塞
+
+set -u
+
+# 暂存区中是否动了 csv
+staged_csv=$(git diff --cached --name-only -- input/course_spec.csv 2>/dev/null || true)
+[ -z "$staged_csv" ] && exit 0
+
+# 暂存区中是否同时动了任一 spec.yaml
+staged_spec=$(git diff --cached --name-only -- 'courses/**/course-spec.yaml' 2>/dev/null || true)
+
+if [ -n "$staged_spec" ]; then
+  # csv 和 spec 同步修改，最常见的正常流程 → 不打扰
+  exit 0
+fi
+
+# csv 改了但 spec 未同步 → 触发漂移提示
+# shellcheck source=./_lib_csv_drift.sh
+. "$(dirname "$0")/_lib_csv_drift.sh"
+
+if csv_drift_check "pre-commit"; then
+  exit 0
+fi
+
+# 阻塞模式（opt-in）
+if [ "${STRICT_CSV_DRIFT:-0}" = "1" ]; then
+  log_block "STRICT_CSV_DRIFT=1 → 拒绝提交，请先同步 spec / 下游文档"
+  exit 1
+fi
+
+# 默认非阻塞，仅警告
+log_warn "已提交：但建议尽快运行 \`/incremental-update --from-csv\` 同步下游文档"
+exit 0

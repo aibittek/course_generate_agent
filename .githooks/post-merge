@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# .githooks/post-merge
+#
+# 在 git merge / git pull 之后触发。
+# 仅当本次 merge 改动了 input/course_spec.csv 时打印指引。
+#
+# 参数（git 注入）：
+#   $1 = squash merge flag (1=squash, 0=normal)
+
+set -u
+
+# ORIG_HEAD = merge 前的 HEAD
+if ! git rev-parse --verify ORIG_HEAD >/dev/null 2>&1; then
+  exit 0
+fi
+
+changed=$(git diff --name-only ORIG_HEAD HEAD -- input/course_spec.csv 2>/dev/null || true)
+[ -z "$changed" ] && exit 0
+
+# shellcheck source=./_lib_csv_drift.sh
+. "$(dirname "$0")/_lib_csv_drift.sh"
+
+csv_drift_check "post-merge" || true   # 不阻塞 merge
+exit 0

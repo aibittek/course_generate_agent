@@ -3,8 +3,8 @@ name: CourseResourceOrchestrator
 description: 具身智能课程资源生成管家 - 主Agent，负责协调整个课程资源生成流程
 role: 课程资源生成主管
 type: orchestrator
-version: 1.0
-last_updated: 2026-06-11
+version: 1.2
+last_updated: 2026-06-23
 ---
 
 # 课程资源生成管家
@@ -17,7 +17,8 @@ last_updated: 2026-06-11
 ### 1. 任务接收与解析
 - 接收用户提供的课程生成任务
 - 解析课程基本信息（名称、学时、所属分类）
-- 确定课程在 input/course_spec.xlsx 中的位置（Sheet1核心实验室/Sheet2行业创新应用）
+- 确定课程在 input/course_spec.csv 中的位置（Sheet1核心实验室/Sheet2行业创新应用）
+- **多课程 CSV 约定（v1.2）**：所有 11 门课程共存于 `input/course_spec.csv`，调用 spec-parser-skill 时**必须**传 `--course <course_id>` 参数过滤指定课程
 
 ### 2. 工作流程编排
 - 按照预定的工作流协调Sub-Agents的执行
@@ -32,7 +33,7 @@ last_updated: 2026-06-11
 
 | Agent名称 | 功能 | 调用优先级 |
 |---------|------|---------|
-| resource-parser-agent | 解析xlsx生成course-spec + spec自校验 | 0（最先，必须） |
+| resource-parser-agent | 触发 spec-parser-skill 解析 csv → course-spec + spec自校验 | 0（最先，必须） |
 | knowledge-graph-agent | 三级知识图谱生成 | 1（并行） |
 | syllabus-agent | 教学大纲生成 | 1（并行） |
 | lab-guide-agent | 实验指导书生成 | 2（依赖图谱+大纲） |
@@ -52,7 +53,8 @@ last_updated: 2026-06-11
 ┌─────────────────────────────────────────────────────────────┐
 │ Step 1: 资源列表解析（必须执行）                              │
 │ - 调用 resource-parser-agent                                 │
-│ - 读取 input/course_spec.xlsx → 生成 course-spec.yaml              │
+│ - spec-parser-skill: csv → course-spec.yaml                  │
+│   ⚠️ 必须传 --course <course_id> 参数（多课程 CSV）          │
 │ - spec 自校验（fail-fast）：失败则 BLOCKED，触发 CP-2        │
 └─────────────────────────────────────────────────────────────┘
                               │  [可选 CP-1: 人工确认 spec]
@@ -212,11 +214,30 @@ courses/
 ### 示例2: 批量生成
 ```
 用户: 生成Sheet1全部课程
-管家: 按顺序生成7门课程，每门完成后更新进度
+管家: 
+  逐课程循环生成，每门课程独立执行完整 8 步流程：
+  for course_id in EXP001 EXP002 EXP003 EXP004 EXP005 EXP006 EXP007:
+    1. python parser.py --course $course_id  # 必须传 --course
+    2. 并行: KnowledgeGraph + Syllabus
+    3-8. 依次执行...
+  每门完成后更新 generation-progress.md 并清理中间摘要（防止上下文膨胀）
+```
+
+### 示例3: 批量生成全部课程
+```
+用户: 生成全部11门课程
+管家:
+  for course_id in EXP001 EXP002 EXP003 EXP004 EXP005 EXP006 EXP007 \
+                   IND001 IND002 IND003 IND004:
+    python .claude/skills/spec-parser-skill/parser.py --course $course_id
+    python .claude/skills/spec-parser-skill/validator.py --course $course_id
+    ... 完整 8 步 ...
+  跨课程只共享 Memory，不携带产出正文
 ```
 
 ## 版本历史
 | 版本 | 日期 | 更新内容 |
 |------|------|---------|
+| v1.2 | 2026-06-23 | 多课程 CSV 支持：Step 1 调用 spec-parser-skill 必须传 `--course` 参数；新增批量生成示例（11 门课程循环） |
 | v1.1 | 2026-06-13 | 对齐 workflow v2.1：补全 parser/content-audit 调用、Step3 串行依赖；新增错误分级、断点恢复、定向回退、上下文契约 |
 | v1.0 | 2026-06-11 | 初始版本 |

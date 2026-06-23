@@ -1,0 +1,151 @@
+# course_spec.csv 字段定义
+# ----------------------------------------------------------------
+# 单表平铺设计：每一行 = 一个实验
+# 课程级字段在每行重复（解析器会自动去重）
+# 列表字段使用 ';' (分号) 分隔
+# ----------------------------------------------------------------
+
+version: "1.0"
+list_separator: ";"
+encoding: "utf-8-sig"   # 兼容 Excel 导出（带 BOM）
+
+# ============================================================
+# 课程级字段（每行都填，解析时去重）
+# ============================================================
+course_fields:
+  course_id:
+    required: true
+    type: string
+    pattern: "^(EXP|IND)\\d{3}$"
+    description: 课程编号，如 EXP001、IND001
+    example: EXP001
+
+  course_name:
+    required: true
+    type: string
+    max_length: 30
+    description: 课程中文名
+    example: 计算机视觉实践
+
+  sheet:
+    required: true
+    type: enum
+    values: [sheet1, sheet2]
+    description: 课程分类
+
+  folder:
+    required: true
+    type: string
+    pattern: "^[a-z][a-z0-9_]{0,19}$"
+    description: 英文目录名（小写下划线，≤20 字符）
+    example: cv_practice
+
+  total_hours:
+    required: true
+    type: integer
+    min: 16
+    max: 96
+    description: 总学时
+
+  theory_hours:
+    required: false
+    type: integer
+    default: 0
+    description: 理论学时
+
+  lab_hours:
+    required: false
+    type: integer
+    description: 实验学时（缺省 = total_hours - theory_hours）
+
+  tech_stack:
+    required: true
+    type: list
+    description: 技术栈（;分隔）
+    example: "OpenCV;MediaPipe;YOLOv8;深度学习;3D视觉"
+
+  prerequisites:
+    required: false
+    type: list
+    description: 先修课程（;分隔）
+    example: "OpenCV基础;Python编程基础"
+
+  hardware_platform:
+    required: false
+    type: string
+    description: 硬件平台
+    example: 具身智能实验箱B2 / 具身智能机器人小车C1
+
+  course_description:
+    required: false
+    type: string
+    description: 课程总体描述（可换行）
+
+# ============================================================
+# 实验级字段（每行一个实验）
+# ============================================================
+experiment_fields:
+  experiment_id:
+    required: true
+    type: integer
+    min: 1
+    description: 实验编号，从 1 开始连续递增
+
+  experiment_name:
+    required: true
+    type: string
+    max_length: 50
+    description: 实验中文名
+
+  hours:
+    required: true
+    type: integer
+    min: 1
+    max: 16
+    description: 单实验学时
+
+  difficulty:
+    required: false
+    type: integer
+    values: [1, 2, 3]
+    default: 2
+    description: "难度 1=⭐, 2=⭐⭐, 3=⭐⭐⭐"
+
+  experiment_type:
+    required: false
+    type: enum
+    values: [验证性, 设计性, 综合性]
+    default: 设计性
+    description: 实验类型
+
+  source_code_path:
+    required: false
+    type: string
+    description: 源码相对路径（相对课程目录），缺省按 "source-codes/exp{NN}/" 约定
+    example: source-codes/exp04/
+
+  main_entry:
+    required: false
+    type: string
+    description: 源码主入口文件
+    example: main.py
+
+  knowledge_points:
+    required: false
+    type: list
+    description: 关联知识点编号或名称（;分隔）
+
+  objectives:
+    required: false
+    type: list
+    description: 实验目标（;分隔，每条一个目标）
+
+  exp_content:
+    required: true
+    type: list
+    description: 实验内容（;分隔，每条一个步骤）
+
+  notes:
+    required: false
+    type: string
+    description: 备注

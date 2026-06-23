@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# .githooks/post-checkout
+#
+# 在 git checkout / git switch 之后触发。
+# 只在 csv 在本次切换中发生变化时打印指引（避免每次切分支都唠叨）。
+#
+# 参数（git 注入）：
+#   $1 = previous HEAD ref
+#   $2 = new HEAD ref
+#   $3 = 1 if branch checkout, 0 if file checkout
+
+set -u
+
+prev_head="${1:-}"
+new_head="${2:-}"
+branch_switch="${3:-0}"
+
+# 只在分支切换时检测（避免 file checkout 触发）
+[ "$branch_switch" = "1" ] || exit 0
+
+# 仅当 csv 在两个 ref 之间发生变化才检测
+if [ -n "$prev_head" ] && [ -n "$new_head" ] && [ "$prev_head" != "$new_head" ]; then
+  changed=$(git diff --name-only "$prev_head" "$new_head" -- input/course_spec.csv 2>/dev/null || true)
+  [ -z "$changed" ] && exit 0
+fi
+
+# shellcheck source=./_lib_csv_drift.sh
+. "$(dirname "$0")/_lib_csv_drift.sh"
+
+csv_drift_check "post-checkout" || true   # 不阻塞 checkout
+exit 0

@@ -1,10 +1,42 @@
 {
   "permissions": {
-    "mode": "auto",
-    "allowedTools": [],
-    "allowedCommands": []
+    "defaultMode": "default",
+    "allow": [],
+    "deny": [],
+    "ask": []
   },
   "model": "sonnet",
-  "hooks": {},
-  "customInstructions": ""
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -File .claude/hooks/enforce-source-hook.ps1"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -File .claude/hooks/enforce-source-on-edit.ps1"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -File .claude/hooks/log-agent-call.ps1"
+          }
+        ]
+      }
+    ]
+  }
 }

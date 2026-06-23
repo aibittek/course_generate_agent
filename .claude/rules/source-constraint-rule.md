@@ -1,6 +1,6 @@
 ---
 name: 源数据约束规则
-description: 确保所有课程内容生成必须基于 input/course_spec.xlsx
+description: 确保所有课程内容生成必须基于 input/course_spec.csv
 priority: critical
 ---
 
@@ -14,12 +14,17 @@ priority: critical
 
 ### 1.1 唯一可信源
 
-⚠️ **input/course_spec.xlsx是课程内容的唯一可信源**
+⚠️ **input/course_spec.csv 是课程内容的唯一可信源**
+
+> 解析器：`.claude/skills/spec-parser-skill/`（固定 Python，非 LLM）
+> 入口：`ResourceParserAgent`（仅作触发与校验，不自己解析）
+> 产物：`courses/{sheet}/{folder}/_meta/course-spec.yaml`
 
 所有Agent生成课程内容时，必须：
-1. 首先通过ResourceParserAgent读取资源列表
-2. 基于解析后的课程规格（course-spec.yaml）生成内容
+1. 首先通过 ResourceParserAgent 触发 spec-parser-skill 解析 `input/course_spec.csv`
+2. 基于解析后的课程规格（`course-spec.yaml`）生成内容
 3. 不得仅凭通识知识或"想象"生成内容
+4. 不得绕过 spec-parser-skill 直接读 csv 或手工编辑 `course-spec.yaml`
 
 ### 1.2 强制性要求
 
