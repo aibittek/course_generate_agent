@@ -211,9 +211,93 @@ for course_id in [EXP001, EXP002, EXP003, EXP004, EXP005, EXP006, EXP007,
 
 ---
 
-#### 🔄 案例 3：增量更新（CSV 变更后同步）
+#### 🔄 案例 3：源码反向同步（Source Code → CSV）
 
-**场景**：修改了 `input/course_spec.csv` 中某门课程的实验学时/内容。
+**场景**：修改了实验源码（如 `source-codes/EXP001/4/main.py`），功能从"指尖轨迹识别"改为"手部拖拽交互"，需要同步更新 CSV 及下游文档。
+
+**完整工作流**：
+
+```
+源码改变 → 能力提取 → CSV更新建议 → 人工确认 → 应用到CSV → 增量同步下游
+```
+
+**Step 1: 触发源码同步检查**
+
+在 Claude Code 对话框中：
+
+```
+源码改了，检查 EXP001 实验4 的 CSV 是否需要更新
+```
+
+或：
+
+```
+源码同步检查 计算机视觉实践 实验4
+```
+
+**Step 2: 系统自动分析源码**
+
+系统会自动执行 `source-code-sync-skill`：
+- 扫描 `source-codes/EXP001/4/` 目录
+- 解析 Python 文件的 import 语句 → 提取 `tech_stack`
+- 统计代码行数 + 算法复杂度 → 估算 `hours` 和 `difficulty`
+- 提取主函数 docstring → 生成 `experiment_name` 候选
+- 对比当前 CSV 值，生成更新建议（含置信度和原因）
+
+**Step 3: 查看更新建议**
+
+系统会展示详细的字段对比：
+
+```yaml
+field: experiment_name
+old: "基于MediaPipe的指尖轨迹识别实验"
+new: "基于MediaPipe的手部拖拽交互实验"
+confidence: 0.75
+reason: "源码核心是'方块拖拽'而非'轨迹识别'"
+cascade_impact:
+  - "知识图谱第 1.X.X 节标题需更新"
+  - "教学大纲实验项目表需更新"
+  - "实验指导书实验4标题需更新"
+```
+
+**Step 4: 确认并应用变更**
+
+系统会询问：
+```
+要应用哪些变更？
+A. 仅修正路径错误 (source_code_path)
+B. 修正路径 + 修改实验名称
+C. 全部应用（路径 + 名称 + objectives + exp_content）
+```
+
+选择后，系统自动：
+1. 备份 CSV → `input/course_spec.csv.bak.{timestamp}`
+2. 写入新值到 `course_spec.csv`
+3. 记录变更到 `courses/{folder}/_meta/csv-sync-log.md`
+
+**Step 5: 自动触发下游同步**
+
+CSV 更新后，系统会自动：
+1. 调用 `spec-parser-skill` 重新生成 `course-spec.yaml`
+2. 调用 `IncrementalUpdateAgent` 定向更新受影响文档：
+   - 知识图谱章节标题
+   - 教学大纲实验项目表
+   - 实验指导书对应段落
+   - 题库关联实验的题目
+
+**关键价值**：
+- **闭环完整**：源码 → CSV → 下游文档全链路自动同步
+- **字段级粒度**：仅改 `tech_stack` 不必重写 `objectives`
+- **置信度保护**：低置信度（< 0.7）建议会标记警告，需人工确认
+- **预计耗时**：5-15 分钟 vs 手动修改全部文档 1-2 小时
+
+> 📊 **工作流架构图**：[source-code-sync-workflow.html](source-code-sync-workflow.html)
+
+---
+
+#### 🔄 案例 4：增量更新（CSV 手动变更后同步）
+
+**场景**：手动修改了 `input/course_spec.csv` 中某门课程的实验学时/内容（非源码驱动）。
 
 **Step 1: CSV 变更检测**
 
