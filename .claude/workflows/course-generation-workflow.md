@@ -266,7 +266,7 @@ experiment_context:
 ```
 courses/sheet1/{course_id}/
 ├── _meta/
-│   ├── course-info.yaml
+│   ├── course-spec.yaml
 │   └── generation-log.md
 ├── {course_id}_knowledge_graph.md
 ├── {course_id}_syllabus.md

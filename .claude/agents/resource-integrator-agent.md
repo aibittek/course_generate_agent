@@ -66,7 +66,7 @@ courses/
 ├── sheet1/                              # 核心实验室课程
 │   ├── cv_practice/                    # 计算机视觉实践
 │   │   ├── _meta/                      # 元数据
-│   │   │   ├── course-info.yaml        # 课程信息
+│   │   │   ├── course-spec.yaml        # 课程信息
 │   │   │   └── generation-log.md        # 生成日志
 │   │   ├── cv_practice_knowledge_graph.md  # 知识图谱
 │   │   ├── cv_practice_syllabus.md     # 教学大纲
@@ -86,7 +86,7 @@ courses/
 
 ## 输出格式
 
-### course-info.yaml
+### course-spec.yaml
 ```yaml
 course:
   id: EXP001
@@ -255,7 +255,7 @@ metadata:
 
 📦 资源清单:
 ├── _meta/
-│   ├── course-info.yaml
+│   ├── course-spec.yaml
 │   └── generation-log.md
 ├── {前缀}_knowledge_graph.md    (知识图谱)
 ├── {前缀}_syllabus.md           (教学大纲)

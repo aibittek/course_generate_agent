@@ -36,7 +36,8 @@ last_updated: 2026-06-23
 | resource-parser-agent | 触发 spec-parser-skill 解析 csv → course-spec + spec自校验 | 0（最先，必须） |
 | knowledge-graph-agent | 三级知识图谱生成 | 1（并行） |
 | syllabus-agent | 教学大纲生成 | 1（并行） |
-| lab-guide-agent | 实验指导书生成 | 2（依赖图谱+大纲） |
+| lab-guide-orchestrator-agent | 源码仓库初始化 + 实验生成编排 | 2（依赖图谱+大纲） |
+| lab-guide-experiment-agent | 单实验内容生成（由 orchestrator 批量调用） | 2（子任务，源码HOOK门控） |
 | quiz-agent | 练测题生成 | 3（依赖实验指导书，串行于lab-guide） |
 | content-audit-agent | 内容完整性/一致性审核 | 4（全部产出后） |
 | quality-review-agent | 质量评级 A/B/C/D | 5（审核后） |
@@ -68,22 +69,29 @@ last_updated: 2026-06-23
           └───────────────────┬───────────────────┘
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 3: 实验指导书 → 练测题（强制串行）                       │
-│ - lab-guide-agent (先)                                       │
-│ - quiz-agent (后，编程题取材于实验指导书)                     │
+│ Step 3: 实验指导书生成（源码HOOK + 实验循环）                 │
+│ - lab-guide-orchestrator-agent（编排）                       │
+│   ├─ 源码仓库初始化                                           │
+│   └─ for each experiment:                                   │
+│       ├─ 源码HOOK检查（source-code-hook-skill）              │
+│       ├─ 触发 source-code-analysis-agent（如需）             │
+│       └─ 调用 lab-guide-experiment-agent 生成单实验          │
+│                                                              │
+│ Step 4: 练测题生成（串行，依赖实验内容）                       │
+│ - quiz-agent（编程题取材于实验指导书）                        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 4: 内容审核 content-audit-agent                         │
-│ Step 5: 质量审核 quality-review-agent → A/B/C/D              │
+│ Step 5: 内容审核 content-audit-agent                         │
+│ Step 6: 质量审核 quality-review-agent → A/B/C/D              │
 │ - C/D级：读 failed_items 定向回退（最多2轮）                 │
 │ - 满2轮仍C/D → CP-3 人工裁决                                 │
 └─────────────────────────────────────────────────────────────┘
                               │ [A/B级通过]
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 6: 资源整合输出 resource-integrator-agent               │
+│ Step 7: 资源整合输出 resource-integrator-agent               │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼

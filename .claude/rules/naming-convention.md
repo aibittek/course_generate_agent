@@ -70,7 +70,7 @@ courses/
 ### 3.3 元数据文件
 | 文件 | 命名 | 说明 |
 |------|------|------|
-| 课程信息 | `course-info.yaml` | 固定名称 |
+| 课程规格 | `course-spec.yaml` | 固定名称，解析自 CSV |
 | 生成日志 | `generation-log.md` | 固定名称 |
 | 使用说明 | `README.md` | 固定名称 |
 
@@ -83,7 +83,7 @@ courses/
 ├── sheet1/
 │   ├── cv_practice/
 │   │   ├── _meta/
-│   │   │   ├── course-info.yaml
+│   │   │   ├── course-spec.yaml
 │   │   │   └── generation-log.md
 │   │   ├── cv_practice_knowledge_graph.md
 │   │   ├── cv_practice_syllabus.md

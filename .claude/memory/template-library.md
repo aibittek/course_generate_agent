@@ -218,7 +218,7 @@ def solve():
 
 ## 五、元数据模板
 
-### course-info.yaml
+### course-spec.yaml
 ```yaml
 course:
   id: {EXP001-EXP007/IND001-IND004}
@@ -272,7 +272,7 @@ courses/
 ├── sheet1/
 │   └── {课程英文标识}/
 │       ├── _meta/
-│       │   ├── course-info.yaml
+│       │   ├── course-spec.yaml
 │       │   └── generation-log.md
 │       ├── {前缀}_knowledge_graph.md
 │       ├── {前缀}_syllabus.md

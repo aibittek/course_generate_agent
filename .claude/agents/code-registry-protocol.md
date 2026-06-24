@@ -284,13 +284,16 @@ content_mapping:
 
 ### 4.2 HOOK 触发决策矩阵
 
-| 代码状态 | 分析状态 | 行为 |
-|---------|---------|------|
-| `analyzed` | `completed` | ✅ 直接生成实验内容 |
-| `pending` | `pending` | ⚡ 触发 SourceCodeAnalysisAgent，分析完成后生成 |
-| `pending` | `analyzing` | ⏳ 等待分析完成（轮询 status 文件，最长等待 5 分钟） |
-| `missing` | `not_started` | 🔴 **硬阻塞**：报错，要求人工补充源码 |
-| `missing` | `failed` | 🔴 **硬阻塞**：报错，要求修复源码问题 |
+| 代码状态 | 分析状态 | 豁免状态 | 行为 |
+|---------|---------|---------|------|
+| `analyzed` | `completed` | - | ✅ 直接生成实验内容 |
+| `pending` | `pending` | - | ⚡ 触发 SourceCodeAnalysisAgent，分析完成后生成 |
+| `pending` | `analyzing` | - | ⏳ 等待分析完成（轮询 status 文件，最长等待 5 分钟） |
+| `missing` | `not_started` | `approved: false` | 🔴 **硬阻塞**：报错，要求人工补充源码 |
+| `missing` | `not_started` | `approved: true` | ⚠️ **豁免放行**：生成内容，标注"待源码核实"，保持草稿版本 |
+| `missing` | `failed` | - | 🔴 **硬阻塞**：报错，要求修复源码问题 |
+
+> **豁免机制详见**: `.claude/rules/source-constraint-rule.md` §三"无源码豁免协议"。豁免由 `human_waiver.approved` 字段控制。
 
 ### 4.3 自动检测与触发（伪代码）
 
