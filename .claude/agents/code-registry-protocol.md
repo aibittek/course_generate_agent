@@ -125,7 +125,7 @@ config_{功能}.py            （专用，如 config_yolo.py）
 # 生成规则：由 LabGuideOrchestratorAgent 初始化，SourceCodeAnalysisAgent 更新状态
 # ============================================================
 course_id: EXP001
-course_name: 计算机视觉实践
+course_name: 机器人视觉应用与开发
 registry_version: "1.0"
 updated_at: 2026-06-22T10:00:00
 

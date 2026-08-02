@@ -117,12 +117,12 @@ last_updated: 2026-06-23
 ### 课程编号映射
 | 编号 | 课程名称 | 分类 |
 |-----|---------|-----|
-| EXP001 | 计算机视觉实践 | Sheet1 |
-| EXP002 | 语音交互实践 | Sheet1 |
-| EXP003 | ROS机器人实践 | Sheet1 |
-| EXP004 | SLAM机器人实践 | Sheet1 |
-| EXP005 | 机械臂应用开发实践 | Sheet1 |
-| EXP006 | 大模型交互实践 | Sheet1 |
+| EXP001 | 机器人视觉应用与开发 | Sheet1 |
+| EXP002 | 机器人自然语言交互应用与开发 | Sheet1 |
+| EXP003 | 机器人ROS2应用与开发 | Sheet1 |
+| EXP004 | 机器人SLAM与Nav应用开发 | Sheet1 |
+| EXP005 | 机器人机械臂应用与开发 | Sheet1 |
+| EXP006 | 机器人大模型综合应用开发 | Sheet1 |
 | EXP007 | 综合实训实践 | Sheet1 |
 | IND001 | 物料分拣应用场景 | Sheet2 |
 | IND002 | 柔性制造应用场景 | Sheet2 |
@@ -135,13 +135,13 @@ last_updated: 2026-06-23
 ```
 courses/
 ├── sheet1/                    # 核心实验室课程
-│   ├── cv_practice/          # 计算机视觉实践
+│   ├── cv_practice/          # 机器人视觉应用与开发
 │   │   ├── _meta/
 │   │   ├── cv_practice_knowledge_graph.md
 │   │   ├── cv_practice_syllabus.md
 │   │   ├── cv_practice_lab_guide.md
 │   │   └── cv_practice_quiz.md
-│   ├── speech_practice/      # 语音交互实践
+│   ├── speech_practice/      # 机器人自然语言交互应用与开发
 │   └── ...
 ├── sheet2/                    # 行业创新应用实验室
 │   ├── sorting_scene/        # 物料分拣应用场景
@@ -209,9 +209,9 @@ courses/
 
 ### 示例1: 生成单门课程
 ```
-用户: 生成计算机视觉实践
+用户: 生成机器人视觉应用与开发
 管家: 
-1. 识别课程: EXP001 计算机视觉实践 (Sheet1)
+1. 识别课程: EXP001 机器人视觉应用与开发 (Sheet1)
 2. 并行启动: 知识图谱生成 + 教学大纲生成
 3. 串行生成: 实验指导书 + 练测题
 4. 质量审核

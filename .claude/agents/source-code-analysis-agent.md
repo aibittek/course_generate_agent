@@ -43,7 +43,7 @@ last_updated: 2026-06-22
 ```yaml
 analysis_context:
   course_id: "EXP001"              # 课程编号
-  course_name: "计算机视觉实践"    # 课程名称
+  course_name: "机器人视觉应用与开发"    # 课程名称
   experiment_id: 6                 # 实验编号
   experiment_name: "基于MediaPipe的人机交互实验"
   source_code_path:                # 源码文件路径（来自代码注册表）

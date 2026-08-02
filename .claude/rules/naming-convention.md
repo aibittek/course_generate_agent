@@ -34,12 +34,12 @@ courses/
 ### Sheet1: 核心实验室课程
 | 课程名称 | 英文标识 |
 |---------|---------|
-| 计算机视觉实践 | `cv_practice` |
-| 语音交互实践 | `speech_practice` |
-| ROS机器人实践 | `ros_practice` |
-| SLAM机器人实践 | `slam_practice` |
-| 机械臂应用开发实践 | `arm_practice` |
-| 大模型交互实践 | `llm_practice` |
+| 机器人视觉应用与开发 | `cv_practice` |
+| 机器人自然语言交互应用与开发 | `speech_practice` |
+| 机器人ROS2应用与开发 | `ros_practice` |
+| 机器人SLAM与Nav应用开发 | `slam_practice` |
+| 机器人机械臂应用与开发 | `arm_practice` |
+| 机器人大模型综合应用开发 | `llm_practice` |
 | 综合实训实践 | `training` |
 
 ### Sheet2: 行业创新应用实验室课程
@@ -105,7 +105,7 @@ courses/
 ## 五、命名禁止规则
 
 ### ❌ 禁止的命名方式
-1. **中文文件名**: `计算机视觉实践_知识图谱.md`
+1. **中文文件名**: `机器人视觉应用与开发_知识图谱.md`
 2. **包含空格**: `cv practice_knowledge_graph.md`
 3. **特殊字符**: `cv@practice.md`, `cv#practice.md`
 4. **超长名称**: 课程英文标识不超过20字符

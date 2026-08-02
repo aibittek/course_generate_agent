@@ -92,8 +92,8 @@ Passed: 4/4
 
 ```
 更新 EXP001 实验5
-重新生成 ROS机器人实践 实验3
-修改 计算机视觉实践 第2章
+重新生成 机器人ROS2应用与开发 实验3
+修改 机器人视觉应用与开发 第2章
 ```
 
 Claude Code 会：
@@ -131,7 +131,7 @@ python .claude/skills/incremental-update-skill/document_replacer.py \
 [IncrementalUpdateAgent] 增量更新完成
 
 更新摘要:
-  课程: EXP001 (计算机视觉实践)
+  课程: EXP001 (机器人视觉应用与开发)
   类型: 实验更新
   目标: 实验5 - YOLOv8目标检测实验
   

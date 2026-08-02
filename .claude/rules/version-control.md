@@ -68,13 +68,13 @@ updated_by: Agent
 ### 3.2 格式示例
 ```markdown
 ---
-title: ROS机器人实践 知识图谱
+title: 机器人ROS2应用与开发 知识图谱
 version: v0.1
 last_updated: 2026-06-11
 updated_by: Agent
 ---
 
-# ROS机器人实践 知识图谱
+# 机器人ROS2应用与开发 知识图谱
 
 > 版本: v0.1
 > 更新日期: 2026-06-11

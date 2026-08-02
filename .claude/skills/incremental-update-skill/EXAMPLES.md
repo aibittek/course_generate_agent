@@ -7,7 +7,7 @@
 ## 场景1: 实验源码修改后重新生成
 
 ### 背景
-EXP001（计算机视觉实践）的实验5源码已更新，使用了新的YOLOv8 API，需要重新生成实验指导内容。
+EXP001（机器人视觉应用与开发）的实验5源码已更新，使用了新的YOLOv8 API，需要重新生成实验指导内容。
 
 ### 操作步骤
 
@@ -52,7 +52,7 @@ ls courses/sheet1/cv_practice/cv_practice_lab_guide.md.bak
 ✅ 增量更新完成
 
 更新摘要:
-  课程: EXP001 (计算机视觉实践)
+  课程: EXP001 (机器人视觉应用与开发)
   类型: 实验更新
   目标: 实验5 - YOLOv8目标检测实验
   
@@ -149,7 +149,7 @@ grep -A 20 "学时分配" courses/sheet1/cv_practice/cv_practice_syllabus.md
 ## 场景3: 章节知识点补充
 
 ### 背景
-EXP003（ROS机器人实践）第2章需要补充"ROS2 DDS通信原理"知识点。
+EXP003（机器人ROS2应用与开发）第2章需要补充"ROS2 DDS通信原理"知识点。
 
 ### 操作步骤
 

@@ -93,7 +93,7 @@ python .claude/skills/spec-parser-skill/validator.py --course <course_id>
 | 列名 | 类型 | 必填 | 示例 |
 |-----|------|------|------|
 | course_id | string | ✅ | `EXP001` |
-| course_name | string | ✅ | `计算机视觉实践` |
+| course_name | string | ✅ | `机器人视觉应用与开发` |
 | sheet | enum | ✅ | `sheet1` / `sheet2` |
 | folder | string | ✅ | `cv_practice` |
 | total_hours | int | ✅ | `52` |
@@ -232,7 +232,7 @@ spec_validation:
 ```
 ✅ 课程规格解析完成（spec-parser-skill v1.0）
 
-  课程: 计算机视觉实践 (EXP001)
+  课程: 机器人视觉应用与开发 (EXP001)
   分类: sheet1 / cv_practice
   实验数量: 14 个（目录预期 14） ✅
   总学时: 52h（目录预期 52h） ✅

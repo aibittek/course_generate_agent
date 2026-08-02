@@ -25,7 +25,7 @@ course_fields:
     type: string
     max_length: 30
     description: 课程中文名
-    example: 计算机视觉实践
+    example: 机器人视觉应用与开发
 
   sheet:
     required: true

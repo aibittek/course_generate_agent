@@ -369,7 +369,7 @@ update_request:
 **执行日志**：
 ```
 [IncrementalUpdateAgent] 开始增量更新
-[IncrementalUpdateAgent] 课程: EXP001 (计算机视觉实践)
+[IncrementalUpdateAgent] 课程: EXP001 (机器人视觉应用与开发)
 [IncrementalUpdateAgent] 目标: 实验5
 [IncrementalUpdateAgent] 检查源码分析状态...
 [SourceCodeAnalysisAgent] 触发源码分析 (exp05)
@@ -519,8 +519,8 @@ Agent:
 **方式1: 自然语言触发**
 ```
 更新 EXP001 实验3
-重新生成 ROS机器人实践 第2章
-修改 计算机视觉实践 的知识点 1.2.3
+重新生成 机器人ROS2应用与开发 第2章
+修改 机器人视觉应用与开发 的知识点 1.2.3
 我改了 csv，请同步课程            # 走模式0
 ```
 

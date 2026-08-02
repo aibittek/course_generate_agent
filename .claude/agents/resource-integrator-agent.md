@@ -47,12 +47,12 @@ last_updated: 2026-06-11
 ### 课程编号映射
 | 编号 | 课程名称 | 英文标识 | 分类 |
 |-----|---------|---------|-----|
-| EXP001 | 计算机视觉实践 | cv_practice | sheet1 |
-| EXP002 | 语音交互实践 | speech_practice | sheet1 |
-| EXP003 | ROS机器人实践 | ros_practice | sheet1 |
-| EXP004 | SLAM机器人实践 | slam_practice | sheet1 |
-| EXP005 | 机械臂应用开发实践 | arm_practice | sheet1 |
-| EXP006 | 大模型交互实践 | llm_practice | sheet1 |
+| EXP001 | 机器人视觉应用与开发 | cv_practice | sheet1 |
+| EXP002 | 机器人自然语言交互应用与开发 | speech_practice | sheet1 |
+| EXP003 | 机器人ROS2应用与开发 | ros_practice | sheet1 |
+| EXP004 | 机器人SLAM与Nav应用开发 | slam_practice | sheet1 |
+| EXP005 | 机器人机械臂应用与开发 | arm_practice | sheet1 |
+| EXP006 | 机器人大模型综合应用开发 | llm_practice | sheet1 |
 | EXP007 | 综合实训实践 | training | sheet1 |
 | IND001 | 物料分拣应用场景 | sorting_scene | sheet2 |
 | IND002 | 柔性制造应用场景 | manufacturing_scene | sheet2 |
@@ -64,7 +64,7 @@ last_updated: 2026-06-11
 ```
 courses/
 ├── sheet1/                              # 核心实验室课程
-│   ├── cv_practice/                    # 计算机视觉实践
+│   ├── cv_practice/                    # 机器人视觉应用与开发
 │   │   ├── _meta/                      # 元数据
 │   │   │   ├── course-spec.yaml        # 课程信息
 │   │   │   └── generation-log.md        # 生成日志
@@ -72,7 +72,7 @@ courses/
 │   │   ├── cv_practice_syllabus.md     # 教学大纲
 │   │   ├── cv_practice_lab_guide.md    # 实验指导书
 │   │   └── cv_practice_quiz.md         # 练测题库
-│   ├── speech_practice/                # 语音交互实践
+│   ├── speech_practice/                # 机器人自然语言交互应用与开发
 │   │   └── ...
 │   └── ...
 ├── sheet2/                              # 行业创新应用实验室
@@ -90,7 +90,7 @@ courses/
 ```yaml
 course:
   id: EXP001
-  name: 计算机视觉实践
+  name: 机器人视觉应用与开发
   name_en: cv_practice
   category: sheet1
   total_hours: 18

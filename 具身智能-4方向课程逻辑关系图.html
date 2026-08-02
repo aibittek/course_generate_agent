@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>具身智能 · 4 方向课程逻辑关系图（本科 6 学期）</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans SC', 'JetBrains Mono', sans-serif;
+      background: #F8FAFC;
+      min-height: 100vh;
+      padding: 2rem;
+      color: #0F172A;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .container { max-width: 1700px; margin: 0 auto; width: 100%; }
+    .header { margin-bottom: 1.5rem; width: 100%; }
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .pulse-dot {
+      width: 12px; height: 12px;
+      background: #0EA5E9;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; color: #0F172A; }
+    .subtitle { color: #475569; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container {
+      background: #FFFFFF;
+      border-radius: 1rem;
+      border: 1px solid #E2E8F0;
+      padding: 1.5rem;
+      overflow-x: auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    svg { width: 100%; height: auto; display: block; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+      width: 100%;
+    }
+    .card {
+      background: #FFFFFF;
+      border-radius: 0.75rem;
+      border: 1px solid #E2E8F0;
+      padding: 1.25rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .card-header {
+      display: flex; align-items: center;
+      gap: 0.5rem; margin-bottom: 0.75rem;
+    }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #0EA5E9; }
+    .card-dot.emerald { background: #10B981; }
+    .card-dot.violet { background: #8B5CF6; }
+    .card-dot.amber { background: #F59E0B; }
+    .card-dot.rose { background: #F43F5E; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; color: #0F172A; }
+    .card ul { list-style: none; color: #475569; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #64748B; font-size: 0.75rem; }
+    .toolbar {
+      display: flex; gap: 0.5rem;
+      margin-left: auto; flex-shrink: 0; align-items: center;
+    }
+    .toolbar-toggle {
+      background: #F1F5F9; border: 1px solid #CBD5E1; color: #475569;
+      cursor: pointer; font-size: 1.25rem; line-height: 1;
+      padding: 0.25rem 0.5rem; border-radius: 0.375rem;
+      transition: color 0.2s, background 0.2s;
+    }
+    .toolbar-toggle:hover { color: #0F172A; background: #E2E8F0; }
+    .toolbar-actions { display: none; gap: 0.5rem; }
+    .toolbar.expanded .toolbar-actions { display: flex; }
+    .toolbar-actions button {
+      background: #FFFFFF; border: 1px solid #CBD5E1;
+      color: #475569; padding: 0.375rem 0.75rem; border-radius: 0.375rem;
+      font-family: inherit; font-size: 0.75rem; cursor: pointer;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .toolbar-actions button:hover { background: #F1F5F9; color: #0F172A; border-color: #94A3B8; }
+    @media print {
+      body { background: #FFFFFF; padding: 1rem; }
+      .toolbar { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="report-container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-row">
+      <div class="pulse-dot"></div>
+      <h1>具身智能 · 4 岗位方向 · 课程逻辑关系图（本科 6 学期 / 高职参考）</h1>
+      <div class="toolbar">
+        <div class="toolbar-actions">
+          <button onclick="copyAsImage(this)">📋 Copy</button>
+          <button onclick="downloadPNG(this)">🖼️ PNG</button>
+          <button onclick="downloadPDF(this)">📄 PDF</button>
+        </div>
+        <button class="toolbar-toggle" onclick="this.parentElement.classList.toggle('expanded')" title="Export options" aria-label="Export options">⋯</button>
+      </div>
+    </div>
+    <p class="subtitle">公共基础 → 4 方向分流（嵌入式 / 嵌入式AI / 机器人运控 / 部署运维）→ AI 工具应用贯穿 6 学期 · 本科培养路径</p>
+  </div>
+
+  <!-- Main Diagram -->
+  <div class="diagram-container">
+    <svg viewBox="0 0 1640 1280">
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+        </marker>
+        <marker id="arrowhead-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#F43F5E"/>
+        </marker>
+        <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#F59E0B"/>
+        </marker>
+        <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#10B981"/>
+        </marker>
+        <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#0EA5E9"/>
+        </marker>
+        <marker id="arrowhead-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#8B5CF6"/>
+        </marker>
+        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#E2E8F0" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+
+      <!-- Background -->
+      <rect width="100%" height="100%" fill="url(#grid)"/>
+
+      <!-- LAYER 0: 公共基础课 -->
+      <rect x="60" y="60" width="1520" height="120" rx="8" fill="#F1F5F9"/>
+      <rect x="60" y="60" width="1520" height="120" rx="8" fill="rgba(100,116,139,0.10)" stroke="#64748B" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <text x="820" y="86" fill="#0F172A" font-size="14" font-weight="700" text-anchor="middle">公共基础层（4 方向共享 · 第 1-2 学期）</text>
+      <text x="820" y="106" fill="#475569" font-size="10" text-anchor="middle">C/C++ 语言 · Python 编程 · 高等数学 · 线性代数 · 大学物理 · 电子技术基础 · 电路分析 · AI 工具应用基础</text>
+      <text x="820" y="128" fill="#475569" font-size="10" text-anchor="middle">工程伦理 · 大学英语 · 思政 · 体育 · 创新创业基础</text>
+      <text x="820" y="158" fill="#64748B" font-size="9" text-anchor="middle">↓ 所有方向均从此处分流 ↓</text>
+
+      <line x1="240" y1="180" x2="240" y2="290" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+      <line x1="620" y1="180" x2="620" y2="290" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+      <line x1="1000" y1="180" x2="1000" y2="290" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+      <line x1="1380" y1="180" x2="1380" y2="290" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+
+      <!-- LAYER 1: 4 方向入口 -->
+      <rect x="60" y="295" width="360" height="65" rx="6" fill="#FFFFFF"/>
+      <rect x="60" y="295" width="360" height="65" rx="6" fill="rgba(244,63,94,0.12)" stroke="#F43F5E" stroke-width="1.5"/>
+      <text x="240" y="318" fill="#0F172A" font-size="13" font-weight="700" text-anchor="middle">① 嵌入式方向</text>
+      <text x="240" y="336" fill="#BE123C" font-size="10" text-anchor="middle">嵌入式软件（6 门核心） + 嵌入式硬件（PCBA 电路设计）</text>
+      <text x="240" y="352" fill="#475569" font-size="9" text-anchor="middle">就业：嵌入式软件工程师 / 嵌入式硬件工程师</text>
+
+      <rect x="440" y="295" width="360" height="65" rx="6" fill="#FFFFFF"/>
+      <rect x="440" y="295" width="360" height="65" rx="6" fill="rgba(245,158,11,0.14)" stroke="#F59E0B" stroke-width="1.5"/>
+      <text x="620" y="318" fill="#0F172A" font-size="13" font-weight="700" text-anchor="middle">② 嵌入式 AI 方向</text>
+      <text x="620" y="336" fill="#B45309" font-size="10" text-anchor="middle">C/C++ · Python · ML · DL · NLP · 机器视觉 · 边缘计算</text>
+      <text x="620" y="352" fill="#475569" font-size="9" text-anchor="middle">就业：嵌入式 AI 工程师 / 边缘计算工程师 / 算法部署工程师</text>
+
+      <rect x="820" y="295" width="360" height="65" rx="6" fill="#FFFFFF"/>
+      <rect x="820" y="295" width="360" height="65" rx="6" fill="rgba(16,185,129,0.14)" stroke="#10B981" stroke-width="1.5"/>
+      <text x="1000" y="318" fill="#0F172A" font-size="13" font-weight="700" text-anchor="middle">③ 机器人运动控制方向</text>
+      <text x="1000" y="336" fill="#047857" font-size="10" text-anchor="middle">机器人学导论 · C/C++ · 单片机(运控) · Linux · ROS · SLAM · 机械臂</text>
+      <text x="1000" y="352" fill="#475569" font-size="9" text-anchor="middle">就业：运动控制算法工程师 / SLAM 工程师 / 机械臂工程师</text>
+
+      <rect x="1200" y="295" width="360" height="65" rx="6" fill="#FFFFFF"/>
+      <rect x="1200" y="295" width="360" height="65" rx="6" fill="rgba(14,165,233,0.14)" stroke="#0EA5E9" stroke-width="1.5"/>
+      <text x="1380" y="318" fill="#0F172A" font-size="13" font-weight="700" text-anchor="middle">④ 机器人部署、运维与技术支持</text>
+      <text x="1380" y="336" fill="#0369A1" font-size="10" text-anchor="middle">机器人学 · Python · Linux · ROS · 数据标注 · 装配 · 部署 · 维修</text>
+      <text x="1380" y="352" fill="#475569" font-size="9" text-anchor="middle">就业：现场部署 FAE / RobotOps 运维 / 装配测试 / 维修技师</text>
+
+      <!-- ================== 方向1：嵌入式 ================== -->
+      <rect x="60" y="385" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="60" y="385" width="360" height="78" rx="6" fill="rgba(244,63,94,0.10)" stroke="#F43F5E" stroke-width="1.5"/>
+      <text x="80" y="406" fill="#BE123C" font-size="10" font-weight="600">第 1 学期</text>
+      <text x="340" y="406" fill="#64748B" font-size="9" text-anchor="end">基础入门</text>
+      <text x="80" y="425" fill="#0F172A" font-size="11" font-weight="600">C 语言程序设计</text>
+      <text x="80" y="441" fill="#475569" font-size="10">单片机原理与应用（51/STM32）</text>
+      <text x="80" y="456" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="60" y="475" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="60" y="475" width="360" height="78" rx="6" fill="rgba(244,63,94,0.10)" stroke="#F43F5E" stroke-width="1.5"/>
+      <text x="80" y="496" fill="#BE123C" font-size="10" font-weight="600">第 2 学期</text>
+      <text x="340" y="496" fill="#64748B" font-size="9" text-anchor="end">核心基础</text>
+      <text x="80" y="515" fill="#0F172A" font-size="11" font-weight="600">传感器原理与数据采集</text>
+      <text x="80" y="531" fill="#475569" font-size="10">电子技术基础 · 电路分析基础</text>
+      <text x="80" y="546" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="60" y="565" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="60" y="565" width="360" height="78" rx="6" fill="rgba(244,63,94,0.10)" stroke="#F43F5E" stroke-width="1.5"/>
+      <text x="80" y="586" fill="#BE123C" font-size="10" font-weight="600">第 3 学期</text>
+      <text x="340" y="586" fill="#64748B" font-size="9" text-anchor="end">进阶核心</text>
+      <text x="80" y="605" fill="#0F172A" font-size="11" font-weight="600">RTOS 实时操作系统（FreeRTOS / RTX）</text>
+      <text x="80" y="621" fill="#475569" font-size="10">嵌入式系统设计与开发</text>
+      <text x="80" y="636" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="60" y="655" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="60" y="655" width="360" height="78" rx="6" fill="rgba(244,63,94,0.10)" stroke="#F43F5E" stroke-width="1.5"/>
+      <text x="80" y="676" fill="#BE123C" font-size="10" font-weight="600">第 4 学期</text>
+      <text x="340" y="676" fill="#64748B" font-size="9" text-anchor="end">高阶核心</text>
+      <text x="80" y="695" fill="#0F172A" font-size="11" font-weight="600">无线组网与物联网通信（BLE / LoRa / Wi-Fi）</text>
+      <text x="80" y="711" fill="#475569" font-size="10">嵌入式 Linux 应用开发</text>
+      <text x="80" y="726" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="60" y="745" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="60" y="745" width="360" height="78" rx="6" fill="rgba(244,63,94,0.10)" stroke="#F43F5E" stroke-width="1.5"/>
+      <text x="80" y="766" fill="#BE123C" font-size="10" font-weight="600">第 5 学期</text>
+      <text x="340" y="766" fill="#64748B" font-size="9" text-anchor="end">综合实践</text>
+      <text x="80" y="785" fill="#0F172A" font-size="11" font-weight="600">嵌入式 AI 工具应用（边缘 AI）</text>
+      <text x="80" y="801" fill="#475569" font-size="10">嵌入式系统综合实训（智能硬件项目）</text>
+      <text x="80" y="816" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="60" y="835" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="60" y="835" width="360" height="78" rx="6" fill="rgba(244,63,94,0.20)" stroke="#F43F5E" stroke-width="1.8"/>
+      <text x="80" y="856" fill="#BE123C" font-size="10" font-weight="600">第 6 学期 ★</text>
+      <text x="340" y="856" fill="#BE123C" font-size="9" text-anchor="end">硬件分流</text>
+      <text x="80" y="875" fill="#0F172A" font-size="11" font-weight="700">软硬件综合实践</text>
+      <text x="80" y="891" fill="#475569" font-size="10">PCBA 电路设计与硬件开发 ★ · Altium Designer / KiCad PCB 设计</text>
+      <text x="80" y="906" fill="#BE123C" font-size="9">★ 第 6 学期硬件方向分流 · 软硬双轨 ★</text>
+
+      <!-- ================== 方向2：嵌入式AI ================== -->
+      <rect x="440" y="385" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="440" y="385" width="360" height="78" rx="6" fill="rgba(245,158,11,0.10)" stroke="#F59E0B" stroke-width="1.5"/>
+      <text x="460" y="406" fill="#B45309" font-size="10" font-weight="600">第 1 学期</text>
+      <text x="720" y="406" fill="#64748B" font-size="9" text-anchor="end">基础入门</text>
+      <text x="460" y="425" fill="#0F172A" font-size="11" font-weight="600">C/C++ 程序设计</text>
+      <text x="460" y="441" fill="#475569" font-size="10">Python 编程基础（AI 编程范式）</text>
+      <text x="460" y="456" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="440" y="475" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="440" y="475" width="360" height="78" rx="6" fill="rgba(245,158,11,0.10)" stroke="#F59E0B" stroke-width="1.5"/>
+      <text x="460" y="496" fill="#B45309" font-size="10" font-weight="600">第 2 学期</text>
+      <text x="720" y="496" fill="#64748B" font-size="9" text-anchor="end">数学基础</text>
+      <text x="460" y="515" fill="#0F172A" font-size="11" font-weight="600">高等数学 · 线性代数 · 概率论</text>
+      <text x="460" y="531" fill="#475569" font-size="10">数据结构 · 算法基础</text>
+      <text x="460" y="546" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="440" y="565" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="440" y="565" width="360" height="78" rx="6" fill="rgba(245,158,11,0.10)" stroke="#F59E0B" stroke-width="1.5"/>
+      <text x="460" y="586" fill="#B45309" font-size="10" font-weight="600">第 3 学期</text>
+      <text x="720" y="586" fill="#64748B" font-size="9" text-anchor="end">AI 基础</text>
+      <text x="460" y="605" fill="#0F172A" font-size="11" font-weight="600">机器学习 · 深度学习基础</text>
+      <text x="460" y="621" fill="#475569" font-size="10">PyTorch / TensorFlow 实战</text>
+      <text x="460" y="636" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="440" y="655" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="440" y="655" width="360" height="78" rx="6" fill="rgba(245,158,11,0.10)" stroke="#F59E0B" stroke-width="1.5"/>
+      <text x="460" y="676" fill="#B45309" font-size="10" font-weight="600">第 4 学期</text>
+      <text x="720" y="676" fill="#64748B" font-size="9" text-anchor="end">AI 方向核心</text>
+      <text x="460" y="695" fill="#0F172A" font-size="11" font-weight="600">自然语言处理 · 机器视觉</text>
+      <text x="460" y="711" fill="#475569" font-size="10">Transformer / YOLO / 多模态大模型应用</text>
+      <text x="460" y="726" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="440" y="745" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="440" y="745" width="360" height="78" rx="6" fill="rgba(245,158,11,0.10)" stroke="#F59E0B" stroke-width="1.5"/>
+      <text x="460" y="766" fill="#B45309" font-size="10" font-weight="600">第 5 学期</text>
+      <text x="720" y="766" fill="#64748B" font-size="9" text-anchor="end">边缘落地</text>
+      <text x="460" y="785" fill="#0F172A" font-size="11" font-weight="600">边缘计算 · 嵌入式 AI 部署</text>
+      <text x="460" y="801" fill="#475569" font-size="10">ONNX / RKNN / OpenVINO 量化部署</text>
+      <text x="460" y="816" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="440" y="835" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="440" y="835" width="360" height="78" rx="6" fill="rgba(245,158,11,0.10)" stroke="#F59E0B" stroke-width="1.5"/>
+      <text x="460" y="856" fill="#B45309" font-size="10" font-weight="600">第 6 学期</text>
+      <text x="720" y="856" fill="#64748B" font-size="9" text-anchor="end">综合项目</text>
+      <text x="460" y="875" fill="#0F172A" font-size="11" font-weight="600">嵌入式 AI 综合项目（端侧大模型 / 边缘智能）</text>
+      <text x="460" y="891" fill="#475569" font-size="10">毕业设计 · 顶岗实习（企业 AI 项目）</text>
+      <text x="460" y="906" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <!-- ================== 方向3：机器人运动控制 ================== -->
+      <rect x="820" y="385" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="820" y="385" width="360" height="78" rx="6" fill="rgba(16,185,129,0.10)" stroke="#10B981" stroke-width="1.5"/>
+      <text x="840" y="406" fill="#047857" font-size="10" font-weight="600">第 1 学期</text>
+      <text x="1100" y="406" fill="#64748B" font-size="9" text-anchor="end">编程入门</text>
+      <text x="840" y="425" fill="#0F172A" font-size="11" font-weight="600">C/C++ 程序设计 · Python 编程</text>
+      <text x="840" y="441" fill="#475569" font-size="10">机器人学概论 / 工程力学</text>
+      <text x="840" y="456" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="820" y="475" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="820" y="475" width="360" height="78" rx="6" fill="rgba(16,185,129,0.10)" stroke="#10B981" stroke-width="1.5"/>
+      <text x="840" y="496" fill="#047857" font-size="10" font-weight="600">第 2 学期</text>
+      <text x="1100" y="496" fill="#64748B" font-size="9" text-anchor="end">硬件 + 基础</text>
+      <text x="840" y="515" fill="#0F172A" font-size="11" font-weight="600">单片机开发（运控方向 · STM32）</text>
+      <text x="840" y="531" fill="#475569" font-size="10">自动控制原理 · 电机驱动</text>
+      <text x="840" y="546" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="820" y="565" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="820" y="565" width="360" height="78" rx="6" fill="rgba(16,185,129,0.10)" stroke="#10B981" stroke-width="1.5"/>
+      <text x="840" y="586" fill="#047857" font-size="10" font-weight="600">第 3 学期</text>
+      <text x="1100" y="586" fill="#64748B" font-size="9" text-anchor="end">机器人基础</text>
+      <text x="840" y="605" fill="#0F172A" font-size="11" font-weight="600">机器人学导论（运动学 / 动力学）</text>
+      <text x="840" y="621" fill="#475569" font-size="10">Linux 应用开发 · Ubuntu 环境</text>
+      <text x="840" y="636" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="820" y="655" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="820" y="655" width="360" height="78" rx="6" fill="rgba(16,185,129,0.10)" stroke="#10B981" stroke-width="1.5"/>
+      <text x="840" y="676" fill="#047857" font-size="10" font-weight="600">第 4 学期</text>
+      <text x="1100" y="676" fill="#64748B" font-size="9" text-anchor="end">核心框架</text>
+      <text x="840" y="695" fill="#0F172A" font-size="11" font-weight="600">ROS 应用开发（ROS2 Humble）</text>
+      <text x="840" y="711" fill="#475569" font-size="10">MoveIt2 · 节点通信 · TF 坐标变换</text>
+      <text x="840" y="726" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="820" y="745" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="820" y="745" width="360" height="78" rx="6" fill="rgba(16,185,129,0.10)" stroke="#10B981" stroke-width="1.5"/>
+      <text x="840" y="766" fill="#047857" font-size="10" font-weight="600">第 5 学期</text>
+      <text x="1100" y="766" fill="#64748B" font-size="9" text-anchor="end">高阶核心</text>
+      <text x="840" y="785" fill="#0F172A" font-size="11" font-weight="600">SLAM 导航应用开发 · 机械臂运动控制</text>
+      <text x="840" y="801" fill="#475569" font-size="10">Cartographer / Nav2 / MoveIt 规划</text>
+      <text x="840" y="816" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="820" y="835" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="820" y="835" width="360" height="78" rx="6" fill="rgba(16,185,129,0.10)" stroke="#10B981" stroke-width="1.5"/>
+      <text x="840" y="856" fill="#047857" font-size="10" font-weight="600">第 6 学期</text>
+      <text x="1100" y="856" fill="#64748B" font-size="9" text-anchor="end">综合项目</text>
+      <text x="840" y="875" fill="#0F172A" font-size="11" font-weight="600">机器人综合实训（移动 + 机械臂协同）</text>
+      <text x="840" y="891" fill="#475569" font-size="10">毕业设计 · 顶岗实习（运控算法岗）</text>
+      <text x="840" y="906" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <!-- ================== 方向4：部署运维 ================== -->
+      <rect x="1200" y="385" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="1200" y="385" width="360" height="78" rx="6" fill="rgba(14,165,233,0.10)" stroke="#0EA5E9" stroke-width="1.5"/>
+      <text x="1220" y="406" fill="#0369A1" font-size="10" font-weight="600">第 1 学期</text>
+      <text x="1480" y="406" fill="#64748B" font-size="9" text-anchor="end">基础入门</text>
+      <text x="1220" y="425" fill="#0F172A" font-size="11" font-weight="600">Python 编程基础</text>
+      <text x="1220" y="441" fill="#475569" font-size="10">计算机导论 · 机器人学概论</text>
+      <text x="1220" y="456" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="1200" y="475" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="1200" y="475" width="360" height="78" rx="6" fill="rgba(14,165,233,0.10)" stroke="#0EA5E9" stroke-width="1.5"/>
+      <text x="1220" y="496" fill="#0369A1" font-size="10" font-weight="600">第 2 学期</text>
+      <text x="1480" y="496" fill="#64748B" font-size="9" text-anchor="end">系统基础</text>
+      <text x="1220" y="515" fill="#0F172A" font-size="11" font-weight="600">Linux 应用开发 · Shell 脚本</text>
+      <text x="1220" y="531" fill="#475569" font-size="10">机器人学导论 · 传感器基础</text>
+      <text x="1220" y="546" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="1200" y="565" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="1200" y="565" width="360" height="78" rx="6" fill="rgba(14,165,233,0.10)" stroke="#0EA5E9" stroke-width="1.5"/>
+      <text x="1220" y="586" fill="#0369A1" font-size="10" font-weight="600">第 3 学期</text>
+      <text x="1480" y="586" fill="#64748B" font-size="9" text-anchor="end">核心框架</text>
+      <text x="1220" y="605" fill="#0F172A" font-size="11" font-weight="600">ROS 应用开发（基础实操）</text>
+      <text x="1220" y="621" fill="#475569" font-size="10">机器人装配与调试</text>
+      <text x="1220" y="636" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="1200" y="655" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="1200" y="655" width="360" height="78" rx="6" fill="rgba(14,165,233,0.10)" stroke="#0EA5E9" stroke-width="1.5"/>
+      <text x="1220" y="676" fill="#0369A1" font-size="10" font-weight="600">第 4 学期</text>
+      <text x="1480" y="676" fill="#64748B" font-size="9" text-anchor="end">数据 + 调试</text>
+      <text x="1220" y="695" fill="#0F172A" font-size="11" font-weight="600">具身智能数据标注 · 自动化测试</text>
+      <text x="1220" y="711" fill="#475569" font-size="10">机器人装配进阶 · 故障排查基础</text>
+      <text x="1220" y="726" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="1200" y="745" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="1200" y="745" width="360" height="78" rx="6" fill="rgba(14,165,233,0.10)" stroke="#0EA5E9" stroke-width="1.5"/>
+      <text x="1220" y="766" fill="#0369A1" font-size="10" font-weight="600">第 5 学期</text>
+      <text x="1480" y="766" fill="#64748B" font-size="9" text-anchor="end">现场实战</text>
+      <text x="1220" y="785" fill="#0F172A" font-size="11" font-weight="600">机器人现场部署 · RobotOps 集群运维</text>
+      <text x="1220" y="801" fill="#475569" font-size="10">故障诊断与维修 · OTA 升级</text>
+      <text x="1220" y="816" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <rect x="1200" y="835" width="360" height="78" rx="6" fill="#FFFFFF"/>
+      <rect x="1200" y="835" width="360" height="78" rx="6" fill="rgba(14,165,233,0.10)" stroke="#0EA5E9" stroke-width="1.5"/>
+      <text x="1220" y="856" fill="#0369A1" font-size="10" font-weight="600">第 6 学期</text>
+      <text x="1480" y="856" fill="#64748B" font-size="9" text-anchor="end">顶岗实习</text>
+      <text x="1220" y="875" fill="#0F172A" font-size="11" font-weight="600">企业顶岗实习 · 售后技术服务</text>
+      <text x="1220" y="891" fill="#475569" font-size="10">机器人企业认证 · 订单班项目</text>
+      <text x="1220" y="906" fill="#64748B" font-size="9">AI 工具应用</text>
+
+      <!-- 方向内的连接箭头 -->
+      <line x1="240" y1="463" x2="240" y2="475" stroke="#F43F5E" stroke-width="1.2" marker-end="url(#arrowhead-rose)"/>
+      <line x1="240" y1="553" x2="240" y2="565" stroke="#F43F5E" stroke-width="1.2" marker-end="url(#arrowhead-rose)"/>
+      <line x1="240" y1="643" x2="240" y2="655" stroke="#F43F5E" stroke-width="1.2" marker-end="url(#arrowhead-rose)"/>
+      <line x1="240" y1="733" x2="240" y2="745" stroke="#F43F5E" stroke-width="1.2" marker-end="url(#arrowhead-rose)"/>
+      <line x1="240" y1="823" x2="240" y2="835" stroke="#F43F5E" stroke-width="1.2" marker-end="url(#arrowhead-rose)"/>
+
+      <line x1="620" y1="463" x2="620" y2="475" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#arrowhead-amber)"/>
+      <line x1="620" y1="553" x2="620" y2="565" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#arrowhead-amber)"/>
+      <line x1="620" y1="643" x2="620" y2="655" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#arrowhead-amber)"/>
+      <line x1="620" y1="733" x2="620" y2="745" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#arrowhead-amber)"/>
+      <line x1="620" y1="823" x2="620" y2="835" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#arrowhead-amber)"/>
+
+      <line x1="1000" y1="463" x2="1000" y2="475" stroke="#10B981" stroke-width="1.2" marker-end="url(#arrowhead-emerald)"/>
+      <line x1="1000" y1="553" x2="1000" y2="565" stroke="#10B981" stroke-width="1.2" marker-end="url(#arrowhead-emerald)"/>
+      <line x1="1000" y1="643" x2="1000" y2="655" stroke="#10B981" stroke-width="1.2" marker-end="url(#arrowhead-emerald)"/>
+      <line x1="1000" y1="733" x2="1000" y2="745" stroke="#10B981" stroke-width="1.2" marker-end="url(#arrowhead-emerald)"/>
+      <line x1="1000" y1="823" x2="1000" y2="835" stroke="#10B981" stroke-width="1.2" marker-end="url(#arrowhead-emerald)"/>
+
+      <line x1="1380" y1="463" x2="1380" y2="475" stroke="#0EA5E9" stroke-width="1.2" marker-end="url(#arrowhead-cyan)"/>
+      <line x1="1380" y1="553" x2="1380" y2="565" stroke="#0EA5E9" stroke-width="1.2" marker-end="url(#arrowhead-cyan)"/>
+      <line x1="1380" y1="643" x2="1380" y2="655" stroke="#0EA5E9" stroke-width="1.2" marker-end="url(#arrowhead-cyan)"/>
+      <line x1="1380" y1="733" x2="1380" y2="745" stroke="#0EA5E9" stroke-width="1.2" marker-end="url(#arrowhead-cyan)"/>
+      <line x1="1380" y1="823" x2="1380" y2="835" stroke="#0EA5E9" stroke-width="1.2" marker-end="url(#arrowhead-cyan)"/>
+
+      <!-- LAYER 8: AI 工具应用贯穿层 -->
+      <rect x="60" y="945" width="1520" height="80" rx="8" fill="#FFFFFF"/>
+      <rect x="60" y="945" width="1520" height="80" rx="8" fill="rgba(245,158,11,0.10)" stroke="#F59E0B" stroke-width="1.8" stroke-dasharray="6,3"/>
+      <text x="820" y="970" fill="#B45309" font-size="14" font-weight="700" text-anchor="middle">⚡ AI 工具应用 · 贯穿 6 学期（4 方向共享必修） ⚡</text>
+      <text x="820" y="990" fill="#475569" font-size="10" text-anchor="middle">代码生成：AI 工具应用（编程提效）</text>
+      <text x="820" y="1006" fill="#475569" font-size="10" text-anchor="middle">调试提效：AI 工具应用（报错分析 / 算法解释 / 视觉调试 / 异常检测）</text>
+      <text x="820" y="1020" fill="#475569" font-size="10" text-anchor="middle">文档与报告：自动写实验报告 / 注释 / API 文档 / 知识库问答</text>
+
+      <!-- LAYER 9: 图例 + 学期时间轴 -->
+      <rect x="60" y="1050" width="800" height="180" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="100" y="1075" fill="#0F172A" font-size="12" font-weight="600">4 岗位方向 · 颜色图例</text>
+
+      <rect x="100" y="1090" width="14" height="10" rx="2" fill="rgba(244,63,94,0.18)" stroke="#F43F5E" stroke-width="1"/>
+      <text x="120" y="1100" fill="#475569" font-size="10">① 嵌入式方向（rose）— 软件 6 门 + 硬件 PCBA 电路设计（第 6 学期）</text>
+
+      <rect x="100" y="1110" width="14" height="10" rx="2" fill="rgba(245,158,11,0.20)" stroke="#F59E0B" stroke-width="1"/>
+      <text x="120" y="1120" fill="#475569" font-size="10">② 嵌入式 AI 方向（amber）— C/C++ · Python · ML · DL · NLP · 视觉 · 边缘计算</text>
+
+      <rect x="100" y="1130" width="14" height="10" rx="2" fill="rgba(16,185,129,0.18)" stroke="#10B981" stroke-width="1"/>
+      <text x="120" y="1140" fill="#475569" font-size="10">③ 机器人运动控制方向（emerald）— 机器人学 · ROS · SLAM · 机械臂</text>
+
+      <rect x="100" y="1150" width="14" height="10" rx="2" fill="rgba(14,165,233,0.18)" stroke="#0EA5E9" stroke-width="1"/>
+      <text x="120" y="1160" fill="#475569" font-size="10">④ 机器人部署、运维与技术支持方向（cyan）— 装配 · 部署 · 维修 · RobotOps</text>
+
+      <rect x="100" y="1170" width="14" height="10" rx="2" fill="rgba(100,116,139,0.10)" stroke="#64748B" stroke-width="1" stroke-dasharray="2,2"/>
+      <text x="120" y="1180" fill="#475569" font-size="10">公共基础层（slate 虚框）— 4 方向共享</text>
+
+      <rect x="100" y="1190" width="14" height="10" rx="2" fill="rgba(245,158,11,0.12)" stroke="#F59E0B" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="120" y="1200" fill="#475569" font-size="10">AI 工具应用贯穿层（amber 虚框）— 4 方向共享必修</text>
+
+      <text x="100" y="1220" fill="#475569" font-size="9">★ 第 6 学期嵌入式方向硬件分流：PCBA 电路设计 / Altium Designer / KiCad</text>
+
+      <rect x="880" y="1050" width="700" height="180" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="920" y="1075" fill="#0F172A" font-size="12" font-weight="600">课程逻辑递进关系（4 方向共性规律）</text>
+
+      <text x="920" y="1098" fill="#475569" font-size="10">▸ 大一（第 1-2 学期）：公共基础 + 编程入门 → 4 方向共享底层（C / Python / 数学 / 电子）</text>
+      <text x="920" y="1118" fill="#475569" font-size="10">▸ 大二（第 3-4 学期）：方向分流 → 各方向核心专业课（嵌入式：RTOS+Linux；嵌入式AI：ML/DL；运控：ROS；部署：装配调试）</text>
+      <text x="920" y="1138" fill="#475569" font-size="10">▸ 大三上（第 5 学期）：高阶综合课 + AI 工具应用（边缘AI / SLAM / 现场部署 / 数据标注）</text>
+      <text x="920" y="1158" fill="#475569" font-size="10">▸ 大三下（第 6 学期）：硬件分流（嵌入式 PCBA）/ 毕业设计 / 顶岗实习 / 订单班</text>
+      <text x="920" y="1178" fill="#475569" font-size="10">▸ 横向贯穿：AI 工具应用 → 编程提效、算法理解、调试加速、文档自动化</text>
+      <text x="920" y="1198" fill="#475569" font-size="10">▸ 跨方向协同：嵌入式 ↔ 嵌入式AI ↔ 运控 ↔ 部署运维（产业链 → 岗位 → 技能 → 课程闭环）</text>
+      <text x="920" y="1218" fill="#475569" font-size="9">▸ 高职参考：3 学年可压缩为 5 学期（第 5-6 学期合并为顶岗），保留 4 方向分流结构</text>
+
+    </svg>
+  </div>
+
+  <!-- Info Cards -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot rose"></div>
+        <h3>① 嵌入式方向（软件+硬件）</h3>
+      </div>
+      <ul>
+        <li>• <b>软件 6 门</b>：C 语言、单片机开发、传感器数据采集、无线组网通信、RTOS 操作系统应用、Linux 应用开发</li>
+        <li>• <b>硬件新增（建议）</b>：PCBA 电路设计 — 第 6 学期分流</li>
+        <li>• <b>对应岗位</b>：嵌入式软件工程师 / 嵌入式硬件工程师</li>
+        <li>• <b>实训平台</b>：STM32 / ESP32 开发板 / RTOS 实验箱 / Altium Designer</li>
+        <li>• <b>AI 工具</b>：AI 工具应用</li>
+        <li>• <b>课时占比</b>：实践 ≥ 50%，硬件方向 PCBA 课程 64 学时</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot amber"></div>
+        <h3>② 嵌入式 AI 方向</h3>
+      </div>
+      <ul>
+        <li>• <b>7 门核心</b>：C/C++、Python、机器学习、深度学习、自然语言处理、机器视觉、边缘计算</li>
+        <li>• <b>对应岗位</b>：嵌入式 AI 工程师 / 边缘计算工程师 / 算法部署工程师</li>
+        <li>• <b>数学先修</b>：高数、线代、概率论（第 2 学期）— AI 理论必备</li>
+        <li>• <b>实训平台</b>：Jetson Orin / RK3576 / 端侧 LLM 推理 / 边缘计算开发板</li>
+        <li>• <b>AI 工具</b>：AI 工具应用</li>
+        <li>• <b>课时占比</b>：实践 ≥ 45%，第 5-6 学期 2 个综合 AI 项目</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot emerald"></div>
+        <h3>③ 机器人运动控制方向</h3>
+      </div>
+      <ul>
+        <li>• <b>8 门核心</b>：机器人学导论、C/C++、Python、单片机(运控方向)、Linux、ROS、SLAM、机械臂运动控制</li>
+        <li>• <b>对应岗位</b>：运动控制算法工程师 / SLAM 工程师 / 机械臂工程师</li>
+        <li>• <b>运控特色</b>：单片机课程聚焦电机驱动、PID、舵机控制</li>
+        <li>• <b>实训平台</b>：CAR1 小车 / 机械臂实验箱 / ROS2 Humble / MoveIt2</li>
+        <li>• <b>AI 工具</b>：AI 工具应用</li>
+        <li>• <b>课时占比</b>：实践 ≥ 50%，第 5 学期 SLAM+机械臂双项目</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot cyan"></div>
+        <h3>④ 机器人部署、运维与技术支持</h3>
+      </div>
+      <ul>
+        <li>• <b>8 门核心</b>：机器人学导论、Python、Linux、ROS、具身智能数据标注、装配与调试、现场部署、故障诊断与维修</li>
+        <li>• <b>对应岗位</b>：现场部署 FAE / RobotOps 运维 / 装配测试 / 维修技师</li>
+        <li>• <b>高职对标</b>：实训比例 ≥ 50%，对标行业岗位能力标准</li>
+        <li>• <b>实训平台</b>：真实机器人拆装 / 故障模拟台 / RobotOps 平台</li>
+        <li>• <b>AI 工具</b>：AI 工具应用</li>
+        <li>• <b>课时占比</b>：实训 ≥ 50%，第 6 学期企业顶岗实习</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <p class="footer">
+    具身智能 · 4 岗位方向 · 6 学期课程体系 · 数据来源：具身智能产业报告 + 企业岗位需求 · 2026 课程规划
+  </p>
+
+</div>
+
+<script>
+  async function copyAsImage(btn) {
+    const orig = btn.textContent;
+    try {
+      const el = document.getElementById('report-container');
+      const r = el.getBoundingClientRect();
+      const pad = 32;
+      const canvas = await html2canvas(document.body, { backgroundColor: '#F8FAFC', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      btn.textContent = '✓ Copied';
+      setTimeout(() => btn.textContent = orig, 1500);
+    } catch (e) {
+      btn.textContent = '✗ Failed';
+      setTimeout(() => btn.textContent = orig, 1500);
+    }
+  }
+  async function downloadPNG(btn) {
+    const orig = btn.textContent;
+    try {
+      const el = document.getElementById('report-container');
+      const r = el.getBoundingClientRect();
+      const pad = 32;
+      const canvas = await html2canvas(document.body, { backgroundColor: '#F8FAFC', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+      const a = document.createElement('a');
+      a.download = '具身智能-4方向课程逻辑关系图.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+      btn.textContent = '✓ Saved';
+      setTimeout(() => btn.textContent = orig, 1500);
+    } catch (e) {
+      btn.textContent = '✗ Failed';
+      setTimeout(() => btn.textContent = orig, 1500);
+    }
+  }
+  async function downloadPDF(btn) {
+    const orig = btn.textContent;
+    try {
+      const el = document.getElementById('report-container');
+      const r = el.getBoundingClientRect();
+      const pad = 32;
+      const canvas = await html2canvas(document.body, { backgroundColor: '#F8FAFC', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+      const img = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width + pad * 2, canvas.height + pad * 2] });
+      pdf.addImage(img, 'PNG', pad, pad, canvas.width, canvas.height);
+      pdf.save('具身智能-4方向课程逻辑关系图.pdf');
+      btn.textContent = '✓ Saved';
+      setTimeout(() => btn.textContent = orig, 1500);
+    } catch (e) {
+      btn.textContent = '✗ Failed';
+      setTimeout(() => btn.textContent = orig, 1500);
+    }
+  }
+</script>
+</body>
+</html>
