@@ -1,0 +1,180 @@
+course_code: EXP005
+course_name: 机器人机械臂应用与开发
+category: sheet1
+folder: arm_practice
+prerequisites:
+  - Python编程
+  - 机器人ROS2应用与开发
+  - 机器人学/运动学基础
+total_hours: 32
+theory_hours: 0
+lab_hours: 32
+experiment_count: 7
+tech_stack:
+  - URDF
+  - ROS2
+  - PWM舵机控制
+  - 解析法IK
+  - MoveIt2
+  - Gazebo
+  - Web运动学仿真
+  - 视觉抓取
+hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
+description: |
+  本课程围绕car1移动机器人5自由度机械臂展开，覆盖URDF建模与仿真、底层舵机控制、零位校准与动作录制、运动学原理（FK/IK/工作空间）、实机IK解算验证、固定位置IK抓取与基于视觉的动态抓取，强调从仿真认知→裸机控制→理论深化→抓取应用的螺旋式能力构建。
+experiments:
+  - id: exp01
+    experiment_id: 1
+    name: 机械臂URDF仿真运动控制实验
+    hours: 4
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: ros2_ws/src/xflz_eai_car1/simulations/
+    main_entry: car1_description/launch/display.launch.py;car1_moveit_config/launch/demo.launch.py;car1_gazebo/launch/gazebo_arm.launch.py
+    objectives:
+      - URDF模型结构
+      - RViz可视化
+      - MoveIt2运动规划
+      - Gazebo物理仿真
+      - 关节轨迹控制
+    exp_content:
+      - 掌握URDF模型加载方法
+      - 能够在RViz中查看机器人3D结构与拖动关节滑块
+      - 能够使用MoveIt2进行Plan & Execute运动规划
+      - 能够在Gazebo中进行物理仿真并使用joint_trajectory控制机械臂
+    notes: "步骤1:启动URDF可视化"
+
+  - id: exp02
+    experiment_id: 2
+    name: 机械臂底层协议与控制实验
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 验证性
+    source_code_path: ros2_ws/src/xflz_eai_car1/
+    main_entry: bringup/launch/bringup.launch.py;arm/car1_arm_controller/launch/arm_controller.launch.py;arm/car1_arm_controller/car1_arm_controller/arm_controller.py
+    objectives:
+      - STM32板级串口协议
+      - PWM舵机控制(500~2500
+    exp_content:
+      - center=1500)
+      - ROS2 topic/service通信
+      - joint_command话题
+      - set_gripper服务
+      - go_home/go_work服务
+    notes: 掌握机械臂底层通信协议(串口1Mbps PWM协议);能够使用joint_command话题控制5个关节运动;能够通过set_gripper服务控制夹爪开合;理解go_home/go_work服务的工作机制与PWM↔弧度换算(1500+rad/0.002356)
+
+  - id: exp03
+    experiment_id: 3
+    name: 机械臂零位校准与动作录制实验
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: ros2_ws/src/xflz_eai_car1/calibration/;ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/
+    main_entry: calibration/launch/servo_calib.launch.py;arm/car1_arm_controller/test/test_servo_direct.py;arm/car1_arm_controller/launch/action_player.launch.py
+    objectives:
+      - 舵机PWM零位校准
+      - 软件层offset补偿(不写EEPROM)
+      - 交互式PWM调试(test_servo_direct.py)
+      - YAML动作文件结构
+      - action_player回放(普通/单步/循环/紧急停止)
+    exp_content:
+      - 掌握舵机零位校准方法(软件层补偿而非EEPROM)
+      - 能够使用test_servo_direct.py交互式录制抓取放置动作
+      - 能够将动作导出为YAML文件
+      - 能够使用action_player.launch.py以普通/单步/循环模式回放动作并测试紧急停止
+    notes: "步骤1(可选):舵机校准"
+
+  - id: exp04
+    experiment_id: 4
+    name: 机械臂运动学控制原理实验
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 验证性
+    source_code_path: ros2_ws/src/xflz_eai_car1/test/car1_web_server/
+    main_entry: server_cors.py;viewer/index.html;viewer/kinematics/ik-analytical.js;viewer/kinematics/ik-numerical.js
+    objectives:
+      - 正运动学FK(4×4齐次变换链)
+      - 逆运动学IK(解析法/数值法)
+      - PWM↔弧度换算(CENTER_PWM=1500
+    exp_content:
+      - PWM_TO_RAD=0.002356)
+      - auto-pitch机制
+      - 软限位可视化
+      - 工作空间分析
+    notes: 掌握正运动学FK计算方法与base_link→tcp_link变换链;掌握解析法IK的q1 atan2+asin补偿、2R余弦定理、PHI角补偿;理解auto-pitch不可达pitch自动搜索机制;能够使用Web 3D仿真器进行FK/IK对比分析与工作空间扫描
+
+  - id: exp05
+    experiment_id: 5
+    name: 机械臂IK解算实验
+    hours: 4
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/arm/kinematics/
+    main_entry: kinematics/interactive_ik_test.py;kinematics/ik_analytical.py;kinematics/fk.py;kinematics/transform.py
+    objectives:
+      - 解析法IK(几何法closed-form)
+      - 数值法IK(DLS)
+      - FK闭环验证(误差<1.5mm)
+      - 已知系统偏移(J2+22~24
+    exp_content:
+      - J3+13~14 PWM)
+      - 直连串口模式与ROS2模式对比
+    notes: 掌握IK解算的实机验证方法;能够使用直连串口模式(--direct)进行FK/IK闭环测试;理解已知系统偏移(J2大臂+4°、J3小臂+2.3°)及补偿策略;能够区分解析法与数值法IK的适用场景
+
+  - id: exp06
+    experiment_id: 6
+    name: 机械臂IK固定抓取实验
+    hours: 4
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/simulations/car1_gazebo/;ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/
+    main_entry: car1_gazebo/launch/grasp_demo.launch.py;arm/car1_arm_controller/car1_arm_controller/arm_controller.py
+    objectives:
+      - Gazebo仿真抓取三模式(ik/manual/none)
+      - target_pose话题设置目标
+      - pick/place服务触发抓取
+      - 抓取参数调优(gripper_depth、pre_grasp_height、lift_height、grasp_pitch)
+      - 分步移动策略(先转底座后动臂)
+    exp_content:
+      - 掌握Gazebo仿真环境下的固定位置抓取流程
+      - 掌握实机IK固定抓取流程(发布target_pose→调用pick/place服务)
+      - 能够调优抓取参数(gripper_depth、pre_grasp_height、lift_height)
+      - 理解分步移动策略与关节限位保护机制
+    notes: "仿真部分:步骤1:启动仿真抓取"
+
+  - id: exp07
+    experiment_id: 7
+    name: 机械臂基于视觉的动态抓取实验
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/car1_app/
+    main_entry: car1_app/launch/visual_grasp.launch.py;car1_app/car1_app/visual_grasp.py;car1_app/car1_app/common.py
+    objectives:
+      - HSV颜色检测与轮廓提取
+      - 深度相机反投影(像素→相机坐标→base_link)
+      - TF坐标变换链(camera_depth_optical_frame→base_link)
+      - look-then-move策略(eye-in-hand下压失视野)
+      - IDLE状态机(observe→detect→confirm→pick→idle)
+      - 服务化控制(start/confirm/skip/abort)
+      - 三栏可视化(RGB+Depth+Mask)
+    exp_content:
+      - 掌握视觉抓取系统的工作原理(HSV+深度+TF+IK)
+      - 能够使用visual_grasp.launch.py一站式启动并完成动态抓取
+      - 能够调优HSV阈值(换颜色)、gripper_depth参数
+      - 能够使用rqt三栏可视化分析检测与定位过程
+      - 能够处理服务化流程(start/confirm/skip/abort)与重复抓取
+    notes: "阶段1(2h)启动与基础流程:步骤1:启动visual_grasp一站式命令"
+
+_source:
+  csv_path: input/course_spec.csv
+  csv_sha256: da0440a5b4b86f14717a1de1891e48fec13344483f8bf6fab7b0c97b31a420f9
+  parsed_at: 2026-08-04T19:32:43
+  parser: spec-parser-skill

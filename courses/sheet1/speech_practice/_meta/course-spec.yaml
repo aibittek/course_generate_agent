@@ -1,0 +1,157 @@
+course_code: EXP002
+course_name: 机器人自然语言交互应用与开发
+category: sheet1
+folder: speech_practice
+prerequisites:
+  - 深度学习基础
+  - Python编程
+  - 边缘计算基础
+total_hours: 32
+theory_hours: 0
+lab_hours: 32
+experiment_count: 7
+tech_stack:
+  - 边缘计算
+  - VAD
+  - KWS
+  - ASR
+  - TTS
+  - NLP
+  - 大模型
+hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
+description: 本课程围绕边缘计算环境下的语音交互系统展开，覆盖语音前端处理、唤醒、识别、合成、语义理解、情绪感知与端到端对话集成全流程，强调本地化部署与低延迟实时交互。
+experiments:
+  - id: exp01
+    experiment_id: 1
+    name: 基于边缘计算的语音交互环境搭建实验
+    hours: 4
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: source-codes/exp01/
+    objectives:
+      - 掌握边缘处理芯片上语音模型库的部署方法
+      - 能够完成语音前端处理全流程的环境配置
+    exp_content:
+      - 部署基于边缘处理芯片的开源语音模型库
+      - 配置语音前端点检测（VAD）模块
+      - 配置声纹识别、语音唤醒、语音识别（ASR）、语音合成（TTS）各模块环境
+      - 验证各模块功能是否正常工作
+    notes: 有资源，需修改
+
+  - id: exp02
+    experiment_id: 2
+    name: 基于关键词检测的语音唤醒实验
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp02/
+    objectives:
+      - 掌握语音唤醒（KWS）的原理与部署方法
+      - 能够实现离线低功耗唤醒与误唤醒抑制
+    exp_content:
+      - 学习语音唤醒原理（关键词检测、小模型离线推理）
+      - 部署轻量级唤醒模型至边缘计算芯片
+      - 实现离线低功耗唤醒功能
+      - 实现误唤醒抑制策略
+      - 完成实时唤醒响应与回调触发测试
+    notes: 有资源，可复用
+
+  - id: exp03
+    experiment_id: 3
+    name: 基于声学模型的语音识别实验
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp03/
+    objectives:
+      - 掌握语音识别（ASR）的完整流程
+      - 能够部署本地语音识别模型并评估识别准确率
+    exp_content:
+      - 学习语音识别流程：音频预处理->特征提取（MFCC/FBank）->声学模型->语言模型->解码
+      - 部署本地ASR模型至边缘设备
+      - 实现麦克风实时语音转文字功能
+      - 输出识别文本并进行准确率评估（WER指标）
+    notes: 有资源，可复用
+
+  - id: exp04
+    experiment_id: 4
+    name: 基于声学模型与声码器的语音合成实验
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp04/
+    objectives:
+      - 掌握语音合成（TTS）的基本原理
+      - 能够部署本地TTS模型并实现参数可调的语音输出
+    exp_content:
+      - 学习语音合成原理：文本分析->声学模型->声码器
+      - 部署本地TTS模型
+      - 设置发音人、调节语速、音调、情感、音色等参数
+      - 完成音频流的实时采集与本地化播放验证
+    notes: 有资源，可复用
+
+  - id: exp05
+    experiment_id: 5
+    name: 端到端语音对话交互实验
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp05/
+    objectives:
+      - 掌握语音交互全链路集成方法
+      - 能够构建完整的端到端人机对话系统
+    exp_content:
+      - 整合语音唤醒+ASR+语义理解+TTS全链路模块
+      - 实现唤醒->听指令->理解->回答->播报闭环交互
+      - 处理多轮对话、用户打断、超时处理、噪声场景
+      - 完成端到端人机对话交互系统的测试与优化
+    notes: 有资源，可复用
+
+  - id: exp06
+    experiment_id: 6
+    name: 基于大模型的语义理解实验
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp06/
+    objectives:
+      - 掌握意图识别与槽位提取方法
+      - 能够实现对自然语言指令的结构化解析
+    exp_content:
+      - 学习意图识别、槽位提取、文本分类原理
+      - 对ASR输出文本进行意图解析（查询、控制、闲聊等类别）
+      - 基于大模型进行指令理解与实体抽取
+      - 实现多意图、模糊指令的鲁棒理解
+      - 输出结构化意图结果（JSON格式）供下游系统使用
+      - 了解Function Calling/MCP等最新方案作为替代实现
+    notes: 有资源，需修改
+
+  - id: exp07
+    experiment_id: 7
+    name: 基于多模态的语音情绪感知实验
+    hours: 4
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp07/
+    objectives:
+      - 掌握语音/文本双模态情绪识别方法
+      - 能够实现基于情绪感知的智能助手应用设计
+    exp_content:
+      - 文本情绪分析：基于NLP模型识别积极、消极、中性、愤怒、开心、悲伤等情绪类别
+      - 语音情绪分析：从韵律、音量、语速等声学特征判断情绪
+      - 双模态情绪融合策略
+      - 若大模型支持情感输出，基于此模型设计助手、客服等第三方沟通应用场景
+    notes: 有资源，需修改
+
+_source:
+  csv_path: input/course_spec.csv
+  csv_sha256: ff93e9e0720fad63e0315ed2e2603021ffce0783515ef16f6a87be9142643f64
+  parsed_at: 2026-08-04T19:30:41
+  parser: spec-parser-skill

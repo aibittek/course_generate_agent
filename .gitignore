@@ -12,7 +12,7 @@ node_modules/
 *.log
 
 # Course outputs
-courses/
+# courses/
 courses_archive/
 
 # Media outputs
@@ -52,3 +52,9 @@ Thumbs.db
 source-codes/
 src/
 .claude/settings.local.json
+
+# ROS2 workspace (build/install/log artifacts are typically regenerated)
+ros2_ws/
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
