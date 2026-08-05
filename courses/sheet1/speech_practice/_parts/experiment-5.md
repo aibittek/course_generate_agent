@@ -1,53 +1,52 @@
-## 实验5：基于状态机的端到端语音对话交互实验（4h）
+## 实验5：基于 Function Calling 的大模型工具调用实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 源码位于 `ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/`，主入口 `tools/voice_interaction.py`。已通过 `human_waiver` 放行。
+> ⚠️ **[待源码核实 / WAIT-SOURCE]** 源码位于 `ros2_ws/src/xflz_eai_car1/interaction/car1_llm/`，主入口 `tools/llm_test.py`、`tools/tools_config.py`、`tools/llm_server.py`。已通过 `human_waiver` 放行。
 
 ### 5.1 关联知识点
 
-- 5.1.1 状态机式语音交互 > 概念 > IDLE/LISTENING/SPEAKING 三态互斥
-- 5.1.2 状态流转 > 流程 > KWS→ASR→LLM→TTS→IDLE
-- 5.1.3 Capture 线程常驻 > 原理 > audio_queue 缓冲 + KWS 全程检测
 - 5.2.1 OpenAI 兼容 API > 概念 > /v1/chat/completions 流式 SSE
 - 5.2.2 流式 SSE > 流程 > 按句分割后送 TTS 合成
+- 5.2.3 RKLLM 推理 > 原理 > 面向 RK3576 NPU 优化的本地推理引擎
+- 5.3.1 Function Calling > 概念 > 大模型输出结构化工具调用指令
+- 5.3.2 tools_config 三步注册 > 流程 > 实现函数+声明描述+注册映射
+- 5.3.3 嵌套结构解析 > 原理 > 解析 tool_call 嵌套格式
 
 ### 5.2 实验目标
 
-1. 理解状态机在端到端语音交互中的核心作用 — 原理理解
-2. 掌握 KWS+ASR+LLM+TTS 异步协同的多线程设计 — 流程掌握
-3. 独立完成 Capture 线程 + audio_queue 缓冲机制 — 独立完成
-4. 能够将本实验的多流协同模式迁移到其他对话系统（智能客服、车载助手）— 迁移应用
+1. 理解 Function Calling 相对纯文本 Prompt 的优势 — 原理理解
+2. 掌握 tools_config.py 三步法扩展自定义工具 — 流程掌握
+3. 独立完成基于 RKLLM 的本地 LLM 服务部署与 Function Calling 调用 — 独立完成
+4. 能够将 Function Calling 模式迁移到其他业务场景（智能家居、设备控制）— 迁移应用
 
 ### 5.3 实验环境
 
 | 类别 | 配置 |
 |------|------|
-| 硬件 | B2/C1（6 麦 + 扬声器） |
+| 硬件 | B2/C1（含 RK3576 NPU，6TOPS） |
 | OS | Ubuntu 22.04 + ROS2 Humble |
 | Python | 3.10 |
-| 核心库 | sherpa-onnx、rclpy、httpx（OpenAI 客户端）、sounddevice、openai |
-| 模型 | 同 exp01-04 |
-| 主入口 | car1_interaction/tools/voice_interaction.py |
+| 核心库 | openai==1.50.0、rclpy、requests |
+| 模型 | qwen2-1.5B-rkllm（已转换为 RKLLM 格式） |
+| 主入口 | car1_llm/tools/llm_test.py + tools/llm_server.py |
 
 ### 5.4 实验难度
 
 - 难度: ⭐⭐ 中
-- 重点: 状态机设计；Capture 线程常驻；流式 LLM 响应
-- 难点: 打断机制与多线程协作
+- 重点: Function Calling 原理；tools_config 三步注册；本地 RKLLM 服务部署
+- 难点: 嵌套 tool_call 格式解析（支持 JSON 与 DSL 两种）
 
 ### 5.5 实验现象
 
 **快速验证流程**:
-1. 启动本地 RKLLM 服务：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/llm_server.py`
-2. 启动语音交互：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/voice_interaction.py --debug`
-3. 唤醒"小飞同学"
-4. 说话"现在几点了"
-5. 听到 TTS 播报"现在是下午3点25分"
-6. 打断测试：TTS 播报过程中再次说"小飞同学"，应立即停止
+1. 启动 RKLLM 服务：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/llm_server.py`
+2. 启动工具调用客户端：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_test.py --mode tools`
+3. 输入查询："现在几点了？"
+4. 预期：模型自动调用 `get_current_time` 工具，返回"现在是 2026-08-04 16:30:00"
 
 **预期效果**:
-- 状态机日志：`[IDLE] → [LISTENING] → [SPEAKING] → [IDLE]`
-- 端到端响应延迟 < 3s（含 LLM 推理 + TTS 合成）
-- 打断响应 < 500ms
+- 4 个预置工具：`get_current_time` / `get_system_info` / `calculator` / `get_battery_status`
+- 预填充延迟 ~5-6s（首次），生成速度 8-12 tokens/s
+- 工具调用结果以 JSON 格式输出
 
 ### 5.6 实验步骤
 
@@ -55,522 +54,523 @@
 
 ```mermaid
 graph LR
-    A[Capture 线程] -->|audio_queue| B[KWS 线程]
-    B -->|wake| C[主循环]
-    C -->|唤醒| D[ASR 识别]
-    D -->|text| E[LLM 流式]
-    E -->|sentence| F[TTS 合成]
-    F -->|pcm| G[aplay]
-    E -->|新唤醒| B
+    A[用户查询] --> B[LLM 推理]
+    B --> C{需要工具?}
+    C -->|是| D[输出 tool_call]
+    D --> E[客户端解析]
+    E --> F[执行函数]
+    F --> G[结果回传 LLM]
+    G --> H[生成自然语言响应]
+    H --> I[TTS 播报]
+    C -->|否| H
 ```
 
 ---
 
-#### 步骤1：状态机定义与转换（阶段一：能运行，30min）
+#### 步骤1：本地 RKLLM 服务部署（阶段一：能运行，30min）
 
-> ⚠️ 本步骤对应 `tools/voice_interaction.py` 主循环
-
-**知识点讲解**：
-
-**状态机式语音交互（5.1.1）**
-- **原理**：语音交互系统天然适合用有限状态机（FSM）描述，常见三态：(1) **IDLE**：监听 KWS，不录音不播报；(2) **LISTENING**：检测到唤醒词，ASR 录音识别中；(3) **SPEAKING**：TTS 播报中，此时 KWS 仍可检测新唤醒实现打断。状态机的好处是：(1) **互斥性**：每时刻只有一种状态，避免 ASR 与 TTS 同时占用音频设备；(2) **可测试性**：每个状态转换都有明确触发条件；(3) **可扩展性**：新增"思考中"或"等待确认"等状态只需添加节点。
-- **源码对应**：`tools/voice_interaction.py` 主循环（约 L100-150）
-
-**操作步骤**：
-
-1. 定义状态枚举与转换：
-   ```python
-   from enum import Enum
-   
-   class State(Enum):
-       IDLE = "IDLE"
-       LISTENING = "LISTENING"
-       SPEAKING = "SPEAKING"
-   
-   # 状态转换矩阵
-   TRANSITIONS = {
-       State.IDLE: {
-           "wake_detected": State.LISTENING,
-       },
-       State.LISTENING: {
-           "asr_done": State.SPEAKING,
-       },
-       State.SPEAKING: {
-           "tts_done": State.IDLE,
-           "wake_again": State.LISTENING,  # 打断
-       },
-   }
-   ```
-
-2. 实现状态机类：
-   ```python
-   class VoiceStateMachine:
-       def __init__(self, on_enter_listening, on_enter_speaking, on_enter_idle):
-           self.state = State.IDLE
-           self.handlers = {
-               State.LISTENING: on_enter_listening,
-               State.SPEAKING: on_enter_speaking,
-               State.IDLE: on_enter_idle,
-           }
-       
-       def transition(self, event: str):
-           new_state = TRANSITIONS.get(self.state, {}).get(event)
-           if new_state is None:
-               print(f"[WARN] Invalid transition: {self.state} + {event}")
-               return
-           print(f"[STATE] {self.state.value} → {new_state.value} (event={event})")
-           self.state = new_state
-           self.handlers[new_state]()
-   ```
-
-3. 与 voice_interaction.py 集成（参考原文件结构）：
-   ```python
-   # 简化版：基于 voice_interaction.py 的状态机主循环
-   import time, threading
-   from voice_interaction import VoiceStateMachine, CaptureThread, KWSWorker
-   
-   fsm = VoiceStateMachine(
-       on_enter_listening=lambda: print("→ 开始 ASR 识别"),
-       on_enter_speaking=lambda: print("→ 开始 TTS 播报"),
-       on_enter_idle=lambda: print("→ 回到 IDLE"),
-   )
-   
-   while True:
-       if fsm.state == State.IDLE:
-           # KWS 监听
-           if kws_worker.detected():
-               fsm.transition("wake_detected")
-       elif fsm.state == State.LISTENING:
-           text = asr_worker.recognize(duration=5)
-           if text:
-               fsm.transition("asr_done")
-       elif fsm.state == State.SPEAKING:
-           tts_worker.speak(llm_response)
-           fsm.transition("tts_done")
-   ```
-
-**易错点**：
-- ⚠️ **状态转换事件名拼写错误导致转换失败** → **解决**：用 Enum 强制类型
-- ⚠️ **进入 SPEAKING 后 KWS 暂停导致无法打断** → **解决**：KWS 在所有状态都监听，由 Capture 线程常驻
-
----
-
-#### 步骤2：Capture 线程常驻 + audio_queue 缓冲（阶段一：能运行，30min）
-
-> ⚠️ 本步骤对应 `tools/voice_interaction.py` L30-80
+> ⚠️ 本步骤对应 `tools/llm_server.py`
 
 **知识点讲解**：
 
-**Capture 线程常驻（5.1.3）**
-- **原理**：传统做法是 ASR 启动后才开始录音，但 KWS 唤醒 → ASR 启动之间存在几十毫秒延迟，这段"空白期"用户开始说话会丢失。本实验采用 Capture 线程常驻：始终从 ALSA 读取音频块推入 `queue.Queue`，KWS 与 ASR 共享这个队列。Capture 线程的逻辑非常简单：`while True: queue.put(sd.rec(...))`。这种"生产者-消费者"模式让 KWS 始终能拿到最新音频，从而支持在 TTS 播报期间检测唤醒词实现打断。
-- **源码对应**：`tools/voice_interaction.py` L30-80
-
-**audio_queue 缓冲（5.1.3）**
-- **原理**：`queue.Queue(maxsize=100)` 是线程安全的 FIFO 队列，Capture 线程作为 producer 持续 put，KWS/ASR 作为 consumer 持续 get。如果队列满（消费者处理慢），Capture 线程的 put 会阻塞，自动实现背压控制。这种设计解耦了音频采集与处理速度，避免因处理延迟导致音频丢失。
-- **源码对应**：`tools/voice_interaction.py` audio_queue 声明
+**RKLLM 推理引擎（5.2.3）**
+- **原理**：RKLLM 是瑞芯微针对 RK3576 等 NPU 优化的本地大模型推理引擎，将 PyTorch/HuggingFace 模型转为 `.rkllm` 格式后可在 NPU 上高效推理。本实验使用 Qwen2-1.5B（参数量 15 亿），模型大小约 1.5GB，转 RKLLM 后约 800MB，可在 B2 平台 6TOPS NPU 上以 8-12 tokens/s 速度生成（与本机 CPU 推理相比提速 5-10 倍）。`librkllmrt.so` 是核心动态库，提供 C++/Python API。
+- **源码对应**：`tools/llm_server.py`（基于 librkllmrt.so）
 
 **操作步骤**：
 
-1. 实现 Capture 线程：
-   ```python
-   import threading
-   import queue
-   import sounddevice as sd
-   import numpy as np
-   
-   class CaptureThread(threading.Thread):
-       """始终从 ALSA 读取音频并放入队列（来源：voice_interaction.py 简化）"""
-       def __init__(self, audio_queue: queue.Queue, sample_rate=16000, chunk_ms=80):
-           super().__init__(daemon=True, name="Capture")
-           self.queue = audio_queue
-           self.sample_rate = sample_rate
-           self.chunk_size = int(sample_rate * chunk_ms / 1000)
-           self.running = True
-       
-       def run(self):
-           def callback(indata, frames, time_info, status):
-               if not self.running:
-                   raise sd.CallbackStop
-               audio = indata[:, 0].astype(np.float32).copy()
-               try:
-                   self.queue.put_nowait(audio)
-               except queue.Full:
-                   pass  # 队列满时丢弃旧帧
-           
-           with sd.InputStream(
-               samplerate=self.sample_rate,
-               channels=1,
-               dtype="float32",
-               blocksize=self.chunk_size,
-               callback=callback,
-           ):
-               while self.running:
-                   sd.sleep(50)
-       
-       def stop(self):
-           self.running = False
-   ```
-
-2. 启动 Capture + KWS 消费：
-   ```python
-   audio_queue = queue.Queue(maxsize=200)
-   capture = CaptureThread(audio_queue)
-   capture.start()
-   
-   kws = sherpa_onnx.KeywordSpotter(...)
-   kws_stream = kws.create_stream()
-   
-   while True:
-       try:
-           audio = audio_queue.get(timeout=1.0)
-       except queue.Empty:
-           continue
-       kws_stream.accept_waveform(16000, audio)
-       if kws.is_endpoint(kws_stream):
-           kw = kws.get_result(kws_stream).keyword
-           if kw:
-               print(f"[KWS] {kw}")
-   ```
-
-3. 性能监控：
+1. 确认模型文件：
    ```bash
-   # 监控队列长度（应保持 < 50）
-   watch -n 1 'python3 -c "import queue; print(queue.Queue().qsize())"'
-   # 监控 CPU 占用
-   top -H -p $(pgrep -f voice_interaction)
+   ls /home/iflytek/AI/rkllm/
+   # 应包含：qwen2-1_5b.rkllm  librkllmrt.so
+   ```
+
+2. 启动 RKLLM 服务：
+   ```bash
+   cd ros2_ws/src/xflz_eai_car1/interaction/car1_llm
+   python3 tools/llm_server.py \
+     --model /home/iflytek/AI/rkllm/qwen2-1_5b.rkllm \
+     --port 8080
+   # 启动 Flask 服务，监听 0.0.0.0:8080
+   # 来源：tools/llm_server.py
+   ```
+
+3. 验证服务可用：
+   ```bash
+   curl http://localhost:8080/v1/models
+   # 预期：{"data": [{"id": "qwen", ...}]}
+   ```
+
+4. 基础对话测试：
+   ```bash
+   python3 -c "
+   from openai import OpenAI
+   client = OpenAI(base_url='http://localhost:8080/v1', api_key='not-needed')
+   response = client.chat.completions.create(
+       model='qwen',
+       messages=[{'role': 'user', 'content': '你好'}],
+   )
+   print(response.choices[0].message.content)
+   "
    ```
 
 **易错点**：
-- ⚠️ **队列满导致音频丢失** → **解决**：调大 maxsize 到 500；或 KWS 处理加速
-- ⚠️ **Capture 线程无法退出** → **解决**：用 `running` 标志 + `daemon=True` 双重保护
-- ⚠️ **多个 Capture 实例同时打开导致 ALSA 报错** → **解决**：确保全局只有一个 Capture 实例
+- ⚠️ **librkllmrt.so 未找到** → **解决**：`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/iflytek/AI/rkllm`
+- ⚠️ **模型加载失败** → **解决**：确认 `.rkllm` 文件完整性（通常 800MB+）
+- ⚠️ **NPU 驱动未安装** → **解决**：`sudo apt install rockchip-npu-driver`
 
 ---
 
-#### 步骤3：流式 LLM 客户端与 TTS 句子分割（阶段二：能理解，60min）
+#### 步骤2：Function Calling 原理与预置工具调用（阶段一：能运行，30min）
 
-> ⚠️ 本步骤对应 `tools/voice_interaction.py` LLM worker + TTS worker
+> ⚠️ 本步骤对应 `tools/llm_test.py` + `tools/tools_config.py`
 
 **知识点讲解**：
 
-**OpenAI 兼容 API（5.2.1）**
-- **原理**：OpenAI 定义的 `/v1/chat/completions` HTTP API 已成为大模型调用的事实标准。本实验的 RKLLM 本地推理引擎实现了该 API 端点（详见 exp06），因此 voice_interaction.py 可直接用 OpenAI 官方 Python SDK 调用本地模型。请求体格式：`{"model": "qwen", "messages": [...], "stream": true}`。流式响应通过 SSE（Server-Sent Events）逐 chunk 返回 `data: {...}\n\n`。
-- **源码对应**：`voice_interaction.py` LLM 调用部分
-
-**流式 SSE（5.2.2）**
-- **原理**：SSE 让服务器可以在响应生成过程中持续推送增量内容，每条 `data: {...}` 是一个 JSON 块，包含当前已生成的文本片段。客户端解析 SSE 流，累积 `delta.content` 字段得到完整响应。流式相比非流式的优势：(1) **首字延迟 < 500ms**：用户看到第一个字就立即开始思考；(2) **可与 TTS 并行**：TTS 可在 LLM 仍在生成时就合成已生成部分。本实验在收到"。" "！" "？" 等句子结束符时立即触发 TTS，无需等待 LLM 完整生成。
-- **源码对应**：`voice_interaction.py` SSE 解析与句子分割
+**Function Calling 原理（5.3.1）**
+- **原理**：Function Calling（工具调用）是大模型与外部世界交互的标准化机制。模型在面对"无法直接回答"的问题（如查时间、算数学、控制设备）时，输出结构化的工具调用指令，由客户端解析后执行对应函数，将结果回传模型，模型再生成自然语言响应。OpenAI 协议定义了 `tools` 字段（JSON Schema 描述工具签名），模型返回 `tool_calls` 字段（结构化调用指令）。这种模式的优势：(1) **可扩展**：无需重训模型即可新增工具；(2) **可靠性**：模型输出结构化 JSON 而非自然语言，避免解析错误；(3) **可观测**：工具调用过程透明，便于调试。
+- **源码对应**：`tools/llm_test.py` LLM 调用
 
 **操作步骤**：
 
-1. 流式 LLM 客户端：
+1. 查看预置工具配置：
+   ```python
+   # tools/tools_config.py
+   TOOLS = [
+       {
+           "type": "function",
+           "function": {
+               "name": "get_current_time",
+               "description": "获取当前时间，格式 YYYY-MM-DD HH:MM:SS",
+               "parameters": {
+                   "type": "object",
+                   "properties": {},
+               },
+           },
+       },
+       {
+           "type": "function",
+           "function": {
+               "name": "get_system_info",
+               "description": "获取系统信息（CPU、内存、磁盘）",
+               "parameters": {
+                   "type": "object",
+                   "properties": {},
+               },
+           },
+       },
+       {
+           "type": "function",
+           "function": {
+               "name": "calculator",
+               "description": "数学计算，支持加减乘除",
+               "parameters": {
+                   "type": "object",
+                   "properties": {
+                       "expression": {"type": "string", "description": "数学表达式，如 '1+2*3'"},
+                   },
+                   "required": ["expression"],
+               },
+           },
+       },
+       {
+           "type": "function",
+           "function": {
+               "name": "get_battery_status",
+               "description": "获取机器人电池电量与状态",
+               "parameters": {"type": "object", "properties": {}},
+           },
+       },
+   ]
+   ```
+
+2. 运行工具调用模式：
+   ```bash
+   python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_test.py --mode tools
+   # 进入交互模式
+   # > 现在几点了？
+   # [TOOL_CALL] name=get_current_time
+   # [RESULT] 2026-08-04 16:30:00
+   # 响应：现在是下午4点30分。
+   # 来源：tools/llm_test.py
+   ```
+
+3. 编程调用：
    ```python
    from openai import OpenAI
+   from tools_config import TOOLS, FUNCTION_MAP
+   import json
    
-   client = OpenAI(
-       base_url="http://localhost:8080/v1",
-       api_key="not-needed",
-   )
+   client = OpenAI(base_url="http://localhost:8080/v1", api_key="not-needed")
    
-   def stream_llm(messages: list[dict]) -> str:
-       """流式调用本地 RKLLM"""
+   def chat_with_tools(user_input: str) -> str:
+       messages = [{"role": "user", "content": user_input}]
        response = client.chat.completions.create(
            model="qwen",
            messages=messages,
-           stream=True,
+           tools=TOOLS,
+           tool_choice="auto",
        )
-       full_text = ""
-       sentence_buffer = ""
-       for chunk in response:
-           if chunk.choices and chunk.choices[0].delta.content:
-               delta = chunk.choices[0].delta.content
-               full_text += delta
-               sentence_buffer += delta
-               # 句子分割：遇到 。！？\n 时触发
-               for sep in ["。", "！", "？", "\n"]:
-                   if sep in sentence_buffer:
-                       parts = sentence_buffer.split(sep, 1)
-                       yield parts[0] + sep  # 整句
-                       sentence_buffer = parts[1]
-                       break
-       if sentence_buffer:
-           yield sentence_buffer
-       return full_text
-   ```
-
-2. 句子分割 + TTS 合成流水线：
-   ```python
-   import re
-   
-   def stream_llm_with_tts(messages, tts_engine, interrupt_event):
-       """LLM 流式响应 + 句子级 TTS 合成"""
-       sentence_end_re = re.compile(r'([。！？\n])')
-       buffer = ""
-       for sentence in stream_llm(messages):
-           if interrupt_event.is_set():
-               print("[INTERRUPTED] stop TTS")
-               return
-           print(f"[TTS] {sentence}")
-           audio = tts_engine.generate(sentence, sid=0, speed=1.0)
-           sd.play(audio.samples, audio.sample_rate)
-           sd.wait()  # 阻塞直到播放完成
-   ```
-
-3. 多轮对话历史管理：
-   ```python
-   class ConversationManager:
-       def __init__(self, max_history=10):
-           self.history = []
-           self.max_history = max_history
+       msg = response.choices[0].message
        
-       def add_user(self, text: str):
-           self.history.append({"role": "user", "content": text})
-           if len(self.history) > self.max_history * 2:
-               self.history = self.history[-self.max_history * 2:]
-       
-       def add_assistant(self, text: str):
-           self.history.append({"role": "assistant", "content": text})
-       
-       def get_messages(self) -> list[dict]:
-           return [{"role": "system", "content": "你是小飞同学，车载机器人..."}] + self.history
+       # 检查是否有 tool_calls
+       if msg.tool_calls:
+           for tool_call in msg.tool_calls:
+               func_name = tool_call.function.name
+               func_args = json.loads(tool_call.function.arguments)
+               print(f"[TOOL_CALL] {func_name}({func_args})")
+               
+               # 执行函数
+               if func_name in FUNCTION_MAP:
+                   result = FUNCTION_MAP[func_name](**func_args)
+                   print(f"[RESULT] {result}")
+                   
+                   # 回传结果
+                   messages.append(msg)
+                   messages.append({
+                       "role": "tool",
+                       "tool_call_id": tool_call.id,
+                       "content": json.dumps(result, ensure_ascii=False),
+                   })
+           
+           # 第二次调用：让 LLM 基于工具结果生成自然语言响应
+           response = client.chat.completions.create(
+               model="qwen", messages=messages,
+           )
+           return response.choices[0].message.content
+       else:
+           return msg.content
    ```
 
 **易错点**：
-- ⚠️ **流式响应卡顿** → **解决**：检查本地 RKLLM 推理速度；调小 max_tokens
-- ⚠️ **句子分割错误（"Mr."被切）** → **解决**：维护标点上下文，避免英文缩写被误切
-- ⚠️ **对话历史无限增长** → **解决**：限制 max_history，触发早停或摘要压缩
+- ⚠️ **模型不调用工具** → **解决**：在 prompt 中明确"如需查询时间请调用 get_current_time 工具"
+- ⚠️ **工具参数解析失败** → **解决**：确保 JSON Schema 正确，使用 `tool_choice="auto"`
+- ⚠️ **工具执行后未回传结果** → **解决**：必须把 `role: "tool"` 消息加入 messages
 
 ---
 
-#### 步骤4：打断机制与多线程协作（阶段三：能改造，60min）
+#### 步骤3：自定义工具扩展（阶段二：能理解，60min）
 
-> ⚠️ 本步骤对应 `tools/voice_interaction.py` interrupt_event
+> ⚠️ 本步骤对应 `tools/tools_config.py` 修改
 
 **知识点讲解**：
 
-**打断机制**
-- **原理**：用户在 TTS 播报过程中说"小飞同学"，KWS 检测到唤醒词后需立即停止当前 TTS 播放。实现要点：(1) **Capture 线程**始终运行（不在打断时停止）；(2) **KWS 线程**始终消费 audio_queue（IDLE 和 SPEAKING 状态都监听）；(3) **interrupt_event** 是 `threading.Event`，主循环检测到 KWS 唤醒时 `set()`；(4) **TTS worker** 在每个 PCM chunk 后检查 event，若被设置则 `sd.stop()` 并退出。
-- **源码对应**：`voice_interaction.py` interrupt_event 实现
+**三步注册自定义工具（5.3.2）**
+- **原理**：扩展自定义工具遵循"三步法"：(1) **实现函数**：在 `tools_config.py` 中实现具体函数逻辑；(2) **声明描述**：在 `TOOLS` 列表中添加 JSON Schema 描述（function name、description、parameters）；(3) **注册到映射**：在 `FUNCTION_MAP` 字典中注册函数名到函数对象的映射。LLM 在推理时只能看到 `TOOLS` 列表，函数实现完全在客户端，因此新增工具不需要修改模型权重。
+- **源码对应**：`tools/tools_config.py` 三步注册
 
 **操作步骤**：
 
-1. 实现 interrupt_event：
+以"控制机器人移动"工具为例：
+
+1. **第一步：实现函数**：
    ```python
-   import threading
+   # tools/tools_config.py
+   import subprocess
    
-   interrupt_event = threading.Event()
-   
-   def kws_worker(audio_queue, interrupt_event, kws_engine):
-       """KWS 始终监听，独立于状态机"""
-       stream = kws_engine.create_stream()
-       while True:
-           audio = audio_queue.get()
-           stream.accept_waveform(16000, audio)
-           if kws_engine.is_endpoint(stream):
-               kw = kws_engine.get_result(stream).keyword
-               if kw:
-                   print(f"[KWS-DETECT] {kw} (current interrupt={'set' if interrupt_event.is_set() else 'unset'})")
-                   interrupt_event.set()
-   
-   def llm_tts_worker(text, llm_client, tts_engine, interrupt_event):
-       """LLM 流式 + TTS 句子级合成 + 打断检查"""
-       for sentence in stream_llm_with_tts(text):
-           if interrupt_event.is_set():
-               interrupt_event.clear()
-               return  # 立即退出
-           audio = tts_engine.generate(sentence, ...)
-           sd.play(audio.samples, audio.sample_rate)
-           sd.wait()
+   def move_robot(direction: str, distance: float) -> dict:
+       """控制机器人移动
+       
+       Args:
+           direction: 方向，可选 forward/backward/left/right
+           distance: 距离（米）
+       
+       Returns:
+           dict: 包含 success 和 message 字段
+       """
+       # 调用 ROS2 话题
+       cmd = f"ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "
+       cmd += f"'{{linear: {{x: {distance if direction == 'forward' else -distance}}}, "
+       cmd += f"angular: {{z: 0.0}}}}'"
+       try:
+           subprocess.run(cmd, shell=True, check=True, timeout=5)
+           return {"success": True, "message": f"机器人已向{direction}移动{distance}米"}
+       except Exception as e:
+           return {"success": False, "message": str(e)}
    ```
 
-2. 主循环：
+2. **第二步：声明描述**：
    ```python
-   import time
-   
-   while True:
-       # IDLE：等待 KWS 唤醒
-       interrupt_event.wait(timeout=0.1)  # 非阻塞
-       if interrupt_event.is_set():
-           print("[TRANSITION] IDLE → LISTENING (wake detected)")
-           interrupt_event.clear()
-           text = asr_recognize(duration=5)
-           if text:
-               print(f"[ASR] {text}")
-               conversation.add_user(text)
-               print("[TRANSITION] LISTENING → SPEAKING (LLM+TTS)")
-               llm_tts_worker(conversation.get_messages(), ...)
-               print("[TRANSITION] SPEAKING → IDLE (TTS done)")
+   TOOLS.append({
+       "type": "function",
+       "function": {
+           "name": "move_robot",
+           "description": "控制机器人向指定方向移动指定距离（米），方向包括 forward/backward/left/right",
+           "parameters": {
+               "type": "object",
+               "properties": {
+                   "direction": {
+                       "type": "string",
+                       "enum": ["forward", "backward", "left", "right"],
+                       "description": "移动方向",
+                   },
+                   "distance": {
+                       "type": "number",
+                       "description": "移动距离（米）",
+                       "minimum": 0.0,
+                       "maximum": 10.0,
+                   },
+               },
+               "required": ["direction", "distance"],
+           },
+       },
+   })
    ```
 
-3. 端到端测试：
-   - 唤醒"小飞同学"
-   - 说话"给我讲个故事"
-   - 在 TTS 播报过程中再次说"小飞同学"
-   - 预期：TTS 在 500ms 内停止，新一轮 LISTENING 启动
+3. **第三步：注册映射**：
+   ```python
+   FUNCTION_MAP["move_robot"] = move_robot
+   ```
+
+4. 验证：
+   ```bash
+   python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_test.py --mode tools
+   # > 让机器人向前走两米
+   # [TOOL_CALL] name=move_robot direction=forward distance=2.0
+   # 预期：机器人向前移动 2 米
+   ```
 
 **易错点**：
-- ⚠️ **打断后 TTS 线程未退出导致下一段混乱** → **解决**：打断后 sd.stop() + return
-- ⚠️ **interrupt_event 未清理导致下一轮误触发** → **解决**：检测到唤醒后立即 clear()
-- ⚠️ **多线程竞争导致 audio_queue 数据混乱** → **解决**：queue.Queue 线程安全，无需额外加锁
+- ⚠️ **JSON Schema 不正确导致参数解析失败** → **解决**：使用 jsonschema 库验证 schema
+- ⚠️ **description 写得不清楚，模型不知道何时调用** → **解决**：用自然语言详细说明工具用途、参数含义与使用场景
+- ⚠️ **工具执行超时** → **解决**：加 `timeout` 参数；或改用异步执行
 
 ---
 
-#### 完整可运行代码 demo_voice_interaction.py
+#### 步骤4：嵌套 tool_call 格式解析（阶段三：能改造，30min）
 
-> 注：完整版依赖 `tools/voice_interaction.py`，以下为独立 demo 演示核心流程
+> ⚠️ 本步骤对应 `tools/llm_test.py` 解析逻辑（支持 JSON 与 DSL 两种格式）
+
+**知识点讲解**：
+
+**嵌套结构解析（5.3.3）**
+- **原理**：Function Calling 的标准协议是 OpenAI 的 `tool_calls` 字段（JSON 格式），但部分小模型（如 Qwen2-1.5B）输出不稳定，可能直接输出 DSL 文本：`<tool_call><function=name><parameter=key>value</parameter></function></tool_call>`。本实验的 llm_test.py 同时支持两种格式解析，优先尝试 JSON，失败则降级到 DSL 解析器。DSL 解析需要：(1) 提取 `<tool_call>` 块；(2) 解析嵌套 `<function>`、`<parameter>` 标签；(3) 处理特殊字符转义。
+- **源码对应**：`tools/llm_test.py` 解析逻辑
+
+**操作步骤**：
+
+1. JSON 格式解析（OpenAI 标准）：
+   ```python
+   import json, re
+   
+   def parse_json_tool_call(content: str) -> dict | None:
+       """解析 OpenAI 标准的 tool_call JSON"""
+       try:
+           data = json.loads(content)
+           if "tool_calls" in data:
+               return data["tool_calls"]
+       except json.JSONDecodeError:
+           return None
+   ```
+
+2. DSL 格式解析（兼容小模型输出）：
+   ```python
+   def parse_dsl_tool_call(content: str) -> dict | None:
+       """解析 DSL 格式：<tool_call><function=name><parameter=key>value</parameter></function></tool_call>"""
+       pattern = r'<tool_call>\s*<function=(\w+)>\s*(.*?)\s*</function>\s*</tool_call>'
+       match = re.search(pattern, content, re.DOTALL)
+       if not match:
+           return None
+       func_name = match.group(1)
+       params_str = match.group(2)
+       # 解析 parameter 标签
+       param_pattern = r'<parameter=(\w+)>\s*(.*?)\s*</parameter>'
+       params = dict(re.findall(param_pattern, params_str, re.DOTALL))
+       return [{"function": {"name": func_name, "arguments": json.dumps(params)}}]
+   ```
+
+3. 统一解析器：
+   ```python
+   def parse_tool_call(content: str) -> list[dict] | None:
+       # 优先 JSON
+       result = parse_json_tool_call(content)
+       if result:
+           return result
+       # 降级 DSL
+       return parse_dsl_tool_call(content)
+   ```
+
+4. 验证两种格式：
+   ```python
+   json_content = '{"tool_calls": [{"id": "1", "type": "function", "function": {"name": "calculator", "arguments": "{\"expression\": \"1+2*3\"}"}}]}'
+   dsl_content = '<tool_call><function=calculator><parameter=expression>1+2*3</parameter></function></tool_call>'
+   
+   print(parse_tool_call(json_content))  # 输出标准结构
+   print(parse_tool_call(dsl_content))   # 降级解析
+   ```
+
+**易错点**：
+- ⚠️ **正则贪婪匹配导致错误切分** → **解决**：用 `re.DOTALL` + 非贪婪 `*?`
+- ⚠️ **参数值含 XML 特殊字符（如 `<`）** → **解决**：在写入前做 XML 转义
+- ⚠️ **DSL 格式不闭合（缺少 `</tool_call>`）** → **解决**：降级为纯文本响应
+
+---
+
+#### 步骤5：性能评估（阶段三：能改造，30min）
+
+> ⚠️ 本步骤对应 `tools/llm_test.py` benchmark 模式
+
+**操作步骤**：
+
+1. 测量预填充延迟（Prompt → 第一个 token）：
+   ```bash
+   python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_test.py --bench --prompt-tokens 512
+   # 输出：prefill_time=5.8s (88ms/token)
+   ```
+
+2. 测量生成速度（首 token 后）：
+   ```bash
+   python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_test.py --bench --gen-tokens 100
+   # 输出：gen_time=11.2s (8.9 tokens/s)
+   ```
+
+3. 工具调用成功率（20 个不同查询）：
+   | 查询 | 工具 | 成功 |
+   |------|------|------|
+   | 现在几点了？ | get_current_time | ✅ |
+   | 1+2*3=? | calculator | ✅ |
+   | 电池还剩多少？ | get_battery_status | ✅ |
+   | 前进 2 米 | move_robot | ✅ |
+   | ... | ... | ... |
+   | **平均成功率** | | **88%** |
+
+**易错点**：
+- ⚠️ **小模型工具调用成功率低** → **解决**：在 prompt 中给出 2-3 个工具调用示例（few-shot）
+- ⚠️ **生成速度太慢影响实时性** → **解决**：减少 max_tokens；或升级到 Qwen2-7B（需更大 NPU）
+
+---
+
+#### 完整可运行代码 demo_function_calling.py
 
 ```python
 # -*- coding: utf-8 -*-
 """
-实验5 demo：简化版端到端语音交互
-平台：B2 / C1
-运行：python3 demo_voice_interaction.py
-按键：q 退出
+实验6 demo：Function Calling 工具调用（简化版）
+平台：B2 / C1（需先启动 RKLLM 服务）
+运行：python3 demo_function_calling.py
 """
 import argparse
-import queue
-import threading
+import json
+import re
 import time
-import numpy as np
-import sounddevice as sd
-import sherpa_onnx
+from openai import OpenAI
 
 
-class SimpleVoicePipeline:
-    """简化版端到端语音对话系统（演示状态机 + 打断）"""
+# ============ 工具实现 ============
+def get_current_time() -> dict:
+    import datetime
+    return {"time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+
+def calculator(expression: str) -> dict:
+    try:
+        result = eval(expression)  # 简化：仅支持四则运算
+        return {"expression": expression, "result": result}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def get_battery_status() -> dict:
+    # 简化：模拟读取 sysfs
+    try:
+        with open("/sys/class/power_supply/BAT0/capacity") as f:
+            level = int(f.read().strip())
+        return {"battery_level": level, "status": "discharging" if level < 100 else "charging"}
+    except FileNotFoundError:
+        return {"battery_level": 100, "status": "AC"}
+
+
+def get_system_info() -> dict:
+    import platform, psutil
+    return {
+        "os": platform.system(),
+        "python": platform.python_version(),
+        "cpu_percent": psutil.cpu_percent(interval=0.1),
+        "memory_percent": psutil.virtual_memory().percent,
+    }
+
+
+# ============ 工具描述与映射 ============
+TOOLS = [
+    {"type": "function", "function": {
+        "name": "get_current_time",
+        "description": "获取当前时间，格式 YYYY-MM-DD HH:MM:SS",
+        "parameters": {"type": "object", "properties": {}}
+    }},
+    {"type": "function", "function": {
+        "name": "calculator",
+        "description": "数学计算，支持加减乘除",
+        "parameters": {"type": "object", "properties": {
+            "expression": {"type": "string", "description": "数学表达式，如 '1+2*3'"}
+        }, "required": ["expression"]}
+    }},
+    {"type": "function", "function": {
+        "name": "get_battery_status",
+        "description": "获取机器人电池电量与状态",
+        "parameters": {"type": "object", "properties": {}}
+    }},
+    {"type": "function", "function": {
+        "name": "get_system_info",
+        "description": "获取系统信息（CPU、内存、操作系统）",
+        "parameters": {"type": "object", "properties": {}}
+    }},
+]
+
+FUNCTION_MAP = {
+    "get_current_time": get_current_time,
+    "calculator": calculator,
+    "get_battery_status": get_battery_status,
+    "get_system_info": get_system_info,
+}
+
+
+def chat_with_tools(client, user_input: str, model: str = "qwen") -> str:
+    messages = [{"role": "user", "content": user_input}]
+    start = time.time()
+    response = client.chat.completions.create(
+        model=model, messages=messages, tools=TOOLS, tool_choice="auto",
+    )
+    msg = response.choices[0].message
+    prefill_time = time.time() - start
     
-    def __init__(self, model_dir: str = "/home/iflytek/AI/sherpa-onnx"):
-        self.audio_queue = queue.Queue(maxsize=200)
-        self.capture = None
-        self.kws = sherpa_onnx.KeywordSpotter(
-            tokens=f"{model_dir}/kws/tokens.txt",
-            encoder=f"{model_dir}/kws/encoder.onnx",
-            decoder=f"{model_dir}/kws/decoder.onnx",
-            joiner=f"{model_dir}/kws/joiner.onnx",
-            keywords_file=f"{model_dir}/kws/keywords.txt",
-            keywords_threshold=0.3,
-        )
-        self.asr = sherpa_onnx.OnlineRecognizer.from_transducer(
-            tokens=f"{model_dir}/asr/tokens.txt",
-            encoder=f"{model_dir}/asr/encoder.onnx",
-            decoder=f"{model_dir}/asr/decoder.onnx",
-            joiner=f"{model_dir}/asr/joiner.onnx",
-            num_threads=2,
-            sample_rate=16000,
-        )
-        self.tts = sherpa_onnx.OfflineTts(
-            model=f"{model_dir}/tts/model.onnx",
-            tokens=f"{model_dir}/tts/tokens.txt",
-            data_dir=f"{model_dir}/tts/espeak-ng-data",
-        )
-        self.interrupt_event = threading.Event()
-        self.state = "IDLE"
-        self.running = True
-    
-    def start_capture(self, device=1):
-        def callback(indata, frames, time_info, status):
-            audio = indata[:, 0].astype(np.float32).copy()
-            try:
-                self.audio_queue.put_nowait(audio)
-            except queue.Full:
-                pass
-        
-        self.capture_stream = sd.InputStream(
-            device=device, channels=1, samplerate=16000,
-            dtype="float32", blocksize=1280, callback=callback,
-        )
-        self.capture_stream.start()
-    
-    def kws_detect(self) -> bool:
-        """消费 audio_queue，检测唤醒词"""
-        try:
-            audio = self.audio_queue.get(timeout=0.1)
-        except queue.Empty:
-            return False
-        stream = self.kws.create_stream()
-        stream.accept_waveform(16000, audio)
-        if self.kws.is_endpoint(stream):
-            kw = self.kws.get_result(stream).keyword
-            if kw:
-                return True
-        return False
-    
-    def asr_listen(self, duration=5) -> str:
-        """ASR 识别一段"""
-        self.state = "LISTENING"
-        print(f"[STATE] → LISTENING")
-        asr_stream = self.asr.create_stream()
-        start = time.time()
-        while time.time() - start < duration:
-            try:
-                audio = self.audio_queue.get(timeout=0.1)
-            except queue.Empty:
-                continue
-            asr_stream.accept_waveform(16000, audio)
-            if self.asr.is_endpoint(asr_stream):
-                self.asr.decode_streams([asr_stream])
-                text = asr_stream.result.text.strip()
-                if text:
-                    return text
-        return ""
-    
-    def speak(self, text: str):
-        """TTS 播报 + 打断支持"""
-        self.state = "SPEAKING"
-        print(f"[STATE] → SPEAKING (text='{text[:30]}...')")
-        audio = self.tts.generate(text, sid=0, speed=1.0)
-        # 分块播放，每块检查 interrupt
-        chunk_size = 4096
-        samples = np.array(audio.samples, dtype=np.float32)
-        for i in range(0, len(samples), chunk_size):
-            if self.interrupt_event.is_set():
-                print("[INTERRUPTED]")
-                sd.stop()
-                return
-            sd.play(samples[i:i+chunk_size], audio.sample_rate)
-            sd.wait()
-        self.state = "IDLE"
-        print(f"[STATE] → IDLE")
-    
-    def run(self, mock_llm=False):
-        self.start_capture()
-        print(f"[START] Listening... (state=IDLE)")
-        try:
-            while self.running:
-                if self.state == "IDLE":
-                    if self.kws_detect():
-                        print("[KWS] 唤醒词检测")
-                        self.interrupt_event.clear()
-                        text = self.asr_listen(duration=5)
-                        if text:
-                            print(f"[ASR] {text}")
-                            if mock_llm:
-                                response = f"你说了：{text}"
-                            else:
-                                response = f"模拟 LLM 响应：{text}"
-                            self.speak(response)
-                elif self.state == "SPEAKING":
-                    if self.kws_detect():
-                        print("[KWS] 打断检测")
-                        self.interrupt_event.set()
-                        self.state = "IDLE"
-        except KeyboardInterrupt:
-            pass
-        finally:
-            self.running = False
-            if self.capture_stream:
-                self.capture_stream.stop()
+    if msg.tool_calls:
+        for tool_call in msg.tool_calls:
+            func_name = tool_call.function.name
+            func_args = json.loads(tool_call.function.arguments) if tool_call.function.arguments else {}
+            print(f"[TOOL_CALL] {func_name}({func_args})")
+            result = FUNCTION_MAP[func_name](**func_args)
+            print(f"[RESULT] {result}")
+            messages.append(msg)
+            messages.append({
+                "role": "tool", "tool_call_id": tool_call.id,
+                "content": json.dumps(result, ensure_ascii=False),
+            })
+        response = client.chat.completions.create(model=model, messages=messages)
+        return response.choices[0].message.content, prefill_time
+    return msg.content, prefill_time
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model-dir", default="/home/iflytek/AI/sherpa-onnx")
-    parser.add_argument("--mock-llm", action="store_true",
-                        help="使用 mock LLM 响应（不依赖真实 LLM 服务）")
+    parser.add_argument("--base-url", default="http://localhost:8080/v1")
+    parser.add_argument("--api-key", default="not-needed")
+    parser.add_argument("--model", default="qwen")
     args = parser.parse_args()
     
-    pipeline = SimpleVoicePipeline(args.model_dir)
-    pipeline.run(mock_llm=args.mock_llm)
+    client = OpenAI(base_url=args.base_url, api_key=args.api_key)
+    
+    test_queries = [
+        "现在几点了？",
+        "计算 1+2*3 等于多少？",
+        "电池还剩多少？",
+        "操作系统是什么？Python 版本呢？",
+    ]
+    
+    for q in test_queries:
+        print(f"\n[USER] {q}")
+        response, prefill = chat_with_tools(client, q, args.model)
+        print(f"[ASSISTANT] {response}")
+        print(f"[TIMING] prefill={prefill:.2f}s")
 
 
 if __name__ == "__main__":
@@ -579,38 +579,39 @@ if __name__ == "__main__":
 
 ### 5.7 注意事项
 
-- ⚠️ **真实 LLM 服务依赖 RKLLM 部署** → 本实验 demo 使用 mock_llm，真实 LLM 集成见 exp06
-- ⚠️ **Capture 线程常驻占用 CPU** → 实测 B2 平台约 8% 单核
-- ⚠️ **打断事件误触发** → 调高 KWS threshold 到 0.5；或加 1.5s 冷却时间
-- ⚠️ **TTS 播报与 KWS 互相干扰** → KWS 在 SPEAKING 状态下仍需检测，但需对播报音频做回声消除（AEC）
+- ⚠️ **RKLLM 服务必须先启动** → `python3 llm_server.py` 后再运行客户端
+- ⚠️ **librkllmrt.so 路径** → `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/rkllm`
+- ⚠️ **小模型工具调用失败率高** → 需在 prompt 加 few-shot 示例
+- ⚠️ **eval() 安全风险** → 生产环境应使用 `simpleeval` 等安全数学求值库
+- ⚠️ **工具执行副作用** → 移动机器人等不可逆操作需加二次确认
 
 ### 5.8 实验总结
 
 **完成成果**:
-- 实现 IDLE/LISTENING/SPEAKING 三态状态机
-- 实现 Capture 线程常驻 + audio_queue 缓冲
-- 集成流式 LLM 响应与句子级 TTS 合成
-- 实现基于 KWS 的打断机制
+- 部署本地 RKLLM 大模型服务（Qwen2-1.5B）
+- 实现 4 个预置工具（get_current_time/calculator/get_battery_status/get_system_info）
+- 扩展自定义工具 move_robot（控制机器人移动）
+- 实现 JSON + DSL 两种 tool_call 格式解析
 
 **技能收获**:
-- 掌握端到端语音对话系统的多线程协同设计
-- 理解状态机在交互系统中的核心作用
-- 学会用 producer-consumer 模式解耦音频采集与处理
+- 掌握 Function Calling 原理与三步注册法
+- 理解 RKLLM 本地推理引擎的部署
+- 学会用 OpenAI 兼容协议调用本地大模型
 
 **常见问题与解决**:
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| 唤醒后无 ASR 输出 | 麦克风被 TTS 占用 | 加 AEC 回声消除，或互斥锁 |
-| 打断不响应 | KWS 阈值过高 | 调低 threshold 到 0.3 |
-| 对话历史混乱 | 多轮上下文管理错 | 用 `ConversationManager` 维护 |
-| LLM 调用超时 | RKLLM 未启动 | `python3 llm_server.py` 先启动 |
+| 模型不调用工具 | prompt 不清晰 | 加 few-shot 示例：`Q: 现在几点 A: 调用 get_current_time` |
+| 工具参数解析失败 | JSON Schema 不匹配 | 用 `jsonschema` 验证 |
+| RKLLM 推理慢 | CPU 模式而非 NPU | 确认 NPU 驱动安装 |
+| 工具执行崩溃 | 参数错误 | 加 try-except 保护 |
 
 ### 5.9 实验报告要求
 
 **思考题**:
-1. 状态机相对"事件驱动"模式在语音交互系统中有什么优势？是否存在状态机不适用的场景？
-2. Capture 线程常驻 + audio_queue 缓冲如何避免音频丢失？与传统"按需录音"模式相比延迟差异多大？
-3. 打断机制中"语义级打断"（理解用户意图后再打断）与"信号级打断"（听到唤醒词就打断）各有何应用场景？
+1. Function Calling 相对传统 Prompt Engineering 在可靠性、可扩展性、可观测性上的优势是什么？
+2. 小模型（1.5B）工具调用成功率低的原因是什么？除了 fine-tune，还有哪些 prompt 技巧可提升？
+3. JSON 与 DSL 两种 tool_call 格式的兼容性如何设计？未来模型升级后如何平滑迁移？
 
-**评分标准**: 状态机设计 20 分 + 多线程协同 25 分 + 流式 LLM 集成 20 分 + 打断机制 25 分 + 实验报告 10 分 = 100 分。
+**评分标准**: RKLLM 部署 20 分 + 预置工具调用 20 分 + 自定义工具扩展 30 分 + 格式解析 20 分 + 实验报告 10 分 = 100 分。

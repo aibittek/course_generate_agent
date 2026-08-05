@@ -9,7 +9,7 @@ prerequisites:
 total_hours: 32
 theory_hours: 0
 lab_hours: 32
-experiment_count: 7
+experiment_count: 6
 tech_stack:
   - 边缘计算
   - VAD
@@ -19,53 +19,44 @@ tech_stack:
   - NLP
   - 大模型
 hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
-description: 本课程围绕边缘计算环境下的语音交互系统展开，覆盖语音前端处理、唤醒、识别、合成、语义理解、情绪感知与端到端对话集成全流程，强调本地化部署与低延迟实时交互。
+description: 本课程围绕边缘计算环境下的语音交互系统展开，覆盖语音唤醒、识别、合成、语义理解、情绪感知与端到端对话集成全流程，强调本地化部署与低延迟实时交互。
 experiments:
   - id: exp01
     experiment_id: 1
-    name: 基于边缘计算的语音交互环境搭建实验
+    name: 基于讯飞六麦阵列的串口通信与唤醒事件实验
     hours: 4
     difficulty: 1
     difficulty_stars: "⭐"
     experiment_type: 验证性
-    source_code_path: source-codes/exp01/
+    source_code_path: ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/
     objectives:
-      - 掌握边缘处理芯片上语音模型库的部署方法
-      - 能够完成语音前端处理全流程的环境配置
+      - 理解串口通信（UART）基本概念与 pyserial 用法
+      - 掌握 AIUI 协议帧结构与字节级解析方法
+      - 能够通过 VID/PID 自动识别 USB 麦克风阵列
+      - 理解 6 麦环形阵列的声源定位原理（beam/angle）
+      - 掌握唤醒事件的回调机制与防抖策略
+      - 能够使用 Tkinter Canvas 可视化唤醒事件
     exp_content:
-      - 部署基于边缘处理芯片的开源语音模型库
-      - 配置语音前端点检测（VAD）模块
-      - 配置声纹识别、语音唤醒、语音识别（ASR）、语音合成（TTS）各模块环境
-      - 验证各模块功能是否正常工作
-    notes: 有资源，需修改
+      - 步骤1：u盘插拔/USB插入日志观察，理解设备文件 /dev/ttyACM* 的本质
+      - 步骤2：阅读 uart_device.py，掌握 Serial 对象的 open/read/write/close
+      - 步骤3：阅读 xf_mic_array.py，理解 AIUI 协议帧结构（同步头+类型+长度+ID+payload+校验和）
+      - 步骤4：运行 xf_mic_array_gui.py 弹出 GUI，朗读唤醒词观察环形阵列高亮与方向箭头
+      - 步骤5：打断点跟踪 _handle_frame，理解伪同步头与校验和失败的容错处理
+      - 步骤6：理解 3 秒防抖窗口与 Lock 保护的并发安全
+      - 步骤7：扩展 PINYIN_MAP 加入自定义唤醒词
+      - 步骤8：使用 Canvas 绘制简单几何图形，掌握 0° 在正下方的极坐标约定
+      - 步骤9：使用 queue.Queue + after(50) 实现线程安全的事件刷新
+      - 步骤10：使用 psutil 监控 CPU 占用，验证常驻监听 < 5% 单核
+    notes: 源码已就位,位于 ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/;无需额外安装,直接 python3 运行
 
   - id: exp02
     experiment_id: 2
-    name: 基于关键词检测的语音唤醒实验
-    hours: 4
-    difficulty: 2
-    difficulty_stars: "⭐⭐"
-    experiment_type: 设计性
-    source_code_path: source-codes/exp02/
-    objectives:
-      - 掌握语音唤醒（KWS）的原理与部署方法
-      - 能够实现离线低功耗唤醒与误唤醒抑制
-    exp_content:
-      - 学习语音唤醒原理（关键词检测、小模型离线推理）
-      - 部署轻量级唤醒模型至边缘计算芯片
-      - 实现离线低功耗唤醒功能
-      - 实现误唤醒抑制策略
-      - 完成实时唤醒响应与回调触发测试
-    notes: 有资源，可复用
-
-  - id: exp03
-    experiment_id: 3
     name: 基于声学模型的语音识别实验
     hours: 4
     difficulty: 2
     difficulty_stars: "⭐⭐"
     experiment_type: 设计性
-    source_code_path: source-codes/exp03/
+    source_code_path: source-codes/exp02/
     objectives:
       - 掌握语音识别（ASR）的完整流程
       - 能够部署本地语音识别模型并评估识别准确率
@@ -76,14 +67,14 @@ experiments:
       - 输出识别文本并进行准确率评估（WER指标）
     notes: 有资源，可复用
 
-  - id: exp04
-    experiment_id: 4
+  - id: exp03
+    experiment_id: 3
     name: 基于声学模型与声码器的语音合成实验
     hours: 4
     difficulty: 2
     difficulty_stars: "⭐⭐"
     experiment_type: 设计性
-    source_code_path: source-codes/exp04/
+    source_code_path: source-codes/exp03/
     objectives:
       - 掌握语音合成（TTS）的基本原理
       - 能够部署本地TTS模型并实现参数可调的语音输出
@@ -94,14 +85,14 @@ experiments:
       - 完成音频流的实时采集与本地化播放验证
     notes: 有资源，可复用
 
-  - id: exp05
-    experiment_id: 5
+  - id: exp04
+    experiment_id: 4
     name: 端到端语音对话交互实验
-    hours: 4
+    hours: 8
     difficulty: 2
     difficulty_stars: "⭐⭐"
     experiment_type: 设计性
-    source_code_path: source-codes/exp05/
+    source_code_path: source-codes/exp04/
     objectives:
       - 掌握语音交互全链路集成方法
       - 能够构建完整的端到端人机对话系统
@@ -112,14 +103,14 @@ experiments:
       - 完成端到端人机对话交互系统的测试与优化
     notes: 有资源，可复用
 
-  - id: exp06
-    experiment_id: 6
+  - id: exp05
+    experiment_id: 5
     name: 基于大模型的语义理解实验
     hours: 8
     difficulty: 3
     difficulty_stars: "⭐⭐⭐"
     experiment_type: 综合性
-    source_code_path: source-codes/exp06/
+    source_code_path: source-codes/exp05/
     objectives:
       - 掌握意图识别与槽位提取方法
       - 能够实现对自然语言指令的结构化解析
@@ -132,14 +123,14 @@ experiments:
       - 了解Function Calling/MCP等最新方案作为替代实现
     notes: 有资源，需修改
 
-  - id: exp07
-    experiment_id: 7
+  - id: exp06
+    experiment_id: 6
     name: 基于多模态的语音情绪感知实验
     hours: 4
     difficulty: 3
     difficulty_stars: "⭐⭐⭐"
     experiment_type: 综合性
-    source_code_path: source-codes/exp07/
+    source_code_path: source-codes/exp06/
     objectives:
       - 掌握语音/文本双模态情绪识别方法
       - 能够实现基于情绪感知的智能助手应用设计
@@ -153,5 +144,5 @@ experiments:
 _source:
   csv_path: input/course_spec.csv
   csv_sha256: ff93e9e0720fad63e0315ed2e2603021ffce0783515ef16f6a87be9142643f64
-  parsed_at: 2026-08-04T19:30:41
+  parsed_at: 2026-08-05
   parser: spec-parser-skill

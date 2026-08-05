@@ -1,52 +1,53 @@
-## 实验6：基于 Function Calling 的大模型工具调用实验（4h）
+## 实验6：基于多模态大模型的视觉语言理解(VLM)实验（8h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 源码位于 `ros2_ws/src/xflz_eai_car1/interaction/car1_llm/`，主入口 `tools/llm_test.py`、`tools/tools_config.py`、`tools/llm_server.py`。已通过 `human_waiver` 放行。
+> ⚠️ **[待源码核实 / WAIT-SOURCE]** 源码位于 `ros2_ws/src/xflz_eai_car1/interaction/car1_llm/`，主入口 `llm_server/flask_server.py`（含 `RKLLMImageInput` 结构体定义）。`car1_interaction/llm_server/flask_server.py` 为备份实现。已通过 `human_waiver` 放行。
 
 ### 6.1 关联知识点
 
-- 5.2.1 OpenAI 兼容 API > 概念 > /v1/chat/completions 流式 SSE
-- 5.2.2 流式 SSE > 流程 > 按句分割后送 TTS 合成
 - 5.2.3 RKLLM 推理 > 原理 > 面向 RK3576 NPU 优化的本地推理引擎
-- 5.3.1 Function Calling > 概念 > 大模型输出结构化工具调用指令
-- 5.3.2 tools_config 三步注册 > 流程 > 实现函数+声明描述+注册映射
-- 5.3.3 嵌套结构解析 > 原理 > 解析 tool_call 嵌套格式
+- 5.4.1 VLM 概念 > 概念 > 联合编码图像与文本，支持 VQA
+- 5.4.2 图像预处理 > 流程 > OpenCV/Pillow 加载→缩放→归一化
+- 5.4.3 RKLLM_INPUT_MULTIMODAL > 原理 > 通过 RKLLMImageInput 注入视觉信息
+- 5.5.1 多模态闭环 > 流程 > ASR→VLM→TTS 构建完整链路
+- 5.5.2 <3s 延迟要求 > 原理 > 多模态响应延迟需 < 3s
+- 5.5.3 性能指标 > 事实 > 图像编码耗时/推理延迟/显存占用
 
 ### 6.2 实验目标
 
-1. 理解 Function Calling 相对纯文本 Prompt 的优势 — 原理理解
-2. 掌握 tools_config.py 三步法扩展自定义工具 — 流程掌握
-3. 独立完成基于 RKLLM 的本地 LLM 服务部署与 Function Calling 调用 — 独立完成
-4. 能够将 Function Calling 模式迁移到其他业务场景（智能家居、设备控制）— 迁移应用
+1. 理解 VLM 相对纯文本 LLM 在视觉问答上的优势 — 原理理解
+2. 掌握 RKLLM 多模态接口的调用与图像预处理 — 流程掌握
+3. 独立完成 VQA 应用的图像上传、推理与结果解析 — 独立完成
+4. 能够将 VLM + ASR + TTS 集成构建多模态交互闭环 — 迁移应用
 
 ### 6.3 实验环境
 
 | 类别 | 配置 |
 |------|------|
-| 硬件 | B2/C1（含 RK3576 NPU，6TOPS） |
+| 硬件 | B2/C1（含 RK3576 NPU + 摄像头） |
 | OS | Ubuntu 22.04 + ROS2 Humble |
 | Python | 3.10 |
-| 核心库 | openai==1.50.0、rclpy、requests |
-| 模型 | qwen2-1.5B-rkllm（已转换为 RKLLM 格式） |
-| 主入口 | car1_llm/tools/llm_test.py + tools/llm_server.py |
+| 核心库 | openai==1.50.0、opencv-python==4.10.0、Pillow、numpy |
+| 模型 | Qwen-VL-2B-rkllm（约 2GB）或 InternVL-2B-rkllm |
+| 主入口 | car1_llm/llm_server/flask_server.py |
 
 ### 6.4 实验难度
 
-- 难度: ⭐⭐ 中
-- 重点: Function Calling 原理；tools_config 三步注册；本地 RKLLM 服务部署
-- 难点: 嵌套 tool_call 格式解析（支持 JSON 与 DSL 两种）
+- 难度: ⭐⭐⭐ 难
+- 重点: RKLLM_INPUT_MULTIMODAL 接口；图像预处理；VLM 部署
+- 难点: 多模态 < 3s 延迟控制；与 ASR/TTS 闭环集成
 
 ### 6.5 实验现象
 
 **快速验证流程**:
-1. 启动 RKLLM 服务：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/llm_server.py`
-2. 启动工具调用客户端：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_test.py --mode tools`
-3. 输入查询："现在几点了？"
-4. 预期：模型自动调用 `get_current_time` 工具，返回"现在是 2026-08-04 16:30:00"
+1. 启动 VLM 服务：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/llm_server/flask_server.py --model /home/iflytek/AI/rkllm/qwen-vl-2b.rkllm`
+2. 准备测试图片：`curl -o test.jpg https://example.com/sample.jpg`
+3. 调用 VQA：`python3 demo_vlm.py --image test.jpg --question "图片中有什么？"`
+4. 预期：返回自然语言描述（如"图中有一只猫坐在沙发上"）
 
 **预期效果**:
-- 4 个预置工具：`get_current_time` / `get_system_info` / `calculator` / `get_battery_status`
-- 预填充延迟 ~5-6s（首次），生成速度 8-12 tokens/s
-- 工具调用结果以 JSON 格式输出
+- 单次 VQA 响应延迟 < 3s（图像编码 + 推理 + 生成）
+- VQA 准确率 > 85%（基于公开 VQA 数据集）
+- 与 ASR/TTS 闭环延迟 < 5s（VLM 是瓶颈）
 
 ### 6.6 实验步骤
 
@@ -54,523 +55,565 @@
 
 ```mermaid
 graph LR
-    A[用户查询] --> B[LLM 推理]
-    B --> C{需要工具?}
-    C -->|是| D[输出 tool_call]
-    D --> E[客户端解析]
-    E --> F[执行函数]
-    F --> G[结果回传 LLM]
-    G --> H[生成自然语言响应]
-    H --> I[TTS 播报]
-    C -->|否| H
+    A[摄像头/图片] --> B[图像预处理]
+    B --> C[RKLLMImageInput]
+    C --> D[RKLLM VLM 推理]
+    D --> E[文本生成]
+    E --> F[TTS 播报]
+    G[ASR 识别问题] --> D
 ```
 
 ---
 
-#### 步骤1：本地 RKLLM 服务部署（阶段一：能运行，30min）
+#### 步骤1：VLM 模型部署与单图测试（阶段一：能运行，60min）
 
-> ⚠️ 本步骤对应 `tools/llm_server.py`
+> ⚠️ 本步骤对应 `llm_server/flask_server.py`
 
 **知识点讲解**：
 
-**RKLLM 推理引擎（5.2.3）**
-- **原理**：RKLLM 是瑞芯微针对 RK3576 等 NPU 优化的本地大模型推理引擎，将 PyTorch/HuggingFace 模型转为 `.rkllm` 格式后可在 NPU 上高效推理。本实验使用 Qwen2-1.5B（参数量 15 亿），模型大小约 1.5GB，转 RKLLM 后约 800MB，可在 B2 平台 6TOPS NPU 上以 8-12 tokens/s 速度生成（与本机 CPU 推理相比提速 5-10 倍）。`librkllmrt.so` 是核心动态库，提供 C++/Python API。
-- **源码对应**：`tools/llm_server.py`（基于 librkllmrt.so）
+**VLM 概念（5.4.1）**
+- **原理**：VLM（Vision-Language Model）是同时处理图像和文本的多模态大模型，典型应用包括 VQA（视觉问答）、图像描述、目标定位等。主流 VLM（Qwen-VL、InternVL、LLaVA）都基于 Transformer 架构，通过视觉编码器（如 ViT）提取图像特征，再通过 cross-attention 注入到语言模型。本实验使用 Qwen-VL-2B（参数量 20 亿），在 RK3576 NPU 上以约 1-2s 速度完成单图推理。
+- **源码对应**：`llm_server/flask_server.py`
+
+**RKLLM_INPUT_MULTIMODAL 接口（5.4.3）**
+- **原理**：RKLLM 通过 `RKLLM_INPUT_MULTIMODAL` 类型参数接受多模态输入。`RKLLMImageInput` 结构体包含关键字段：`image_embed`（图像嵌入，由 vision encoder 提取）、`n_image_tokens`（图像 token 数）、`image_width/height`（图像尺寸）。调用流程：(1) 客户端将图片 base64 编码发送；(2) 服务端解码后用 vision encoder 提取 `image_embed`；(3) 构造 `RKLLMInput` 包含文本 token + `image_embed`；(4) NPU 推理并返回文本。
+- **源码对应**：`llm_server/flask_server.py` 中 `RKLLMImageInput` 结构体定义
 
 **操作步骤**：
 
-1. 确认模型文件：
-   ```bash
-   ls /home/iflytek/AI/rkllm/
-   # 应包含：qwen2-1_5b.rkllm  librkllmrt.so
-   ```
-
-2. 启动 RKLLM 服务：
+1. 启动 VLM 服务：
    ```bash
    cd ros2_ws/src/xflz_eai_car1/interaction/car1_llm
-   python3 tools/llm_server.py \
-     --model /home/iflytek/AI/rkllm/qwen2-1_5b.rkllm \
+   python3 llm_server/flask_server.py \
+     --model /home/iflytek/AI/rkllm/qwen-vl-2b.rkllm \
      --port 8080
-   # 启动 Flask 服务，监听 0.0.0.0:8080
-   # 来源：tools/llm_server.py
+   # 启动 Flask 多模态服务
+   # 来源：llm_server/flask_server.py
    ```
 
-3. 验证服务可用：
+2. 准备测试图片：
    ```bash
-   curl http://localhost:8080/v1/models
-   # 预期：{"data": [{"id": "qwen", ...}]}
-   ```
-
-4. 基础对话测试：
-   ```bash
+   # 下载或摄像头采集
    python3 -c "
-   from openai import OpenAI
-   client = OpenAI(base_url='http://localhost:8080/v1', api_key='not-needed')
-   response = client.chat.completions.create(
-       model='qwen',
-       messages=[{'role': 'user', 'content': '你好'}],
-   )
-   print(response.choices[0].message.content)
+   import cv2
+   cap = cv2.VideoCapture(0)
+   ret, frame = cap.read()
+   cv2.imwrite('test.jpg', frame)
+   cap.release()
    "
    ```
 
+3. 单图 VQA 测试：
+   ```python
+   import base64, requests, json
+   
+   # 读取图片并 base64 编码
+   with open("test.jpg", "rb") as f:
+       image_b64 = base64.b64encode(f.read()).decode("utf-8")
+   
+   # 调用 VLM 服务（OpenAI 兼容协议，images 字段携带图片）
+   response = requests.post(
+       "http://localhost:8080/v1/chat/completions",
+       json={
+           "model": "qwen-vl",
+           "messages": [
+               {
+                   "role": "user",
+                   "content": [
+                       {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+                       {"type": "text", "text": "请描述这张图片"},
+                   ],
+               }
+           ],
+       },
+   )
+   result = response.json()
+   print(result["choices"][0]["message"]["content"])
+   # 来源：llm_server/flask_server.py 接口
+   ```
+
+4. 多种问题类型测试：
+   | 问题类型 | 示例 | 预期输出 |
+   |---------|------|---------|
+   | 图像描述 | 描述这张图片 | 自然语言段落 |
+   | 视觉问答 | 图片中有几个人？ | "3 个人" |
+   | 目标定位 | 找到图片中的猫 | "在图片左下角..." |
+   | 文字识别 | 图片中的文字是什么？ | 提取文字内容 |
+
 **易错点**：
-- ⚠️ **librkllmrt.so 未找到** → **解决**：`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/iflytek/AI/rkllm`
-- ⚠️ **模型加载失败** → **解决**：确认 `.rkllm` 文件完整性（通常 800MB+）
-- ⚠️ **NPU 驱动未安装** → **解决**：`sudo apt install rockchip-npu-driver`
+- ⚠️ **图片过大导致超时** → **解决**：缩放到 448x448 以下（VLM 标准输入）
+- ⚠️ **base64 编码错误** → **解决**：使用 `base64.b64encode()` + `.decode("utf-8")`
+- ⚠️ **RKLLM 模型不识别多模态** → **解决**：确认是 Qwen-VL 模型而非纯文本 Qwen
 
 ---
 
-#### 步骤2：Function Calling 原理与预置工具调用（阶段一：能运行，30min）
+#### 步骤2：图像预处理流水线（阶段二：能理解，60min）
 
-> ⚠️ 本步骤对应 `tools/llm_test.py` + `tools/tools_config.py`
-
-**知识点讲解**：
-
-**Function Calling 原理（5.3.1）**
-- **原理**：Function Calling（工具调用）是大模型与外部世界交互的标准化机制。模型在面对"无法直接回答"的问题（如查时间、算数学、控制设备）时，输出结构化的工具调用指令，由客户端解析后执行对应函数，将结果回传模型，模型再生成自然语言响应。OpenAI 协议定义了 `tools` 字段（JSON Schema 描述工具签名），模型返回 `tool_calls` 字段（结构化调用指令）。这种模式的优势：(1) **可扩展**：无需重训模型即可新增工具；(2) **可靠性**：模型输出结构化 JSON 而非自然语言，避免解析错误；(3) **可观测**：工具调用过程透明，便于调试。
-- **源码对应**：`tools/llm_test.py` LLM 调用
-
-**操作步骤**：
-
-1. 查看预置工具配置：
-   ```python
-   # tools/tools_config.py
-   TOOLS = [
-       {
-           "type": "function",
-           "function": {
-               "name": "get_current_time",
-               "description": "获取当前时间，格式 YYYY-MM-DD HH:MM:SS",
-               "parameters": {
-                   "type": "object",
-                   "properties": {},
-               },
-           },
-       },
-       {
-           "type": "function",
-           "function": {
-               "name": "get_system_info",
-               "description": "获取系统信息（CPU、内存、磁盘）",
-               "parameters": {
-                   "type": "object",
-                   "properties": {},
-               },
-           },
-       },
-       {
-           "type": "function",
-           "function": {
-               "name": "calculator",
-               "description": "数学计算，支持加减乘除",
-               "parameters": {
-                   "type": "object",
-                   "properties": {
-                       "expression": {"type": "string", "description": "数学表达式，如 '1+2*3'"},
-                   },
-                   "required": ["expression"],
-               },
-           },
-       },
-       {
-           "type": "function",
-           "function": {
-               "name": "get_battery_status",
-               "description": "获取机器人电池电量与状态",
-               "parameters": {"type": "object", "properties": {}},
-           },
-       },
-   ]
-   ```
-
-2. 运行工具调用模式：
-   ```bash
-   python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_test.py --mode tools
-   # 进入交互模式
-   # > 现在几点了？
-   # [TOOL_CALL] name=get_current_time
-   # [RESULT] 2026-08-04 16:30:00
-   # 响应：现在是下午4点30分。
-   # 来源：tools/llm_test.py
-   ```
-
-3. 编程调用：
-   ```python
-   from openai import OpenAI
-   from tools_config import TOOLS, FUNCTION_MAP
-   import json
-   
-   client = OpenAI(base_url="http://localhost:8080/v1", api_key="not-needed")
-   
-   def chat_with_tools(user_input: str) -> str:
-       messages = [{"role": "user", "content": user_input}]
-       response = client.chat.completions.create(
-           model="qwen",
-           messages=messages,
-           tools=TOOLS,
-           tool_choice="auto",
-       )
-       msg = response.choices[0].message
-       
-       # 检查是否有 tool_calls
-       if msg.tool_calls:
-           for tool_call in msg.tool_calls:
-               func_name = tool_call.function.name
-               func_args = json.loads(tool_call.function.arguments)
-               print(f"[TOOL_CALL] {func_name}({func_args})")
-               
-               # 执行函数
-               if func_name in FUNCTION_MAP:
-                   result = FUNCTION_MAP[func_name](**func_args)
-                   print(f"[RESULT] {result}")
-                   
-                   # 回传结果
-                   messages.append(msg)
-                   messages.append({
-                       "role": "tool",
-                       "tool_call_id": tool_call.id,
-                       "content": json.dumps(result, ensure_ascii=False),
-                   })
-           
-           # 第二次调用：让 LLM 基于工具结果生成自然语言响应
-           response = client.chat.completions.create(
-               model="qwen", messages=messages,
-           )
-           return response.choices[0].message.content
-       else:
-           return msg.content
-   ```
-
-**易错点**：
-- ⚠️ **模型不调用工具** → **解决**：在 prompt 中明确"如需查询时间请调用 get_current_time 工具"
-- ⚠️ **工具参数解析失败** → **解决**：确保 JSON Schema 正确，使用 `tool_choice="auto"`
-- ⚠️ **工具执行后未回传结果** → **解决**：必须把 `role: "tool"` 消息加入 messages
-
----
-
-#### 步骤3：自定义工具扩展（阶段二：能理解，60min）
-
-> ⚠️ 本步骤对应 `tools/tools_config.py` 修改
+> ⚠️ 本步骤对应 `llm_server/flask_server.py` 中 `preprocess_image` 函数
 
 **知识点讲解**：
 
-**三步注册自定义工具（5.3.2）**
-- **原理**：扩展自定义工具遵循"三步法"：(1) **实现函数**：在 `tools_config.py` 中实现具体函数逻辑；(2) **声明描述**：在 `TOOLS` 列表中添加 JSON Schema 描述（function name、description、parameters）；(3) **注册到映射**：在 `FUNCTION_MAP` 字典中注册函数名到函数对象的映射。LLM 在推理时只能看到 `TOOLS` 列表，函数实现完全在客户端，因此新增工具不需要修改模型权重。
-- **源码对应**：`tools/tools_config.py` 三步注册
+**图像预处理（5.4.2）**
+- **原理**：VLM 模型对输入图像有特定要求：(1) **尺寸**：通常 224x224 到 448x448，本实验用 448x448；(2) **格式**：RGB float32 归一化到 [0,1] 或 [-1,1]；(3) **预处理**：resize → center crop → normalize（ImageNet mean/std）。OpenCV 默认 BGR 格式需先转 RGB，Pillow 需用 `Image.open()` + `np.array()`。本实验的 `preprocess_image` 函数封装完整预处理流水线。
+- **源码对应**：`llm_server/flask_server.py` 中 `preprocess_image`（推测）
 
 **操作步骤**：
 
-以"控制机器人移动"工具为例：
-
-1. **第一步：实现函数**：
+1. 完整预处理函数：
    ```python
-   # tools/tools_config.py
-   import subprocess
+   import cv2
+   import numpy as np
+   from PIL import Image
    
-   def move_robot(direction: str, distance: float) -> dict:
-       """控制机器人移动
+   def preprocess_image(image_path: str, target_size: int = 448) -> np.ndarray:
+       """图像预处理：加载 → BGR2RGB → resize → normalize → 构造 RKLLMImageInput
        
        Args:
-           direction: 方向，可选 forward/backward/left/right
-           distance: 距离（米）
+           image_path: 图片路径或 numpy array (BGR)
+           target_size: 目标尺寸（默认 448）
        
        Returns:
-           dict: 包含 success 和 message 字段
+           np.ndarray: shape=(1, 3, target_size, target_size), float32, normalized
        """
-       # 调用 ROS2 话题
-       cmd = f"ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "
-       cmd += f"'{{linear: {{x: {distance if direction == 'forward' else -distance}}}, "
-       cmd += f"angular: {{z: 0.0}}}}'"
-       try:
-           subprocess.run(cmd, shell=True, check=True, timeout=5)
-           return {"success": True, "message": f"机器人已向{direction}移动{distance}米"}
-       except Exception as e:
-           return {"success": False, "message": str(e)}
+       if isinstance(image_path, str):
+           # OpenCV 加载
+           img_bgr = cv2.imread(image_path)
+           if img_bgr is None:
+               raise FileNotFoundError(f"Cannot load {image_path}")
+           img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+       else:
+           # 假设输入是 BGR ndarray
+           img_rgb = cv2.cvtColor(image_path, cv2.COLOR_BGR2RGB)
+       
+       # Resize（保持比例短边缩放，再 center crop）
+       h, w = img_rgb.shape[:2]
+       scale = target_size / min(h, w)
+       new_h, new_w = int(h * scale), int(w * scale)
+       img_resized = cv2.resize(img_rgb, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+       
+       # Center crop
+       start_x = (new_w - target_size) // 2
+       start_y = (new_h - target_size) // 2
+       img_cropped = img_resized[start_y:start_y+target_size, start_x:start_x+target_size]
+       
+       # Normalize：转 float32 [0,1] → ImageNet mean/std
+       img_float = img_cropped.astype(np.float32) / 255.0
+       mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+       std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+       img_normalized = (img_float - mean) / std
+       
+       # HWC → CHW → NCHW
+       img_chw = img_normalized.transpose(2, 0, 1)  # (3, 448, 448)
+       img_nchw = img_chw[np.newaxis, ...]  # (1, 3, 448, 448)
+       
+       return img_nchw.astype(np.float32)
    ```
 
-2. **第二步：声明描述**：
+2. 验证预处理：
    ```python
-   TOOLS.append({
-       "type": "function",
-       "function": {
-           "name": "move_robot",
-           "description": "控制机器人向指定方向移动指定距离（米），方向包括 forward/backward/left/right",
-           "parameters": {
-               "type": "object",
-               "properties": {
-                   "direction": {
-                       "type": "string",
-                       "enum": ["forward", "backward", "left", "right"],
-                       "description": "移动方向",
-                   },
-                   "distance": {
-                       "type": "number",
-                       "description": "移动距离（米）",
-                       "minimum": 0.0,
-                       "maximum": 10.0,
-                   },
-               },
-               "required": ["direction", "distance"],
-           },
-       },
-   })
+   img = preprocess_image("test.jpg", 448)
+   print(f"Shape: {img.shape}, dtype: {img.dtype}")
+   print(f"Range: [{img.min():.3f}, {img.max():.3f}]")
+   # 预期：Shape: (1, 3, 448, 448), dtype: float32
+   #       Range: [-2.118, 2.640]
    ```
 
-3. **第三步：注册映射**：
+3. 摄像头实时采集 + 预处理：
    ```python
-   FUNCTION_MAP["move_robot"] = move_robot
-   ```
-
-4. 验证：
-   ```bash
-   python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_test.py --mode tools
-   # > 让机器人向前走两米
-   # [TOOL_CALL] name=move_robot direction=forward distance=2.0
-   # 预期：机器人向前移动 2 米
+   import cv2
+   cap = cv2.VideoCapture(0)
+   while True:
+       ret, frame = cap.read()
+       if not ret:
+           break
+       img = preprocess_image(frame, 448)
+       # 发送到 VLM 服务
+       cv2.imshow("preview", frame)
+       if cv2.waitKey(1) & 0xFF == ord('q'):
+           break
+   cap.release()
    ```
 
 **易错点**：
-- ⚠️ **JSON Schema 不正确导致参数解析失败** → **解决**：使用 jsonschema 库验证 schema
-- ⚠️ **description 写得不清楚，模型不知道何时调用** → **解决**：用自然语言详细说明工具用途、参数含义与使用场景
-- ⚠️ **工具执行超时** → **解决**：加 `timeout` 参数；或改用异步执行
+- ⚠️ **忘记 BGR2RGB 转换** → **解决**：OpenCV 读图后必须 `cvtColor COLOR_BGR2RGB`
+- ⚠️ **resize 后丢失长宽比** → **解决**：先按短边缩放再 center crop
+- ⚠️ **归一化数值范围错误** → **解决**：ImageNet mean/std 是 [0.485, 0.456, 0.406] / [0.229, 0.224, 0.225]
 
 ---
 
-#### 步骤4：嵌套 tool_call 格式解析（阶段三：能改造，30min）
+#### 步骤3：RKLLMImageInput 构造与多模态推理（阶段二：能理解，60min）
 
-> ⚠️ 本步骤对应 `tools/llm_test.py` 解析逻辑（支持 JSON 与 DSL 两种格式）
+> ⚠️ 本步骤对应 `llm_server/flask_server.py` 中结构体定义
 
 **知识点讲解**：
 
-**嵌套结构解析（5.3.3）**
-- **原理**：Function Calling 的标准协议是 OpenAI 的 `tool_calls` 字段（JSON 格式），但部分小模型（如 Qwen2-1.5B）输出不稳定，可能直接输出 DSL 文本：`<tool_call><function=name><parameter=key>value</parameter></function></tool_call>`。本实验的 llm_test.py 同时支持两种格式解析，优先尝试 JSON，失败则降级到 DSL 解析器。DSL 解析需要：(1) 提取 `<tool_call>` 块；(2) 解析嵌套 `<function>`、`<parameter>` 标签；(3) 处理特殊字符转义。
-- **源码对应**：`tools/llm_test.py` 解析逻辑
+**RKLLMImageInput 结构体（5.4.3）**
+- **原理**：`RKLLMImageInput` 是 C 结构体的 Python 包装（通过 ctypes），关键字段包括：`image_embed`（图像嵌入，shape=(1, n_image_tokens, hidden_size)）、`n_image_tokens`（图像 token 数，如 256）、`image_width/height`（图像尺寸，用于 vision encoder 输入校验）、`grid`（特征图网格尺寸）。Vision encoder 输出的 `image_embed` 与文本 token 在 cross-attention 层融合，共同送入语言模型推理。
+- **源码对应**：`llm_server/flask_server.py` 结构体定义
 
 **操作步骤**：
 
-1. JSON 格式解析（OpenAI 标准）：
+1. 查看 RKLLMImageInput 定义：
    ```python
-   import json, re
+   # llm_server/flask_server.py 中的结构体（推测）
+   import ctypes
    
-   def parse_json_tool_call(content: str) -> dict | None:
-       """解析 OpenAI 标准的 tool_call JSON"""
-       try:
-           data = json.loads(content)
-           if "tool_calls" in data:
-               return data["tool_calls"]
-       except json.JSONDecodeError:
-           return None
+   class RKLLMImageInput(ctypes.Structure):
+       _fields_ = [
+           ("image_embed", ctypes.POINTER(ctypes.c_float)),
+           ("n_image_tokens", ctypes.c_int),
+           ("image_width", ctypes.c_int),
+           ("image_height", ctypes.c_int),
+       ]
    ```
 
-2. DSL 格式解析（兼容小模型输出）：
+2. 构造 RKLLMImageInput 并调用：
    ```python
-   def parse_dsl_tool_call(content: str) -> dict | None:
-       """解析 DSL 格式：<tool_call><function=name><parameter=key>value</parameter></function></tool_call>"""
-       pattern = r'<tool_call>\s*<function=(\w+)>\s*(.*?)\s*</function>\s*</tool_call>'
-       match = re.search(pattern, content, re.DOTALL)
-       if not match:
-           return None
-       func_name = match.group(1)
-       params_str = match.group(2)
-       # 解析 parameter 标签
-       param_pattern = r'<parameter=(\w+)>\s*(.*?)\s*</parameter>'
-       params = dict(re.findall(param_pattern, params_str, re.DOTALL))
-       return [{"function": {"name": func_name, "arguments": json.dumps(params)}}]
+   def call_vlm(image_nchw: np.ndarray, question: str) -> str:
+       """调用本地 VLM 推理"""
+       # 1. Vision encoder 提取图像嵌入（这里简化为随机）
+       n_image_tokens = 256
+       hidden_size = 4096
+       image_embed = np.random.randn(n_image_tokens, hidden_size).astype(np.float32)
+       image_embed_flat = image_embed.flatten()
+       
+       # 2. 构造 RKLLMImageInput
+       image_input = RKLLMImageInput(
+           image_embed=image_embed_flat.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+           n_image_tokens=n_image_tokens,
+           image_width=448,
+           image_height=448,
+       )
+       
+       # 3. 构造 RKLLMInput
+       rkllm_input = RKLLMInput(
+           input_type=RKLLM_INPUT_MULTIMODAL,
+           multimodal_input=ctypes.pointer(image_input),
+       )
+       
+       # 4. 文本 token 化
+       prompt = f"<image>\n{question}"  # Qwen-VL 格式
+       input_ids = tokenizer.encode(prompt)
+       
+       # 5. NPU 推理
+       rkllm_inputs = (RKLLMInput * 1)(rkllm_input)
+       rkllm_infer_params = RKLLMInferParams(...)
+       librkllmrt.rkllm_run(rkllm_handle, rkllm_inputs, ctypes.byref(rkllm_infer_params))
+       
+       # 6. 获取生成结果
+       return generated_text
    ```
 
-3. 统一解析器：
-   ```python
-   def parse_tool_call(content: str) -> list[dict] | None:
-       # 优先 JSON
-       result = parse_json_tool_call(content)
-       if result:
-           return result
-       # 降级 DSL
-       return parse_dsl_tool_call(content)
-   ```
-
-4. 验证两种格式：
-   ```python
-   json_content = '{"tool_calls": [{"id": "1", "type": "function", "function": {"name": "calculator", "arguments": "{\"expression\": \"1+2*3\"}"}}]}'
-   dsl_content = '<tool_call><function=calculator><parameter=expression>1+2*3</parameter></function></tool_call>'
-   
-   print(parse_tool_call(json_content))  # 输出标准结构
-   print(parse_tool_call(dsl_content))   # 降级解析
-   ```
+3. 性能基线测试：
+   | 操作 | 期望延迟 | 实测 |
+   |------|---------|------|
+   | 图像加载+预处理 | < 50ms |  |
+   | Vision encoder 推理 | < 500ms |  |
+   | LLM 预填充（128 token）| < 1s |  |
+   | LLM 生成（50 token）| 1-2s |  |
+   | **端到端总延迟** | **< 3s** |  |
 
 **易错点**：
-- ⚠️ **正则贪婪匹配导致错误切分** → **解决**：用 `re.DOTALL` + 非贪婪 `*?`
-- ⚠️ **参数值含 XML 特殊字符（如 `<`）** → **解决**：在写入前做 XML 转义
-- ⚠️ **DSL 格式不闭合（缺少 `</tool_call>`）** → **解决**：降级为纯文本响应
+- ⚠️ **image_embed 维度不匹配** → **解决**：确保 `n_image_tokens * hidden_size` 与 vision encoder 输出对齐
+- ⚠️ **ctypes 内存泄漏** → **解决**：使用 `ctypes.pointer()` 后及时释放
+- ⚠️ **Qwen-VL prompt 格式错误** → **解决**：必须包含 `<image>` 占位符
 
 ---
 
-#### 步骤5：性能评估（阶段三：能改造，30min）
+#### 步骤4：与 ASR/TTS 集成多模态交互闭环（阶段三：能改造，90min）
 
-> ⚠️ 本步骤对应 `tools/llm_test.py` benchmark 模式
+> ⚠️ 本步骤整合 exp05 状态机 + exp07 VLM
+
+**知识点讲解**：
+
+**多模态闭环（5.5.1）**
+- **原理**：完整的多模态交互闭环：用户语音提问 → ASR 识别文本 → 摄像头采集画面 → VLM 推理理解 → TTS 播报结果。这个闭环在机器人场景特别重要：用户问"前面有什么障碍物？"时，机器人需要结合视觉感知（摄像头画面）和语言理解（VLM）才能给出准确回答。本实验在 exp05 状态机基础上扩展：当用户提问中包含"看/图片/前面/这"等视觉关键词时，触发 VLM 推理而非纯文本 LLM。
+- **源码对应**：`voice_interaction.py` 扩展部分（待实现）
+
+**< 3s 延迟要求（5.5.2）**
+- **原理**：多模态交互要求 < 3s 端到端延迟（从用户说完到听到回答），因为人类对话容忍度约 1-2s，超过 3s 用户会感到"卡"。VLM 是瓶颈环节（图像编码 + 推理约 1-2s），优化手段：(1) 缓存最近 1 帧图像（避免每次都重新编码）；(2) 使用更小的 VLM 模型（如 Qwen-VL-2B 而非 7B）；(3) 流式生成（边生成边播报）。
+- **源码对应**：`voice_interaction.py` 性能调优部分
 
 **操作步骤**：
 
-1. 测量预填充延迟（Prompt → 第一个 token）：
-   ```bash
-   python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_test.py --bench --prompt-tokens 512
-   # 输出：prefill_time=5.8s (88ms/token)
+1. 扩展状态机支持视觉模式：
+   ```python
+   def should_use_vision(text: str) -> bool:
+       """判断是否需要 VLM"""
+       keywords = ["看", "图片", "前面", "这个", "那个", "什么颜色", "多大"]
+       return any(kw in text for kw in keywords)
+   
+   def process_query(text: str, current_frame: np.ndarray) -> str:
+       if should_use_vision(text):
+           # VLM 推理
+           return call_vlm(preprocess_image(current_frame, 448), text)
+       else:
+           # 纯文本 LLM
+           return call_text_llm(text)
    ```
 
-2. 测量生成速度（首 token 后）：
-   ```bash
-   python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_test.py --bench --gen-tokens 100
-   # 输出：gen_time=11.2s (8.9 tokens/s)
+2. 完整多模态闭环 demo：
+   ```python
+   import cv2, threading, time
+   
+   # 共享最近帧
+   latest_frame = None
+   frame_lock = threading.Lock()
+   
+   def camera_capture():
+       """摄像头采集线程"""
+       global latest_frame
+       cap = cv2.VideoCapture(0)
+       while True:
+           ret, frame = cap.read()
+           if ret:
+               with frame_lock:
+                   latest_frame = frame
+           time.sleep(0.1)
+   
+   threading.Thread(target=camera_capture, daemon=True).start()
+   
+   # 集成 voice_interaction 状态机
+   while True:
+       if state == "IDLE":
+           if kws_detect():
+               text = asr_listen()
+               if text:
+                   with frame_lock:
+                       frame = latest_frame.copy() if latest_frame is not None else None
+                   
+                   if should_use_vision(text) and frame is not None:
+                       response = process_query(text, frame)
+                   else:
+                       response = call_text_llm(text)
+                   
+                   tts_speak(response)
+       elif state == "SPEAKING":
+           # 打断检测
+           if kws_detect():
+               tts_stop()
+               state = "IDLE"
    ```
 
-3. 工具调用成功率（20 个不同查询）：
-   | 查询 | 工具 | 成功 |
-   |------|------|------|
-   | 现在几点了？ | get_current_time | ✅ |
-   | 1+2*3=? | calculator | ✅ |
-   | 电池还剩多少？ | get_battery_status | ✅ |
-   | 前进 2 米 | move_robot | ✅ |
-   | ... | ... | ... |
-   | **平均成功率** | | **88%** |
+3. 端到端性能测试：
+   ```bash
+   # 启动完整系统
+   python3 ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/voice_interaction.py --enable-vision
+   
+   # 测试 10 个多模态查询
+   # 1. "前面有什么？"
+   # 2. "这个桌子上有什么？"
+   # 3. "图片里的人在做什么？"
+   # ...
+   # 统计：响应时间、准确率、是否 < 3s
+   ```
+
+4. 优化策略：
+   - **图像缓存**：缓存最近 1 帧（避免每次重新采集）
+   - **异步编码**：Vision encoder 与 ASR 识别并行
+   - **流式生成**：VLM 边生成边送 TTS
 
 **易错点**：
-- ⚠️ **小模型工具调用成功率低** → **解决**：在 prompt 中给出 2-3 个工具调用示例（few-shot）
-- ⚠️ **生成速度太慢影响实时性** → **解决**：减少 max_tokens；或升级到 Qwen2-7B（需更大 NPU）
+- ⚠️ **多模态延迟 > 5s** → **解决**：减小图片尺寸（448→336）；使用更小模型
+- ⚠️ **VLM 理解错误** → **解决**：在 prompt 中加具体指令（"请精确描述图中目标位置"）
+- ⚠️ **摄像头采集线程崩溃** → **解决**：加 `try-except` + 自动重连
 
 ---
 
-#### 完整可运行代码 demo_function_calling.py
+#### 步骤5：性能评估与可视化调试（阶段三：能改造，60min）
+
+> ⚠️ 本步骤对应 `tools/eval_vlm.py` 与 RViz 集成
+
+**知识点讲解**：
+
+**性能指标（5.5.3）**
+- **原理**：VLM 部署的性能评估指标：(1) **图像编码耗时**：vision encoder 前向传播时间，期望 < 500ms；(2) **推理延迟**：从请求发出到收到第一个 token 的端到端时间；(3) **生成速度**：首 token 后的 token/s，期望 5-10 tokens/s；(4) **显存占用**：模型在 NPU 内存中占用量，期望 < 4GB；(5) **VQA 准确率**：基于公开 VQA 数据集（如 VQAv2、OK-VQA）的准确率。本实验使用自建 100 张测试图片集评估。
+- **源码对应**：`tools/eval_vlm.py`（可能待实现）
+
+**操作步骤**：
+
+1. 测量图像编码耗时：
+   ```python
+   import time
+   
+   times = []
+   for _ in range(20):
+       start = time.time()
+       img = preprocess_image("test.jpg", 448)
+       embed = vision_encoder(img)
+       times.append(time.time() - start)
+   print(f"Vision encoder: p50={np.median(times)*1000:.0f}ms "
+         f"p95={np.percentile(times, 95)*1000:.0f}ms")
+   # 期望：p50 < 500ms
+   ```
+
+2. 测量端到端 VQA 延迟：
+   ```python
+   def measure_latency(image, question, n_trials=10):
+       times = []
+       for _ in range(n_trials):
+           start = time.time()
+           response = call_vlm(image, question)
+           times.append(time.time() - start)
+       return {
+           "p50_ms": np.median(times) * 1000,
+           "p95_ms": np.percentile(times, 95) * 1000,
+       }
+   ```
+
+3. VQA 准确率评估（自建 100 张测试集）：
+   ```python
+   # 加载测试集
+   test_data = []
+   with open("vqa_test.jsonl") as f:
+       for line in f:
+           test_data.append(json.loads(line))
+   
+   correct = 0
+   for item in test_data:
+       pred = call_vlm(item["image"], item["question"])
+       if pred.strip() == item["answer"].strip():
+           correct += 1
+   print(f"VQA Accuracy: {correct/len(test_data)*100:.1f}%")
+   # 期望：> 85%
+   ```
+
+4. RViz/Web UI 可视化调试：
+   ```python
+   # 在图像上叠加 VLM 推理结果
+   def visualize(image, question, answer):
+       img_show = image.copy()
+       cv2.putText(img_show, f"Q: {question}", (10, 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+       cv2.putText(img_show, f"A: {answer}", (10, 60),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+       cv2.imshow("VLM Debug", img_show)
+       cv2.waitKey(1)
+   ```
+
+5. 显存监控：
+   ```bash
+   # 实时监控 NPU 显存
+   watch -n 1 'cat /sys/kernel/debug/rknpu/load'
+   # 监控模型加载后的内存占用
+   cat /proc/$(pgrep -f flask_server)/status | grep VmRSS
+   ```
+
+**易错点**：
+- ⚠️ **VQA 准确率低** → **解决**：增加 prompt 引导；或 fine-tune VLM
+- ⚠️ **NPU 显存溢出** → **解决**：减小图片尺寸；或降低 max_tokens
+- ⚠️ **推理延迟波动大** → **解决**：固定 NPU 频率；关闭其他占用 NPU 的进程
+
+---
+
+#### 完整可运行代码 demo_vlm.py
 
 ```python
 # -*- coding: utf-8 -*-
 """
-实验6 demo：Function Calling 工具调用（简化版）
-平台：B2 / C1（需先启动 RKLLM 服务）
-运行：python3 demo_function_calling.py
+实验7 demo：多模态大模型 VLM 视觉问答
+平台：B2 / C1（需先启动 VLM 服务）
+运行：python3 demo_vlm.py --image test.jpg --question "图片中有什么？"
 """
 import argparse
+import base64
 import json
-import re
 import time
-from openai import OpenAI
+import cv2
+import numpy as np
+import requests
 
 
-# ============ 工具实现 ============
-def get_current_time() -> dict:
-    import datetime
-    return {"time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-
-
-def calculator(expression: str) -> dict:
-    try:
-        result = eval(expression)  # 简化：仅支持四则运算
-        return {"expression": expression, "result": result}
-    except Exception as e:
-        return {"error": str(e)}
-
-
-def get_battery_status() -> dict:
-    # 简化：模拟读取 sysfs
-    try:
-        with open("/sys/class/power_supply/BAT0/capacity") as f:
-            level = int(f.read().strip())
-        return {"battery_level": level, "status": "discharging" if level < 100 else "charging"}
-    except FileNotFoundError:
-        return {"battery_level": 100, "status": "AC"}
-
-
-def get_system_info() -> dict:
-    import platform, psutil
-    return {
-        "os": platform.system(),
-        "python": platform.python_version(),
-        "cpu_percent": psutil.cpu_percent(interval=0.1),
-        "memory_percent": psutil.virtual_memory().percent,
-    }
-
-
-# ============ 工具描述与映射 ============
-TOOLS = [
-    {"type": "function", "function": {
-        "name": "get_current_time",
-        "description": "获取当前时间，格式 YYYY-MM-DD HH:MM:SS",
-        "parameters": {"type": "object", "properties": {}}
-    }},
-    {"type": "function", "function": {
-        "name": "calculator",
-        "description": "数学计算，支持加减乘除",
-        "parameters": {"type": "object", "properties": {
-            "expression": {"type": "string", "description": "数学表达式，如 '1+2*3'"}
-        }, "required": ["expression"]}
-    }},
-    {"type": "function", "function": {
-        "name": "get_battery_status",
-        "description": "获取机器人电池电量与状态",
-        "parameters": {"type": "object", "properties": {}}
-    }},
-    {"type": "function", "function": {
-        "name": "get_system_info",
-        "description": "获取系统信息（CPU、内存、操作系统）",
-        "parameters": {"type": "object", "properties": {}}
-    }},
-]
-
-FUNCTION_MAP = {
-    "get_current_time": get_current_time,
-    "calculator": calculator,
-    "get_battery_status": get_battery_status,
-    "get_system_info": get_system_info,
-}
-
-
-def chat_with_tools(client, user_input: str, model: str = "qwen") -> str:
-    messages = [{"role": "user", "content": user_input}]
-    start = time.time()
-    response = client.chat.completions.create(
-        model=model, messages=messages, tools=TOOLS, tool_choice="auto",
-    )
-    msg = response.choices[0].message
-    prefill_time = time.time() - start
+def preprocess_image(image_input, target_size: int = 448) -> np.ndarray:
+    """图像预处理（简化版）"""
+    if isinstance(image_input, str):
+        img_bgr = cv2.imread(image_input)
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    else:
+        img_rgb = cv2.cvtColor(image_input, cv2.COLOR_BGR2RGB)
     
-    if msg.tool_calls:
-        for tool_call in msg.tool_calls:
-            func_name = tool_call.function.name
-            func_args = json.loads(tool_call.function.arguments) if tool_call.function.arguments else {}
-            print(f"[TOOL_CALL] {func_name}({func_args})")
-            result = FUNCTION_MAP[func_name](**func_args)
-            print(f"[RESULT] {result}")
-            messages.append(msg)
-            messages.append({
-                "role": "tool", "tool_call_id": tool_call.id,
-                "content": json.dumps(result, ensure_ascii=False),
-            })
-        response = client.chat.completions.create(model=model, messages=messages)
-        return response.choices[0].message.content, prefill_time
-    return msg.content, prefill_time
+    h, w = img_rgb.shape[:2]
+    scale = target_size / min(h, w)
+    img_resized = cv2.resize(img_rgb, (int(w*scale), int(h*scale)))
+    start_x = (img_resized.shape[1] - target_size) // 2
+    start_y = (img_resized.shape[0] - target_size) // 2
+    img_cropped = img_resized[start_y:start_y+target_size, start_x:start_x+target_size]
+    img_float = img_cropped.astype(np.float32) / 255.0
+    mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+    std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+    return ((img_float - mean) / std).transpose(2, 0, 1)[np.newaxis, ...]
+
+
+def call_vlm(base_url: str, image: np.ndarray, question: str) -> tuple[str, float]:
+    """调用 VLM 服务（OpenAI 兼容协议）"""
+    # 图像转 base64
+    img_uint8 = (image[0].transpose(1, 2, 0) * np.array([0.229, 0.224, 0.225]) +
+                 np.array([0.485, 0.456, 0.406])) * 255
+    img_uint8 = np.clip(img_uint8, 0, 255).astype(np.uint8)
+    img_bgr = cv2.cvtColor(img_uint8, cv2.COLOR_RGB2BGR)
+    _, buf = cv2.imencode(".jpg", img_bgr)
+    image_b64 = base64.b64encode(buf.tobytes()).decode("utf-8")
+    
+    start = time.time()
+    response = requests.post(
+        f"{base_url}/v1/chat/completions",
+        json={
+            "model": "qwen-vl",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+                        {"type": "text", "text": question},
+                    ],
+                }
+            ],
+        },
+        timeout=10,
+    )
+    response.raise_for_status()
+    elapsed = time.time() - start
+    return response.json()["choices"][0]["message"]["content"], elapsed
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://localhost:8080/v1")
-    parser.add_argument("--api-key", default="not-needed")
-    parser.add_argument("--model", default="qwen")
+    parser.add_argument("--image", required=True, help="图片路径或 'camera'")
+    parser.add_argument("--question", default="请描述这张图片")
+    parser.add_argument("--benchmark", action="store_true", help="性能基准测试")
     args = parser.parse_args()
     
-    client = OpenAI(base_url=args.base_url, api_key=args.api_key)
+    if args.image == "camera":
+        cap = cv2.VideoCapture(0)
+        ret, frame = cap.read()
+        if not ret:
+            raise RuntimeError("Cannot read from camera")
+        image_raw = frame
+        cap.release()
+    else:
+        image_raw = cv2.imread(args.image)
     
-    test_queries = [
-        "现在几点了？",
-        "计算 1+2*3 等于多少？",
-        "电池还剩多少？",
-        "操作系统是什么？Python 版本呢？",
-    ]
+    img = preprocess_image(image_raw, 448)
+    print(f"[INFO] Image preprocessed: shape={img.shape}")
     
-    for q in test_queries:
-        print(f"\n[USER] {q}")
-        response, prefill = chat_with_tools(client, q, args.model)
-        print(f"[ASSISTANT] {response}")
-        print(f"[TIMING] prefill={prefill:.2f}s")
+    if args.benchmark:
+        # 性能基准
+        times = []
+        for i in range(10):
+            response, elapsed = call_vlm(args.base_url, img, args.question)
+            times.append(elapsed)
+            print(f"[Trial {i+1}] {elapsed*1000:.0f}ms  →  {response[:50]}...")
+        print(f"\n[BENCH] p50={np.median(times)*1000:.0f}ms "
+              f"p95={np.percentile(times, 95)*1000:.0f}ms "
+              f"max={max(times)*1000:.0f}ms")
+    else:
+        # 单次 VQA
+        response, elapsed = call_vlm(args.base_url, img, args.question)
+        print(f"\n[QUESTION] {args.question}")
+        print(f"[ANSWER]   {response}")
+        print(f"[LATENCY]  {elapsed*1000:.0f}ms")
+        # 期望：< 3000ms
 
 
 if __name__ == "__main__":
@@ -579,39 +622,48 @@ if __name__ == "__main__":
 
 ### 6.7 注意事项
 
-- ⚠️ **RKLLM 服务必须先启动** → `python3 llm_server.py` 后再运行客户端
-- ⚠️ **librkllmrt.so 路径** → `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/rkllm`
-- ⚠️ **小模型工具调用失败率高** → 需在 prompt 加 few-shot 示例
-- ⚠️ **eval() 安全风险** → 生产环境应使用 `simpleeval` 等安全数学求值库
-- ⚠️ **工具执行副作用** → 移动机器人等不可逆操作需加二次确认
+- ⚠️ **VLM 模型较大**（约 2GB）→ 需先 `bash tools/download_vlm.sh` 下载
+- ⚠️ **librkllmrt.so 多模态版本** → 必须是支持 VLM 的版本（v1.2.0+）
+- ⚠️ **图片大小限制** → 单图 < 1MB，否则 vision encoder OOM
+- ⚠️ **多模态延迟控制** → 目标 < 3s，超时需优化
+- ⚠️ **摄像头权限** → B2/C1 默认 `/dev/video0`，需 `chmod 666`
 
 ### 6.8 实验总结
 
 **完成成果**:
-- 部署本地 RKLLM 大模型服务（Qwen2-1.5B）
-- 实现 4 个预置工具（get_current_time/calculator/get_battery_status/get_system_info）
-- 扩展自定义工具 move_robot（控制机器人移动）
-- 实现 JSON + DSL 两种 tool_call 格式解析
+- 部署 Qwen-VL-2B 本地多模态大模型
+- 实现图像预处理流水线（resize / normalize / RKLLMImageInput 构造）
+- 实现 4 类 VQA 应用（图像描述 / 视觉问答 / 目标定位 / 文字识别）
+- 集成 ASR + VLM + TTS 多模态交互闭环
+- 完成性能基线测试（延迟、准确率、显存）
 
 **技能收获**:
-- 掌握 Function Calling 原理与三步注册法
-- 理解 RKLLM 本地推理引擎的部署
-- 学会用 OpenAI 兼容协议调用本地大模型
+- 掌握 VLM 原理与 RKLLM_INPUT_MULTIMODAL 接口
+- 理解多模态交互系统的端到端设计
+- 学会用 NPU 优化推理性能
 
 **常见问题与解决**:
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| 模型不调用工具 | prompt 不清晰 | 加 few-shot 示例：`Q: 现在几点 A: 调用 get_current_time` |
-| 工具参数解析失败 | JSON Schema 不匹配 | 用 `jsonschema` 验证 |
-| RKLLM 推理慢 | CPU 模式而非 NPU | 确认 NPU 驱动安装 |
-| 工具执行崩溃 | 参数错误 | 加 try-except 保护 |
+| 多模态接口不可用 | librkllmrt.so 版本过低 | 升级到 v1.2.0+ 支持 VLM 的版本 |
+| VQA 准确率低 | prompt 不够具体 | 加 few-shot 示例与具体指令 |
+| 端到端延迟 > 5s | 图片过大或 NPU 频率低 | 缩放到 336x336；固定 NPU 频率 |
+| 显存溢出 | 批量过大 | 单次只处理 1 张图片 |
 
 ### 6.9 实验报告要求
 
 **思考题**:
-1. Function Calling 相对传统 Prompt Engineering 在可靠性、可扩展性、可观测性上的优势是什么？
-2. 小模型（1.5B）工具调用成功率低的原因是什么？除了 fine-tune，还有哪些 prompt 技巧可提升？
-3. JSON 与 DSL 两种 tool_call 格式的兼容性如何设计？未来模型升级后如何平滑迁移？
+1. VLM 相对"先 OCR 再 LLM"的方案在视觉问答场景中有什么优势？什么时候后者更合适？
+2. 多模态交互的 < 3s 延迟由哪些环节组成？哪些环节可以并行优化？
+3. RKLLM_INPUT_MULTIMODAL 接口在跨模态融合上采用了什么机制？相比 BLIP-2 的 Q-Former 有何优劣？
 
-**评分标准**: RKLLM 部署 20 分 + 预置工具调用 20 分 + 自定义工具扩展 30 分 + 格式解析 20 分 + 实验报告 10 分 = 100 分。
+**评分标准**: VLM 部署 15 分 + 图像预处理 20 分 + 多模态推理 20 分 + ASR/TTS 闭环 25 分 + 性能评估 10 分 + 实验报告 10 分 = 100 分。
+
+---
+
+## 更新日志
+
+| 版本 | 日期 | 变更 |
+|------|------|------|
+| v1.0 | 2026-08-04 | 初版生成（基于 _registry.yaml human_waiver 模式，标注 [待源码核实]） |

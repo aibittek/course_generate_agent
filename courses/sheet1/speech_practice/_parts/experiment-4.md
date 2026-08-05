@@ -1,55 +1,53 @@
-## 实验4：基于本地 TTS 引擎的语音合成与参数调控实验（4h）
+## 实验4：基于状态机的端到端语音对话交互实验（8h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 源码位于 `ros2_ws/src/xflz_eai_car1/interaction/car1_speech/`，主入口 `car1_speech/tts_node.py`（当前 TODO 占位），实际引擎由 `tools/tts_test.py` 验证。已通过 `human_waiver` 放行。
+> ⚠️ **[待源码核实 / WAIT-SOURCE]** 源码位于 `ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/`，主入口 `tools/voice_interaction.py`。已通过 `human_waiver` 放行。
 
 ### 4.1 关联知识点
 
-- 4.1.1 TTS 概念 > 概念 > TTS 将文本转为可听语音
-- 4.1.2 端到端 TTS 原理 > 原理 > 文本分析→韵律→声学→声码器
-- 4.1.3 pyttsx3/edge-tts/iflytek 对比 > 事实 > 三种主流 TTS 引擎
-- 4.2.1 voice 切换 > 流程 > 切换发音人（中文/英文）
-- 4.2.2 speed/volume/pitch 0-100 > 概念 > 语速/音量/音调范围
-- 4.2.3 默认参数 50/80/50 > 流程 > 均衡默认输出
-- 4.3.1 /tts/stop 服务 > 流程 > 提供打断服务
-- 4.3.2 打断机制原理 > 原理 > 事件信号 + 播放线程协作退出
-- 4.3.3 多语种切换 > 概念 > 切换 voice 参数实现
+- 5.1.1 状态机式语音交互 > 概念 > IDLE/LISTENING/SPEAKING 三态互斥
+- 5.1.2 状态流转 > 流程 > KWS→ASR→LLM→TTS→IDLE
+- 5.1.3 Capture 线程常驻 > 原理 > audio_queue 缓冲 + KWS 全程检测
+- 5.2.1 OpenAI 兼容 API > 概念 > /v1/chat/completions 流式 SSE
+- 5.2.2 流式 SSE > 流程 > 按句分割后送 TTS 合成
 
 ### 4.2 实验目标
 
-1. 理解 TTS 端到端神经网络的原理与传统拼接合成差异 — 原理理解
-2. 掌握 pyttsx3/edge-tts/iflytek 三种引擎的部署与切换 — 流程掌握
-3. 独立完成 voice/speed/volume/pitch 参数调优与多语种切换 — 独立完成
-4. 能够将 TTS + 打断机制迁移到对话系统的响应式播报 — 迁移应用
+1. 理解状态机在端到端语音交互中的核心作用 — 原理理解
+2. 掌握 KWS+ASR+LLM+TTS 异步协同的多线程设计 — 流程掌握
+3. 独立完成 Capture 线程 + audio_queue 缓冲机制 — 独立完成
+4. 能够将本实验的多流协同模式迁移到其他对话系统（智能客服、车载助手）— 迁移应用
 
 ### 4.3 实验环境
 
 | 类别 | 配置 |
 |------|------|
-| 硬件 | B2/C1（含扬声器）、ES8388 音频通路 |
+| 硬件 | B2/C1（6 麦 + 扬声器） |
 | OS | Ubuntu 22.04 + ROS2 Humble |
 | Python | 3.10 |
-| 核心库 | sherpa-onnx==1.10.0、pyttsx3==2.90、edge-tts==6.1.9、sounddevice |
-| 模型 | sherpa-onnx-tts-vits-zh-aishell3-2025-12-20（约 30MB） |
-| 主入口 | car1_speech/tts_node.py（TODO 占位）+ tools/tts_test.py |
+| 核心库 | sherpa-onnx、rclpy、httpx（OpenAI 客户端）、sounddevice、openai |
+| 模型 | 同 exp01-04 |
+| 主入口 | car1_interaction/tools/voice_interaction.py |
 
 ### 4.4 实验难度
 
 - 难度: ⭐⭐ 中
-- 重点: TTS 引擎部署；voice/speed/volume/pitch 调参；多语种切换
-- 难点: 打断机制的事件信号与播放线程协作退出
+- 重点: 状态机设计；Capture 线程常驻；流式 LLM 响应
+- 难点: 打断机制与多线程协作
 
 ### 4.5 实验现象
 
 **快速验证流程**:
-1. 启动 TTS 节点：`ros2 run car1_speech tts_node --ros-args -p engine:=iflytek -p voice:=xiaoyan`
-2. 发送测试文本：`ros2 topic pub --once /interaction/tts/speak std_msgs/msg/String "{data: '你好小飞同学'}"`
-3. 扬声器播放女声"你好小飞同学"
+1. 启动本地 RKLLM 服务：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/llm_server.py`
+2. 启动语音交互：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/voice_interaction.py --debug`
+3. 唤醒"小飞同学"
+4. 说话"现在几点了"
+5. 听到 TTS 播报"现在是下午3点25分"
+6. 打断测试：TTS 播报过程中再次说"小飞同学"，应立即停止
 
 **预期效果**:
-- 合成延迟 < 1s（云端 iflytek 视网络而定）
-- 调节 speed=80 听到明显加速
-- 切换 voice=emma 听到英文女声
-- 触发 /interaction/tts/stop 服务，当前播报立即停止
+- 状态机日志：`[IDLE] → [LISTENING] → [SPEAKING] → [IDLE]`
+- 端到端响应延迟 < 3s（含 LLM 推理 + TTS 合成）
+- 打断响应 < 500ms
 
 ### 4.6 实验步骤
 
@@ -57,454 +55,522 @@
 
 ```mermaid
 graph LR
-    A[步骤1：TTS 引擎部署] --> B[步骤2：参数调控]
-    B --> C[步骤3：多语种切换]
-    C --> D[步骤4：打断服务]
-    D --> E[步骤5：ROS2 节点集成]
-    E --> F[完成]
+    A[Capture 线程] -->|audio_queue| B[KWS 线程]
+    B -->|wake| C[主循环]
+    C -->|唤醒| D[ASR 识别]
+    D -->|text| E[LLM 流式]
+    E -->|sentence| F[TTS 合成]
+    F -->|pcm| G[aplay]
+    E -->|新唤醒| B
 ```
 
 ---
 
-#### 步骤1：三种 TTS 引擎部署与对比（阶段一：能运行，45min）
+#### 步骤1：状态机定义与转换（阶段一：能运行，30min）
 
-> ⚠️ 本步骤对应 `tools/tts_test.py` L20-60
+> ⚠️ 本步骤对应 `tools/voice_interaction.py` 主循环
 
 **知识点讲解**：
 
-**TTS 概念（4.1.1）**
-- **原理**：TTS（Text-to-Speech）将文本转为可听语音，是语音交互的"出口"。TTS 质量直接决定用户体验——机械感强、语调生硬的 TTS 会让用户感到不自然。本实验对比三种主流 TTS 引擎：(1) **pyttsx3**：离线轻量，基于系统自带语音引擎（Linux 用 espeak），延迟 < 200ms 但质量一般；(2) **edge-tts**：微软 Azure 在线 TTS，免费使用 Edge 浏览器接口，音质好但需联网；(3) **iflytek**：讯飞云端 TTS，支持多发音人和定制，音质优秀但需 API 密钥。
-- **源码对应**：`tools/tts_test.py` L20-60
-
-**端到端 TTS 原理（4.1.2）**
-- **原理**：传统 TTS 流水线分为 4 步：(1) **文本分析**：分词、字形转音形（G2P）、多音字消歧；(2) **韵律预测**：预测停顿、语调、重音；(3) **声学模型**：将音素序列转为梅尔频谱；(4) **声码器**：将频谱转为可听波形（如 Griffin-Lim、HiFi-GAN、VITS）。端到端 TTS（如 VITS、Tacotron 2+WaveNet）将四步合一为单一神经网络，音质更高但模型更大。本实验使用的 VITS 约 30MB，CPU 推理延迟约 200ms。
-- **源码对应**：`tools/tts_test.py` 内部由 sherpa-onnx VITS 实现
+**状态机式语音交互（5.1.1）**
+- **原理**：语音交互系统天然适合用有限状态机（FSM）描述，常见三态：(1) **IDLE**：监听 KWS，不录音不播报；(2) **LISTENING**：检测到唤醒词，ASR 录音识别中；(3) **SPEAKING**：TTS 播报中，此时 KWS 仍可检测新唤醒实现打断。状态机的好处是：(1) **互斥性**：每时刻只有一种状态，避免 ASR 与 TTS 同时占用音频设备；(2) **可测试性**：每个状态转换都有明确触发条件；(3) **可扩展性**：新增"思考中"或"等待确认"等状态只需添加节点。
+- **源码对应**：`tools/voice_interaction.py` 主循环（约 L100-150）
 
 **操作步骤**：
 
-1. **pyttsx3 离线测试**（最简单）：
-   ```bash
-   pip install pyttsx3
-   sudo apt install espeak-ng   # Linux 系统语音引擎
-   python3 -c "
-   import pyttsx3
-   engine = pyttsx3.init()
-   engine.say('你好小飞同学')
-   engine.runAndWait()
-   "
-   # 优点：完全离线，延迟 < 200ms
-   # 缺点：机械感强，不支持多发音人
-   ```
-
-2. **edge-tts 在线测试**（音质好）：
-   ```bash
-   pip install edge-tts
-   edge-tts --voice zh-CN-XiaoxiaoNeural --text "你好小飞同学" --write-media test_edge.mp3
-   aplay test_edge.mp3
-   # 优点：音质接近真人
-   # 缺点：需联网，延迟 1-3s
-   ```
-
-3. **iflytek 云端 TTS 测试**（生产环境）：
-   ```bash
-   # 配置 API 密钥
-   export IFYTEK_APP_ID=xxx
-   export IFYTEK_API_KEY=xxx
-   export IFYTEK_API_SECRET=xxx
+1. 定义状态枚举与转换：
+   ```python
+   from enum import Enum
    
-   python3 src/car1_speech/tools/tts_test.py \
-     --engine iflytek \
-     --voice xiaoyan \
-     --text "你好小飞同学"
-   # 优点：支持定制发音人、语速、音调
-   # 缺点：需付费 API
-   # 来源：tools/tts_test.py L20-60
+   class State(Enum):
+       IDLE = "IDLE"
+       LISTENING = "LISTENING"
+       SPEAKING = "SPEAKING"
+   
+   # 状态转换矩阵
+   TRANSITIONS = {
+       State.IDLE: {
+           "wake_detected": State.LISTENING,
+       },
+       State.LISTENING: {
+           "asr_done": State.SPEAKING,
+       },
+       State.SPEAKING: {
+           "tts_done": State.IDLE,
+           "wake_again": State.LISTENING,  # 打断
+       },
+   }
    ```
 
-4. **sherpa-onnx VITS 本地 TTS**（离线高质量）：
-   ```bash
-   # 下载 VITS 模型
-   bash tools/setup_sherpa.sh  # 自动下载 tts/model.onnx tts/tokens.txt tts/espeak-ng-data
+2. 实现状态机类：
+   ```python
+   class VoiceStateMachine:
+       def __init__(self, on_enter_listening, on_enter_speaking, on_enter_idle):
+           self.state = State.IDLE
+           self.handlers = {
+               State.LISTENING: on_enter_listening,
+               State.SPEAKING: on_enter_speaking,
+               State.IDLE: on_enter_idle,
+           }
+       
+       def transition(self, event: str):
+           new_state = TRANSITIONS.get(self.state, {}).get(event)
+           if new_state is None:
+               print(f"[WARN] Invalid transition: {self.state} + {event}")
+               return
+           print(f"[STATE] {self.state.value} → {new_state.value} (event={event})")
+           self.state = new_state
+           self.handlers[new_state]()
+   ```
+
+3. 与 voice_interaction.py 集成（参考原文件结构）：
+   ```python
+   # 简化版：基于 voice_interaction.py 的状态机主循环
+   import time, threading
+   from voice_interaction import VoiceStateMachine, CaptureThread, KWSWorker
    
-   python3 -c "
-   import sherpa_onnx, sounddevice as sd
-   tts = sherpa_onnx.OfflineTts(
-       model='/home/iflytek/AI/sherpa-onnx/tts/model.onnx',
-       tokens='/home/iflytek/AI/sherpa-onnx/tts/tokens.txt',
-       data_dir='/home/iflytek/AI/sherpa-onnx/tts/espeak-ng-data',
+   fsm = VoiceStateMachine(
+       on_enter_listening=lambda: print("→ 开始 ASR 识别"),
+       on_enter_speaking=lambda: print("→ 开始 TTS 播报"),
+       on_enter_idle=lambda: print("→ 回到 IDLE"),
    )
-   audio = tts.generate('你好小飞同学', sid=0, speed=1.0)
-   sd.play(audio.samples, audio.sample_rate)
-   sd.wait()
-   "
-   # 优点：离线、音质好、延迟 < 500ms
-   ```
-
-**易错点**：
-- ⚠️ **pyttsx3 报"无语音引擎"** → **解决**：`sudo apt install espeak-ng`
-- ⚠️ **edge-tts 网络超时** → **解决**：检查代理设置或改用离线方案
-- ⚠️ **VITS 模型加载失败** → **解决**：确认 espeak-ng-data 目录完整（包含 phoneme index 文件）
-
----
-
-#### 步骤2：voice/speed/volume/pitch 参数调控（阶段一：能运行，30min）
-
-> ⚠️ 本步骤对应 `config/tts.yaml` 与 `tools/tts_test.py` L60-90
-
-**知识点讲解**：
-
-**voice 切换（4.2.1）**
-- **原理**：TTS 引擎的 `voice` 参数控制发音人，不同发音人在音色、性别、年龄、口音上差异显著。pyttsx3 通过 `engine.getProperty('voices')` 列出系统所有可用 voice；edge-tts 通过 `--voice zh-CN-XiaoxiaoNeural` 等指定；iflytek 通过 `voice=xiaoyan/xiaofeng/emma` 等指定。本实验支持中文女声（xiaoyan）、男声（xiaofeng），英文女声（emma）、男声（victoria）。
-- **源码对应**：`config/tts.yaml` 中 `voice: xiaoyan`
-
-**speed/volume/pitch 参数（4.2.2）**
-- **原理**：三参数均归一化到 0-100 范围（部分引擎为 0.5-2.0 浮点）。`speed` 控制语速（50=常速，80=1.6倍速）；`volume` 控制音量（80=中等响度，100=最大）；`pitch` 控制音调（50=中性，70=偏女声/童声，30=偏男声/老人声）。sherpa-onnx VITS 接受浮点 `speed=1.0`，需将 0-100 转换为 0.5-2.0。
-- **源码对应**：`config/tts.yaml` 中 `speed/volume/pitch`
-
-**操作步骤**：
-
-1. 编辑 `config/tts.yaml`：
-   ```yaml
-   tts_node:
-     ros__parameters:
-       engine: "iflytek"
-       voice: "xiaoyan"
-       speed: 50
-       volume: 80
-       pitch: 50
-   # 来源：ros2_ws/src/xflz_eai_car1/interaction/car1_speech/config/tts.yaml
-   ```
-
-2. 参数扫描测试：
-   ```python
-   # demo_tts_params.py
-   for speed in [30, 50, 70, 100]:
-       audio = tts.generate("今天天气真好", sid=0, speed=speed/50)
-       sf.write(f"speed_{speed}.wav", audio.samples, audio.sample_rate)
-   # 听感：speed=30 慢速清晰，speed=50 正常，speed=70 偏快，speed=100 急促
-   ```
-
-3. 找出"自然听感"参数组合：
-   - 默认建议：speed=50, volume=80, pitch=50（均衡）
-   - 会议场景：speed=40, pitch=40（沉稳男声）
-   - 儿童陪伴：speed=60, pitch=80（明快女声）
-
-4. 在 ROS2 节点中实现动态调参（计划在 tts_node.py 中实现）：
-   ```python
-   # 当前 tts_node.py 是 TODO 占位
-   # 计划实现：
-   self.declare_parameter('voice', 'xiaoyan')
-   self.declare_parameter('speed', 50)
-   self.declare_parameter('volume', 80)
-   self.declare_parameter('pitch', 50)
    
-   # 支持动态更新（无需重启节点）
-   self.add_on_set_parameters_callback(self._on_param_update)
+   while True:
+       if fsm.state == State.IDLE:
+           # KWS 监听
+           if kws_worker.detected():
+               fsm.transition("wake_detected")
+       elif fsm.state == State.LISTENING:
+           text = asr_worker.recognize(duration=5)
+           if text:
+               fsm.transition("asr_done")
+       elif fsm.state == State.SPEAKING:
+           tts_worker.speak(llm_response)
+           fsm.transition("tts_done")
    ```
 
 **易错点**：
-- ⚠️ **speed 调到 100 后听不清** → **解决**：限制 30-80 范围；或对 TTS 引擎做范围映射
-- ⚠️ **切换 voice 后仍有旧音色残留** → **解决**：重启 TTS 引擎实例
-- ⚠️ **pitch 调高后声音变调失真** → **解决**：sherpa-onnx VITS 范围 -12~+12 半音，需转换
+- ⚠️ **状态转换事件名拼写错误导致转换失败** → **解决**：用 Enum 强制类型
+- ⚠️ **进入 SPEAKING 后 KWS 暂停导致无法打断** → **解决**：KWS 在所有状态都监听，由 Capture 线程常驻
 
 ---
 
-#### 步骤3：多语种切换（阶段二：能理解，30min）
+#### 步骤2：Capture 线程常驻 + audio_queue 缓冲（阶段一：能运行，30min）
 
-> ⚠️ 本步骤对应 `tools/tts_test.py` L90-120
+> ⚠️ 本步骤对应 `tools/voice_interaction.py` L30-80
 
 **知识点讲解**：
 
-**多语种切换（4.3.3）**
-- **原理**：多语种 TTS 通过切换 `voice` 参数实现：中文用 `xiaoyan`（女）/ `xiaofeng`（男）；英文用 `emma`（女）/ `victoria`（男）。底层模型差异：中文模型用拼音 token + 声调，英文模型用 CMU 音素 token。sherpa-onnx VITS-zh 仅支持中文，英文需用 VITS-en 模型（需额外下载）。本实验通过 `engine` 参数在多个模型间切换。
-- **源码对应**：`tools/tts_test.py` L90-120
+**Capture 线程常驻（5.1.3）**
+- **原理**：传统做法是 ASR 启动后才开始录音，但 KWS 唤醒 → ASR 启动之间存在几十毫秒延迟，这段"空白期"用户开始说话会丢失。本实验采用 Capture 线程常驻：始终从 ALSA 读取音频块推入 `queue.Queue`，KWS 与 ASR 共享这个队列。Capture 线程的逻辑非常简单：`while True: queue.put(sd.rec(...))`。这种"生产者-消费者"模式让 KWS 始终能拿到最新音频，从而支持在 TTS 播报期间检测唤醒词实现打断。
+- **源码对应**：`tools/voice_interaction.py` L30-80
+
+**audio_queue 缓冲（5.1.3）**
+- **原理**：`queue.Queue(maxsize=100)` 是线程安全的 FIFO 队列，Capture 线程作为 producer 持续 put，KWS/ASR 作为 consumer 持续 get。如果队列满（消费者处理慢），Capture 线程的 put 会阻塞，自动实现背压控制。这种设计解耦了音频采集与处理速度，避免因处理延迟导致音频丢失。
+- **源码对应**：`tools/voice_interaction.py` audio_queue 声明
 
 **操作步骤**：
 
-1. 下载英文 VITS 模型：
+1. 实现 Capture 线程：
+   ```python
+   import threading
+   import queue
+   import sounddevice as sd
+   import numpy as np
+   
+   class CaptureThread(threading.Thread):
+       """始终从 ALSA 读取音频并放入队列（来源：voice_interaction.py 简化）"""
+       def __init__(self, audio_queue: queue.Queue, sample_rate=16000, chunk_ms=80):
+           super().__init__(daemon=True, name="Capture")
+           self.queue = audio_queue
+           self.sample_rate = sample_rate
+           self.chunk_size = int(sample_rate * chunk_ms / 1000)
+           self.running = True
+       
+       def run(self):
+           def callback(indata, frames, time_info, status):
+               if not self.running:
+                   raise sd.CallbackStop
+               audio = indata[:, 0].astype(np.float32).copy()
+               try:
+                   self.queue.put_nowait(audio)
+               except queue.Full:
+                   pass  # 队列满时丢弃旧帧
+           
+           with sd.InputStream(
+               samplerate=self.sample_rate,
+               channels=1,
+               dtype="float32",
+               blocksize=self.chunk_size,
+               callback=callback,
+           ):
+               while self.running:
+                   sd.sleep(50)
+       
+       def stop(self):
+           self.running = False
+   ```
+
+2. 启动 Capture + KWS 消费：
+   ```python
+   audio_queue = queue.Queue(maxsize=200)
+   capture = CaptureThread(audio_queue)
+   capture.start()
+   
+   kws = sherpa_onnx.KeywordSpotter(...)
+   kws_stream = kws.create_stream()
+   
+   while True:
+       try:
+           audio = audio_queue.get(timeout=1.0)
+       except queue.Empty:
+           continue
+       kws_stream.accept_waveform(16000, audio)
+       if kws.is_endpoint(kws_stream):
+           kw = kws.get_result(kws_stream).keyword
+           if kw:
+               print(f"[KWS] {kw}")
+   ```
+
+3. 性能监控：
    ```bash
-   # 假设 sherpa-onnx-en 模型在 /home/iflytek/AI/sherpa-onnx-en/
-   bash tools/setup_sherpa_en.sh
-   # 下载 vits-ljspeech-en 模型
+   # 监控队列长度（应保持 < 50）
+   watch -n 1 'python3 -c "import queue; print(queue.Queue().qsize())"'
+   # 监控 CPU 占用
+   top -H -p $(pgrep -f voice_interaction)
    ```
 
-2. 多语种测试：
+**易错点**：
+- ⚠️ **队列满导致音频丢失** → **解决**：调大 maxsize 到 500；或 KWS 处理加速
+- ⚠️ **Capture 线程无法退出** → **解决**：用 `running` 标志 + `daemon=True` 双重保护
+- ⚠️ **多个 Capture 实例同时打开导致 ALSA 报错** → **解决**：确保全局只有一个 Capture 实例
+
+---
+
+#### 步骤3：流式 LLM 客户端与 TTS 句子分割（阶段二：能理解，60min）
+
+> ⚠️ 本步骤对应 `tools/voice_interaction.py` LLM worker + TTS worker
+
+**知识点讲解**：
+
+**OpenAI 兼容 API（5.2.1）**
+- **原理**：OpenAI 定义的 `/v1/chat/completions` HTTP API 已成为大模型调用的事实标准。本实验的 RKLLM 本地推理引擎实现了该 API 端点（详见 exp06），因此 voice_interaction.py 可直接用 OpenAI 官方 Python SDK 调用本地模型。请求体格式：`{"model": "qwen", "messages": [...], "stream": true}`。流式响应通过 SSE（Server-Sent Events）逐 chunk 返回 `data: {...}\n\n`。
+- **源码对应**：`voice_interaction.py` LLM 调用部分
+
+**流式 SSE（5.2.2）**
+- **原理**：SSE 让服务器可以在响应生成过程中持续推送增量内容，每条 `data: {...}` 是一个 JSON 块，包含当前已生成的文本片段。客户端解析 SSE 流，累积 `delta.content` 字段得到完整响应。流式相比非流式的优势：(1) **首字延迟 < 500ms**：用户看到第一个字就立即开始思考；(2) **可与 TTS 并行**：TTS 可在 LLM 仍在生成时就合成已生成部分。本实验在收到"。" "！" "？" 等句子结束符时立即触发 TTS，无需等待 LLM 完整生成。
+- **源码对应**：`voice_interaction.py` SSE 解析与句子分割
+
+**操作步骤**：
+
+1. 流式 LLM 客户端：
    ```python
-   def tts_multilang(text: str, lang: str):
-       if lang == "zh":
-           tts = sherpa_onnx.OfflineTts(model=".../sherpa-onnx/tts/model.onnx", ...)
-       elif lang == "en":
-           tts = sherpa_onnx.OfflineTts(model=".../sherpa-onnx-en/tts/model.onnx", ...)
-       audio = tts.generate(text, sid=0, speed=1.0)
-       return audio.samples, audio.sample_rate
+   from openai import OpenAI
    
-   # 中文合成
-   samples, sr = tts_multilang("你好", "zh")
-   sd.play(samples, sr); sd.wait()
-   # 英文合成
-   samples, sr = tts_multilang("Hello", "en")
-   sd.play(samples, sr); sd.wait()
+   client = OpenAI(
+       base_url="http://localhost:8080/v1",
+       api_key="not-needed",
+   )
+   
+   def stream_llm(messages: list[dict]) -> str:
+       """流式调用本地 RKLLM"""
+       response = client.chat.completions.create(
+           model="qwen",
+           messages=messages,
+           stream=True,
+       )
+       full_text = ""
+       sentence_buffer = ""
+       for chunk in response:
+           if chunk.choices and chunk.choices[0].delta.content:
+               delta = chunk.choices[0].delta.content
+               full_text += delta
+               sentence_buffer += delta
+               # 句子分割：遇到 。！？\n 时触发
+               for sep in ["。", "！", "？", "\n"]:
+                   if sep in sentence_buffer:
+                       parts = sentence_buffer.split(sep, 1)
+                       yield parts[0] + sep  # 整句
+                       sentence_buffer = parts[1]
+                       break
+       if sentence_buffer:
+           yield sentence_buffer
+       return full_text
    ```
 
-3. 自动语言检测（结合 ASR 文本）：
+2. 句子分割 + TTS 合成流水线：
    ```python
    import re
-   def detect_lang(text: str) -> str:
-       # 含中文字符判中文，否则英文
-       if re.search(r'[\u4e00-\u9fff]', text):
-           return "zh"
-       return "en"
+   
+   def stream_llm_with_tts(messages, tts_engine, interrupt_event):
+       """LLM 流式响应 + 句子级 TTS 合成"""
+       sentence_end_re = re.compile(r'([。！？\n])')
+       buffer = ""
+       for sentence in stream_llm(messages):
+           if interrupt_event.is_set():
+               print("[INTERRUPTED] stop TTS")
+               return
+           print(f"[TTS] {sentence}")
+           audio = tts_engine.generate(sentence, sid=0, speed=1.0)
+           sd.play(audio.samples, audio.sample_rate)
+           sd.wait()  # 阻塞直到播放完成
+   ```
+
+3. 多轮对话历史管理：
+   ```python
+   class ConversationManager:
+       def __init__(self, max_history=10):
+           self.history = []
+           self.max_history = max_history
+       
+       def add_user(self, text: str):
+           self.history.append({"role": "user", "content": text})
+           if len(self.history) > self.max_history * 2:
+               self.history = self.history[-self.max_history * 2:]
+       
+       def add_assistant(self, text: str):
+           self.history.append({"role": "assistant", "content": text})
+       
+       def get_messages(self) -> list[dict]:
+           return [{"role": "system", "content": "你是小飞同学，车载机器人..."}] + self.history
    ```
 
 **易错点**：
-- ⚠️ **中英文混排合成混乱** → **解决**：先用 langdetect 分段；或训练中英混排模型
-- ⚠️ **英文模型不支持数字读法** → **解决**：先 G2P 转换（"123" → "one hundred twenty three"）
+- ⚠️ **流式响应卡顿** → **解决**：检查本地 RKLLM 推理速度；调小 max_tokens
+- ⚠️ **句子分割错误（"Mr."被切）** → **解决**：维护标点上下文，避免英文缩写被误切
+- ⚠️ **对话历史无限增长** → **解决**：限制 max_history，触发早停或摘要压缩
 
 ---
 
-#### 步骤4：打断机制实现（阶段三：能改造，60min）
+#### 步骤4：打断机制与多线程协作（阶段三：能改造，60min）
 
-> ⚠️ 本步骤对应 `car1_speech/tts_node.py`（TODO 占位）的 `std_srvs::Trigger` 服务
+> ⚠️ 本步骤对应 `tools/voice_interaction.py` interrupt_event
 
 **知识点讲解**：
 
-**打断服务（4.3.1）**
-- **原理**：TTS 播报过程中用户可能想中断（如"够了别说了"），需要立即停止当前播报。ROS2 通过 `std_srvs::Trigger` 服务实现：客户端调用 `/interaction/tts/stop` 服务，服务端处理函数中停止当前播放并返回成功。本实验在 tts_node.py 中实现（当前 TODO 占位）。
-- **源码对应**：`tts_node.py` TODO 计划实现
-
-**打断机制原理（4.3.2）**
-- **原理**：打断机制依赖两个关键设计：(1) **事件信号**：`threading.Event` 或 `std::atomic<bool>`，主线程通过设置事件通知播放线程立即退出；(2) **播放线程协作退出**：播放线程在每个 PCM 帧写入后检查事件，若被设置则停止播放并释放音频设备。如果使用阻塞 `sd.play()`，可通过 `sd.stop()` 强制停止。设计要点：避免音频设备未释放导致后续播报失败。
-- **源码对应**：`tts_node.py` 计划实现位置
+**打断机制**
+- **原理**：用户在 TTS 播报过程中说"小飞同学"，KWS 检测到唤醒词后需立即停止当前 TTS 播放。实现要点：(1) **Capture 线程**始终运行（不在打断时停止）；(2) **KWS 线程**始终消费 audio_queue（IDLE 和 SPEAKING 状态都监听）；(3) **interrupt_event** 是 `threading.Event`，主循环检测到 KWS 唤醒时 `set()`；(4) **TTS worker** 在每个 PCM chunk 后检查 event，若被设置则 `sd.stop()` 并退出。
+- **源码对应**：`voice_interaction.py` interrupt_event 实现
 
 **操作步骤**：
 
-1. 实现打断服务（计划在 tts_node.py 中）：
+1. 实现 interrupt_event：
    ```python
-   # 计划在 tts_node.py 中实现（当前为 TODO 占位）
-   import rclpy, threading
-   from rclpy.node import Node
-   from std_msgs.msg import String, Bool
-   from std_srvs.srv import Trigger
-   import sounddevice as sd
-   import sherpa_onnx
+   import threading
    
-   class TTSNode(Node):
-       def __init__(self):
-           super().__init__('tts_node')
-           self.declare_parameter('engine', 'iflytek')
-           self.declare_parameter('voice', 'xiaoyan')
-           # ... 加载 TTS 引擎
-           
-           self.speak_sub = self.create_subscription(
-               String, '/interaction/tts/speak', self.speak_callback, 10
-           )
-           self.state_pub = self.create_publisher(
-               Bool, '/interaction/tts/is_speaking', 10
-           )
-           self.stop_srv = self.create_service(
-               Trigger, '/interaction/tts/stop', self.stop_callback
-           )
-           
-           self.is_speaking = False
-           self.stop_event = threading.Event()
-           self.speak_thread = None
-       
-       def speak_callback(self, msg):
-           if self.is_speaking:
-               self.get_logger().warn('TTS 正在播报，新文本加入队列')
-           text = msg.data
-           self.speak_thread = threading.Thread(
-               target=self._speak_worker, args=(text,), daemon=True
-           )
-           self.speak_thread.start()
-       
-       def _speak_worker(self, text):
-           self.is_speaking = True
-           self.state_pub.publish(Bool(data=True))
-           self.stop_event.clear()
-           try:
-               audio = self.tts.generate(text, sid=0, speed=1.0)
-               # 分块播放，每块后检查 stop_event
-               chunk_size = 4096
-               for i in range(0, len(audio.samples), chunk_size):
-                   if self.stop_event.is_set():
-                       self.get_logger().info('TTS 被打断')
-                       break
-                   chunk = audio.samples[i:i+chunk_size]
-                   sd.play(chunk, audio.sample_rate)
-                   sd.wait()
-           finally:
-               self.is_speaking = False
-               sd.stop()
-               self.state_pub.publish(Bool(data=False))
-       
-       def stop_callback(self, request, response):
-           if self.is_speaking:
-               self.stop_event.set()
-               response.success = True
-               response.message = 'TTS stopped'
-           else:
-               response.success = False
-               response.message = 'TTS not speaking'
-           return response
+   interrupt_event = threading.Event()
+   
+   def kws_worker(audio_queue, interrupt_event, kws_engine):
+       """KWS 始终监听，独立于状态机"""
+       stream = kws_engine.create_stream()
+       while True:
+           audio = audio_queue.get()
+           stream.accept_waveform(16000, audio)
+           if kws_engine.is_endpoint(stream):
+               kw = kws_engine.get_result(stream).keyword
+               if kw:
+                   print(f"[KWS-DETECT] {kw} (current interrupt={'set' if interrupt_event.is_set() else 'unset'})")
+                   interrupt_event.set()
+   
+   def llm_tts_worker(text, llm_client, tts_engine, interrupt_event):
+       """LLM 流式 + TTS 句子级合成 + 打断检查"""
+       for sentence in stream_llm_with_tts(text):
+           if interrupt_event.is_set():
+               interrupt_event.clear()
+               return  # 立即退出
+           audio = tts_engine.generate(sentence, ...)
+           sd.play(audio.samples, audio.sample_rate)
+           sd.wait()
    ```
 
-2. 客户端测试：
-   ```bash
-   # 启动 TTS 播报长文本
-   ros2 topic pub --once /interaction/tts/speak std_msgs/msg/String \
-     "{data: '这是一段很长的文本用来测试打断机制是否有效请耐心等待我即将说完'}"
-
-   # 1 秒后触发打断
-   sleep 1 && ros2 service call /interaction/tts/stop std_srvs/srv/Trigger
-   # 预期：播报立即停止，service 返回 success=True
+2. 主循环：
+   ```python
+   import time
+   
+   while True:
+       # IDLE：等待 KWS 唤醒
+       interrupt_event.wait(timeout=0.1)  # 非阻塞
+       if interrupt_event.is_set():
+           print("[TRANSITION] IDLE → LISTENING (wake detected)")
+           interrupt_event.clear()
+           text = asr_recognize(duration=5)
+           if text:
+               print(f"[ASR] {text}")
+               conversation.add_user(text)
+               print("[TRANSITION] LISTENING → SPEAKING (LLM+TTS)")
+               llm_tts_worker(conversation.get_messages(), ...)
+               print("[TRANSITION] SPEAKING → IDLE (TTS done)")
    ```
 
-3. 性能对比（开启 vs 关闭打断）：
-   - 关闭打断：用户听到完整播报才能输入下一指令（响应慢）
-   - 开启打断：用户随时可中断（响应快，体验好）
+3. 端到端测试：
+   - 唤醒"小飞同学"
+   - 说话"给我讲个故事"
+   - 在 TTS 播报过程中再次说"小飞同学"
+   - 预期：TTS 在 500ms 内停止，新一轮 LISTENING 启动
 
 **易错点**：
-- ⚠️ **打断后音频设备未释放** → **解决**：在 `finally` 块中 `sd.stop()`
-- ⚠️ **打断后下一段播报无声** → **解决**：检查音频设备是否被独占占用，重启播放线程
-- ⚠️ **打断服务响应延迟** → **解决**：服务回调直接 `event.set()`，不要做耗时操作
+- ⚠️ **打断后 TTS 线程未退出导致下一段混乱** → **解决**：打断后 sd.stop() + return
+- ⚠️ **interrupt_event 未清理导致下一轮误触发** → **解决**：检测到唤醒后立即 clear()
+- ⚠️ **多线程竞争导致 audio_queue 数据混乱** → **解决**：queue.Queue 线程安全，无需额外加锁
 
 ---
 
-#### 完整可运行代码 demo_tts.py
+#### 完整可运行代码 demo_voice_interaction.py
+
+> 注：完整版依赖 `tools/voice_interaction.py`，以下为独立 demo 演示核心流程
 
 ```python
 # -*- coding: utf-8 -*-
 """
-实验4 demo：TTS 多引擎 + 参数调控 + 打断
+实验5 demo：简化版端到端语音交互
 平台：B2 / C1
-运行：python3 demo_tts.py --engine edge
-按键：s 停止当前播报，q 退出
+运行：python3 demo_voice_interaction.py
+按键：q 退出
 """
 import argparse
+import queue
 import threading
 import time
 import numpy as np
 import sounddevice as sd
-import soundfile as sf
+import sherpa_onnx
 
 
-class TTSEngine:
-    """多 TTS 引擎适配（来源：基于 tools/tts_test.py 抽象）"""
+class SimpleVoicePipeline:
+    """简化版端到端语音对话系统（演示状态机 + 打断）"""
     
-    def __init__(self, engine: str, voice: str = "xiaoyan",
-                 speed: int = 50, volume: int = 80, pitch: int = 50):
-        self.engine_name = engine
-        self.voice = voice
-        self.speed = speed / 50.0
-        self.volume = volume / 100.0
-        self.pitch = pitch
-        if engine == "pyttsx3":
-            import pyttsx3
-            self.engine = pyttsx3.init()
-        elif engine == "sherpa":
-            import sherpa_onnx
-            self.engine = sherpa_onnx.OfflineTts(
-                model="/home/iflytek/AI/sherpa-onnx/tts/model.onnx",
-                tokens="/home/iflytek/AI/sherpa-onnx/tts/tokens.txt",
-                data_dir="/home/iflytek/AI/sherpa-onnx/tts/espeak-ng-data",
-            )
-        elif engine == "edge":
-            # edge-tts 异步调用
-            import edge_tts
-            self.engine = edge_tts.Communicate
-        else:
-            raise ValueError(f"Unknown engine: {engine}")
+    def __init__(self, model_dir: str = "/home/iflytek/AI/sherpa-onnx"):
+        self.audio_queue = queue.Queue(maxsize=200)
+        self.capture = None
+        self.kws = sherpa_onnx.KeywordSpotter(
+            tokens=f"{model_dir}/kws/tokens.txt",
+            encoder=f"{model_dir}/kws/encoder.onnx",
+            decoder=f"{model_dir}/kws/decoder.onnx",
+            joiner=f"{model_dir}/kws/joiner.onnx",
+            keywords_file=f"{model_dir}/kws/keywords.txt",
+            keywords_threshold=0.3,
+        )
+        self.asr = sherpa_onnx.OnlineRecognizer.from_transducer(
+            tokens=f"{model_dir}/asr/tokens.txt",
+            encoder=f"{model_dir}/asr/encoder.onnx",
+            decoder=f"{model_dir}/asr/decoder.onnx",
+            joiner=f"{model_dir}/asr/joiner.onnx",
+            num_threads=2,
+            sample_rate=16000,
+        )
+        self.tts = sherpa_onnx.OfflineTts(
+            model=f"{model_dir}/tts/model.onnx",
+            tokens=f"{model_dir}/tts/tokens.txt",
+            data_dir=f"{model_dir}/tts/espeak-ng-data",
+        )
+        self.interrupt_event = threading.Event()
+        self.state = "IDLE"
+        self.running = True
     
-    def synth(self, text: str) -> tuple[np.ndarray, int]:
-        if self.engine_name == "pyttsx3":
-            # 简化：保存到临时文件后读取
-            self.engine.save_to_file(text, "/tmp/tts.wav")
-            self.engine.runAndWait()
-            audio, sr = sf.read("/tmp/tts.wav", dtype="float32")
-            return audio, sr
-        elif self.engine_name == "sherpa":
-            audio = self.engine.generate(text, sid=0, speed=self.speed)
-            return np.array(audio.samples, dtype=np.float32), audio.sample_rate
-        elif self.engine_name == "edge":
-            # edge-tts 通过 asyncio 运行
-            import asyncio
-            async def _run():
-                comm = self.engine(text=text, voice="zh-CN-XiaoxiaoNeural")
-                audio_bytes = b""
-                async for chunk in comm.stream():
-                    if chunk["type"] == "audio":
-                        audio_bytes += chunk["data"]
-                return audio_bytes
-            loop = asyncio.new_event_loop()
-            audio_bytes = loop.run_until_complete(_run())
-            loop.close()
-            import io
-            audio, sr = sf.read(io.BytesIO(audio_bytes), dtype="float32")
-            return audio, sr
-
-
-class TTSPlayer:
-    """带打断功能的 TTS 播放器"""
+    def start_capture(self, device=1):
+        def callback(indata, frames, time_info, status):
+            audio = indata[:, 0].astype(np.float32).copy()
+            try:
+                self.audio_queue.put_nowait(audio)
+            except queue.Full:
+                pass
+        
+        self.capture_stream = sd.InputStream(
+            device=device, channels=1, samplerate=16000,
+            dtype="float32", blocksize=1280, callback=callback,
+        )
+        self.capture_stream.start()
     
-    def __init__(self, engine: TTSEngine):
-        self.engine = engine
-        self.is_playing = False
-        self.stop_event = threading.Event()
-        self.lock = threading.Lock()
+    def kws_detect(self) -> bool:
+        """消费 audio_queue，检测唤醒词"""
+        try:
+            audio = self.audio_queue.get(timeout=0.1)
+        except queue.Empty:
+            return False
+        stream = self.kws.create_stream()
+        stream.accept_waveform(16000, audio)
+        if self.kws.is_endpoint(stream):
+            kw = self.kws.get_result(stream).keyword
+            if kw:
+                return True
+        return False
+    
+    def asr_listen(self, duration=5) -> str:
+        """ASR 识别一段"""
+        self.state = "LISTENING"
+        print(f"[STATE] → LISTENING")
+        asr_stream = self.asr.create_stream()
+        start = time.time()
+        while time.time() - start < duration:
+            try:
+                audio = self.audio_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            asr_stream.accept_waveform(16000, audio)
+            if self.asr.is_endpoint(asr_stream):
+                self.asr.decode_streams([asr_stream])
+                text = asr_stream.result.text.strip()
+                if text:
+                    return text
+        return ""
     
     def speak(self, text: str):
-        with self.lock:
-            self.stop_event.clear()
-            self.is_playing = True
-        try:
-            audio, sr = self.engine.synth(text)
-            chunk_size = 4096
-            for i in range(0, len(audio), chunk_size):
-                if self.stop_event.is_set():
-                    print("[INTERRUPTED]")
-                    break
-                sd.play(audio[i:i+chunk_size], sr)
-                sd.wait()
-        finally:
-            self.is_playing = False
-            sd.stop()
+        """TTS 播报 + 打断支持"""
+        self.state = "SPEAKING"
+        print(f"[STATE] → SPEAKING (text='{text[:30]}...')")
+        audio = self.tts.generate(text, sid=0, speed=1.0)
+        # 分块播放，每块检查 interrupt
+        chunk_size = 4096
+        samples = np.array(audio.samples, dtype=np.float32)
+        for i in range(0, len(samples), chunk_size):
+            if self.interrupt_event.is_set():
+                print("[INTERRUPTED]")
+                sd.stop()
+                return
+            sd.play(samples[i:i+chunk_size], audio.sample_rate)
+            sd.wait()
+        self.state = "IDLE"
+        print(f"[STATE] → IDLE")
     
-    def stop(self):
-        self.stop_event.set()
+    def run(self, mock_llm=False):
+        self.start_capture()
+        print(f"[START] Listening... (state=IDLE)")
+        try:
+            while self.running:
+                if self.state == "IDLE":
+                    if self.kws_detect():
+                        print("[KWS] 唤醒词检测")
+                        self.interrupt_event.clear()
+                        text = self.asr_listen(duration=5)
+                        if text:
+                            print(f"[ASR] {text}")
+                            if mock_llm:
+                                response = f"你说了：{text}"
+                            else:
+                                response = f"模拟 LLM 响应：{text}"
+                            self.speak(response)
+                elif self.state == "SPEAKING":
+                    if self.kws_detect():
+                        print("[KWS] 打断检测")
+                        self.interrupt_event.set()
+                        self.state = "IDLE"
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.running = False
+            if self.capture_stream:
+                self.capture_stream.stop()
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--engine", default="sherpa",
-                        choices=["pyttsx3", "sherpa", "edge"])
-    parser.add_argument("--voice", default="xiaoyan")
-    parser.add_argument("--speed", type=int, default=50)
-    parser.add_argument("--volume", type=int, default=80)
-    parser.add_argument("--pitch", type=int, default=50)
+    parser.add_argument("--model-dir", default="/home/iflytek/AI/sherpa-onnx")
+    parser.add_argument("--mock-llm", action="store_true",
+                        help="使用 mock LLM 响应（不依赖真实 LLM 服务）")
     args = parser.parse_args()
     
-    engine = TTSEngine(args.engine, args.voice, args.speed, args.volume, args.pitch)
-    player = TTSPlayer(engine)
-    
-    print(f"[INFO] Engine={args.engine} voice={args.voice} speed={args.speed} volume={args.volume} pitch={args.pitch}")
-    
-    texts = [
-        "你好，我是小飞同学，很高兴认识你。",
-        "今天天气真好，适合出去散步。",
-        "我支持中文和英文双语合成。",
-    ]
-    
-    try:
-        for t in texts:
-            print(f"[SPEAK] {t}")
-            player.speak(t)
-            time.sleep(0.5)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        if player.is_playing:
-            player.stop()
+    pipeline = SimpleVoicePipeline(args.model_dir)
+    pipeline.run(mock_llm=args.mock_llm)
 
 
 if __name__ == "__main__":
@@ -513,39 +579,38 @@ if __name__ == "__main__":
 
 ### 4.7 注意事项
 
-- ⚠️ **tts_node.py 当前为 TODO 占位** → demo 独立运行，节点化封装为扩展任务
-- ⚠️ **音频设备独占** → TTS 播报期间应禁止 ASR 录音（状态机互斥）
-- ⚠️ **多语种需切换模型** → 不能用一个模型合成中英混排
-- ⚠️ **打断后必须 sd.stop()** → 否则后续播报无声
-- ⚠️ **云端 TTS 注意 API 配额** → 讯飞免费版每天 5 万次，超出收费
+- ⚠️ **真实 LLM 服务依赖 RKLLM 部署** → 本实验 demo 使用 mock_llm，真实 LLM 集成见 exp06
+- ⚠️ **Capture 线程常驻占用 CPU** → 实测 B2 平台约 8% 单核
+- ⚠️ **打断事件误触发** → 调高 KWS threshold 到 0.5；或加 1.5s 冷却时间
+- ⚠️ **TTS 播报与 KWS 互相干扰** → KWS 在 SPEAKING 状态下仍需检测，但需对播报音频做回声消除（AEC）
 
 ### 4.8 实验总结
 
 **完成成果**:
-- 部署三种 TTS 引擎（pyttsx3/edge-tts/iflytek/sherpa-onnx VITS）
-- 调优 voice/speed/volume/pitch 参数，对比不同发音人/语速/音调效果
-- 实现多语种切换（中文/英文）
-- 实现 TTS 打断服务 `/interaction/tts/stop`
+- 实现 IDLE/LISTENING/SPEAKING 三态状态机
+- 实现 Capture 线程常驻 + audio_queue 缓冲
+- 集成流式 LLM 响应与句子级 TTS 合成
+- 实现基于 KWS 的打断机制
 
 **技能收获**:
-- 掌握 TTS 端到端神经网络的原理与部署
-- 理解多引擎适配的设计模式（接口抽象）
-- 学会用 threading.Event 实现线程协作打断
+- 掌握端到端语音对话系统的多线程协同设计
+- 理解状态机在交互系统中的核心作用
+- 学会用 producer-consumer 模式解耦音频采集与处理
 
 **常见问题与解决**:
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| TTS 无声 | 音频设备编号错误 | `aplay -l` 检查；`audio_device_index` 配置正确 |
-| 合成中文乱码 | tokens.txt 不含中文字符 | 下载中文专用 tokens.txt |
-| 打断后下一段无声 | sd.stop() 未在 finally 调用 | 加 try-finally 保护 |
-| 云端 TTS 报 401 | API 密钥错误 | 检查 `${IFLYTEK_API_KEY}` 环境变量 |
+| 唤醒后无 ASR 输出 | 麦克风被 TTS 占用 | 加 AEC 回声消除，或互斥锁 |
+| 打断不响应 | KWS 阈值过高 | 调低 threshold 到 0.3 |
+| 对话历史混乱 | 多轮上下文管理错 | 用 `ConversationManager` 维护 |
+| LLM 调用超时 | RKLLM 未启动 | `python3 llm_server.py` 先启动 |
 
 ### 4.9 实验报告要求
 
 **思考题**:
-1. 对比 pyttsx3、edge-tts、iflytek、sherpa-onnx VITS 四种 TTS 引擎在离线能力、音质、延迟、多语种上的差异，机器人产品该如何选型？
-2. 端到端 TTS 相比传统拼接合成（Concatenative Synthesis）在自然度上提升的本质原因是什么？
-3. TTS 打断机制的事件信号设计如何避免音频设备泄漏？除了 threading.Event 还有什么方案？
+1. 状态机相对"事件驱动"模式在语音交互系统中有什么优势？是否存在状态机不适用的场景？
+2. Capture 线程常驻 + audio_queue 缓冲如何避免音频丢失？与传统"按需录音"模式相比延迟差异多大？
+3. 打断机制中"语义级打断"（理解用户意图后再打断）与"信号级打断"（听到唤醒词就打断）各有何应用场景？
 
-**评分标准**: TTS 部署 20 分 + 参数调优 20 分 + 多语种 20 分 + 打断机制 30 分 + 实验报告 10 分 = 100 分。
+**评分标准**: 状态机设计 20 分 + 多线程协同 25 分 + 流式 LLM 集成 20 分 + 打断机制 25 分 + 实验报告 10 分 = 100 分。
