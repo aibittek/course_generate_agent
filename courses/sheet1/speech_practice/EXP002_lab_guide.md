@@ -11,7 +11,7 @@ source_parts: courses/sheet1/speech_practice/_parts/experiment-{1..6}.md
 csv_sha256: d89f7c2f6e84977519fccca3ad5325dbade2216274b2b0d5f41bd275efd91175
 total_hours: 32
 experiment_count: 6
-tech_stack: sherpa-onnx, ROS2, KWS, ASR, TTS, Function Calling, RKLLM, VLM
+tech_stack: 讯飞六麦阵列(AIUI), pyserial, ROS2, ASR, TTS, Function Calling, RKLLM, VLM
 hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
 source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/interaction/，human_waiver 放行)
 ---
@@ -29,7 +29,7 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/interaction/，hu
 
 ## 目录
 
-1. [实验1：基于 sherpa-onnx KeywordSpotter 的语音唤醒实验](#实验1基于-sherpa-onnx-keywordspotter-的语音唤醒实验4h)
+1. [实验1：基于讯飞六麦阵列的串口通信与唤醒事件实验](#实验1基于讯飞六麦阵列的串口通信与唤醒事件实验4h)
 2. [实验2：基于 sherpa-onnx 的本地语音识别asr实验](#实验2基于-sherpa-onnx-的本地语音识别asr实验4h)
 3. [实验3：基于本地 tts 引擎的语音合成与参数调控实验](#实验3基于本地-tts-引擎的语音合成与参数调控实验4h)
 4. [实验4：基于状态机的端到端语音对话交互实验](#实验4基于状态机的端到端语音对话交互实验8h)
@@ -42,7 +42,7 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/interaction/，hu
 
 | 编号 | 名称 | 学时 | 类型 | 难度 | 源码路径 |
 |------|------|------|------|------|----------|
-| exp01 | 基于 sherpa-onnx KeywordSpotter 的语音唤醒实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/interaction/` |
+| exp01 | 基于讯飞六麦阵列的串口通信与唤醒事件实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/` |
 | exp02 | 基于 sherpa-onnx 的本地语音识别(ASR)实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/interaction/` |
 | exp03 | 基于本地 TTS 引擎的语音合成与参数调控实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/interaction/` |
 | exp04 | 基于状态机的端到端语音对话交互实验 | 8h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/interaction/` |
@@ -83,508 +83,231 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/interaction/，hu
 
 ---
 
-## 实验1：基于 sherpa-onnx KeywordSpotter 的语音唤醒实验（4h）
+## 实验1：基于讯飞六麦阵列的串口通信与唤醒事件实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 源码位于 `ros2_ws/src/xflz_eai_car1/interaction/car1_speech/`，主入口 `car1_speech/wake_word_node.py`（当前为 TODO 占位），实际引擎由 `tools/kws_test.py` 验证。已通过 `human_waiver` 放行。
+> **本实验源码**（位于 `ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/`）：
+> - `uart_device.py` — 串口通信封装（pyserial）
+> - `xf_mic_array.py` — AIUI 协议解析、帧拆装、唤醒事件
+> - `xf_mic_array_gui.py` — Tkinter 演示 GUI（直接 `python3` 运行）
 
 ### 1.1 关联知识点
 
-- 2.1.1 KWS 概念 > 概念 > KWS 从连续音频流中检测预注册关键词
-- 2.1.2 Zipformer-3M 编码器 > 原理 > 编码器将音频特征映射到嵌入空间
-- 2.1.3 sherpa-onnx KWS 3MB > 事实 > 模型仅约 3MB，CPU 推理延迟 < 30ms
-- 2.2.1 keywords-file 加载 > 流程 > 支持中文拼音与英文音素 token
-- 2.2.2 sensitivity 调参 > 原理 > 越低召回越高但误唤醒率上升
-- 2.2.3 tokens.txt 扩展 > 概念 > 决定支持的中文发音组合
-- 2.3.1 连续 N 帧 > 流程 > 避免单帧噪声导致误唤醒
-- 2.3.2 最短触发间隔 > 原理 > 防止高频重复触发
-- 2.3.3 二次确认机制 > 流程 > 关键词在短时间窗内出现 2 次
+#### 1.1.1 串口通信与设备识别
+- 1.1.1 串口通信概念 > 概念 > UART 是一种异步串行通信协议,通过 TX/RX 两根线按位收发字节
+- 1.1.2 pyserial 库基础 > 原理 > `serial.Serial` 封装 open/read/write/close,timeout 控制阻塞行为
+- 1.1.3 VID/PID 自动识别 > 流程 > USB 设备的硬件指纹 VID(0x1a86)+PID(0x55d4) 用于无串口名称时自动查找
+
+#### 1.1.2 麦克风阵列与声源定位
+- 1.2.1 麦克风阵列原理 > 概念 > 6 个麦克风均布圆周,通过到达时间差(TDOA)实现声源定位
+- 1.2.2 声源定位 beam/angle > 原理 > beam(0~5) 指向能量最大的麦克风,angle(0~360°) 为顺时针方向角
+- 1.2.3 AIUI 协议框架 > 事实 > 讯飞私有协议,以 0xA5 为同步头,JSON payload 描述唤醒事件
+
+#### 1.1.3 AIUI 串口协议与帧解析
+- 1.3.1 字节序与校验和 > 原理 > 小端序存储多字节字段,校验和 = (~sum + 1) & 0xFF
+- 1.3.2 帧结构组成 > 流程 > 同步头(1)+用户ID(1)+类型(1)+长度(2)+ID(2)+payload(n)+校验(1) = 7+n+1 字节
+- 1.3.3 接收缓冲与拆帧 > 分析 > 跨 read 累积到 rx_buffer,搜索 0xA5 定位帧头,处理伪同步头与校验失败
+
+#### 1.1.4 唤醒事件与防抖机制
+- 1.4.1 唤醒事件字段 > 流程 > 从 ivw JSON 提取 beam/angle/keyword/score/power/start_ms/end_ms
+- 1.4.2 时间窗口防抖 > 原理 > last_wakeup_time + 3 秒窗口,防止噪声连续触发
+- 1.4.3 回调与线程锁 > 分析 > wakeup_callback + wakeup_lock 保证事件处理并发安全
+
+#### 1.1.5 Tkinter GUI 可视化监控
+- 1.5.1 Tkinter Canvas 基础 > 概念 > create_oval/line/text 在画布上绘制几何与文字
+- 1.5.2 环形阵列绘制 > 流程 > 极坐标 0° 在正下方,顺时针 60° 间隔布 6 个麦克风
+- 1.5.3 线程安全事件刷新 > 应用 > 接收线程 put 事件到 queue,主线程 after(50ms) 循环消费
 
 ### 1.2 实验目标
 
-1. 理解 KWS（Keyword Spotting）相对 VAD 唤醒的精度优势 — 原理理解
-2. 掌握 sherpa-onnx KeywordSpotter 的 Python API 调用与 ROS2 节点封装 — 流程掌握
-3. 独立完成 keywords.txt 配置与 sensitivity 调参 — 独立完成
-4. 能够将多策略误唤醒抑制方案迁移到其他边缘 AI 推理场景 — 迁移应用
+1. **理解串口通信本质** — 知道 UART、波特率、设备文件 /dev/ttyACM* 的概念
+2. **掌握 pyserial 基础调用** — 能用 open/read/write/close 与设备通信
+3. **理解 6 麦阵列的声源定位原理** — 知道 beam 编号与 angle 角度的物理意义
+4. **掌握 AIUI 协议帧结构** — 能从 16 进制字节流手算帧边界与校验和
+5. **理解唤醒事件的防抖机制** — 知道 3 秒时间窗 + Lock 是如何防止重复触发的
+6. **能运行 GUI 演示并定制** — 跑通 xf_mic_array_gui.py,扩展 PINYIN_MAP 加入新词
 
 ### 1.3 实验环境
 
 | 类别 | 配置 |
 |------|------|
-| 硬件 | B2/C1（含 6 麦阵列）、麦克风 ALSA 设备 |
-| OS | Ubuntu 22.04 + ROS2 Humble |
+| 硬件 | B2/C1(含讯飞 6 麦阵列模块,VID=0x1a86, PID=0x55d4) |
+| OS | Ubuntu 22.04 + USB ACM 内核模块 |
 | Python | 3.10 |
-| 核心库 | sherpa-onnx==1.10.0、rclpy==4.1.0 |
-| 模型 | sherpa-onnx-kws-zipformer-zh-en-3M-2025-12-20 |
-| 主入口 | car1_speech/wake_word_node.py（TODO 占位）+ tools/kws_test.py（实际验证） |
+| 核心库 | pyserial==3.5, tkinter(系统自带) |
+| 串口 | /dev/ttyACM0, 波特率 115200, 8N1 |
+| 源码 | ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/ |
 
 ### 1.4 实验难度
 
-- 难度: ⭐⭐ 中
-- 重点: KeywordSpotter API 调用；keywords.txt 多语言配置；sensitivity 调参
-- 难点: 误唤醒抑制三策略组合（连续 N 帧 + 最短间隔 + 二次确认）
+- 难度: ⭐ 入门
+- 重点: 串口通信基础；AIUI 帧结构；唤醒回调机制
+- 难点: 字节级帧解析；伪同步头与校验和失败处理
 
 ### 1.5 实验现象
 
 **快速验证流程**:
-1. `cd ~/ros2_ws && source install/setup.bash`
-2. `python3 src/car1_speech/tools/kws_test.py --model-dir /home/iflytek/AI/sherpa-onnx --keywords-threshold 0.3`
-3. 说出"小飞同学"或"hello robot"测试唤醒
-4. 观察终端：`[KWS] keyword=小飞同学 confidence=0.85`
-5. `Ctrl+C` 退出
+```bash
+# 1. 插上 6 麦阵列 USB,确认设备出现
+ls -l /dev/ttyACM*
+# 期望输出: crw-rw---- 1 root dialout 166, 0  ... /dev/ttyACM0
 
-**预期效果**:
-- 终端持续打印 `Listening...`，命中唤醒词后立刻打印 `keyword=xxx`
-- 同一关键词连续 3 次内只触发 1 次（最短间隔机制）
-- 30 次真实唤醒测试中，召回率 > 90%，误唤醒 < 2 次/小时
+# 2. 授权普通用户访问
+sudo chmod 666 /dev/ttyACM0
+
+# 3. 直接跑 GUI 演示(推荐先用这个看效果)
+cd ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/
+python3 xf_mic_array_gui.py
+
+# 4. GUI 弹出后,对着麦克风说"小飞同学"
+#    - 看到 6 个麦克风圆点中对应 beam 的变红
+#    - 从中心画出一支红色箭头指向声源方向
+#    - 右侧"当前唤醒词"显示拼音,中文显示"小飞同学"
+#    - score/power 进度条更新
+#    - 底部"事件历史"列表新增一行
+
+# 5. 无显示器/无 GUI 场景:仅终端模式
+python3 xf_mic_array_gui.py --headless
+# 终端输出: 检测到唤醒! Beam: 2, Angle: 120.5, Keyword: xiao3 fei1 tong2 xue2
+
+# 6. Ctrl+C 退出
+```
 
 ### 1.6 实验步骤
 
-#### 整体流程图
+#### 步骤1:串口设备识别与 pyserial 入门(30min)
 
-```mermaid
-graph LR
-    A[步骤1：KWS 模型部署] --> B[步骤2：keywords.txt 配置]
-    B --> C[步骤3：KeywordSpotter API 调用]
-    C --> D[步骤4：ROS2 节点封装]
-    D --> E[步骤5：误唤醒抑制]
-    E --> F[步骤6：性能基准测试]
-    F --> G[完成]
+> 本步骤对应 `tools/uart_device.py` 全文(约 100 行)
+
+**操作步骤**:
+
+1. 物理确认设备已连接:
+   ```bash
+   lsusb   # 关注 1a86:55d4 那行
+   ls -l /dev/ttyACM*
+   ```
+
+2. 枚举系统所有串口:
+   ```python
+   import serial.tools.list_ports as lp
+   for p in lp.comports():
+       print(f"{p.device}  VID:PID={p.hwid}")
+   ```
+
+3. 用最小代码测试串口收发:
+   ```python
+   import serial
+   s = serial.Serial('/dev/ttyACM0', baudrate=115200, timeout=1)
+   for i in range(5):
+       data = s.read(64)
+       print(f"读 #{i}: {len(data)} 字节  hex={data.hex(' ')[:60]}")
+   s.close()
+   ```
+
+#### 步骤2:麦克风阵列原理与硬件组成(30min)
+
+> 本步骤不写代码,先理解硬件
+
+**原理**:
+- 6 麦环形阵列通过**到达时间差(TDOA)** 反推声源方向,360° 范围定位精度 ±5°
+- `beam` 0~5 表示能量最大的麦克风,`angle` 0~360° 是顺时针方向角,**0° 在正下方**
+- AIUI 协议以 **0xA5 同步头 + JSON payload** 描述唤醒事件
+
+**操作步骤**:
+1. 物理观察 6 麦阵列模块(M0~M5 顺时针编号)
+2. 用 GUI 演示不同方向(前/右/后/左)的箭头方向
+3. 观察 score/angle 关系:arrow 角度 ≈ 你站的方向
+
+#### 步骤3:AIUI 协议帧解析(60min)
+
+> 本步骤对应 `tools/xf_mic_array.py` `_process_buffer()` 与 `_handle_frame()`
+
+**帧结构**(共 7+n+1 字节):
+```
+偏移  长度  字段       说明
+0     1     sync       固定 0xA5,用于定位帧起始
+1     1     user_id    用户 ID,通常 0x01
+2     1     msg_type   消息类型 0x01 握手 / 0x04 事件 / 0x05 设置 / 0xFF 响应
+3~4   2     msg_len    payload 长度(小端)
+5~6   2     msg_id     消息 ID(小端)
+7~    N     payload    数据,通常为 JSON 字符串
+最后  1     checksum   (~sum + 1) & 0xFF
 ```
 
----
+**操作步骤**:
+1. 用 `sudo cat /dev/ttyACM0 | xxd | head -50` 观察真实帧字节
+2. 手算校验和:Python `expected = (~sum(frame[:-1]) + 1) & 0xFF`
+3. 阅读 `_process_buffer` 的 3 处容错:丢弃同步头前的垃圾 / msg_len 异常跳过 / 校验失败跳过当前 0xA5
 
-#### 步骤1：KWS 模型部署与本地验证（阶段一：能运行，30min）
+#### 步骤4:唤醒事件处理与防抖机制(60min)
 
-> ⚠️ 本步骤对应 `tools/kws_test.py` L20-50
+> 本步骤对应 `xf_mic_array.py` `_handle_frame()` 中 AIUI 事件分支
 
-**知识点讲解**：
+**唤醒事件 JSON 结构**:
+```json
+{
+  "type": "aiui_event",
+  "content": {
+    "eventType": 4,
+    "info": "{\"ivw\":{\"beam\":2,\"angle\":120.5,\"keyword\":\"xiao3 fei1 tong2 xue2\",\"score\":1850,\"power\":125000}}"
+  }
+}
+```
 
-**KWS 概念（2.1.1）**
-- **原理**：KWS（Keyword Spotting）是语音交互的"门控"环节，从连续音频流中检测预注册关键词。其作用类似 VAD（Voice Activity Detection），但 VAD 只能判断"有人在说话"，KWS 能进一步判断"说的是不是唤醒词"。KWS 的核心挑战是低功耗常驻监听：模型需 < 5MB、CPU 推理 < 50ms、误唤醒率 < 1次/小时。本实验使用的 Zipformer-3M 模型仅 3MB，CPU 单核推理延迟约 25ms，非常适合电池供电的边缘设备。
-- **源码对应**：`ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/kws_test.py` 第 30-50 行
-
-**Zipformer-3M 编码器原理（2.1.2）**
-- **原理**：Zipformer 是 k2-fsa 团队提出的语音编码器架构，通过多尺度下采样与全局-局部注意力机制，在小模型尺寸下保持高精度。Zipformer-3M 指参数量约 300 万的版本。其工作流程为：输入音频（16kHz 单声道）→ 80 维 FBank 特征（25ms 窗、10ms 跳）→ Zipformer 编码器 → 80ms 滑动窗口嵌入 → 关键词 token 余弦相似度计算。当相似度 > 阈值（如 0.3）时触发唤醒。
-- **源码对应**：`tools/kws_test.py` 第 60-80 行（编码器推理）
-
-**操作步骤**：
-
-1. 确认 KWS 模型已部署：
-   ```bash
-   ls /home/iflytek/AI/sherpa-onnx/kws/
-   # 应包含：encoder.onnx decoder.onnx joiner.onnx tokens.txt keywords.txt
-   ```
-
-2. 运行 kws_test.py 基础测试：
-   ```bash
-   python3 src/car1_speech/tools/kws_test.py \
-     --model-dir /home/iflytek/AI/sherpa-onnx \
-     --audio-device 1 \
-     --keywords-threshold 0.3
-   # 终端显示：[KWS] Listening on device 1, threshold=0.3
-   # 来源：tools/kws_test.py L30-50
-   ```
-
-3. 录制测试音频验证（无麦克风场景）：
-   ```bash
-   # 准备 5 条唤醒词 wav
-   # 用 sherpa_onnx 测试离线识别
-   python3 -c "
-   import sherpa_onnx, soundfile as sf
-   kws = sherpa_onnx.KeywordSpotter(
-       tokens='/home/iflytek/AI/sherpa-onnx/kws/tokens.txt',
-       encoder='/home/iflytek/AI/sherpa-onnx/kws/encoder.onnx',
-       decoder='/home/iflytek/AI/sherpa-onnx/kws/decoder.onnx',
-       joiner='/home/iflytek/AI/sherpa-onnx/kws/joiner.onnx',
-       keywords_file='/home/iflytek/AI/sherpa-onnx/kws/keywords.txt',
-       keywords_threshold=0.3,
-   )
-   audio, sr = sf.read('test_xiaofei.wav')
-   stream = kws.create_stream()
-   stream.accept_waveform(sr, audio)
-   print('Detected:', kws.get_result(stream).keyword)
-   "
-   ```
-
-**易错点**：
-- ⚠️ **wav 文件采样率不是 16kHz** → **解决**：用 `ffmpeg -i in.wav -ar 16000 -ac 1 out.wav` 转换
-- ⚠️ **keywords.txt 找不到** → **解决**：绝对路径或工作目录下放 `keywords.txt`
-- ⚠️ **CPU 占用过高** → **解决**：`num_threads=1` 限制单核推理
-
----
-
-#### 步骤2：keywords.txt 多语言配置（阶段一：能运行，30min）
-
-> ⚠️ 本步骤对应 `kws/keywords.txt` 与 `kws/tokens.txt`
-
-**知识点讲解**：
-
-**keywords-file 配置（2.2.1）**
-- **原理**：keywords.txt 是 sherpa-onnx 加载关键词列表的纯文本文件，每行一个关键词，格式为"关键词 token 序列"。中文关键词使用拼音（带声调或不带），英文关键词使用音素 token。sherpa-onnx 启动时会把关键词转换为 token ID 序列，推理时计算音频 embedding 与 token 序列的相似度。本实验支持"小飞同学"（拼音：x iǎo fēi tóng xué）等组合。
-- **源码对应**：`kws/keywords.txt` 实际内容
-
-**tokens.txt 扩展（2.2.3）**
-- **原理**：tokens.txt 决定模型支持的所有 token 集合，包括中文字符、英文音素、标点等。默认 sherpa-onnx KWS 的 tokens.txt 包含约 5000 个 token，覆盖普通话常用字。要新增自定义唤醒词（如方言、品牌名），需要先用 `Sherpa-onnx` 提供的工具将词语转为 token 序列，添加到 keywords.txt。
-- **源码对应**：`kws/tokens.txt`
-
-**操作步骤**：
-
-1. 查看默认 keywords.txt：
-   ```bash
-   cat /home/iflytek/AI/sherpa-onnx/kws/keywords.txt
-   # 默认内容（每行 token 序列）：
-   # 小飞同学 x iǎo f ēi t óng x ué
-   # 你好小飞 n ǐ h ǎo x iǎo f ēi
-   ```
-
-2. 添加自定义唤醒词：
-   ```bash
-   # 使用 sherpa-onnx 提供的 lexicon 工具
-   python3 -c "
-   from sherpa_onnx import text2token
-   print(text2token('科大讯飞', tokens='/home/iflytek/AI/sherpa-onnx/kws/tokens.txt'))
-   # 输出：kē d à x ùn f ēi
-   "
-   
-   # 将结果追加到 keywords.txt
-   echo "科大讯飞 kē d à x ùn f ēi" >> /home/iflytek/AI/sherpa-onnx/kws/keywords.txt
-   ```
-
-3. 添加英文唤醒词（音素形式）：
-   ```bash
-   # 使用 espeak 生成音素
-   espeak -q -v en-us --pho "hello robot" | tr -d '\n' >> keywords.txt
-   echo "" >> keywords.txt
-   ```
-
-4. 验证多语言识别：
-   ```bash
-   python3 src/car1_speech/tools/kws_test.py --keywords-threshold 0.3
-   # 测试：说"科大讯飞"和"hello robot"应都能识别
-   ```
-
-**易错点**：
-- ⚠️ **添加了多音字关键词导致漏识别** → **解决**：拼音必须带声调，或列出所有可能的声调组合
-- ⚠️ **keywords.txt 末尾有空行/空格** → **解决**：每行用 `awk 'NF' keywords.txt` 清理空行
-- ⚠️ **英文唤醒词没有音素化** → **解决**：必须用 espeak 生成 IPA 音素序列
-
----
-
-#### 步骤3：sensitivity 调参与性能基线（阶段二：能理解，60min）
-
-> ⚠️ 本步骤对应 `tools/kws_test.py` L80-110
-
-**知识点讲解**：
-
-**sensitivity 调参（2.2.2）**
-- **原理**：sherpa-onnx KeywordSpotter 通过 `keywords_threshold`（范围 0-1）控制唤醒灵敏度。threshold 越低，召回率越高（不容易漏唤醒），但误唤醒率也上升；threshold 越高，召回率下降（容易漏唤醒），但误唤醒率下降。典型调参流程：(1) 在安静环境从 0.3 开始，逐渐上调到恰好不漏唤醒；(2) 在噪声环境测试，调整到召回率 > 90% 且误唤醒 < 2次/h。调参时建议用 `tools/eval_kws.py`（如果存在）做批量测试。
-- **源码对应**：`tools/kws_test.py` L80-110
-
-**操作步骤**：
-
-1. 准备测试集：录制 50 条唤醒词 + 30 分钟非唤醒音频
-
-2. 批量参数扫描：
-   ```bash
-   for t in 0.2 0.3 0.4 0.5 0.6; do
-     echo "=== threshold=$t ==="
-     python3 src/car1_speech/tools/eval_kws.py \
-       --threshold $t \
-       --test-wav-dir ./test_data/positive/ \
-       --negative-audio ./test_data/negative_30min.wav
-   done
-   # 输出：threshold=0.2  recall=98%  false_alarms=8/h
-   #       threshold=0.3  recall=95%  false_alarms=2/h  ← 推荐
-   #       threshold=0.5  recall=85%  false_alarms=0.5/h
-   ```
-
-3. 记录最优参数到 wake_word.yaml：
-   ```yaml
-   wake_word_node:
-     ros__parameters:
-       keywords_threshold: 0.3   # 基于 50 样本测试的最优值
-       confirmation_count: 2
-       min_trigger_interval_sec: 1.5
-   ```
-
-4. 端到端 P95 延迟测试：
-   ```bash
-   python3 src/car1_speech/tools/eval_kws.py \
-     --threshold 0.3 \
-     --measure-latency \
-     --num-trials 100
-   # 输出：p50=22ms p95=45ms p99=68ms
-   ```
-
-**易错点**：
-- ⚠️ **测试集与实际场景不匹配** → **解决**：测试集必须包含真实噪声（风扇、空调、远场电视）
-- ⚠️ **仅在安静环境调参** → **解决**：必须在 3 种环境（安静/中等噪声/高噪声）分别测试
-
----
-
-#### 步骤4：误唤醒抑制三策略（阶段三：能改造，60min）
-
-> ⚠️ 本步骤对应 `car1_speech/wake_word_node.py`（待实现，当前 TODO 占位）
-
-**知识点讲解**：
-
-**连续 N 帧检测（2.3.1）**
-- **原理**：单帧检测容易被瞬时噪声（如拍手、咳嗽）误触发，"连续 N 帧"要求在时间窗（如 200ms）内连续 N 次推理都判定为唤醒词，才真正触发。N 越大越稳健但响应越慢（增加 N 帧的延迟），典型 N=2 或 N=3。`car1_speech/wake_word_node.py` 计划通过维护一个 `detection_buffer` 队列实现。
-- **源码对应**：`car1_speech/wake_word_node.py` 计划实现位置
-
-**最短触发间隔（2.3.2）**
-- **原理**：用户唤醒一次后，期望 TTS 播报或执行动作需要数秒，这段时间内不应再次触发唤醒（避免循环唤醒）。`min_trigger_interval_sec`（如 1.5s）记录上一次触发时间，下次触发必须间隔超过该值。Threading.Event 配合 time.time() 检查即可实现。
-- **源码对应**：`wake_word_node.py` 计划实现位置
-
-**二次确认（2.3.3）**
-- **原理**：在 N 帧检测通过后，再启动一个"二次确认"窗口（如 1 秒内再次检测到同一唤醒词），才真正触发唤醒。这对过滤偶发噪声特别有效，但会增加约 1 秒延迟。家庭场景可关闭二次确认（追求响应速度），车载/会议场景可开启（追求稳健性）。
-- **源码对应**：`wake_word_node.py` 计划实现位置
-
-**操作步骤**：
-
-1. 在 wake_word_node.py 中实现三策略（当前文件为 TODO 占位，下面给出参考实现）：
-
+**3 秒防抖**:
 ```python
-# 计划在 car1_speech/wake_word_node.py 中实现
-# 占位文件当前内容（来自 csv 中 notes 字段）:
-#   TODO: Implement actual wake word detection engine
-# 参考实现（基于 tools/kws_test.py 的引擎）:
-import time
-import threading
-from collections import deque
-
-class WakeWordDetector:
-    """三策略误唤醒抑制"""
-    def __init__(self, kws_engine, *, confirmation_count=2,
-                 min_trigger_interval_sec=1.5, secondary_confirm_window_sec=1.0):
-        self.kws = kws_engine
-        self.confirmation_count = confirmation_count
-        self.min_trigger_interval_sec = min_trigger_interval_sec
-        self.secondary_window = secondary_confirm_window_sec
-        self.buffer = deque(maxlen=confirmation_count)
-        self.last_trigger_time = 0.0
-        self.pending_keyword = None
-        self.pending_time = 0.0
-        self.lock = threading.Lock()
-    
-    def feed(self, audio_chunk) -> str | None:
-        """输入音频 chunk，返回触发的关键词或 None"""
-        with self.lock:
-            # 策略 1: 连续 N 帧
-            stream = self.kws.create_stream()
-            stream.accept_waveform(16000, audio_chunk)
-            keyword = self.kws.get_result(stream).keyword if self.kws.is_endpoint(stream) else None
-            self.buffer.append(keyword)
-            if len(self.buffer) < self.confirmation_count:
-                return None
-            if not all(k == self.buffer[0] for k in self.buffer):
-                return None
-            confirmed = self.buffer[0]
-            self.buffer.clear()
-            
-            # 策略 2: 最短触发间隔
-            now = time.time()
-            if now - self.last_trigger_time < self.min_trigger_interval_sec:
-                return None
-            
-            # 策略 3: 二次确认
-            if self.pending_keyword == confirmed and now - self.pending_time < self.secondary_window:
-                self.last_trigger_time = now
-                self.pending_keyword = None
-                return confirmed
-            else:
-                self.pending_keyword = confirmed
-                self.pending_time = now
-                return None
+current_time = time.time()
+if current_time - self.last_wakeup_time > 3.0:
+    self.last_wakeup_time = current_time
+    # 触发唤醒
 ```
 
-2. ROS2 节点封装（伪代码，因 wake_word_node.py 当前为 TODO）：
-```python
-# 计划在 wake_word_node.py 中实现
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import Bool, String
+**操作步骤**:
+1. 用 `python3 xf_mic_array_gui.py --headless` 重现防抖效果
+2. 修改防抖窗口为 0.5 秒,观察差异
+3. 用 threading 模拟并发唤醒,验证 Lock 保护
+4. 阅读 `XfMicArrayWithEvents` 子类,理解模板方法模式
 
-class WakeWordNode(Node):
-    def __init__(self):
-        super().__init__('wake_word_node')
-        self.declare_parameter('wake_word', '小飞同学')
-        self.declare_parameter('sensitivity', 0.5)
-        # ... 加载 KWS 引擎 + WakeWordDetector
-        self.detected_pub = self.create_publisher(Bool, '/interaction/wake_word/detected', 10)
-        self.text_pub = self.create_publisher(String, '/interaction/wake_word/text', 10)
-```
+#### 步骤5:GUI 可视化定制(30min)
 
-3. 性能对比（关闭 vs 开启误唤醒抑制）：
-   - 关闭时：误唤醒 = 8 次/h，召回 = 95%
-   - 开启 N=2 + 间隔 1.5s：误唤醒 = 2 次/h，召回 = 92%
-   - 开启 N=3 + 二次确认：误唤醒 = 0.5 次/h，召回 = 88%
+> 本步骤对应 `xf_mic_array_gui.py` `XfMicArrayGUI` 类
 
-**易错点**：
-- ⚠️ **N 帧检测增加显著延迟** → **解决**：N=2 是平衡点，N>=3 仅在极高噪声场景使用
-- ⚠️ **二次确认窗口设置过大导致用户以为没唤醒** → **解决**：建议 0.5-1.0s，并在终端打印"等待确认"提示
-- ⚠️ **线程不安全导致触发计数错误** → **解决**：用 `threading.Lock` 保护共享变量
-
----
-
-#### 完整可运行代码 demo_kws.py
-
-```python
-# -*- coding: utf-8 -*-
-"""
-实验2 demo：KWS 三策略误唤醒抑制
-平台：B2 / C1
-运行：python3 demo_kws.py --audio-device 1
-按键：q 退出
-"""
-import argparse
-import time
-from collections import deque
-import numpy as np
-import sounddevice as sd
-import sherpa_onnx
-
-
-class WakeWordDetector:
-    """三策略误唤醒抑制（来源：基于 tools/kws_test.py + wake_word_node.py TODO 规划）"""
-    
-    def __init__(self, kws, confirmation_count=2, min_interval=1.5, confirm_window=1.0):
-        self.kws = kws
-        self.confirmation_count = confirmation_count
-        self.min_interval = min_interval
-        self.confirm_window = confirm_window
-        self.buffer = deque(maxlen=confirmation_count)
-        self.last_trigger = 0.0
-        self.pending_kw = None
-        self.pending_time = 0.0
-        self.stats = {"hits": 0, "triggers": 0, "rejected_short_interval": 0, "rejected_secondary": 0}
-    
-    def feed(self, audio, sr=16000):
-        stream = self.kws.create_stream()
-        stream.accept_waveform(sr, audio)
-        kw = self.kws.get_result(stream).keyword if self.kws.is_endpoint(stream) else None
-        if not kw:
-            self.buffer.clear()
-            return None
-        self.buffer.append(kw)
-        self.stats["hits"] += 1
-        if len(self.buffer) < self.confirmation_count:
-            return None
-        if len(set(self.buffer)) > 1:
-            self.buffer.clear()
-            return None
-        confirmed = self.buffer[0]
-        self.buffer.clear()
-        now = time.time()
-        if now - self.last_trigger < self.min_interval:
-            self.stats["rejected_short_interval"] += 1
-            return None
-        if self.pending_kw == confirmed and now - self.pending_time < self.confirm_window:
-            self.last_trigger = now
-            self.pending_kw = None
-            self.stats["triggers"] += 1
-            return confirmed
-        else:
-            self.pending_kw = confirmed
-            self.pending_time = now
-            self.stats["rejected_secondary"] += 1
-            return None
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model-dir", default="/home/iflytek/AI/sherpa-onnx")
-    parser.add_argument("--audio-device", type=int, default=1)
-    parser.add_argument("--chunk-duration-ms", type=int, default=80)
-    parser.add_argument("--confirmation-count", type=int, default=2)
-    parser.add_argument("--min-interval", type=float, default=1.5)
-    parser.add_argument("--confirm-window", type=float, default=1.0)
-    args = parser.parse_args()
-    
-    print(f"[INFO] Loading KWS from {args.model_dir}/kws/ ...")
-    kws = sherpa_onnx.KeywordSpotter(
-        tokens=f"{args.model_dir}/kws/tokens.txt",
-        encoder=f"{args.model_dir}/kws/encoder.onnx",
-        decoder=f"{args.model_dir}/kws/decoder.onnx",
-        joiner=f"{args.model_dir}/kws/joiner.onnx",
-        keywords_file=f"{args.model_dir}/kws/keywords.txt",
-        keywords_threshold=0.3,
-        num_threads=2,
-    )
-    detector = WakeWordDetector(
-        kws, args.confirmation_count, args.min_interval, args.confirm_window
-    )
-    
-    sr = 16000
-    chunk_size = int(sr * args.chunk_duration_ms / 1000)
-    
-    def callback(indata, frames, time_info, status):
-        if status:
-            print(f"[WARN] {status}")
-        audio = indata[:, 0].astype(np.float32)
-        kw = detector.feed(audio, sr)
-        if kw:
-            print(f"[TRIGGER] keyword={kw}  stats={detector.stats}")
-    
-    print(f"[INFO] Listening on device {args.audio_device} ... (q to quit)")
-    print(f"[CONF] confirmation_count={args.confirmation_count}, "
-          f"min_interval={args.min_interval}s, confirm_window={args.confirm_window}s")
-    
-    try:
-        with sd.InputStream(device=args.audio_device, channels=1, samplerate=sr,
-                            blocksize=chunk_size, callback=callback):
-            while True:
-                sd.sleep(1000)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        print(f"[STATS] Final: {detector.stats}")
-
-
-if __name__ == "__main__":
-    main()
-```
+**操作步骤**:
+1. 修改 `PINYIN_MAP` 加入自定义唤醒词
+2. 改变画布颜色(演示 `Canvas.itemconfig` 实时修改)
+3. 添加 score < 500 时高亮的告警逻辑
+4. 观察 `_poll_queue` 的 50ms 轮询频率
+5. 用 `top` 命令观察 CPU 占用 < 5%
 
 ### 1.7 注意事项
 
-- ⚠️ **wake_word_node.py 当前为 TODO 占位** → 本实验 demo 独立运行，节点化封装为扩展任务
-- ⚠️ **三策略组合会增加响应延迟** → N=2 + 间隔 1.5s 约 +1.5s，二次确认再加 0.5-1.0s
-- ⚠️ **keywords.txt 改动需重启节点** → 因为模型加载时已固化到内存
-- ⚠️ **CPU 占用监控** → `top -p $(pgrep -f wake_word)` 观察，常驻监听应保持 < 30% 单核
-- ⚠️ **隐私提示** → 实际部署需告知用户 KWS 常驻监听（符合 GDPR/PIPL）
+- ⚠️ **USB 串口权限** → `sudo chmod 666 /dev/ttyACM0` 或加入 `dialout` 用户组
+- ⚠️ **校验和失败频繁** → 检查 USB 线缆质量；过长(>3m)易受电磁干扰
+- ⚠️ **GUI 启动报 no display** → 远程用 `xvfb-run` 或 `ssh -X`；无显示器用 `--headless`
+- ⚠️ **唤醒频繁触发** → 防抖窗口 3 秒可调,过短(<1s)会误触,过长(>10s)会漏触发
+- ⚠️ **6 麦模块供电不足** → 优先用 USB 3.0 或带外接电源的 HUB
 
 ### 1.8 实验总结
 
 **完成成果**:
-- 部署 sherpa-onnx KWS 模型，实现本地唤醒词检测
-- 配置多语言 keywords.txt（中英文混合）
-- 实现连续 N 帧 + 最短间隔 + 二次确认三策略误唤醒抑制
-- 完成性能基线测试（召回率、误唤醒率、延迟）
-
-**技能收获**:
-- 掌握 KeywordSpotter API 的 Python 调用
-- 理解 Zipformer 编码器原理与 tokens.txt 机制
-- 学会用三策略组合平衡召回率与误唤醒率
-
-**常见问题与解决**:
-
-| 问题 | 原因 | 解决方法 |
-|------|------|---------|
-| 唤醒率 0% | 麦克风静音/采样率错误 | `arecord -d 3 test.wav` 验证；确认 `sample_rate=16000` |
-| 误唤醒频繁 | sensitivity 过高 | 调低 threshold 到 0.5；开启三策略抑制 |
-| 响应延迟 > 2s | N 帧过大 | 改 N=2；缩短 chunk_duration_ms 到 40 |
-| 唤醒词识别但 keyword 为空 | tokens.txt 不含该发音 | 用 `text2token` 工具生成并追加到 keywords.txt |
+- 掌握串口通信基础概念(UART/波特率/设备文件)
+- 掌握 pyserial 库 open/read/write/close 调用
+- 掌握 VID/PID 自动识别 USB 设备
+- 理解 6 麦环形阵列的声源定位原理(beam/angle)
+- 掌握 AIUI 协议帧结构(sync/type/len/id/payload/checksum)
+- 理解双缓冲拆帧 + 校验和容错的工业实践
+- 掌握 3 秒时间窗 + Lock 唤醒防抖机制
+- 跑通 xf_mic_array_gui.py,扩展 PINYIN_MAP 加入自定义唤醒词
 
 ### 1.9 实验报告要求
 
 **思考题**:
-1. KWS 与 VAD 唤醒在原理上有何差异？为什么 KWS 误唤醒率更低但召回率也低？
-2. Zipformer-3M 相比传统 CNN-KWS 在小模型尺寸下保持精度的关键设计是什么？
-3. 三策略误唤醒抑制的延迟代价与稳健性收益如何权衡？请用具体场景说明。
+1. 串口通信为什么需要"起始位"和"停止位"？如果去掉会发生什么？
+2. 为什么 AIUI 协议用小端序而不是大端序？
+3. 6 麦环形阵列的"波束形成"算法是怎么从 6 路麦克风信号反推声源方向的？
+4. 3 秒防抖窗口如果改成 0.1 秒会怎样？如果改成 30 秒又会怎样？
+5. 校验和 `(~sum + 1) & 0xFF` 为什么能检测出大部分传输错误？什么情况下它检测不出？
 
-**评分标准**: KWS 部署 20 分 + 关键词配置 20 分 + sensitivity 调参 20 分 + 三策略抑制 30 分 + 实验报告 10 分 = 100 分。
-
----
+**评分标准**: 串口通信基础 15 分 + pyserial 调用 15 分 + AIUI 帧解析 25 分 + 唤醒防抖 15 分 + GUI 定制 20 分 + 实验报告 10 分 = 100 分。
 
 ## 实验2：基于 sherpa-onnx 的本地语音识别(ASR)实验（4h）
 
@@ -1817,20 +1540,17 @@ graph LR
    audio_queue = queue.Queue(maxsize=200)
    capture = CaptureThread(audio_queue)
    capture.start()
-   
-   kws = sherpa_onnx.KeywordSpotter(...)
-   kws_stream = kws.create_stream()
-   
+
+   # 讯飞六麦阵列串口唤醒
+   from xf_mic_array import XfMicArray
+   mic = XfMicArray(port='/dev/ttyACM0')
+   def on_wake(beam, angle, keyword):
+       print(f"[KWS] 唤醒: beam={beam} angle={angle:.1f}° kw={keyword}")
+   mic.wakeup_callback = on_wake
+   mic.start()
+
    while True:
-       try:
-           audio = audio_queue.get(timeout=1.0)
-       except queue.Empty:
-           continue
-       kws_stream.accept_waveform(16000, audio)
-       if kws.is_endpoint(kws_stream):
-           kw = kws.get_result(kws_stream).keyword
-           if kw:
-               print(f"[KWS] {kw}")
+       sd.sleep(100)  # 100ms 轮询,实际唤醒由 mic 的回调驱动
    ```
 
 3. 性能监控：
@@ -2040,17 +1760,14 @@ import sherpa_onnx
 class SimpleVoicePipeline:
     """简化版端到端语音对话系统（演示状态机 + 打断）"""
     
-    def __init__(self, model_dir: str = "/home/iflytek/AI/sherpa-onnx"):
+    def __init__(self, model_dir: str = "/home/iflytek/AI/sherpa-onnx", mic_port: str = "/dev/ttyACM0"):
         self.audio_queue = queue.Queue(maxsize=200)
         self.capture = None
-        self.kws = sherpa_onnx.KeywordSpotter(
-            tokens=f"{model_dir}/kws/tokens.txt",
-            encoder=f"{model_dir}/kws/encoder.onnx",
-            decoder=f"{model_dir}/kws/decoder.onnx",
-            joiner=f"{model_dir}/kws/joiner.onnx",
-            keywords_file=f"{model_dir}/kws/keywords.txt",
-            keywords_threshold=0.3,
-        )
+        # 唤醒:讯飞六麦阵列
+        from xf_mic_array import XfMicArray
+        self.mic = XfMicArray(port=mic_port)
+        self.mic.wakeup_callback = self._on_wake
+        # ASR / TTS 仍使用 sherpa-onnx 本地模型
         self.asr = sherpa_onnx.OnlineRecognizer.from_transducer(
             tokens=f"{model_dir}/asr/tokens.txt",
             encoder=f"{model_dir}/asr/encoder.onnx",

@@ -211,25 +211,23 @@ graph LR
            self.running = False
    ```
 
-2. 启动 Capture + KWS 消费：
+2. 启动 Capture + 讯飞六麦唤醒消费：
    ```python
    audio_queue = queue.Queue(maxsize=200)
    capture = CaptureThread(audio_queue)
    capture.start()
-   
-   kws = sherpa_onnx.KeywordSpotter(...)
-   kws_stream = kws.create_stream()
-   
+
+   # 讯飞六麦阵列串口唤醒
+   from xf_mic_array import XfMicArray
+   mic = XfMicArray(port='/dev/ttyACM0')
+   def on_wake(beam, angle, keyword):
+       print(f"[KWS] 唤醒: beam={beam} angle={angle:.1f}° kw={keyword}")
+   mic.wakeup_callback = on_wake
+   mic.start()
+
+   # 主循环从 mic 接收唤醒事件
    while True:
-       try:
-           audio = audio_queue.get(timeout=1.0)
-       except queue.Empty:
-           continue
-       kws_stream.accept_waveform(16000, audio)
-       if kws.is_endpoint(kws_stream):
-           kw = kws.get_result(kws_stream).keyword
-           if kw:
-               print(f"[KWS] {kw}")
+       sd.sleep(100)  # 100ms 轮询
    ```
 
 3. 性能监控：
@@ -439,17 +437,14 @@ import sherpa_onnx
 class SimpleVoicePipeline:
     """简化版端到端语音对话系统（演示状态机 + 打断）"""
     
-    def __init__(self, model_dir: str = "/home/iflytek/AI/sherpa-onnx"):
+    def __init__(self, model_dir: str = "/home/iflytek/AI/sherpa-onnx", mic_port: str = "/dev/ttyACM0"):
         self.audio_queue = queue.Queue(maxsize=200)
         self.capture = None
-        self.kws = sherpa_onnx.KeywordSpotter(
-            tokens=f"{model_dir}/kws/tokens.txt",
-            encoder=f"{model_dir}/kws/encoder.onnx",
-            decoder=f"{model_dir}/kws/decoder.onnx",
-            joiner=f"{model_dir}/kws/joiner.onnx",
-            keywords_file=f"{model_dir}/kws/keywords.txt",
-            keywords_threshold=0.3,
-        )
+        # 唤醒:讯飞六麦阵列
+        from xf_mic_array import XfMicArray
+        self.mic = XfMicArray(port=mic_port)
+        self.mic.wakeup_callback = self._on_wake
+        # ASR / TTS 仍使用 sherpa-onnx 本地模型
         self.asr = sherpa_onnx.OnlineRecognizer.from_transducer(
             tokens=f"{model_dir}/asr/tokens.txt",
             encoder=f"{model_dir}/asr/encoder.onnx",
@@ -466,6 +461,11 @@ class SimpleVoicePipeline:
         self.interrupt_event = threading.Event()
         self.state = "IDLE"
         self.running = True
+
+    def _on_wake(self, beam, angle, keyword):
+        """讯飞六麦唤醒回调"""
+        print(f"[KWS] 唤醒: beam={beam} angle={angle:.1f}° kw={keyword}")
+        self.interrupt_event.set()
     
     def start_capture(self, device=1):
         def callback(indata, frames, time_info, status):
