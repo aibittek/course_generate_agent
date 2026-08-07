@@ -1,8 +1,8 @@
 ---
 course_code: EXP002
 course_name: 机器人自然语言交互应用与开发
-version: v3.2
-generated_at: 2026-08-04
+version: v3.3
+generated_at: 2026-08-05
 generator: KnowledgeGraphAgent
 source_spec: courses/sheet1/speech_practice/_meta/course-spec.yaml
 csv_sha256: d89f7c2f6e84977519fccca3ad5325dbade2216274b2b0d5f41bd275efd91175
@@ -127,66 +127,114 @@ csv_sha256: d89f7c2f6e84977519fccca3ad5325dbade2216274b2b0d5f41bd275efd91175
 
 ## 第2章 语音识别 ASR
 
-> 对应实验 exp02（4h，设计性）— 基于 OfflineRecognizer 部署本地 STT
+> 对应实验 exp02（4h，设计性）— 基于讯飞 6 麦阵列与 sherpa-onnx 的本地流式语音识别(ASR)实验。源码入口:`tools/asr_test.py`,主命令 `python3 asr_test.py --mic-array`。
 
-### 2.1 ASR 流水线
+### 2.0 硬件通路与唤醒前置
 
-#### 知识点 2.1.1
-- **类型**: 流程
-- **描述**: ASR 流水线：音频→重采样→特征提取→声学模型→语言模型→解码文本
+#### 知识点 2.0.1
+- **类型**: 原理
+- **描述**: 6 麦阵列在 ALSA 中呈现为 XFM 声卡,16kHz/16bit/mono 是 ASR 标准输入规格
 - **难度**: 理解
 - **前置依赖**: 1.1.1
 
+#### 知识点 2.0.2
+- **类型**: 流程
+- **描述**: `--mic-array` 模式先连串口握手→设唤醒词→等待 wakeup_callback→启动 ALSA 识别
+- **难度**: 应用
+- **前置依赖**: 1.4.1
+
+### 2.1 设备检测与音频预处理
+
+#### 知识点 2.1.1
+- **类型**: 源码
+- **描述**: `detect_xfm_devices()` 解析 `arecord -l` 输出,grep `XFM` 关键字得到 plughw 设备名
+- **难度**: 应用
+- **前置依赖**: 2.0.1
+
 #### 知识点 2.1.2
 - **类型**: 原理
-- **描述**: FBank/MFCC 特征保留频谱包络，16kHz 单声道为标准输入规格
+- **描述**: AudioMixer 管理 XFM 6 麦阵列的 PGA(0~+24dB)硬件增益与数字增益(-30~+6dB),配合 ALC 自动电平
 - **难度**: 理解
-- **前置依赖**: 2.1.1
+- **前置依赖**: 2.0.1
 
 #### 知识点 2.1.3
-- **类型**: 概念
-- **描述**: OnlineRecognizer 流式增量输出，OfflineRecognizer 整段识别精度更高
-- **难度**: 记忆
-- **前置依赖**: 2.1.1
+- **类型**: 原理
+- **描述**: `switch_input_to_mic` 把 XFM 6 麦阵列的 Left/Right Line Mux 切到 MicL/MicR,否则录到 Line In 静音
+- **难度**: 理解
+- **前置依赖**: 2.1.2
 
-### 2.2 端点检测 VAD
+### 2.2 ASR 引擎构建
 
 #### 知识点 2.2.1
-- **类型**: 概念
-- **描述**: VAD（Voice Activity Detection）判断用户是否正在说话
-- **难度**: 记忆
-- **前置依赖**: 无
+- **类型**: 流程
+- **描述**: `OnlineRecognizer.from_transducer()` 加载 tokens/encoder/decoder/joiner 四件套并构造 Recognizer
+- **难度**: 应用
+- **前置依赖**: 2.1.1
 
 #### 知识点 2.2.2
 - **类型**: 原理
-- **描述**: 静音超过 vad_timeout_sec 自动停止识别，防止句尾噪声拉长识别
+- **描述**: Transducer 架构:encoder(声学)+decoder(语言)+joiner(联合网络)三件套模型
 - **难度**: 理解
 - **前置依赖**: 2.2.1
 
 #### 知识点 2.2.3
-- **类型**: 流程
-- **描述**: 配置 vad_timeout_sec=3.0 平衡响应速度与长句容错
-- **难度**: 应用
+- **类型**: 概念
+- **描述**: RKNN NPU 推理 provider 走 RK3576 6TOPS NPU 加速,provider="cpu" 走 ONNX Runtime 兜底
+- **难度**: 记忆
 - **前置依赖**: 2.2.2
 
-### 2.3 识别准确率评估
+### 2.3 流式识别主循环
 
 #### 知识点 2.3.1
-- **类型**: 概念
-- **描述**: WER（Word Error Rate）= (S+D+I)/N 衡量识别错误率，行业目标 < 10%
-- **难度**: 理解
-- **前置依赖**: 2.1.3
+- **类型**: 流程
+- **描述**: `stream.accept_waveform(sr, samples)` 把 100ms 音频块推入 stream 内部 buffer
+- **难度**: 应用
+- **前置依赖**: 2.2.1
 
 #### 知识点 2.3.2
-- **类型**: 流程
-- **描述**: 准备 100 条常用指令测试集并标注真值，运行批量识别计算 WER
-- **难度**: 应用
+- **类型**: 原理
+- **描述**: `is_ready` 时循环 `decode_stream` 增量解码,不等 100ms 强触发
+- **难度**: 理解
 - **前置依赖**: 2.3.1
 
 #### 知识点 2.3.3
 - **类型**: 原理
-- **描述**: WER 拆分为替换 S、删除 D、插入 I 错误，便于定位模型缺陷
+- **描述**: `is_endpoint` 内置端点:rule1(无结果 4.5s)+rule2(有结果 1.5s)+rule3(300s 几乎禁用)三规则协同
 - **难度**: 分析
+- **前置依赖**: 2.3.2
+
+#### 知识点 2.3.4
+- **类型**: 调参
+- **描述**: `blank_penalty` 默认 0.25 正向偏置空符号,>0.5 抑制重复字,<0 减少漏字
+- **难度**: 应用
+- **前置依赖**: 2.3.3
+
+### 2.4 热词与解码策略
+
+#### 知识点 2.4.1
+- **类型**: 概念
+- **描述**: hotwords.txt 每行一个热词,token 间用半角空格分隔,中文是 CJK 单字
+- **难度**: 记忆
+- **前置依赖**: 2.2.1
+
+#### 知识点 2.4.2
+- **类型**: 对比
+- **描述**: `greedy_search` 速度快不支持热词;`modified_beam_search` 支持热词偏置但慢 20-30%
+- **难度**: 应用
+- **前置依赖**: 2.3.4, 2.4.1
+
+### 2.5 流式状态管理
+
+#### 知识点 2.5.1
+- **类型**: 设计
+- **描述**: Recognizer 单例 + 端点 `reset()` 状态后 `create_stream()` 重建,保留上下文但释放张量
+- **难度**: 分析
+- **前置依赖**: 2.3.3
+
+#### 知识点 2.5.2
+- **类型**: 实践
+- **描述**: 100ms 块读取节奏:延迟/吞吐/CPU 占用三者的平衡点,1600 帧 × 4byte ≈ 6.4KB/次
+- **难度**: 应用
 - **前置依赖**: 2.3.1
 
 ---
@@ -407,7 +455,7 @@ graph LR
         A21 --> A22[1.2.2 launch 编排]
         A21 --> A23[1.2.3 YAML 参数化]
         A22 --> A31[1.3.1 ALSA]
-        A31 --> A32[1.3.2 ES8388 编解码]
+        A31 --> A32[1.3.2 XFM 6 麦阵列内部 Codec]
         A22 --> A33[1.3.3 音频通路验证]
     end
 
@@ -428,15 +476,24 @@ graph LR
         A52 --> A53[1.5.3 线程安全事件刷新]
     end
 
-    subgraph "Chapter 3 语音识别"
-        A11 --> C11[2.1.1 ASR 流水线]
-        C11 --> C12[2.1.2 FBank/MFCC 特征]
-        C11 --> C13[2.1.3 Online vs Offline]
-        C21[2.2.1 VAD 概念] --> C22[2.2.2 vad_timeout_sec]
-        C22 --> C23[2.2.3 超时参数 3.0s]
-        C13 --> C31[2.3.1 WER 定义]
-        C31 --> C32[2.3.2 100 条语料评估]
-        C31 --> C33[2.3.3 S/D/I 错误拆解]
+    subgraph "Chapter 2 讯飞六麦 + sherpa-onnx 流式 ASR (asr_test.py)"
+        A11 --> B01[2.0.1 音频通路与 ALSA 设备]
+        A11 --> B02[2.0.2 6 麦唤醒驱动录音]
+        B01 --> B11[2.1.1 detect_xfm_devices 设备自动检测]
+        B01 --> B12[2.1.2 AudioMixer 增益与 ALC]
+        B12 --> B13[2.1.3 switch_input_to_mic 输入复用]
+        B11 --> B21[2.2.1 OnlineRecognizer 构造]
+        B21 --> B22[2.2.2 Transducer 架构]
+        B22 --> B23[2.2.3 RKNN NPU 推理]
+        B21 --> B31[2.3.1 accept_waveform 流式输入]
+        B31 --> B32[2.3.2 decode_stream 增量解码]
+        B32 --> B33[2.3.3 is_endpoint 内置端点]
+        B33 --> B34[2.3.4 blank_penalty 空符号惩罚]
+        B21 --> B41[2.4.1 hotwords 热词格式]
+        B34 --> B42[2.4.2 greedy vs modified_beam_search]
+        B41 --> B42
+        B33 --> B51[2.5.1 single-stream 复用 + reset/create_stream]
+        B31 --> B52[2.5.2 100ms 块读取节奏]
     end
 
     subgraph "Chapter 4 语音合成"

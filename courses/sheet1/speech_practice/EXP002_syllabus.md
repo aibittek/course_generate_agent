@@ -85,22 +85,39 @@ csv_sha256: d89f7c2f6e84977519fccca3ad5325dbade2216274b2b0d5f41bd275efd91175
 ### 第2章 语音识别 ASR
 
 #### 教学内容
-- ASR 流水线（音频→重采样→特征→声学模型→语言模型→解码）
-- FBank/MFCC 特征与 16kHz 单声道输入
-- Online vs Offline Recognizer 的取舍
-- VAD 端点检测与 vad_timeout_sec 调参
-- WER（词错误率）评估方法
+- 6 麦阵列 ALSA 设备识别与 audio_test.py 录音/播放验证(硬件通路)
+- 讯飞 6 麦阵列+本地 sherpa-onnx 流式 ASR 完整代码执行流(asr_test.py --mic-array)
+- 设备自动检测 detect_xfm_devices() 与 XfMicArray 串口唤醒
+- AudioMixer 增益控制与 switch_input_to_mic 输入复用切换
+- ALC(Automatic Level Control)+ Noise Gate 自动电平
+- Transducer 三件套模型(tokens/encoder/decoder/joiner)与 RKNN NPU 推理
+- OnlineRecognizer.from_transducer 工厂方法
+- 流式识别主循环(accept_waveform → decode_stream → is_endpoint → reset)
+- 100ms 块读取节奏与 single-stream 复用
+- 端点检测 rule1/rule2/rule3 三规则协同
+- blank_penalty 空符号惩罚
+- hotwords 热词文件与 modified_beam_search 解码
+- 命令词解析与 ASR 业务集成
+- WER(词错误率)评估方法
 
 #### 重点难点
-- **重点**: 本地 STT 部署与 WER < 10% 评估
-- **难点**: VAD 超时参数在长句与响应速度间的平衡
+- **重点**: asr_test.py 7 个模块的拆分理解(设备检测/唤醒/增益/引擎/流式循环/端点/热词);端点检测参数调优;热词配置
+- **难点**: NPU 推理 provider 配置;blank_penalty 与解码延迟的平衡;长时间会话流式识别的状态管理
 
 #### 教学活动
-- [x] 演示：100 条常用指令语料的 WER 评估
-- [x] 动手实验：exp03 本地语音识别(ASR)
+- [x] 演示：audio_test.py --mic-array 唤醒录音与播放验证(6 麦硬件通路)
+- [x] 演示：asr_test.py --mic-array 完整流式识别流程
+- [x] 演示：rule1/rule2/rule3 + blank_penalty 端点调优 A/B 对比
+- [x] 演示：hotwords.txt + modified_beam_search 解决"小飞→小飞机"误识别
+- [x] 动手实验：exp02 讯飞六麦阵列与sherpa-onnx的本地流式语音识别(ASR)实验
 
 #### 对应知识点
-3.1.1 ASR 流水线 / 3.1.2 FBank/MFCC 特征 / 3.1.3 Online vs Offline / 3.2.1 VAD 概念 / 3.2.2 vad_timeout_sec / 3.2.3 超时参数 3.0s / 3.3.1 WER 定义 / 3.3.2 100 条语料评估 / 3.3.3 S/D/I 错误拆解
+2.0.1 音频通路与 ALSA 设备 / 2.0.2 6 麦唤醒驱动录音 / 2.1.1 detect_xfm_devices 设备自动检测 / 2.1.2 AudioMixer 增益与 ALC / 2.1.3 switch_input_to_mic 输入复用 / 2.2.1 OnlineRecognizer 构造 / 2.2.2 Transducer 架构 / 2.2.3 RKNN NPU 推理 / 2.3.1 accept_waveform 流式输入 / 2.3.2 decode_stream 增量解码 / 2.3.3 is_endpoint 内置端点 / 2.3.4 blank_penalty 空符号惩罚 / 2.4.1 hotwords 热词格式 / 2.4.2 greedy vs modified_beam_search / 2.5.1 single-stream 复用 / 2.5.2 100ms 块节奏
+
+#### 源码入口
+- **主入口**: `ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/asr_test.py`
+- **主命令**: `python3 asr_test.py --mic-array`
+- **复用实验1**: 串口通信(`uart_device.py`)、AIUI协议解析(`xf_mic_array.py`)、ALSA录音(`audio_test.py`)
 
 ---
 
@@ -156,7 +173,7 @@ csv_sha256: d89f7c2f6e84977519fccca3ad5325dbade2216274b2b0d5f41bd275efd91175
 | 序号 | 实验名称 | 学时 | 实验类型 | 关联知识点 |
 |------|---------|------|---------|----------|
 | 1 | 基于讯飞六麦阵列的串口通信与唤醒事件实验 | 4h | 设计性 ⭐⭐ | 1.1.1~1.5.3 |
-| 2 | 基于 sherpa-onnx 的本地语音识别(ASR)实验 | 4h | 设计性 ⭐⭐ | 2.1.1~2.3.3 |
+| 2 | 基于讯飞六麦阵列与sherpa-onnx的本地流式语音识别(ASR)实验 | 4h | 设计性 ⭐⭐⭐ | 2.0.1~2.5.2 |
 | 3 | 基于本地 TTS 引擎的语音合成与参数调控实验 | 4h | 设计性 ⭐⭐ | 3.1.1~3.3.3 |
 | 4 | 基于状态机的端到端语音对话交互实验 | 8h | 设计性 ⭐⭐ | 4.1.1~4.1.3 |
 | 5 | 基于 Function Calling 的大模型工具调用实验 | 4h | 设计性 ⭐⭐ | 4.2.1~4.3.3 |
@@ -269,4 +286,5 @@ csv_sha256: d89f7c2f6e84977519fccca3ad5325dbade2216274b2b0d5f41bd275efd91175
 | v1.0 | 2026-06-11 | 初始化 |
 | v3.0 | 2026-06-21 | 完成全部 7 实验覆盖 |
 | v3.1 | 2026-08-04 | 对齐 CSV 中 EXP002 更新（sherpa-onnx + Function Calling + VLM 三栈合一），扩 5 章 32h 全实验设计
-v3.2 | 2026-08-05 | 移除第1章（环境搭建），重命名 2-5→1-4，实验 1-7→1-6，总学时 32h→28h
+| v3.2 | 2026-08-05 | 移除第1章（环境搭建），重命名 2-5→1-4，实验 1-7→1-6，总学时 32h→28h |
+v3.3 | 2026-08-05 | 第2章重构:教学内容/重点难点/教学活动/对应知识点全量替换为asr_test.py 7模块拆解;实验2关联知识点 2.0.1~2.5.2 与 experiment-2.md 同步 |

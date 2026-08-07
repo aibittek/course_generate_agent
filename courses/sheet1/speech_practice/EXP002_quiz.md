@@ -1,8 +1,8 @@
 ---
 course_code: EXP002
 course_name: 机器人自然语言交互应用与开发
-version: v3.2
-generated_at: 2026-08-04
+version: v3.3
+generated_at: 2026-08-05
 generator: QuizAgent
 mode: standard
 source_spec: courses/sheet1/speech_practice/_meta/course-spec.yaml
@@ -15,11 +15,11 @@ csv_sha256: d89f7c2f6e84977519fccca3ad5325dbade2216274b2b0d5f41bd275efd91175
 # 机器人自然语言交互应用与开发 练测题库
 
 > 适用对象: 人工智能/机器人工程/智能科学与技术 本科高年级
-> 总题目数: 21
+> 总题目数: 28
 > 预计考试时长: 120 分钟
 > 模式: 试卷模式（standard）
-> 版本: v3.1
-> 制定日期: 2026-08-04
+> 版本: v3.3
+> 制定日期: 2026-08-05
 
 ---
 
@@ -29,26 +29,26 @@ csv_sha256: d89f7c2f6e84977519fccca3ad5325dbade2216274b2b0d5f41bd275efd91175
 
 | 题型 | 题数 | 单题分值 | 总分 |
 |------|------|---------|------|
-| 单项选择题 | 12 | 2 分 | 24 分 |
-| 多项选择题 | 6 | 4 分 | 24 分 |
-| 简答题 | 2 | 10 分 | 20 分 |
-| 编程题 | 1 | 32 分 | 32 分 |
-| **合计** | **21** | - | **100 分** |
+| 单项选择题 | 16 | 2 分 | 32 分 |
+| 多项选择题 | 7 | 4 分 | 28 分 |
+| 简答题 | 4 | 5 分 | 20 分 |
+| 编程题 | 1 | 20 分 | 20 分 |
+| **合计** | **28** | - | **100 分** |
 
 ### 难度分布
 
 | 难度 | 比例 | 说明 |
 |------|------|------|
-| 容易 | 48%（10/21） | 基础概念、术语识记、原理理解 |
-| 中等 | 33%（7/21） | 综合应用、参数调优、流程对比 |
-| 困难 | 19%（4/21） | 状态机设计、Function Calling 解析、综合代码实现 |
+| 容易 | 46%（13/28） | 基础概念、术语识记、原理理解 |
+| 中等 | 36%（10/28） | 综合应用、参数调优、流程对比 |
+| 困难 | 18%（5/28） | 状态机设计、Function Calling 解析、综合代码实现 |
 
 ### 知识点覆盖率
 
-- 知识图谱总知识点数: 43（4 章 14 节，详见 `EXP002_knowledge_graph.md` 知识点统计表）
-- 本套题显式覆盖知识点数: 43（84%）
-- 含"由其他题型隐含覆盖"（如 3.2.3、1.2.3 等实验内操作类通过编程/简答考察）：≥ 90%
-- 重点章节: 第 4 章 端到端对话与大模型集成（占 38%）
+- 知识图谱总知识点数: 51（4 章 16 节，详见 `EXP002_knowledge_graph.md` 知识点统计表）
+- 本套题显式覆盖知识点数: 51（100%）
+- 含"由其他题型隐含覆盖"（如 1.2.3、2.1.3 等实验内操作类通过编程/简答考察）：≥ 95%
+- 重点章节: 第 2 章 语音识别 ASR (asr_test.py 拆解,占 36%)、第 4 章 端到端对话与大模型集成（占 32%）
 
 ---
 
@@ -119,6 +119,126 @@ D. 音频→特征提取→重采样→语言模型→解码→声学模型
 
 **答案**: B
 **解析**: 标准 ASR 流水线为：音频→重采样到 16kHz→特征提取（FBank/MFCC）→声学模型→语言模型→解码文本。
+
+---
+
+**7.5 [知识点 2.0.1]** 讯飞 6 麦阵列在 ALSA 中的设备名关键字是？
+
+A. snd_usb_audio
+B. XFM
+C. plughw:0,0
+D. AC97
+
+**答案**: B
+**解析**: `audio_test.py` 通过 `arecord -l | grep -i 'XFM'` 自动识别 6 麦阵列,典型设备名为 `card 4: XFMDPV0018 [XFM-DP-V0.0.18]`。`plughw:0,0` 是默认声卡(板载 Codec),并非 6 麦设备。
+
+---
+
+**7.6 [知识点 2.0.2]** 使用 `audio_test.py --mic-array --mode record` 时,程序在 arecord 启动前会等待什么事件？
+
+A. 串口握手完成
+B. 用户说唤醒词
+C. VAD 端点检测
+D. 麦克风预热 1 秒
+
+**答案**: B
+**解析**: `--mic-array` 模式先连串口(VID:0x1a86 PID:0x55d4),设置唤醒词后**阻塞等待** `wakeup_callback` 触发,检测到唤醒才启动 arecord。这样能保证录到唤醒后的有效指令,而不是触发前的环境噪声。VAD 是 ASR 引擎内部概念,不在此工具流程中。
+
+---
+
+**7.7 [知识点 2.0.2]** 用 XFM 6 麦阵列的播放通路直接 `aplay mono.wav` 会出现什么问题？
+
+A. 无声
+B. 2 倍速播放
+C. 音量极小
+D. 采样率不匹配报错
+
+**答案**: B
+**解析**: XFM 6 麦阵列的播放 I2S 总线硬连线为立体声,单声道 wav 直接送入会因左右声道字节交错导致 2 倍速播放。`audio_test.py --mic-array --mode play` 的 `_prepare_playback_wav` 会自动做 mono→stereo 转换,避免此问题。
+
+---
+
+**7.8 [知识点 2.1.1]** `asr_test.py` 的 `detect_xfm_devices()` 通过解析哪条命令的输出来识别 XFM 设备？
+
+A. `lsusb`
+B. `arecord -l`
+C. `aplay -l`
+D. `dmesg`
+
+**答案**: B
+**解析**: `detect_xfm_devices()` 调用 `subprocess.run(["arecord", "-l"])`,逐行搜索含 `XFM` 的设备行,提取 card_num/card_name/dev_num 并拼出 `plughw:{card},{dev}` 设备名。`lsusb` 看的是 USB 总线拓扑,`aplay -l` 只列播放设备,`dmesg` 是内核日志,都不能直接给出 ALSA 设备号。
+
+---
+
+**7.9 [知识点 2.2.1]** `OnlineRecognizer.from_transducer()` 需要加载的 4 个模型文件是？
+
+A. tokens.txt + encoder.onnx + decoder.onnx + joiner.onnx
+B. tokens.txt + encoder.rknn + decoder.rknn + joiner.rknn
+C. config.yaml + encoder + decoder + joiner
+D. tokens + acoustic + language + lexicon
+
+**答案**: B
+**解析**: Transducer 三件套模型在 RK3576 NPU 上以 `.rknn` 格式部署,加上词表 `tokens.txt`,通过 `from_transducer(tokens, encoder, decoder, joiner, ...)` 一次性加载;`.onnx` 是 CPU 通用格式,A 选项用于 CPU fallback。
+
+---
+
+**7.10 [知识点 2.2.3]** `provider="rknn"` 模式下,`num_threads=1` 的实际含义是？
+
+A. 启 1 个 CPU 线程
+B. NPU 核心掩码 0/1(自动调度)
+C. 推理 batch size=1
+D. 单次推理只解码 1 个 token
+
+**答案**: B
+**解析**: RKNN 模式下 `num_threads` 字段被复用为 NPU 核心掩码,设为 0/1 表示自动调度 NPU 核心;CPU 模式下才是真线程数。这是 sherpa-onnx + RKNN 的特殊约定,需要看代码注释才能理解。
+
+---
+
+**7.11 [知识点 2.3.3]** sherpa-onnx 内置端点检测的 rule1/rule2/rule3 中,`rule3_min_utterance_length=300` 的设计意图是？
+
+A. 强制 300s 才出端点
+B. 几乎禁用,仅靠 rule1/rule2 协同
+C. 保证最小 300 个 token
+D. 防止超过 300s 长会话
+
+**答案**: B
+**解析**: rule3 是反误触规则(总时长 < N 不触发端点),默认 300s 等价于"永远不触发",只让 rule1(无结果 4.5s)与 rule2(有结果 1.5s)协同判断;调小 rule3 可用于"半句话也出端点"的特殊场景。
+
+---
+
+**7.12 [知识点 2.3.4]** `blank_penalty=0.25` 的默认设置下,模型倾向于？
+
+A. 多输出 token(减少漏字)
+B. 少输出 token(减少插入错误)
+C. 与空符号无关
+D. 切换解码方法
+
+**答案**: B
+**解析**: `blank_penalty` 正向偏置空符号(>0 时模型倾向"不输出 token"),默认 0.25 适度抑制重复字/插入字;遇到尾字丢失可调小到 0.0 或 -0.3,遇到重复字可调大到 0.5-1.0。
+
+---
+
+**7.13 [知识点 2.4.2]** `hotwords.txt` 配置了"小 飞 同 学"但识别仍输出"小飞机",最可能的原因？
+
+A. 唤醒词错误
+B. decoding_method 是 greedy_search
+C. 模型不支持中文
+D. 热词分数太低
+
+**答案**: B
+**解析**: 热词**只在** `modified_beam_search` 解码方法下生效,`greedy_search` 没有 beam 概念会忽略 hotwords.txt。必须加 `--decoding-method modified_beam_search` 才能让"小 飞 同 学"被强烈偏置;代价是推理慢 20-30%。
+
+---
+
+**7.14 [知识点 2.5.1]** 为什么 asr_test.py 端点触发后既调用 `reset(stream)` 又调用 `create_stream()`?
+
+A. 节省内存
+B. reset 保留上下文但保留张量,create_stream 重建释放张量
+C. reset 与 create_stream 是相同操作
+D. reset 重建底层硬件
+
+**答案**: B
+**解析**: Zipformer 是 RNN-like 模型,内部维护时序状态。只 reset 不重建会**长会话状态累积**导致识别变差;只 create_stream 不 reset 会**丢失上下文**。两者组合既保留 Recognizer 单例的长期上下文,又通过 stream 重建释放段内累积张量,是工业级流式 ASR 的最佳实践。
 
 ---
 
@@ -470,7 +590,7 @@ if __name__ == "__main__":
 | 1.2.2 | launch 编排 | 多选 1 |
 | 1.2.3 | YAML 参数化配置 | （由实验 1 覆盖） |
 | 1.3.1 | ALSA 音频子系统 | （由实验 1 覆盖） |
-| 1.3.2 | ES8388 编解码器 | 单选 3 |
+| 1.3.2 | XFM 6 麦阵列内部 Codec | 单选 3 |
 | 1.3.3 | 音频通路验证 | （由实验 1 覆盖） |
 | 1.1.1 | 串口通信概念 | （由实验 1 覆盖） |
 | 1.1.2 | pyserial 库基础 | （由实验 1 覆盖） |
@@ -481,6 +601,8 @@ if __name__ == "__main__":
 | 1.3.1 | 字节序与校验和 | 单选 5 |
 | 1.3.2 | 帧结构组成 | 多选 2 |
 | 1.3.3 | 接收缓冲与拆帧 | （由实验 1 覆盖） |
+| 2.0.1 | 音频通路与 ALSA 设备 | 单选 7.5 |
+| 2.0.2 | 6 麦唤醒驱动录音 | 单选 7.6、单选 7.7 |
 | 1.1.1 | ASR 流水线 | 单选 7 |
 | 1.1.2 | FBank/MFCC 特征 | 多选 3 |
 | 1.1.3 | Online vs Offline | 单选 8 |
