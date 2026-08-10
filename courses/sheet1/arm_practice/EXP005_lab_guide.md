@@ -2960,14 +2960,15 @@ if __name__ == "__main__":
 
 ```mermaid
 graph LR
-    A[步骤1：IK库结构与API] --> B[步骤2：FK正算验证]
-    B --> C[步骤3：解析法IK单点测试]
-    C --> D[步骤4：批量闭环验证]
-    D --> E[步骤5：系统偏移识别]
-    E --> F[步骤6：偏移补偿策略]
-    F --> G[步骤7：直连串口实机调试]
-    G --> H[步骤8：解析vs数值对比]
-    H --> I[完成]
+    A[步骤1：IK库结构与API] --> B[步骤2：端到端工具脚本]
+    B --> C[步骤3：FK正算验证]
+    C --> D[步骤4：解析法IK单点测试]
+    D --> E[步骤5：批量闭环验证]
+    E --> F[步骤6：系统偏移识别]
+    F --> G[步骤7：偏移补偿策略]
+    G --> H[步骤8：直连串口实机调试]
+    H --> I[步骤9：解析vs数值对比]
+    I --> J[完成]
 ```
 
 ---
@@ -3045,7 +3046,66 @@ graph LR
 
 ---
 
-#### 步骤2：FK 正算验证（阶段一：能运行，30min）
+#### 步骤2：端到端工具脚本快速体验（pwm_to_fk_demo + interactive_ik_test）
+
+> ⚠️ 本步骤对应 src 目录源码：`arm/kinematics/pwm_to_fk_demo.py`、`arm/kinematics/interactive_ik_test.py`
+
+**知识点讲解**：
+
+**FK 工具：PWM → TCP 位姿（5.1.4 新增）**
+- **原理**：`pwm_to_fk_demo.py` 把"5 路 PWM → TCP 位姿"这条链路一站式输出，**直接吃实机 PWM**，**不用先转弧度**。输出同时给出：(1) TCP 位置 (x, y, z)；(2) RPY 欧拉角；(3) 四元数；(4) **可直接发给 `arm_controller` 的 PoseStamped 命令**。适用场景：**(a) 实机标定时把当前舵机状态翻译成末端位姿**；**(b) 把历史 PWM 快照（YAML 导出的位姿）还原成空间坐标做后处理**；**(c) 抓取调试时直接在 PoseStamped 上复制粘贴下发**。
+- **源码对应**：`arm/kinematics/pwm_to_fk_demo.py`（顶层脚本，依赖 `fk.py` + `transform.py`）
+
+**IK 工具：TCP 位姿 → PWM（5.1.5 新增）**
+- **原理**：`interactive_ik_test.py` 是 IK 工具，提供两条路径：(1) **ROS2 模式**（不带 `--direct`）：把 IK 解算出的 PWM 通过 `/servo_controller` 发到真实舵机，由 `bringup + arm_controller` 链路闭环；(2) **`--direct` 模式**：绕过 ROS2，直接通过 pyserial 写串口，**单独验证 IK 算法**（不依赖任何节点）。两种模式都是**交互式输入 X / Y / Z / Pitch**，**输出关节角度 + PWM 值**。`--direct` 是实验 5 阶段 1 验证设备 + 阶段 3 偏移补偿最常用的入口。
+- **源码对应**：`arm/kinematics/interactive_ik_test.py`（CLI 主入口 + 交互式菜单）
+
+**两个工具的工程定位**
+- `pwm_to_fk_demo` = **步骤 3（FK 正算验证）的"端到端版本"**（直接吃 PWM 不用先转弧度）
+- `interactive_ik_test` = **步骤 4（解析法 IK 单点测试）的"端到端版本"**（直接出 PWM 不用只看弧度）
+- 这两个工具是**实验 6**（固定抓取）与**实验 7**（视觉抓取）调参时的"快捷通道"——不写 Python，直接命令行出结果再下发。
+
+**操作步骤**：
+
+1. **FK 工具：命令行模式**（一次给出 5 路 PWM，直接出 TCP 位姿）：
+   ```bash
+   python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics/pwm_to_fk_demo.py 2150 1200 2200 2275 1500
+   ```
+   输出：TCP 位置 (x, y, z)、RPY 欧拉角、四元数、可直接发给 `arm_controller` 的 PoseStamped 命令。
+
+2. **FK 工具：交互模式**（逐个输入 5 路 PWM）：
+   ```bash
+   python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics/pwm_to_fk_demo.py
+   # 按提示输入 5 个 PWM 值，回车结束
+   ```
+
+3. **IK 工具：ROS2 模式**（发到真实舵机验证，要求 `bringup` 已运行）：
+   ```bash
+   # 终端1：先起 bringup
+   ros2 launch car1_bringup bringup.launch.py
+   # 终端2：再起 arm_controller
+   ros2 launch car1_arm_controller arm_controller.launch.py
+   # 终端3：启动 IK 交互测试
+   python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py
+   ```
+
+4. **IK 工具：直连模式**（绕过 ROS2，直接写串口，**实验 5 阶段 1 验证推荐用这个**）：
+   ```bash
+   python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct
+   ```
+   交互式输入 X / Y / Z / Pitch，输出关节角度 + PWM 值。
+
+> 💡 **常用目标点参考**：演示位姿 (0.28, 0, 0.10) + pitch=180°（夹爪垂直朝下），与实验 6 固定抓取的目标点一致；首次实机请**先把 z 抬高、r 缩小**，**逐步逼近**，**不要一步到位**。
+
+**易错点**：
+- ⚠️ **`pwm_to_fk_demo` 不发任何指令给舵机**，只是数学计算，**纯离线工具**；如需下发给机械臂请用 `interactive_ik_test --direct` 或 `arm_controller/target_pose` 话题
+- ⚠️ **`interactive_ik_test`（ROS2 模式）要求 `bringup + arm_controller` 已启动**，否则 `/servo_controller` 无订阅者，命令不生效
+- ⚠️ **`--direct` 模式要求 `/dev/ttyUSB0` 已连接并可写**（`chmod 666 /dev/ttyUSB0` 或加 dialout 组）；**与 ROS2 模式互斥**，二选一
+- ⚠️ **任何一路 PWM 偏离 500~2500 区间立即 Ctrl+C 中断**（参考 1.5 节实机验证安全警告）
+
+---
+
+#### 步骤3：FK 正算验证（阶段一：能运行，30min）
 
 > ⚠️ 本步骤对应 src 目录源码：`arm/kinematics/fk.py`
 
@@ -3109,7 +3169,7 @@ graph LR
 
 ---
 
-#### 步骤3：解析法 IK 单点测试（阶段二：能理解，30min）
+#### 步骤4：解析法 IK 单点测试（阶段二：能理解，30min）
 
 > ⚠️ 本步骤对应 src 目录源码：`arm/kinematics/ik_analytical.py`
 
@@ -3174,7 +3234,7 @@ graph LR
 
 ---
 
-#### 步骤4：FK/IK 闭环批量验证（阶段二：能理解，30min）
+#### 步骤5：FK/IK 闭环批量验证（阶段二：能理解，30min）
 
 > ⚠️ 本步骤对应 src 目录源码：`interactive_ik_test.py` 中 `batch_fk_ik()` 函数
 
@@ -3243,7 +3303,7 @@ graph LR
 
 ---
 
-#### 步骤5：系统偏移识别（阶段三：能改造，45min）
+#### 步骤6：系统偏移识别（阶段三：能改造，45min）
 
 > ⚠️ 本步骤对应 src 目录源码：`interactive_ik_test.py` 中 `system_offset_analysis()` 函数
 
@@ -3305,7 +3365,7 @@ graph LR
 
 ---
 
-#### 步骤6：偏移补偿策略（阶段三：能改造，30min）
+#### 步骤7：偏移补偿策略（阶段三：能改造，30min）
 
 > ⚠️ 本步骤对应 src 目录源码：`kinematics/ik_analytical.py` 中 `apply_offset()` 函数
 
@@ -3378,7 +3438,7 @@ graph LR
 
 ---
 
-#### 步骤7：直连串口模式实机调试（阶段三：能改造，30min）
+#### 步骤8：直连串口模式实机调试（阶段三：能改造，30min）
 
 > ⚠️ 本步骤对应 src 目录源码：`kinematics/interactive_ik_test.py` 中 `--direct` 模式
 
@@ -3458,7 +3518,7 @@ graph LR
 
 ---
 
-#### 步骤8：解析法 vs 数值法 IK 对比（阶段三：能改造，30min）
+#### 步骤9：解析法 vs 数值法 IK 对比（阶段三：能改造，30min）
 
 > ⚠️ 本步骤对应 src 目录源码：`kinematics/numerical_ik.py`（若实现）
 
@@ -3782,26 +3842,58 @@ if __name__ == "__main__":
 1. 连接硬件：确保机械臂通电、串口连接正常。
 2. 进入工作空间：`cd ~/ros2_ws`
 3. source 环境：`source /opt/ros/humble/setup.bash && source install/setup.bash`
-4. 启动实机 arm_controller（新终端）：
+4. **先启动 bringup**（提供 `/servo_controller` 话题与 `/joint_states`，是 arm_controller 的依赖）：
+   ```bash
+   ros2 launch car1_bringup bringup.launch.py
+   ```
+5. **再启动实机 arm_controller**（新终端，必须在 bringup 起来之后再启动，否则 `/servo_controller` 无订阅者，机械臂不会动）：
    ```bash
    ros2 launch car1_arm_controller arm_controller.launch.py
    ```
-5. 设置抓取目标点（位置 (0.28, 0, 0.10)、pitch=180° 夹爪垂直朝下）：
+
+> 💡 **可选手动预演（强烈推荐，首次实机前必做）**
+> 在下发真实指令前，可用以下工具**离线 / 半离线地验证目标点可达、IK 解合理、姿态正确**，避免实机撞车：
+>
+> 1. **FK 工具 — `pwm_to_fk_demo.py`**（PWM → TCP 位姿，纯离线计算，不动舵机）
+>    ```bash
+>    python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics/pwm_to_fk_demo.py 2150 1200 2200 2275 1500
+>    # 输出 TCP 位置 / RPY / 四元数 / PoseStamped，用于交叉检查 set_pick_target 发送的目标
+>    ```
+>
+> 2. **IK 工具 — `interactive_ik_test.py --direct`**（直连串口，**先不开真实运动**，只查看 IK 解 + 5 路 PWM）
+>    ```bash
+>    python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct
+>    # 菜单中选 [1] Single Point IK，输入目标 X/Y/Z/Pitch，仅查看解与 5 路 PWM
+>    # 确认所有 PWM 都在 500~2500 安全区间、且无明显接近极限后再下真实 pick/place
+>    ```
+>
+> 3. **Web 仿真器 — `car1_web_server`**（Three.js + WebSocket，浏览器 3D 仿真，**零风险**）
+>    ```bash
+>    cd /home/iflytek/ros2_ws/src/xflz_eai_car1/test/car1_web_server
+>    python3 server_cors.py
+>    # 浏览器访问：
+>    #   本机：http://localhost:8000/viewer
+>    #   跨设备：http://<设备IP>:8000/viewer
+>    # 在浏览器里拖拽 / 输入目标，实时看 3D 末端位姿；无误后再回到实机 pick/place
+>    ```
+>    ⚠️ 注意：car1_web_server 的 `/viewer` 后缀**不能省略**（否则访问到目录列表页），跨设备必须用 IP，**不要**用 `localhost`。
+>
+> **预演 → 实机流程**：先用 (2) 算 IK 解验证 PWM → 用 (3) 看 3D 姿态 → 都 OK 后再回到下面的 step 6/7 实机抓取。
+6. 设置抓取目标点（位置 (0.28, 0, 0.10)、pitch=180° 夹爪垂直朝下）：
    ```bash
    ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
    "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.28, y: 0.0, z: 0.10}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
    ```
-6. 触发抓取（`std_srvs/srv/Trigger` 无请求字段）：
+7. 触发抓取（`std_srvs/srv/Trigger` 无请求字段）：
    ```bash
    ros2 service call /arm_controller/pick std_srvs/srv/Trigger
    ```
    等待约 5~8 秒观察完整序列：开爪 → 抬升到 pre_grasp_height → 下探到目标点 → 合爪 → 抬升 → 回 post_grasp_pose。
-7. 设置放置目标点 + 触发放置（位置 (0.20, 0, 0.10) 为示例，按实际放置位修改）：
+8. 设置放置目标点 + 触发放置（位置 (0.059, 0.074, 0.219) 为示例，按实际放置位修改）：
    ```bash
-   # 7a. 设置放置目标点（仍走 set_pick_target，update pick_target 缓存）
-   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
-   "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.20, y: 0.0, z: 0.10}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
-   # 7b. 触发放置（std_srvs/srv/Trigger 无请求字段）
+   # 8a. 设置放置目标点（仍走 set_pick_target，update pick_target 缓存）
+   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.059, y: 0.074, z: 0.219}, orientation: {x: 0.0, y: 0.9826, z: 0.0, w: 0.1856}}}"
+   # 8b. 触发放置（std_srvs/srv/Trigger 无请求字段）
    ros2 service call /arm_controller/place std_srvs/srv/Trigger
    ```
 

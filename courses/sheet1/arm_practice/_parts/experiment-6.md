@@ -55,26 +55,58 @@
 1. 连接硬件：确保机械臂通电、串口连接正常。
 2. 进入工作空间：`cd ~/ros2_ws`
 3. source 环境：`source /opt/ros/humble/setup.bash && source install/setup.bash`
-4. 启动实机 arm_controller（新终端）：
+4. **先启动 bringup**（提供 `/servo_controller` 话题与 `/joint_states`，是 arm_controller 的依赖）：
+   ```bash
+   ros2 launch car1_bringup bringup.launch.py
+   ```
+5. **再启动实机 arm_controller**（新终端，必须在 bringup 起来之后再启动，否则 `/servo_controller` 无订阅者，机械臂不会动）：
    ```bash
    ros2 launch car1_arm_controller arm_controller.launch.py
    ```
-5. 设置抓取目标点（位置 (0.28, 0, 0.10)、pitch=180° 夹爪垂直朝下）：
+
+> 💡 **可选手动预演（强烈推荐，首次实机前必做）**
+> 在下发真实指令前，可用以下工具**离线 / 半离线地验证目标点可达、IK 解合理、姿态正确**，避免实机撞车：
+>
+> 1. **FK 工具 — `pwm_to_fk_demo.py`**（PWM → TCP 位姿，纯离线计算，不动舵机）
+>    ```bash
+>    python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics/pwm_to_fk_demo.py 2150 1200 2200 2275 1500
+>    # 输出 TCP 位置 / RPY / 四元数 / PoseStamped，用于交叉检查 set_pick_target 发送的目标
+>    ```
+>
+> 2. **IK 工具 — `interactive_ik_test.py --direct`**（直连串口，**先不开真实运动**，只查看 IK 解 + 5 路 PWM）
+>    ```bash
+>    python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct
+>    # 菜单中选 [1] Single Point IK，输入目标 X/Y/Z/Pitch，仅查看解与 5 路 PWM
+>    # 确认所有 PWM 都在 500~2500 安全区间、且无明显接近极限后再下真实 pick/place
+>    ```
+>
+> 3. **Web 仿真器 — `car1_web_server`**（Three.js + WebSocket，浏览器 3D 仿真，**零风险**）
+>    ```bash
+>    cd /home/iflytek/ros2_ws/src/xflz_eai_car1/test/car1_web_server
+>    python3 server_cors.py
+>    # 浏览器访问：
+>    #   本机：http://localhost:8000/viewer
+>    #   跨设备：http://<设备IP>:8000/viewer
+>    # 在浏览器里拖拽 / 输入目标，实时看 3D 末端位姿；无误后再回到实机 pick/place
+>    ```
+>    ⚠️ 注意：car1_web_server 的 `/viewer` 后缀**不能省略**（否则访问到目录列表页），跨设备必须用 IP，**不要**用 `localhost`。
+>
+> **预演 → 实机流程**：先用 (2) 算 IK 解验证 PWM → 用 (3) 看 3D 姿态 → 都 OK 后再回到下面的 step 6/7 实机抓取。
+6. 设置抓取目标点（位置 (0.28, 0, 0.10)、pitch=180° 夹爪垂直朝下）：
    ```bash
    ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
    "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.28, y: 0.0, z: 0.10}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
    ```
-6. 触发抓取（`std_srvs/srv/Trigger` 无请求字段）：
+7. 触发抓取（`std_srvs/srv/Trigger` 无请求字段）：
    ```bash
    ros2 service call /arm_controller/pick std_srvs/srv/Trigger
    ```
    等待约 5~8 秒观察完整序列：开爪 → 抬升到 pre_grasp_height → 下探到目标点 → 合爪 → 抬升 → 回 post_grasp_pose。
-7. 设置放置目标点 + 触发放置（位置 (0.20, 0, 0.10) 为示例，按实际放置位修改）：
+8. 设置放置目标点 + 触发放置（位置 (0.059, 0.074, 0.219) 为示例，按实际放置位修改）：
    ```bash
-   # 7a. 设置放置目标点（仍走 set_pick_target，update pick_target 缓存）
-   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
-   "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.20, y: 0.0, z: 0.10}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
-   # 7b. 触发放置（std_srvs/srv/Trigger 无请求字段）
+   # 8a. 设置放置目标点（仍走 set_pick_target，update pick_target 缓存）
+   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.059, y: 0.074, z: 0.219}, orientation: {x: 0.0, y: 0.9826, z: 0.0, w: 0.1856}}}"
+   # 8b. 触发放置（std_srvs/srv/Trigger 无请求字段）
    ros2 service call /arm_controller/place std_srvs/srv/Trigger
    ```
 
