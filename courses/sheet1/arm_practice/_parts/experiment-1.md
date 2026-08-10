@@ -45,6 +45,10 @@
 
 **快速验证流程**（帮助学习者快速看到实验效果）：
 
+> ⚠️ **环境提示**：本章 Gazebo 物理仿真**资源消耗较大**（物理引擎 ODE/Bullet 实时计算重力、接触力），**建议在虚拟机中运行**（如 Ubuntu 22.04 + VMware/VirtualBox，分配 ≥4 核 CPU + 8GB 内存）。在设备上也可运行，但 Gazebo 启动和仿真时间会更长，且需确保系统有独立 GPU 或较强的 CPU 算力。
+> 
+> ⚠️ **教学定位**：本章的 Gazebo + 抓取演示是**引导性介绍**，**不是本章学习重点**。目的是让初学者**先直观看到完整生态**——URDF 加载、RViz 可视化、MoveIt2 规划、Gazebo 物理仿真、夹爪抓取全流程，建立感性认识。详细原理、IK 解算、抓取参数调优等内容分别在后续实验 5（IK 实机验证）、实验 6（IK 抓取深入）、实验 7（视觉引导抓取）展开。
+
 1. 进入工作空间根目录：`cd ~/ros2_ws`
 2. source 环境：`source /opt/ros/humble/setup.bash && source install/setup.bash`
 3. 启动 URDF 可视化：`ros2 launch car1_description display.launch.py`
@@ -53,12 +57,23 @@
 6. 关闭 RViz，再启动 MoveIt2 demo：`ros2 launch car1_moveit_config demo.launch.py`
 7. 在 MotionPlanning 面板中拖动目标球到新位姿，点击 "Plan & Execute"，机械臂自动规划无碰撞路径并执行
 8. 关闭 MoveIt2，再启动 Gazebo 仿真：`ros2 launch car1_gazebo gazebo_arm.launch.py`
+9. 关闭 Gazebo，启动固定位置抓取演示：`ros2 launch car1_gazebo grasp_demo.launch.py mode:=ik`
+
+> **步骤 9 说明（铺垫性演示，非本章重点）**：本步骤让初学者**先直观看到"机械臂能完成完整抓取流程"**，理解抓取由"接近→下降→夹取→抬升→移动→释放"6 步组成，建立感性认识。**本章不深究抓取参数**（`gripper_depth`、`pre_grasp_height`、`grasp_pitch` 等）和 **IK 解算**的细节，相关内容分别在：
+> - **实验 6（机械臂抓取与放置）**：固定位置抓取的完整原理（ik/manual/none 三模式 + 参数调优）
+> - **实验 7（视觉引导抓取）**：基于深度相机的动态目标检测 + look-then-move 策略
+>
+> **关键问题引导**（请带着这些问题观察演示）：
+> 1. **没有视觉**：本次抓取的目标方块位置是**预设固定**的。如果方块被移动到其他位置，机械臂还能成功抓取吗？
+> 2. **不一定成功**：抓取过程会因**夹爪力度、方块位姿偏差、碰撞**等原因失败，需要多次尝试。
+> 3. **延展思考**：如何让机械臂"看到"方块并自动调整位置？→ 视觉抓取（实验 7）
 
 **预期效果描述**：
 - **RViz 阶段**：3D 模型稳定渲染，TF 树列出 7 个坐标系（base_link→link1~link5→tcp_link），拖动滑块时坐标系间箭头实时更新
 - **MoveIt2 阶段**：Planning Request 面板显示成功状态，Trajectory 面板可看到 RvizVisualTools 渲染的绿色路径
 - **Gazebo 阶段**：仿真世界加载地面、桌面与机械臂模型，机械臂受重力影响下垂，订阅 `/joint_trajectory_controller/joint_trajectory` 即可驱动关节运动
-- **完整链路**：URDF 单一文件同时被 RViz（可视化）、MoveIt2（规划）、Gazebo（物理仿真）三个工具消费，验证 URDF 作为"机器人单一数据源"的设计思想
+- **固定抓取阶段（铺垫）**：Gazebo 工作区自动生成红色方块，机械臂按"张开夹爪→接近→下降→闭合→抬升→移动→放置→归位"8 步自动执行抓取。**本章仅观察现象**，详细原理与参数调优见实验 6/7
+- **完整链路**：URDF 单一文件同时被 RViz（可视化）、MoveIt2（规划）、Gazebo（物理仿真）三个工具消费；grasp_demo 则展示了 Gazebo 物理引擎 + ROS2 控制 + 机械臂运动学的端到端集成，验证 URDF 作为"机器人单一数据源"的设计思想
 
 ### 1.6 实验步骤
 
@@ -71,9 +86,11 @@ graph LR
     C --> D[步骤4：MoveIt2 demo启动]
     D --> E[步骤5：Plan & Execute]
     E --> F[步骤6：Gazebo物理仿真]
-    F --> G[步骤7：joint_trajectory控制]
+    F --> G[步骤7：grasp_demo固定抓取演示]
     G --> H[完成]
 ```
+
+> ⚠️ **步骤 7 是铺垫性演示**：固定位置抓取演示（`grasp_demo`）是**引导性介绍**，**不是本章学习重点**。目的让初学者**先直观看到"机械臂能完成完整抓取流程"**，理解抓取由"接近→下降→夹取→抬升→移动→释放"6 步组成，建立感性认识。详细原理（ik/manual/none 三模式 + 参数调优）见**实验 6**；基于视觉的动态抓取见**实验 7**。
 
 ---
 
@@ -450,6 +467,80 @@ graph LR
 
 ---
 
+#### 步骤7：grasp_demo 固定位置抓取演示（铺垫性，30min）
+
+> ⚠️ **本步骤为引导性演示，非本章学习重点**：目的是让初学者**先直观看到"机械臂能完成完整抓取流程"**，理解抓取由"接近→下降→夹取→抬升→移动→释放"6 步组成，建立感性认识。详细原理（ik/manual/none 三模式 + 参数调优）见**实验 6**；基于视觉的动态抓取见**实验 7**。
+> 
+> ⚠️ **环境提示**：本步骤 Gazebo 物理仿真**资源消耗较大**（物理引擎 ODE/Bullet 实时计算重力、接触力），**建议在虚拟机中运行**（≥4 核 CPU + 8GB 内存）。实机也可运行但启动/仿真时间更长。
+
+**知识点讲解**：
+
+**固定位置抓取流程**
+- **原理**：`grasp_demo.launch.py` 在 Gazebo 中自动生成一个红色方块，按预设目标位置触发机械臂执行完整抓取流程。机械臂依次执行 8 个动作：①张开夹爪 → ②接近目标上方 → ③下降到抓取高度 → ④闭合夹爪 → ⑤抬升物体 → ⑥移动到放置区 → ⑦释放物体 → ⑧归位 home。**目标方块位置是预设固定**的，没有视觉反馈。
+- **源码对应**：`ros2_ws/src/xflz_eai_car1/simulations/car1_gazebo/launch/grasp_demo.launch.py`
+
+**抓取参数感性认识（仅观察）**
+- **原理**：`grasp_demo` 内部使用 ik 模式（解析法 IK），目标位置和抓取参数（`gripper_depth`、`pre_grasp_height`、`grasp_pitch` 等）在 launch 中硬编码。**本章仅观察现象，不深究参数**。
+- **源码对应**：`simulations/car1_gazebo/launch/grasp_demo.launch.py` 中 `grasp_demo_ik.py`
+
+**操作步骤**：
+
+1. 确保已关闭步骤 6 的 Gazebo 和 MoveIt2（避免节点冲突）：
+   ```bash
+   # Ctrl+C 关闭前述所有终端进程
+   ```
+
+2. 启动固定位置抓取演示：
+   ```bash
+   ros2 launch car1_gazebo grasp_demo.launch.py mode:=ik
+   # 预期：
+   # - Gazebo 弹出，加载地面、桌面、机械臂、红色方块
+   # - 机械臂自动执行 8 步抓取流程
+   # - 终端打印动作阶段：open→approach→descend→grasp→lift→move→place→home
+   ```
+
+3. 观察 Gazebo 中的抓取过程：
+
+   | 阶段 | 动作 | 现象 |
+   |------|------|------|
+   | 1 | 张开夹爪 | gripper_controller 发布张开指令，夹爪张开 |
+   | 2 | 接近 | 机械臂底座旋转 + 臂部运动，移动到目标上方 |
+   | 3 | 下降 | 末端 z 下降至预设抓取高度 |
+   | 4 | 闭合 | 夹爪闭合（gripper_controller）抓取方块 |
+   | 5 | 抬升 | 末端抬升，方块离开桌面 |
+   | 6 | 移动 | 机械臂平移到放置区上方 |
+   | 7 | 释放 | 夹爪张开，方块落下 |
+   | 8 | 归位 | 机械臂回到 home 姿态 |
+
+4. 反复运行（Ctrl+C 关闭后重新启动），观察每次抓取是否都能成功。
+
+5. 尝试改变方块位置（手动在 Gazebo 中拖动红色方块到其他位置），重新运行 `grasp_demo.launch.py`：
+   - **现象**：抓取失败！因为目标位置是预设固定的，机械臂不知道方块已被移动。
+   - **思考**：这正是"无视觉抓取"的局限性。
+
+6. 尝试其他模式：
+   ```bash
+   # manual 模式：使用预设关节角度
+   ros2 launch car1_gazebo grasp_demo.launch.py mode:=manual
+   
+   # none 模式：仅启动环境，不自动抓取
+   ros2 launch car1_gazebo grasp_demo.launch.py mode:=none
+   ```
+
+**关键问题引导**（请带着这些问题观察演示）：
+
+1. **没有视觉**：本次抓取的目标方块位置是**预设固定**的。如果方块被移动到其他位置，机械臂还能成功抓取吗？→ **答：不能**，因为机械臂不知道方块在哪。
+2. **不一定成功**：抓取过程会因**夹爪力度、方块位姿偏差、碰撞**等原因失败，需要多次尝试。
+3. **延展思考**：如何让机械臂"看到"方块并自动调整位置？→ **答：视觉抓取**（见实验 7）。
+
+**易错点**：
+- ⚠️ **Gazebo 启动后机械臂瘫倒** → **解决**：检查 `controllers.yaml` 中 `arm_controller` 与 `gripper_controller` 是否 `active`：`ros2 control list_controllers`
+- ⚠️ **grasp_demo 启动后夹爪不动** → **解决**：检查 `/gripper_controller/joint_trajectory` 话题是否在发布（`ros2 topic list | grep gripper`）
+- ⚠️ **物理仿真卡顿严重** → **解决**：降低 `real_time_factor` 或减小 mesh 复杂度；如在物理机运行，建议改用虚拟机
+- ⚠️ **方块掉出抓取范围** → **解决**：确认 `arm_params.yaml` 中 `gripper_depth` / `pre_grasp_height` 未被修改为不合理值
+
+---
+
 #### 完整可运行代码 demo_urdf_view.py
 
 > 独立 demo 脚本：使用 urdf_parser_py 直接加载并解析 URDF，打印 TF 树（不依赖 ROS2）
@@ -521,13 +612,16 @@ if __name__ == "__main__":
 - 启动 display.launch 完成 RViz 可视化与关节滑块交互
 - 启动 demo.launch 完成 MoveIt2 Plan & Execute 运动规划
 - 启动 gazebo_arm.launch 完成 Gazebo 物理仿真与 joint_trajectory 控制
-- 验证 URDF→TF→RViz→MoveIt2→Gazebo 完整仿真链路
+- **（v1.1 新增）** 体验 grasp_demo 固定位置抓取演示，直观感受"接近→下降→夹取→抬升→移动→释放→归位"完整抓取流程
+- 验证 URDF→TF→RViz→MoveIt2→Gazebo→grasp_demo 完整仿真链路
 
 **技能收获**：
 - 掌握 URDF 模型描述规范（link、joint、limit、axis、origin）
 - 理解 robot_state_publisher / joint_state_publisher / RViz 三件套的协作
 - 熟悉 MoveIt2 运动规划框架（SRDF、Planning Group、OMPL）
 - 掌握 Gazebo 物理仿真与 ros2_control 桥接
+- **（v1.1 新增）** 了解固定位置抓取的感性认识（目标预设、无视觉反馈、8 步流程）
+- **（v1.1 新增）** 理解"无视觉抓取"的局限性，与后续视觉抓取形成对照
 
 **常见问题与解决**：
 
@@ -538,6 +632,8 @@ if __name__ == "__main__":
 | MoveIt2 Plan 失败 | 碰撞检测阻止 | 调整 Goal Tolerance 或添加 Allowed Collision Matrix |
 | Gazebo 启动后机械臂瘫倒 | controller 未激活 | `ros2 control set_controller_state arm_controller active` |
 | joint_trajectory 无响应 | joint_names 拼写错误 | 对照 URDF 中 `<joint name=>` 修正 |
+| **grasp_demo 抓取失败** | **目标方块被移位/参数错误** | **确认方块在预设位置；检查 arm_params.yaml** |
+| **grasp_demo 启动慢/卡顿** | **物理仿真资源消耗大** | **建议在虚拟机中运行（≥4 核 CPU + 8GB 内存）** |
 
 ### 1.8 思考题
 
@@ -546,10 +642,11 @@ if __name__ == "__main__":
 3. MoveIt2 Plan 成功但 Execute 失败的可能原因有哪些？请从 Planning Group、Controller、Trajectory 时间戳三个角度分析。
 4. 同一份 URDF 如何同时驱动 RViz 几何渲染、MoveIt2 运动规划与 Gazebo 物理仿真？这背后体现了 ROS 生态的什么设计思想？
 5. 在 Gazebo 物理仿真中加入一个桌面（box 障碍物）后，MoveIt2 的 Plan 行为会发生什么变化？这对实机抓取有什么启示？
+6. **（v1.1 新增）** 在 `grasp_demo` 演示中，如果将红色方块手动移动到其他位置，再次启动 `grasp_demo` 还能成功抓取吗？为什么？如果想让机械臂自动适应方块位置变化，应该如何改进？
 
 ### 1.9 实验报告要求
 
-**评分标准**：URDF 加载与解析 15 分 + RViz 交互 20 分 + MoveIt2 规划 25 分 + Gazebo 仿真 25 分 + 实验报告 15 分 = 100 分。
+**评分标准**：URDF 加载与解析 10 分 + RViz 交互 15 分 + MoveIt2 规划 20 分 + Gazebo 仿真 20 分 + grasp_demo 演示体验与思考 20 分 + 实验报告 15 分 = 100 分。
 
 ---
 
@@ -558,3 +655,4 @@ if __name__ == "__main__":
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-08-04 | 初版生成（基于 _registry.yaml human_waiver 模式，标注 [待源码核实]） |
+| v1.1 | 2026-08-10 | 新增步骤 7：grasp_demo 固定位置抓取演示（引导性介绍）；新增环境提示（虚拟机建议）、教学定位说明（铺垫性演示）、关键问题引导（无视觉抓取局限性→实验 7 视觉抓取）；更新 1.6/1.7/1.8/1.9 节；同步 course_spec.csv 字段更新 |

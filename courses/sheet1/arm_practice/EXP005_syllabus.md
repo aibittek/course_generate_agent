@@ -1,11 +1,11 @@
 ---
 course_code: EXP005
 course_name: 机器人机械臂应用与开发
-version: v1.0
-generated_at: 2026-08-04
+version: v1.2
+generated_at: 2026-08-10
 generator: SyllabusAgent
 source_spec: courses/sheet1/arm_practice/_meta/course-spec.yaml
-csv_sha256: da0440a5b4b86f14717a1de1891e48fec13344483f8bf6fab7b0c97b31a420f9
+csv_sha256: pending
 ---
 
 # 机器人机械臂应用与开发 教学大纲
@@ -32,7 +32,7 @@ csv_sha256: da0440a5b4b86f14717a1de1891e48fec13344483f8bf6fab7b0c97b31a420f9
 通过本课程的学习，学生能够：
 1. 具备独立配置 car1 5 自由度机械臂的 URDF/MoveIt2/Gazebo 仿真环境的能力
 2. 能够通过 ROS2 topic/service 在真实机械臂上实现关节与夹爪的精确控制
-3. 能够基于 test_servo_direct.py 录制并回放抓取放置动作，处理零位校准与软限位
+3. 能够基于 `test_servo_direct.py`（裸机）录制动作导出 YAML，使用 `bringup.launch.py` + `action_player` 节点回放，处理零位校准与软限位
 4. 能够在 Web 3D 仿真器中分析 FK/IK 计算结果，并对工作空间进行扫描
 5. 能够将 IK 解算在实机上闭环验证并应用系统偏移补偿
 6. 能够基于 visual_grasp.launch.py 一站式启动并完成动态视觉抓取，处理 HSV 调参与服务化流程
@@ -71,61 +71,89 @@ csv_sha256: da0440a5b4b86f14717a1de1891e48fec13344483f8bf6fab7b0c97b31a420f9
 - RViz 可视化与 joint_state_publisher_gui 交互
 - MoveIt2 运动规划插件与 RvizVisualTools GUI
 - Gazebo 物理仿真（ODE/Bullet）与 joint_trajectory_controller
+- **（v1.1 新增）固定位置抓取演示 grasp_demo 的 8 步流程感性认识（引导性介绍，非本章重点）**
 
 #### 重点难点
 - **重点**: URDF→RViz→MoveIt2→Gazebo 完整仿真链路的搭建与使用
+- **重点（v1.1 新增）**: 让初学者直观理解"无视觉抓取"的 8 步流程与局限性
 - **难点**: MoveIt2 规划组配置与 Gazebo ros2_control 桥接的协同
 
 #### 教学活动
 - [x] 案例分析：对比仿真与实机控制的安全/效率差异
 - [x] 动手实验：exp01 机械臂URDF仿真运动控制
+- [x] **（v1.1 新增）** 演示：grasp_demo 固定位置抓取 8 步流程（铺垫性观察）
+- [x] **（v1.1 新增）** 问题引导：方块位置移动后为何抓取失败？→ 引出实验 7 视觉抓取
 
 #### 对应知识点
-1.1.1 URDF概念 / 1.1.2 link/joint / 1.1.3 TF树 / 1.2.1 display.launch / 1.2.2 TF渲染 / 1.2.3 MoveIt2插件 / 1.3.1 Gazebo概念 / 1.3.2 gazebo_arm.launch / 1.3.3 joint_trajectory
+1.1.1 URDF概念 / 1.1.2 link/joint / 1.1.3 TF树 / 1.2.1 display.launch / 1.2.2 TF渲染 / 1.2.3 MoveIt2插件 / 1.3.1 Gazebo概念 / 1.3.2 gazebo_arm.launch / 1.3.3 joint_trajectory / **1.3.4 抓取流程感性认识（v1.1 新增）**
 
 ---
 
-### 第2章 底层舵机通信与ROS2控制
+### 第2章 底层舵机通信与裸机控制
 
 #### 教学内容
-- STM32 板载总线舵机的 1Mbps 串口协议与帧格式
-- PWM 范围（500~2500）与 PWM↔弧度换算（1500+rad/0.002356）
-- ROS2 topic（/arm/joint_command）与 service（/arm/set_gripper, /arm/go_home）
-- arm_controller 节点的桥接架构与 50Hz 控制循环
-- bringup.launch.py 一键启动
+- STM32 板载总线舵机的 1Mbps 串口协议（单线半双工，5 舵机共享总线）
+- 帧格式：0xAA 0x55 + 长度 + 命令 + 参数 + CRC8 校验和（实测帧头 0xAA 0x55）
+- PWM 范围（500~2500）、CENTER_PWM=1500、PWM_TO_RAD=0.002356 rad/PWM
+- **CRC8 查表校验算法**（检测单比特翻转，避免指令错位）
+- Python `pyserial` 裸机打开 `/dev/ttyUSB0`（不依赖 ROS2）
+- 串口设备权限（`chmod 666` 或加入 `dialout` 组）
+- `test_servo_direct.py` 的 `interactive_mode` 命令（j1~j5/g/s/r/read/save/yaml/home/work/free/load/quit）
+- 动作录制与 YAML 导出（`export_yaml` 输出与 exp03 `action_player` 兼容）
+- 裸机 vs ROS2 两条开发路线的对比
+- 1Mbps 串口带宽分析（5 关节 50Hz 约 14kbps，占总线 1.4%）
 
 #### 重点难点
-- **重点**: 通过 ROS2 接口直接控制真实舵机
-- **难点**: 50Hz 控制循环的时序保证与 STM32 串口帧的实时性
+- **重点**: 通过 1Mbps 串口协议字节级理解、PWM↔rad 公式、CRC8 校验机制
+- **难点**: CRC8 查表算法的实现；单线半双工总线的时分复用；串口权限问题排查
 
 #### 教学活动
-- [x] 演示：通过 ros2 topic pub 实时摆动机械臂
+- [x] 演示：用 cutecom 手动发一帧并观察舵机应答（验证协议）
+- [x] 演示：`test_servo_direct` interactive_mode 控制 5 关节 + 夹爪
+- [x] 演示：save/yaml 录制抓取动作并导出（供 exp03 消费）
 - [x] 动手实验：exp02 机械臂底层协议与控制
+- [x] 问题引导：CRC 校验失败为何会丢弃指令？如果没有 CRC 会发生什么？
 
 #### 对应知识点
-2.1.1 1Mbps串口 / 2.1.2 PWM公式 / 2.1.3 帧格式 / 2.2.1 joint_command / 2.2.2 set_gripper / 2.2.3 go_home/work / 2.3.1 arm_controller / 2.3.2 50Hz循环 / 2.3.3 bringup.launch
+2.1.1 1Mbps串口 / 2.1.2 PWM公式 / **2.1.3 帧格式 0xAA 0x55** / **2.1.4 CRC8 校验** / **2.2.1 串口权限** / **2.2.2 interactive_mode** / **2.2.3 动作录制/YAML** / **2.3.1 裸机 vs ROS2** / **2.3.2 协议字节级**
+
+> **v1.2 变更**：原 ROS2 topic/service 与 arm_controller 桥接内容迁移至第 3 章；本章节聚焦"裸机协议演示"，新增 CRC8、interactive_mode、动作录制等知识点。
 
 ---
 
-### 第3章 零位校准与动作录制回放
+### 第3章 ROS2 架构与动作回放
 
 #### 教学内容
-- 舵机零位校准的概念与软件层 offset 补偿（不写EEPROM）
-- servo_calib.launch.py 校准 GUI 的使用
-- test_servo_direct.py 交互式 PWM 调试（+/-/[/] 键）
-- 命名快照（home/work/pick/place）与 YAML 动作文件结构
-- action_player.launch.py 的普通/单步/循环/急停模式
+- `bringup.launch.py` 启动 7~8 个 ROS2 节点的拓扑结构（base_driver / robot_state_publisher / joint_state_publisher / imu_filter / odom_publisher / ekf_filter_node / servo_controller / init_pose）
+- `rqt_graph` 可视化插件观察节点-话题-服务的有向图
+- `ros2 node list` / `ros2 topic list` / `ros2 service list` 三大勘察命令
+- `/arm_controller/joint_command` 话题（`sensor_msgs/JointState`，position 字段为弧度）
+- PWM↔rad 换算公式 `rad = (PWM - 1500) × 0.002356`，由 arm_controller 内部自动完成
+- `action_player` 节点（**节点而非 launch**）通过 `console_scripts` 注册
+- 4 种回放模式：普通（play 服务）、单步（~/next）、循环（loop:=true）、急停（~/stop）
+- YAML 格式兼容（与 exp02 的 `export_yaml` 严格匹配）
+- 修改 YAML 后必须 `colcon build` 才能热更新
+- 舵机零位校准（软件 offset 方案，不写 EEPROM）
+- `servo_calib.launch.py` 校准 GUI 的使用
 
 #### 重点难点
-- **重点**: 通过录制+回放实现动作的快速复用
-- **难点**: 软限位在录制过程中的保护机制与回放急停的可靠性
+- **重点**: 理解 bringup 启动的节点拓扑；用 joint_command 弧度控制；action_player 节点回放；软件 offset 校准
+- **难点**: **严禁使用** `/arm_controller/target_pose`（自动 IK）和 `/arm_controller/pick`/`/arm_controller/place`（完整抓取 pipeline）——这些是 exp05/exp06 的内容；区分 `action_player` 节点 vs `action_player.launch.py`；区分 joint_command 弧度与原始 PWM
 
 #### 教学活动
-- [x] 演示：从零位校准到录制抓取放置全过程
-- [x] 动手实验：exp03 机械臂零位校准与动作录制
+- [x] 演示：rqt_graph 绘制 7~8 节点的有向图（强调 servo_controller 是软硬件唯一桥接点）
+- [x] 演示：用 ros2 topic pub joint_command 发送 5 关节弧度
+- [x] 演示：action_player 节点回放 exp02 导出的 pick_and_place.yaml
+- [x] 演示：单步/循环/急停三种模式
+- [x] 演示：修改 YAML 中 gripper_open 的 PWM 后 colcon build 热更新
+- [x] 演示：servo_calib GUI 校准 joint2 写入 offset
+- [x] 动手实验：exp03 机械臂 ROS2 架构与动作回放
+- [x] 问题引导：为什么不直接用 target_pose 触发 IK？→ 教学顺序隔离（IK 在 exp04/05 才学）
 
 #### 对应知识点
-3.1.1 零位校准 / 3.1.2 软件offset / 3.1.3 servo_calib / 3.2.1 test_servo_direct / 3.2.2 键盘调试 / 3.2.3 命名快照 / 3.3.1 YAML格式 / 3.3.2 action_player / 3.3.3 单步/循环/急停
+**3.1.1 bringup 拓扑 / 3.1.2 rqt_graph / 3.1.3 node list/topic list** / **3.2.1 joint_command 话题** / **3.2.2 PWM↔rad 换算** / **3.3.1 action_player 节点** / **3.3.2 YAML 格式兼容** / **3.3.3 回放模式** / 3.4.1 软件 offset / 3.4.2 servo_calib GUI
+
+> **v1.2 变更**：标题从"零位校准与动作录制回放"改为"ROS2 架构与动作回放"；原 exp03 的 test_servo_direct 录制迁移至 exp02；新增 bringup 拓扑、rqt_graph、joint_command、action_player 节点等 8 个 ROS2 知识点；零位校准保留为 3.4 节；**严禁 IK 相关接口**。
 
 ---
 
@@ -234,7 +262,7 @@ csv_sha256: da0440a5b4b86f14717a1de1891e48fec13344483f8bf6fab7b0c97b31a420f9
 
 | 序号 | 实验名称 | 学时 | 实验类型 | 关联知识点 |
 |------|---------|------|---------|----------|
-| 1 | 机械臂URDF仿真运动控制实验 | 4h | 验证性 ⭐ | 1.1.1~1.3.3 |
+| 1 | 机械臂URDF仿真运动控制实验 | 4h | 验证性 ⭐ | 1.1.1~1.3.4（10 个，v1.1 新增 1.3.4 抓取流程感性认识） |
 | 2 | 机械臂底层协议与控制实验 | 4h | 验证性 ⭐⭐ | 2.1.1~2.3.3 |
 | 3 | 机械臂零位校准与动作录制实验 | 4h | 设计性 ⭐⭐ | 3.1.1~3.3.3 |
 | 4 | 机械臂运动学控制原理实验 | 4h | 验证性 ⭐⭐ | 4.1.1~4.4.3 |
@@ -244,9 +272,9 @@ csv_sha256: da0440a5b4b86f14717a1de1891e48fec13344483f8bf6fab7b0c97b31a420f9
 | - | **合计** | **32h** | - | - |
 
 ### 实验类型分布
-- 验证性：2 个（28.6%）
-- 设计性：1 个（14.3%）
-- 综合性：3 个（42.9%）
+- 验证性：1 个（14.3%）
+- 设计性：0 个
+- 综合性：5 个（71.4%）
 - 综合（视觉）：1 个（14.3%，8h）
 
 ### 难度分布
@@ -355,3 +383,5 @@ csv_sha256: da0440a5b4b86f14717a1de1891e48fec13344483f8bf6fab7b0c97b31a420f9
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-08-04 | 初始化 7 章 32h，覆盖 car1 5自由度机械臂从URDF到视觉抓取全链路，7 个实验（6×4h + 1×8h） |
+| v1.1 | 2026-08-10 | 第 1 章新增知识点 **1.3.4 抓取流程感性认识**（grasp_demo 演示）；新增教学活动"演示：grasp_demo 8 步流程"和"问题引导：方块移位后抓取失败"；同步 course_spec.csv 与 experiment-1.md 中 grasp_demo 相关内容 |
+| **v1.2** | 2026-08-10 | **重大重构 exp02/exp03 教学体系**。原因：用户反馈 exp02 主题应为"底层协议与裸机控制"，exp03 主题应为"ROS2 架构认知与动作回放"，**严禁在 exp03 引入 IK 算法**。变更如下：**(1) 第 2 章标题改为"底层舵机通信与裸机控制"**，新增教学活动"cutecom 验证协议 / interactive_mode / save-yaml 导出"，新增知识点 2.1.4 CRC8、2.2.1~2.2.3 串口权限与 interactive_mode、2.3.1~2.3.2 协议层对比；**(2) 第 3 章标题改为"ROS2 架构与动作回放"**，从"设计性"提升为"综合性"，新增教学活动"rqt_graph 拓扑 / joint_command 弧度 / action_player 节点回放 / servo_calib GUI"，新增 8 个 ROS2 知识点（bringup 拓扑、rqt_graph、node list、joint_command、PWM↔rad、action_player 节点、YAML 兼容、回放模式），**严禁** target_pose/pick/place；**(3) 能力目标 3 同步更新**为"test_servo_direct 裸机录制 + bringup+action_player 节点回放"；**(4) 实验项目表格** exp02 知识点范围更新为 2.1.1~2.3.2，exp03 范围更新为 3.1.1~3.4.2（标题改为"机械臂ROS2架构认知与动作回放实验"），实验类型分布同步更新。同步 `experiment-2.md` / `experiment-3.md` / `EXP005_lab_guide.md` / `course-spec.yaml` / `EXP005_knowledge_graph.md` |

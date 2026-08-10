@@ -52,14 +52,22 @@
 1. 连接硬件：确保机械臂通电、串口连接正常
 2. 进入工作空间：`cd ~/ros2_ws`
 3. source 环境：`source /opt/ros/humble/setup.bash && source install/setup.bash`
-4. 启动交互式测试：`python3 src/xflz_eai_car1/arm/kinematics/interactive_ik_test.py --direct`
-5. 终端显示主菜单：`[1] Single Point IK  [2] Batch FK/IK  [3] Workspace Scan  [q] Quit`
-6. 选择 `[1] Single Point IK`：输入目标点 (0.2, 0.0, 0.2)，观察 IK 解与 FK 验证
-7. 选择 `[2] Batch FK/IK`：执行 100 次随机采样闭环验证，输出误差统计
-8. 退出：`q`
+4. 启动交互式测试：`python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct`
+5. 终端显示主菜单：`[1] Single Point IK  [2] Batch FK/IK  [3] Workspace Scan  [4] System Offset Analysis  [5] Send PWM Directly  [q] Quit`
+6. （实机调试时）输入目标点 (0.28, 0, 0.1) 和目标 pitch=180°（即末端夹爪垂直向下），观察 IK 解
+7. 退出：`q`
+
+> ⚠️ **实机验证安全警告（必读）**
+> - 本实验是**第一次将 IK 解实际下发到真实机械臂**，请务必谨慎：
+>   1. **必须先按"提供的 PWM 信息"逐关节核对 IK 解算出的 5 路 PWM 值**，确认与舵机中位/合理工作范围一致后再下发；任何一路 PWM 偏离正常区间（如接近 500 或 2500 极限）都说明目标点超出安全包络，禁止直接执行
+>   2. **设备虽然自带堵转保护**，但堵转期间的瞬时电流会加速舵机齿轮磨损，**长时间或高频堵转仍会损坏设备**
+>   3. 因 PWM 指令误用导致设备损坏属于**使用问题，不在质保范围**
+>   4. **强烈建议在直接调用 `interactive_ik_test.py` 之前**，先进入 `/home/iflytek/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test` 执行 `python test_servo_direct.py`，用 `interactive_mode` 逐关节手发 PWM 验证设备状态与软限位正常
+> - 夹爪垂直向下（pitch=180°）的目标位姿 (0.28, 0, 0.1) 仅作为 IK 算法的示例输入；首次实机验证请先把目标 z 抬高、r 缩小，**逐步逼近到 (0.28, 0, 0.1)**，不要一步到位
+> - 任何情况下，发现机械臂抖动、异响、电流声、舵机发烫，立即断电排查
 
 **预期效果描述**：
-- **单点 IK**：输入目标 (0.2, 0.0, 0.2) → IK 解 [0, -0.5, 1.0, -0.3, -0.2] rad → FK 反算 (0.200, 0.000, 0.200) → 误差 < 0.1mm
+- **单点 IK**：输入目标 (0.28, 0, 0.1)、pitch=180° → IK 解 [q1≈0, q2≈..., q3≈..., q4≈..., q5≈...] → FK 反算 (0.280, 0.000, 0.100)，末端夹爪姿态接近垂直向下
 - **批量验证**：100 次随机采样，平均误差 0.8mm，最大误差 1.5mm，成功率 100%
 - **系统偏移识别**：未补偿时误差均值为 +2.5mm，补偿后降至 +0.3mm
 - **直连串口模式**：--direct 模式下脚本直接通过串口控制舵机，不依赖 ROS2 节点
@@ -301,22 +309,22 @@ graph LR
 
 **操作步骤**：
 
-1. 启动交互式测试：
+1. 启动交互式测试（与 1.5 步骤 4 相同，使用 `--direct` 直连串口模式更便于硬件在线验证）：
    ```bash
-   python3 ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/interactive_ik_test.py
+   cd ~/ros2_ws
+   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct \
+     --port /dev/ttyUSB0 --baud 1000000
    ```
 
-2. 选择 [2] Batch FK/IK：
+2. 终端菜单参考（实际菜单以脚本输出为准）：
    ```
-   === Kinematics Test Menu ===
-   [1] Single Point IK
-   [2] Batch FK/IK
+   === Interactive IK Test (Direct Serial Mode) ===
+   [1] Single Point IK + Move Arm
+   [2] Batch FK/IK (no movement)
    [3] Workspace Scan
    [4] System Offset Analysis
+   [5] Send PWM Directly
    [q] Quit
-   
-   Choice: 2
-   Enter sample count (default 100): 100
    ```
 
 3. 等待验证完成（约 5-10 秒），输出报告：
@@ -333,7 +341,7 @@ graph LR
    ```python
    import matplotlib.pyplot as plt
    from mpl_toolkits.mplot3d import Axes3D
-   
+
    fig = plt.figure()
    ax = fig.add_subplot(111, projection='3d')
    ax.scatter(targets_x, targets_y, targets_z, c='green', label='Target')
@@ -370,10 +378,12 @@ graph LR
 
 **操作步骤**：
 
-1. 启动系统偏移分析：
+1. 启动系统偏移分析（同样使用 `--direct` 直连串口模式，便于在线采集真实舵机反馈）：
    ```bash
-   python3 interactive_ik_test.py
-   # 菜单选择 [4] System Offset Analysis
+   cd ~/ros2_ws
+   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct \
+     --port /dev/ttyUSB0 --baud 1000000
+   # 在菜单中选择 [4] System Offset Analysis
    ```
 
 2. 程序提示测量流程：
@@ -505,11 +515,12 @@ graph LR
 
 1. 启动直连串口模式：
    ```bash
-   python3 ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/interactive_ik_test.py --direct \
+   cd ~/ros2_ws
+   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct \
      --port /dev/ttyUSB0 --baud 1000000
    ```
 
-2. 菜单功能：
+2. 终端菜单（实际菜单以脚本输出为准）：
    ```
    === Interactive IK Test (Direct Serial Mode) ===
    [1] Single Point IK + Move Arm
@@ -520,38 +531,47 @@ graph LR
    [q] Quit
    ```
 
-3. 单点 IK + 实际运动：
-   - 选择 [1] Single Point IK
-   - 输入目标 (0.2, 0.0, 0.2)
-   - 程序显示 IK 解，询问 "Move arm? (y/n)"
-   - 输入 y，机械臂运动到目标位姿
+3. 实机调试流程（**严格按以下顺序，禁止跳过前置验证**）：
 
-4. 串口监控：
-   - 在另一终端运行串口监控工具：
-     ```bash
-     sudo cutecom --device /dev/ttyUSB0 --baud 1000000
-     # 观察 0x55 0x55 帧的发送频率
-     ```
+   > ⚠️ **实机验证安全警告（必读）**
+   > - 本步骤第一次将 IK 解下发到真实机械臂，**任何错发 PWM 都可能造成堵转损坏**：
+   >   1. **必须先按"提供的 PWM 信息"逐关节核对 IK 解算出的 5 路 PWM 值**，确认与舵机中位/合理工作范围一致后再下发；任何一路 PWM 偏离正常区间（如接近 500 或 2500 极限）都说明目标点超出安全包络，禁止直接执行
+   >   2. **设备虽然自带堵转保护**，但堵转期间的瞬时电流会加速舵机齿轮磨损，**长时间或高频堵转仍会损坏设备**
+   >   3. 因 PWM 指令误用导致设备损坏属于**使用问题，不在质保范围**
+   >   4. **强烈建议在直接调用 `interactive_ik_test.py` 之前**，先进入 `/home/iflytek/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test` 执行 `python test_servo_direct.py`，用 `interactive_mode` 逐关节手发 PWM 验证设备状态与软限位正常
 
-5. 实机 FK/IK 闭环：
-   - 启动直连串口模式
-   - 选择 [2] Batch FK/IK
-   - 程序询问 "Move arm to each pose? (y/n)"
-   - y：机械臂依次运动到 100 个采样点，测量末端位置
-   - n：仅在算法层验证（不开串口）
+   a. **第一步：进入 interactive_mode 验证设备状态**
+      ```bash
+      cd /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test
+      python test_servo_direct.py
+      ```
+      在 `interactive_mode` 下逐个关节发 PWM（500~2500，center=1500），确认：(a) 5 个舵机都能正常响应；(b) 软限位生效；(c) 无异响/抖动/电流声
 
-6. PWM 直发测试：
-   - 选择 [5] Send PWM Directly
+   b. **第二步：进入直连串口 IK 测试，演示目标位姿 (0.28, 0, 0.1)、pitch=180°（夹爪垂直向下）**
+      - 在 `interactive_ik_test.py --direct` 的菜单中查看各功能项
+      - **先仅查看 IK 解（不开实际运动）**，对照提供的 PWM 范围表核对 5 路输出
+      - 确认安全后再决定是否实际下发；**逐步逼近**：建议首次把 z 抬高、r 缩小，**逐步逼近到 (0.28, 0, 0.1)**，不要一步到位
+
+   c. **串口监控**（可选，便于观察协议帧）：
+      - 在另一终端运行串口监控工具：
+        ```bash
+        sudo cutecom --device /dev/ttyUSB0 --baud 1000000
+        # 观察 0x55 0x55 帧的发送频率
+        ```
+
+4. PWM 直发测试（用于熟悉协议帧，不构成实际目标位姿）：
+   - 在 `interactive_ik_test.py --direct` 菜单中选择 [5] Send PWM Directly
    - 输入 `1500 1500 1500 1500 1500`（所有关节回中位）
-   - 观察机械臂回到 home
+   - 观察机械臂回到 home 位姿
 
-7. 对比 ROS2 模式：
+5. 对比 ROS2 模式：
    - 关闭直连串口模式
    - 启动 `ros2 launch car1_arm_controller arm_controller.launch.py`
    - 运行 `ros2 run kinematics interactive_ik_test.py`（不带 --direct）
    - 对比两种模式的便利性
 
 **易错点**：
+- ⚠️ **PWM 误发导致堵转** → **解决**：**严格按步骤 3a → 3b 顺序**，先用 `test_servo_direct.py` interactive_mode 验证设备，再进入 `interactive_ik_test.py --direct`；任何一路 PWM 偏离合理区间立即 Ctrl+C 中断
 - ⚠️ **直连串口模式与 ROS2 模式冲突** → **解决**：二选一，不能同时使用
 - ⚠️ **串口打开失败** → **解决**：检查 `/dev/ttyUSB0` 权限与占用情况
 

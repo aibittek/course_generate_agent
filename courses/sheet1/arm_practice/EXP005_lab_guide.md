@@ -1,8 +1,8 @@
 ---
 course_code: EXP005
 course_name: 机器人机械臂应用与开发
-version: v1.0
-generated_at: 2026-08-04
+version: v1.2
+generated_at: 2026-08-04（v1.0）/ 2026-08-10（v1.1 增量）/ 2026-08-10（v1.2 重构 exp02/03）
 generator: LabGuideExperimentAgent (合并版)
 source_spec: courses/sheet1/arm_practice/_meta/course-spec.yaml
 source_knowledge_graph: courses/sheet1/arm_practice/EXP005_knowledge_graph.md
@@ -31,7 +31,7 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 
 1. [实验1：机械臂URDF仿真运动控制实验](#实验1机械臂urdf仿真运动控制实验4h)
 2. [实验2：机械臂底层协议与控制实验](#实验2机械臂底层协议与控制实验4h)
-3. [实验3：机械臂零位校准与动作录制实验](#实验3机械臂零位校准与动作录制实验4h)
+3. [实验3：机械臂ROS2架构认知与动作回放实验](#实验3机械臂ros2架构认知与动作回放实验4h)
 4. [实验4：机械臂运动学控制原理实验](#实验4机械臂运动学控制原理实验4h)
 5. [实验5：机械臂IK解算实验](#实验5机械臂ik解算实验4h)
 6. [实验6：机械臂IK固定抓取实验](#实验6机械臂ik固定抓取实验4h)
@@ -43,12 +43,12 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 
 | 编号 | 名称 | 学时 | 类型 | 难度 | 源码路径 |
 |------|------|------|------|------|----------|
-| exp01 | 机械臂URDF仿真运动控制实验 | 4h | 验证性 | ⭐ | `ros2_ws/src/xflz_eai_car1/simulations/` |
+| exp01 | 机械臂URDF仿真运动控制实验 | 4h | 验证性 | ⭐ | `ros2_ws/src/xflz_eai_car1/simulations/` (car1_description + car1_moveit_config + car1_gazebo，含 `grasp_demo.launch.py`) |
 | exp02 | 机械臂底层协议与控制实验 | 4h | 验证性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/` |
 | exp03 | 机械臂零位校准与动作录制实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/calibration/ + arm/car1_arm_controller/` |
 | exp04 | 机械臂运动学控制原理实验 | 4h | 验证性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/test/car1_web_server/` |
 | exp05 | 机械臂IK解算实验 | 4h | 综合性 | ⭐⭐⭐ | `ros2_ws/src/xflz_eai_car1/arm/kinematics/` |
-| exp06 | 机械臂IK固定抓取实验 | 4h | 综合性 | ⭐⭐⭐ | `ros2_ws/src/xflz_eai_car1/simulations/car1_gazebo/ + arm/car1_arm_controller/` |
+| exp06 | 机械臂IK固定抓取实验 | 4h | 综合性 | ⭐⭐⭐ | `ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/` |
 | exp07 | 机械臂基于视觉的动态抓取实验 | 8h | 综合性 | ⭐⭐⭐ | `ros2_ws/src/xflz_eai_car1/app/car1_app/` |
 
 **学时合计**: 4+4+4+4+4+4+8 = **32h**
@@ -109,11 +109,11 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 
 ## 实验1：机械臂URDF仿真运动控制实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/simulations/`，未复制到 `source-codes/EXP005/exp01/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `car1_description/launch/display.launch.py`、`car1_moveit_config/launch/demo.launch.py`、`car1_gazebo/launch/gazebo_arm.launch.py` 等仿真包源码。
+> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/simulations/`，未复制到 `source-codes/EXP005/exp01/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `car1_description/launch/display.launch.py`、`car1_moveit_config/launch/demo.launch.py`、`car1_gazebo/launch/gazebo_arm.launch.py`、`car1_gazebo/launch/grasp_demo.launch.py` 等仿真包源码。
 
 ### 1.1 关联知识点
 
-本实验对应第 1 章"URDF建模与仿真认知"，覆盖以下 9 个知识点：
+本实验对应第 1 章"URDF建模与仿真认知"，覆盖以下 10 个知识点：
 
 - 1.1.1 URDF概念 > 概念 > URDF 用 XML 描述机器人的连杆、关节、惯量与视觉/碰撞几何
 - 1.1.2 link/joint > 原理 > `<link>` 定义刚体属性，`<joint>` 定义两连杆的运动关系（revolute/prismatic/fixed）
@@ -124,6 +124,7 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 - 1.3.1 Gazebo概念 > 概念 > Gazebo 通过 ODE/Bullet 物理引擎模拟重力、摩擦与接触力，支持闭环控制
 - 1.3.2 gazebo_arm.launch > 流程 > `gazebo_arm.launch.py` 同时加载 URDF + ros2_control 配置，发布 joint_states
 - 1.3.3 joint_trajectory > 原理 > `joint_trajectory_controller` 在 Gazebo 中按时间戳插值执行轨迹，与 MoveIt2 协同
+- **1.3.4 抓取流程感性认识 > 概念 > 机械臂抓取由"接近→下降→夹取→抬升→移动→释放"6 步组成；grasp_demo 演示中目标位姿 hard-code，无视觉反馈（铺垫实验 6/7）**
 
 ### 1.2 实验目标
 
@@ -131,7 +132,8 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 2. 掌握 display.launch / demo.launch / gazebo_arm.launch 三大 Launch 文件的差异与适用场景 — 流程掌握
 3. 独立完成 RViz 中关节滑块拖动与 MoveIt2 Plan & Execute 运动规划 — 独立完成
 4. 能够在 Gazebo 中通过 joint_trajectory 话题控制真实时间轨迹回放 — 独立完成
-5. 将 URDF→TF→RViz→MoveIt2→Gazebo 链路迁移到其他机器人平台 — 迁移应用
+5. **了解机械臂固定位置抓取的完整流程（接近→下降→夹取→抬升→移动→释放），认识无视觉抓取的局限性 — 感性认识**
+6. 将 URDF→TF→RViz→MoveIt2→Gazebo 链路迁移到其他机器人平台 — 迁移应用
 
 ### 1.3 实验环境
 
@@ -142,7 +144,7 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 | 仿真软件 | RViz2 + MoveIt2 Humble + Gazebo 11 (ros-humble-ros-gz) |
 | 核心库 | urdf、xacro、robot_state_publisher、joint_state_publisher_gui、joint_trajectory_controller、moveit_ros_planning_interface |
 | 核心包 | car1_description、car1_moveit_config、car1_gazebo |
-| 主入口 | `car1_description/launch/display.launch.py`（RViz 可视化）<br>`car1_moveit_config/launch/demo.launch.py`（MoveIt2 规划）<br>`car1_gazebo/launch/gazebo_arm.launch.py`（Gazebo 物理仿真） |
+| 主入口 | `car1_description/launch/display.launch.py`（RViz 可视化）<br>`car1_moveit_config/launch/demo.launch.py`（MoveIt2 规划）<br>`car1_gazebo/launch/gazebo_arm.launch.py`（Gazebo 物理仿真）<br>`car1_gazebo/launch/grasp_demo.launch.py`（固定位置抓取演示，引导性介绍） |
 
 ### 1.4 实验难度
 
@@ -154,6 +156,10 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 
 **快速验证流程**（帮助学习者快速看到实验效果）：
 
+> ⚠️ **环境提示**：本章 Gazebo 物理仿真**资源消耗较大**（物理引擎 ODE/Bullet 实时计算重力、接触力），**建议在虚拟机中运行**（如 Ubuntu 22.04 + VMware/VirtualBox，分配 ≥4 核 CPU + 8GB 内存）。在设备上也可运行，但 Gazebo 启动和仿真时间会更长，且需确保系统有独立 GPU 或较强的 CPU 算力。
+>
+> ⚠️ **教学定位**：本章的 Gazebo + 抓取演示是**引导性介绍**，**不是本章学习重点**。目的是让初学者**先直观看到完整生态**——URDF 加载、RViz 可视化、MoveIt2 规划、Gazebo 物理仿真、夹爪抓取全流程，建立感性认识。详细原理、IK 解算、抓取参数调优等内容分别在后续实验 5（IK 实机验证）、实验 6（IK 抓取深入）、实验 7（视觉引导抓取）展开。
+
 1. 进入工作空间根目录：`cd ~/ros2_ws`
 2. source 环境：`source /opt/ros/humble/setup.bash && source install/setup.bash`
 3. 启动 URDF 可视化：`ros2 launch car1_description display.launch.py`
@@ -162,12 +168,23 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 6. 关闭 RViz，再启动 MoveIt2 demo：`ros2 launch car1_moveit_config demo.launch.py`
 7. 在 MotionPlanning 面板中拖动目标球到新位姿，点击 "Plan & Execute"，机械臂自动规划无碰撞路径并执行
 8. 关闭 MoveIt2，再启动 Gazebo 仿真：`ros2 launch car1_gazebo gazebo_arm.launch.py`
+9. 关闭 Gazebo，启动固定位置抓取演示：`ros2 launch car1_gazebo grasp_demo.launch.py mode:=ik`
+
+> **步骤 9 说明（铺垫性演示，非本章重点）**：本步骤让初学者**先直观看到"机械臂能完成完整抓取流程"**，理解抓取由"接近→下降→夹取→抬升→移动→释放"6 步组成，建立感性认识。**本章不深究抓取参数**（`gripper_depth`、`pre_grasp_height`、`grasp_pitch` 等）和 **IK 解算**的细节，相关内容分别在：
+> - **实验 6（机械臂抓取与放置）**：固定位置抓取的完整原理（ik/manual/none 三模式 + 参数调优）
+> - **实验 7（视觉引导抓取）**：基于深度相机的动态目标检测 + look-then-move 策略
+>
+> **关键问题引导**（请带着这些问题观察演示）：
+> 1. **没有视觉**：本次抓取的目标方块位置是**预设固定**的。如果方块被移动到其他位置，机械臂还能成功抓取吗？
+> 2. **不一定成功**：抓取过程会因**夹爪力度、方块位姿偏差、碰撞**等原因失败，需要多次尝试。
+> 3. **延展思考**：如何让机械臂"看到"方块并自动调整位置？→ 视觉抓取（实验 7）
 
 **预期效果描述**：
 - **RViz 阶段**：3D 模型稳定渲染，TF 树列出 7 个坐标系（base_link→link1~link5→tcp_link），拖动滑块时坐标系间箭头实时更新
 - **MoveIt2 阶段**：Planning Request 面板显示成功状态，Trajectory 面板可看到 RvizVisualTools 渲染的绿色路径
 - **Gazebo 阶段**：仿真世界加载地面、桌面与机械臂模型，机械臂受重力影响下垂，订阅 `/joint_trajectory_controller/joint_trajectory` 即可驱动关节运动
-- **完整链路**：URDF 单一文件同时被 RViz（可视化）、MoveIt2（规划）、Gazebo（物理仿真）三个工具消费，验证 URDF 作为"机器人单一数据源"的设计思想
+- **固定抓取阶段（铺垫）**：Gazebo 工作区自动生成红色方块，机械臂按"张开夹爪→接近→下降→闭合→抬升→移动→放置→归位"8 步自动执行抓取。**本章仅观察现象**，详细原理与参数调优见实验 6/7
+- **完整链路**：URDF 单一文件同时被 RViz（可视化）、MoveIt2（规划）、Gazebo（物理仿真）三个工具消费；grasp_demo 则展示了 Gazebo 物理引擎 + ROS2 控制 + 机械臂运动学的端到端集成，验证 URDF 作为"机器人单一数据源"的设计思想
 
 ### 1.6 实验步骤
 
@@ -181,7 +198,8 @@ graph LR
     D --> E[步骤5：Plan & Execute]
     E --> F[步骤6：Gazebo物理仿真]
     F --> G[步骤7：joint_trajectory控制]
-    G --> H[完成]
+    G --> H[步骤8：固定位置抓取演示引导]
+    H --> I[完成]
 ```
 
 ---
@@ -559,6 +577,72 @@ graph LR
 
 ---
 
+#### 步骤7：固定位置抓取演示（引导性介绍，非本章重点，15min）
+
+> ⚠️ **本步骤为引导性演示，不是本章学习重点**：仅用于让初学者**直观看到机械臂完成一次完整抓取**的 8 步流程。**不要深究抓取参数与 IK 细节**——相关内容分别在实验 6（参数调优）、实验 7（视觉引导）展开。
+>
+> ⚠️ **环境提示**：Gazebo 物理仿真资源消耗较大，建议在虚拟机中运行（≥4 核 CPU + 8GB 内存）。
+
+> ⚠️ 本步骤对应 src 目录源码：`simulations/car1_gazebo/launch/grasp_demo.launch.py`
+
+**知识点讲解**：
+
+**grasp_demo 演示流程**
+- **原理**：`grasp_demo.launch.py` 是 Gazebo 下的端到端抓取演示脚本。它启动 Gazebo 仿真环境 + 自动生成红色方块 + 调度 IK 抓取节点，按"张开夹爪→接近→下降→闭合→抬升→移动→放置→归位"8 步自动执行一次完整的"接近→下降→夹取→抬升→移动→释放"流程。该演示**不依赖视觉**——目标方块位置是 URDF/SDF 中预设的固定值。
+- **源码对应**：`ros2_ws/src/xflz_eai_car1/simulations/car1_gazebo/launch/grasp_demo.launch.py`
+
+**操作步骤**：
+
+1. 关闭 MoveIt2 demo 和 Gazebo（如果还开着）。
+
+2. 启动固定位置抓取演示：
+   ```bash
+   ros2 launch car1_gazebo grasp_demo.launch.py mode:=ik
+   # mode 选项：
+   #   mode:=ik    - 使用解析法 IK 自动解算关节角（推荐）
+   #   mode:=manual - 关节角硬编码（更稳定但需要手动调参）
+   #   mode:=none  - 关节角全零
+   ```
+
+3. 观察 Gazebo 现象：
+   - 弹出 Gazebo 窗口，地面自动生成 1 个**红色方块**（预设固定位置）
+   - 机械臂从 home 位姿开始执行抓取
+   - 完整流程约 30~60 秒，每步之间有明显停顿
+
+4. 抓取 8 步动作分解（仅观察，不修改）：
+   | 步骤 | 动作 | 目的 |
+   |------|------|------|
+   | 1 | 张开夹爪（gripper open） | 准备抓取姿态 |
+   | 2 | 接近（pre-grasp） | 移动到目标上方 |
+   | 3 | 下降（descend） | 末端下降到抓取高度 |
+   | 4 | 闭合夹爪（grasp） | 夹持目标 |
+   | 5 | 抬升（lift） | 提起目标脱离桌面 |
+   | 6 | 移动（transport） | 搬运到放置区 |
+   | 7 | 释放（release） | 张开夹爪放置 |
+   | 8 | 归位（home） | 回到 home 位姿 |
+
+5. **关键问题引导**（请带着这些问题观察演示）：
+
+   > 1. **没有视觉**：本次抓取的目标方块位置是**预设固定**的。如果把方块手动拖到其他位置，机械臂还能成功抓取吗？
+   >    → 答：**不能**。grasp_demo 用的目标位姿是代码里 hard-code 的固定值，目标移动后机械臂依然会去原位置"抓"，结果扑空。
+   >
+   > 2. **不一定成功**：抓取过程会因**夹爪力度、方块位姿偏差、碰撞**等原因失败。如果失败，需要重新启动 launch 多次尝试。
+   >
+   > 3. **延展思考**：如何让机械臂"看到"方块并自动调整位置？
+   >    → 答：加入**视觉定位**（HSV 颜色检测 + 深度反投影）+ **TF 坐标变换**，将方块从相机坐标系转换到 base_link 坐标系，再送入 IK 求解器。这是**实验 7（视觉引导抓取）**的核心内容。
+
+**预期效果**：
+- 机械臂流畅地完成 8 步抓取动作
+- 红色方块从初始位置被搬运到放置区
+- 终端打印 8 个步骤的执行日志
+
+**易错点**：
+- ⚠️ **Gazebo 中方块不出现** → **解决**：检查 `grasp_demo.launch.py` 中 spawn_block 节点是否启动
+- ⚠️ **机械臂抓空或碰撞** → **解决**：检查 `controllers.yaml` 中 `arm_controller` 与 `gripper_controller` 是否 active；多次重启 launch 即可
+- ⚠️ **运行卡顿** → **解决**：降低 Gazebo 实时因子（`real_time_factor=0.5`）或使用 headless 模式
+
+---
+
 #### 完整可运行代码 demo_urdf_view.py
 
 > 独立 demo 脚本：使用 urdf_parser_py 直接加载并解析 URDF，打印 TF 树（不依赖 ROS2）
@@ -630,13 +714,16 @@ if __name__ == "__main__":
 - 启动 display.launch 完成 RViz 可视化与关节滑块交互
 - 启动 demo.launch 完成 MoveIt2 Plan & Execute 运动规划
 - 启动 gazebo_arm.launch 完成 Gazebo 物理仿真与 joint_trajectory 控制
-- 验证 URDF→TF→RViz→MoveIt2→Gazebo 完整仿真链路
+- 启动 grasp_demo 观察固定位置抓取演示（引导性介绍，非本章重点）
+- 验证 URDF→TF→RViz→MoveIt2→Gazebo→grasp_demo 完整仿真链路
 
 **技能收获**：
 - 掌握 URDF 模型描述规范（link、joint、limit、axis、origin）
 - 理解 robot_state_publisher / joint_state_publisher / RViz 三件套的协作
 - 熟悉 MoveIt2 运动规划框架（SRDF、Planning Group、OMPL）
 - 掌握 Gazebo 物理仿真与 ros2_control 桥接
+- **感性认识**：理解机械臂抓取由"接近→下降→夹取→抬升→移动→释放"6 步组成
+- **问题意识**：理解无视觉抓取的局限性（目标固定、可能失败），为后续视觉抓取实验铺垫
 
 **常见问题与解决**：
 
@@ -647,6 +734,8 @@ if __name__ == "__main__":
 | MoveIt2 Plan 失败 | 碰撞检测阻止 | 调整 Goal Tolerance 或添加 Allowed Collision Matrix |
 | Gazebo 启动后机械臂瘫倒 | controller 未激活 | `ros2 control set_controller_state arm_controller active` |
 | joint_trajectory 无响应 | joint_names 拼写错误 | 对照 URDF 中 `<joint name=>` 修正 |
+| grasp_demo 抓空（演示） | 目标位姿 hard-code | 仅观察，不需修复；正式学习见实验 7 |
+| Gazebo 仿真卡顿 | 物理引擎资源消耗大 | 虚拟机运行（≥4 核 + 8GB）；或降低 real_time_factor / headless |
 
 ### 1.8 思考题
 
@@ -655,6 +744,7 @@ if __name__ == "__main__":
 3. MoveIt2 Plan 成功但 Execute 失败的可能原因有哪些？请从 Planning Group、Controller、Trajectory 时间戳三个角度分析。
 4. 同一份 URDF 如何同时驱动 RViz 几何渲染、MoveIt2 运动规划与 Gazebo 物理仿真？这背后体现了 ROS 生态的什么设计思想？
 5. 在 Gazebo 物理仿真中加入一个桌面（box 障碍物）后，MoveIt2 的 Plan 行为会发生什么变化？这对实机抓取有什么启示？
+6. **grasp_demo 抓取演示中，目标方块的位置是预先固定在代码中的。如果手动把方块移动到其他位置，机械臂还能成功抓取吗？为什么？这种"无视觉"抓取模式存在哪些固有局限？应当如何改进？（提示：实验 7 的视觉引导抓取）**
 
 ### 1.9 实验报告要求
 
@@ -667,72 +757,78 @@ if __name__ == "__main__":
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-08-04 | 初版生成（基于 _registry.yaml human_waiver 模式，标注 [待源码核实]） |
+| v1.1 | 2026-08-10 | 实验 1 新增 `grasp_demo.launch.py` 固定位置抓取演示作为引导性介绍：1.5 补充环境提示（Gazebo 资源消耗大，建议虚拟机）和教学定位（非本章重点）；快速验证流程新增步骤 9 并附问题引导（无视觉、可能失败、延展视觉抓取）；预期效果新增固定抓取阶段与完整链路；1.6 新增步骤 7（固定位置抓取演示）含 8 步动作分解表与问题引导；1.7 实验总结与常见问题表补充 grasp_demo 相关行；1.8 思考题新增第 6 题关于无视觉抓取局限性 |
 
 ---
 
 ## 实验2：机械臂底层协议与控制实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/`，未复制到 `source-codes/EXP005/exp02/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `bringup/launch/bringup.launch.py`、`arm/car1_arm_controller/launch/arm_controller.launch.py`、`arm/car1_arm_controller/car1_arm_controller/arm_controller.py` 等节点源码。
+> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/`，未复制到 `source-codes/EXP005/exp02/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书 v1.2 改用 `test_servo_direct.py` 裸机协议演示路线（原 v1.1 的 `bringup.launch.py` 路线迁移至 exp03），内容基于 `arm/car1_arm_controller/test/test_servo_direct.py` 与 `driver/car1_base_driver/car1_base_driver/board_sdk.py`（CRC8 查表参考）。
 
 ### 1.1 关联知识点
 
-本实验对应第 2 章"底层舵机通信与ROS2控制"，覆盖以下 9 个知识点：
+本实验对应第 2 章"总线舵机串口协议与裸机控制"，覆盖以下 9 个知识点：
 
-- 2.1.1 1Mbps串口 > 事实 > STM32 板载总线舵机驱动使用 1Mbps 串口协议，5 个 PWM 舵机共享同一总线
+- 2.1.1 1Mbps串口 > 事实 > car1 机械臂使用总线舵机（单线半双工串口协议），STM32 板以 1Mbps 波特率通信，5 个舵机共享同一总线
 - 2.1.2 PWM公式 > 原理 > PWM 范围 500~2500，中位 1500，PWM_TO_RAD = 0.002356 rad/PWM
-- 2.1.3 帧格式 > 概念 > 帧格式：0x55 0x55 + 长度 + 命令 + 参数 + 校验和，用于读写舵机角度
-- 2.2.1 joint_command > 流程 > `/arm/joint_command` (JointCommand.msg) 发布 5 关节目标 PWM，频率 50Hz
-- 2.2.2 set_gripper > 概念 > `/arm/set_gripper` (SetGripper.srv) 服务控制夹爪开/合/停三态
-- 2.2.3 go_home/go_work > 流程 > `/arm/go_home` 与 `/arm/go_work` 服务将机械臂复位到 home/work 预设位姿
-- 2.3.1 arm_controller架构 > 概念 > arm_controller 同时充当 ROS2 服务端与 STM32 串口客户端，实现双向桥接
-- 2.3.2 50Hz控制循环 > 原理 > 50Hz 控制循环读取 joint_command + 当前 PWM 状态，输出下一周期目标值
-- 2.3.3 bringup.launch > 流程 > `bringup.launch.py` 一键启动 base_driver + arm_controller + odom_publisher
+- 2.1.3 帧格式 > 概念 > 帧格式：0xAA 0x55 + 长度 + 命令 + 参数 + CRC8 校验（实测以 board_sdk.py 为准）
+- 2.1.4 CRC8校验 > 原理 > CRC8 查表校验算法，避免单比特翻转导致指令错位
+- 2.2.1 串口设备 > 流程 > 串口设备识别（/dev/ttyUSB0）与权限授权（chmod 666 或加入 dialout 组）
+- 2.2.2 interactive_mode > 流程 > `test_servo_direct.py` 的 interactive_mode 提供菜单驱动单舵机调试界面
+- 2.2.3 动作录制 > 概念 > 通过 `save` 命令将关键位姿保存为内存中的动作列表，通过 `yaml` 命令导出为 action_player 兼容的 YAML 文件
+- 2.3.1 裸机 vs ROS2 > 概念 > 裸机直接打开 /dev/ttyUSB0（不依赖 ROS2）与 ROS2 节点间接收发的对比
+- 2.3.2 协议字节级 > 原理 > 1Mbps 串口下 5 关节 50Hz 控制的带宽计算（5×7=35 字节/周期，1750 字节/秒，使用率仅 1.4%）
 
 ### 1.2 实验目标
 
-1. 理解 STM32 1Mbps 串口 PWM 协议与 PWM↔弧度换算公式 — 原理理解
-2. 掌握 `/arm/joint_command` 话题与 `/arm/set_gripper` 服务的使用方法 — 流程掌握
-3. 独立完成 bringup.launch 一键启动并通过 topic pub 实时控制 5 关节 — 独立完成
-4. 能够通过 `/arm/go_home`、`/arm/go_work` 服务实现位姿快速复位 — 独立完成
-5. 将 arm_controller 的桥接模式迁移到其他总线舵机场景 — 迁移应用
+1. 理解 1Mbps 串口协议的字节级细节（0xAA 0x55 帧头、CRC8 校验和、命令/参数结构）— 原理理解
+2. 掌握用 Python `pyserial` 裸机打开 `/dev/ttyUSB0` 与总线舵机通信的方法 — 流程掌握
+3. 独立使用 `test_servo_direct.py` 的 `interactive_mode` 交互式控制 5 个关节 + 夹爪 — 独立完成
+4. 能够用 `save` / `yaml` 命令录制抓取放置动作并导出 YAML 文件（**供 exp03 的 `action_player` 消费**）— 独立完成
+5. 理解为什么需要 CRC8 校验、单线半双工总线的时分复用机制 — 原理理解
 
 ### 1.3 实验环境
 
 | 类别 | 配置 |
 |------|------|
 | 硬件 | 具身智能实验箱B2 / 机器人小车C1（含 STM32 板载总线舵机 ×5、1Mbps 串口、5V 电源） |
-| OS | Ubuntu 22.04 + ROS2 Humble |
-| Python | 3.10 |
-| 核心库 | rclpy、serial（pyserial）、ros2-control、trajectory_msgs |
+| OS | Ubuntu 22.04 + ROS2 Humble（**仅需 Python 环境，不依赖 ROS2 启动**） |
+| Python | 3.10 + pyserial + pyyaml |
+| 核心库 | `pyserial`（裸机串口）、`pyyaml`（YAML 导出）、`crc8`（内嵌查表） |
 | 通信接口 | USB 转 TTL 串口（/dev/ttyUSB0，1Mbps 8N1） |
 | 协议参数 | PWM 500-2500（μs），CENTER_PWM=1500，PWM_TO_RAD=0.002356 rad/PWM |
-| 主入口 | `bringup/launch/bringup.launch.py`（一键启动 base+arm+odom）<br>`arm/car1_arm_controller/launch/arm_controller.launch.py`（仅启动机械臂控制）<br>`arm/car1_arm_controller/car1_arm_controller/arm_controller.py`（核心节点） |
+| **主入口** | `arm/car1_arm_controller/test/test_servo_direct.py`（**裸机协议演示**）<br>`driver/car1_base_driver/car1_base_driver/board_sdk.py`（**CRC8 查表参考**） |
+
+> ⚠️ **不要启动 bringup**！`test_servo_direct.py` 直接占用 `/dev/ttyUSB0`，与 `bringup` 的 `base_driver` 节点互斥。运行前先 `Ctrl+C` 停掉 `bringup`。
 
 ### 1.4 实验难度
 
 - 难度: ⭐⭐ 中
-- 重点: arm_controller 节点桥接架构；joint_command 话题；set_gripper 服务；bringup.launch 一键启动
-- 难点: 50Hz 控制循环的时序保证；PWM 范围与关节限位的软硬件协同保护
+- 重点: 1Mbps 串口协议字节级理解；`interactive_mode` 交互调试；动作 YAML 录制与导出
+- 难点: CRC8 查表校验算法；单线半双工总线的时分复用；串口权限问题排查
 
 ### 1.5 实验现象
 
 **快速验证流程**（帮助学习者快速看到实验效果）：
 
-1. 连接硬件：确保 STM32 板通过 USB-TTL 连接到工作站，识别为 `/dev/ttyUSB0`
-2. 进入工作空间根目录：`cd ~/ros2_ws`
-3. source 环境：`source /opt/ros/humble/setup.bash && source install/setup.bash`
-4. 一键启动：`ros2 launch bringup bringup.launch.py`
-5. 观察终端：依次打印 `base_driver started` → `arm_controller started` → `odom_publisher started`
-6. 测试关节控制（新终端）：`ros2 topic pub --once /arm/joint_command ...`
-7. 测试夹爪（新终端）：`ros2 service call /arm/set_gripper ...`
-8. 测试归位：`ros2 service call /arm/go_home ...`
+1. 进入工作空间根目录：`cd ~/ros2_ws`
+2. 清理可能占用串口的应用：`bash cleanup_ros.sh`（一键停止所有 ROS 节点，避免 `/dev/ttyUSB0` 冲突）
+3. 进入测试脚本目录：`cd src/xflz_eai_car1/arm/car1_arm_controller/test/`
+4. 启动裸机调试：`python3 test_servo_direct.py`
+5. 选择模式 1（交互模式）
+6. 在终端中输入 `1500 1100 2200 1850 1500`，观察 5 个关节转到工作位姿
+7. 输入 `g 1000`，观察夹爪张开
+8. 输入 `read`，观察终端打印 5 个舵机当前 PWM 值
+9. 输入 `save`，输入名称 `pre_grasp`，将当前位姿保存为命名动作
+10. 输入 `yaml`，按提示导出为 `pick_and_place.yaml`（**供 exp03 消费**）
 
 **预期效果描述**：
-- **终端 1**：bringup 启动后保持运行，每 20ms 打印一次 `[arm_controller] cycle 0.020s, pwm=[1500,1500,1500,1500,1500]`
-- **关节测试**：机械臂 5 个舵机按指令角度转动，过程平滑无抖动
-- **夹爪测试**：调用 open 后夹爪完全张开，调用 close 后夹爪闭合夹持
-- **归位测试**：调用 go_home 后机械臂在 2 秒内回到 home 预设位姿
-- **示波器（可选）**：在 PWM 信号线上用示波器可看到 50Hz 频率、占空比 5%-10% 的舵机控制信号
+- **终端打印**：交互模式启动后打印菜单，提示可用命令（`j1 j2 j3 j4 j5` / `g` / `s` / `r` / `read` / `save` / `yaml` / `home` / `work` / `play` / `free` / `load` / `quit`）
+- **关节响应**：输入 5 个 PWM 值（500~2500）后，舵机立即平滑转动到目标位置
+- **夹爪响应**：`g 1000` 张开、`g 1500` 闭合，夹爪按指令动作
+- **读取反馈**：`read` 命令通过 0xAA 0x55 协议读取所有舵机位置，验证通信是否正常
+- **YAML 导出**：`yaml` 命令生成 `arm/car1_arm_controller/config/actions/<name>.yaml`，格式与 exp03 的 `action_player` 兼容
+- **示波器（可选）**：在 PWM 信号线上用示波器可看到 50Hz 控制信号、占空比 5%-10%
 
 ### 1.6 实验步骤
 
@@ -740,34 +836,30 @@ if __name__ == "__main__":
 
 ```mermaid
 graph LR
-    A[步骤1：硬件连接与串口验证] --> B[步骤2：bringup一键启动]
-    B --> C[步骤3：joint_command话题控制]
-    C --> D[步骤4：set_gripper服务控制]
-    D --> E[步骤5：go_home/go_work服务]
-    E --> F[步骤6：50Hz循环与PWM波形观察]
-    F --> G[步骤7：多关节协同与安全保护]
+    A[步骤1：硬件连接与串口授权] --> B[步骤2：1Mbps串口验证]
+    B --> C[步骤3：test_servo_direct交互模式]
+    C --> D[步骤4：5关节+夹爪控制]
+    D --> E[步骤5：CRC8帧格式验证]
+    E --> F[步骤6：动作录制与命名]
+    F --> G[步骤7：YAML导出供exp03]
     G --> H[完成]
 ```
 
 ---
 
-#### 步骤1：硬件连接与串口验证（阶段一：能运行，30min）
+#### 步骤1：硬件连接与串口授权（阶段一：能运行，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`bringup/launch/bringup.launch.py` 中串口设备参数
+> ⚠️ 本步骤对应 src 目录源码：`test_servo_direct.py` 中 `SERIAL_PORT = '/dev/ttyUSB0'` 与 `BAUDRATE = 1000000`
 
 **知识点讲解**：
 
-**STM32 1Mbps 串口协议（2.1.1）**
-- **原理**：car1 机械臂使用 LewanSoul/Hiwonder 系列总线舵机，舵机与 STM32 板之间通过单线半双工串口（实际物理上 1 根信号线 + 1 根地线）以 1Mbps 波特率通信。所有 5 个舵机共享同一总线，通过 ID 区分（ID 1-5）。这种总线架构的优势是节省 IO 引脚（仅需 1 个 UART），缺点是任意时刻只能有 1 个舵机独占总线。
-- **源码对应**：`arm/car1_arm_controller/car1_arm_controller/arm_controller.py` 中 `self.ser = serial.Serial('/dev/ttyUSB0', 1000000)`
+**1Mbps 串口协议物理层（2.1.1）**
+- **原理**：car1 机械臂使用总线舵机（单线半双工串口协议），舵机与 STM32 板之间通过单线半双工串口（实际物理上 1 根信号线 + 1 根地线）以 1Mbps 波特率通信。所有 5 个舵机共享同一总线，通过 ID 区分（机械臂 5 关节 ID 0~4 + 夹爪 ID 5）。这种总线架构的优势是节省 IO 引脚（仅需 1 个 UART），缺点是任意时刻只能有 1 个舵机独占总线（时分复用）。
+- **源码对应**：`test_servo_direct.py` 中 `SERIAL_PORT = '/dev/ttyUSB0'` 与 `BAUDRATE = 1000000`
 
-**PWM 范围与换算公式（2.1.2）**
-- **原理**：car1 舵机的 PWM 控制范围是 500~2500 μs（不是占空比），中位 1500 μs 对应 0° 关节角。PWM 与弧度的换算公式为：`rad = (PWM - 1500) × 0.002356`，即每个 PWM 单位对应 0.135°。换算系数 0.002356 来自 1 rad = 9.55 × π ≈ ... 实际标定值。这种"微秒级 PWM"表示方式比"占空比"更直观，便于跨舵机厂家复用。
-- **源码对应**：`arm/car1_arm_controller/car1_arm_controller/arm_controller.py` 中 `PWM_TO_RAD = 0.002356` 与 `CENTER_PWM = 1500`
-
-**串口帧格式（2.1.3）**
-- **原理**：LewanSoul/Hiwonder 总线舵机的指令帧格式为：`0x55 0x55 [长度] [命令] [参数1] [参数2] ... [校验和]`。其中命令字节 0x03 表示"写位置"，0x02 表示"读位置"。例如让 ID=1 的舵机转到 PWM=2000 的帧为：`55 55 05 03 01 E0 07 02 XX`（长度5+命令3+ID1+位置低字节E0+位置高字节07+时间02+校验XX）。校验和 = 所有字节之和取低 8 位。
-- **源码对应**：`arm/car1_arm_controller/car1_arm_controller/serial_handler.py`（串口帧打包/解包）
+**串口设备与权限（2.2.1）**
+- **原理**：Linux 下串口设备节点位于 `/dev/ttyUSB*`（CH340/CP2102/FT232 驱动名），普通用户无读写权限。两种解决方案：(1) 临时授权 `sudo chmod 666 /dev/ttyUSB0`；(2) 加入 `dialout` 组 `sudo usermod -a -G dialout $USER`，重新登录后永久生效。
+- **源码对应**：`test_servo_direct.py` 中 `try: ser = serial.Serial(SERIAL_PORT, BAUDRATE, timeout=1)`
 
 **操作步骤**：
 
@@ -776,608 +868,575 @@ graph LR
    - 5 个舵机电源线（红黑）独立接到 5V/3A 电源
    - 舵机信号线（黄/白）已连接到 STM32 的 UART 引脚
 
-2. 查看串口设备：
+2. **停止任何正在运行的 bringup**（避免 `/dev/ttyUSB0` 冲突）：
+   ```bash
+   # 在运行 bringup 的终端按 Ctrl+C
+   # 或新终端执行：
+   pkill -f bringup
+   pkill -f car1_arm_controller
+   ```
+
+3. 查看串口设备：
    ```bash
    ls -l /dev/ttyUSB*
    # 预期：crw-rw---- 1 root dialout /dev/ttyUSB0
-   # 若权限不足：sudo chmod 666 /dev/ttyUSB0
    ```
 
-3. 验证串口通信：
+4. 临时授权串口：
    ```bash
-   sudo apt install cutecom
-   cutecom --device /dev/ttyUSB0 --baud 1000000
-   # 发送: 55 55 05 03 01 E0 07 02 5A
-   # 预期：ID=1 舵机转到 PWM=2000 位置
+   sudo chmod 666 /dev/ttyUSB0
+   # 验证：ls -l /dev/ttyUSB0
+   # 预期：crw-rw-rw- 1 root dialout /dev/ttyUSB0
    ```
 
-4. 串口权限永久化：
+5. 永久授权（推荐）：
    ```bash
    sudo usermod -a -G dialout $USER
    # 重新登录后生效
    ```
 
-5. 编译控制包：
+6. 验证 1Mbps 串口通信（用 cutecom 手动发 1 字节）：
    ```bash
-   cd ~/ros2_ws
-   colcon build --packages-select car1_arm_controller bringup
-   source install/setup.bash
+   sudo apt install cutecom
+   cutecom --device /dev/ttyUSB0 --baud 1000000
+   # 在 cutecom 中切换到 Hex 模式，发送: AA 55 05 05 00 00 00 00 CRC
+   # 预期：收到舵机 0 的位置应答包（也以 AA 55 开头）
    ```
 
 **易错点**：
 - ⚠️ **串口打开失败 (Permission denied)** → **解决**：`sudo chmod 666 /dev/ttyUSB0` 或加入 dialout 组
 - ⚠️ **1Mbps 通信乱码** → **解决**：检查 USB-TTL 芯片是否支持 1Mbps（CH340/CP2102/FT232 均可，PL2303 部分型号不支持）
+- ⚠️ **bringup 未停止导致冲突** → **解决**：`pkill -f bringup` 后再启动 test_servo_direct
 - ⚠️ **发送指令舵机无响应** → **解决**：检查 5V 电源是否独立供电（USB 通常无法驱动 5 个舵机）
 
 ---
 
-#### 步骤2：bringup.launch 一键启动（阶段一：能运行，30min）
+#### 步骤2：1Mbps 串口通信验证（阶段一：能运行，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`bringup/launch/bringup.launch.py`
+> ⚠️ 本步骤对应 src 目录源码：`test_servo_direct.py` 中 `serial.Serial(SERIAL_PORT, BAUDRATE, timeout=1)`
 
 **知识点讲解**：
 
-**bringup.launch 一键编排（2.3.3）**
-- **原理**：`bringup.launch.py` 是整车的"点火开关"，按依赖顺序启动：(1) **base_driver**：底盘电机控制（差速、IMU 融合）；(2) **arm_controller**：机械臂 5 关节 + 夹爪控制；(3) **odom_publisher**：基于轮式里程计与 IMU 的车体位姿估计。三个节点通过 ROS2 话题解耦，bringuUp 还负责设置命名空间、TF 静态变换、串口设备等全局参数。
-- **源码对应**：`ros2_ws/src/xflz_eai_car1/bringup/launch/bringup.launch.py`
+**裸机 vs ROS2 路线对比（2.3.1）**
+- **原理**：本实验采用"裸机"路线：直接用 Python `pyserial` 库打开 `/dev/ttyUSB0`，自行按协议组包发送、自行解析应答。**不依赖 ROS2 启动任何节点**。这种路线适合：(1) 协议层调试（验证 1Mbps 字节级通信）；(2) 快速验证单舵机响应；(3) 不希望 ROS2 复杂架构干扰的场景。**对比**：exp03 将采用 ROS2 路线（`bringup` + `arm_controller` 节点桥接），学生可对比两种路线的开发体验差异。
+- **源码对应**：`test_servo_direct.py` 整个文件（无 ROS2 import）
 
-**arm_controller 节点架构（2.3.1）**
-- **原理**：`arm_controller.py` 是机械臂控制的核心节点，同时扮演两个角色：(1) **ROS2 服务端**：接收 `joint_command` 话题与 `set_gripper`/`go_home`/`go_work` 服务调用；(2) **STM32 串口客户端**：将 ROS2 指令打包成 1Mbps 串口帧发送给舵机，并周期性读取舵机当前角度作为反馈。这种"协议转换器"模式是机器人中间件的典型设计。
-- **源码对应**：`ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/car1_arm_controller/arm_controller.py` 中 `class ArmController(Node)`
-
-**50Hz 控制循环（2.3.2）**
-- **原理**：arm_controller 以 50Hz（周期 20ms）的频率运行控制循环，每周期完成：(1) 读取最新 `joint_command` 目标 PWM；(2) 与当前舵机 PWM 比较计算误差；(3) 通过串口向 5 个舵机广播目标 PWM；(4) 接收舵机应答并发布 `/joint_states` 反馈。50Hz 的频率选择是平衡实时性与串口带宽的结果（每次广播需发送 5 × 7 = 35 字节，往返约 5ms）。
-- **源码对应**：`arm_controller.py` 中 `self.create_timer(0.02, self.control_loop)`
+**协议字节级理解（2.1.3）**
+- **原理**：总线舵机的指令帧格式为（**实测以 `test_servo_direct.py` 的 `send_packet` 函数为准**）：
+  ```
+  帧头:   0xAA 0x55
+  功能字: func (1字节, 0x05=多舵机控制/0x0B=释放扭力等)
+  长度:   len(data) (1字节)
+  数据:   data (N字节, 子命令+舵机ID+参数)
+  校验:   CRC8 (1字节, 查表算法)
+  ```
+  例如让 ID=0 的舵机转到 PWM=2000、duration=2000ms 的多舵机控制帧为：`AA 55 05 01 D0 07 01 00 E0 07 03 E0 0C XX`
+- **源码对应**：`test_servo_direct.py` 中 `def send_packet(ser, func, data)` 函数（L57-61）
 
 **操作步骤**：
 
-1. 仅启动机械臂（不含底盘）：
+1. 进入测试脚本目录：
    ```bash
-   ros2 launch car1_arm_controller arm_controller.launch.py
+   cd ~/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test/
+   ls -l test_servo_direct.py
+   # 预期：存在此文件
+   ```
+
+2. 启动 `test_servo_direct.py`：
+   ```bash
+   python3 test_servo_direct.py
    # 预期输出：
-   # [INFO] [arm_controller]: serial port /dev/ttyUSB0 opened at 1000000
-   # [INFO] [arm_controller]: 5 servos detected (IDs 1-5)
-   # [INFO] [arm_controller]: control loop started at 50Hz
+   # 打开串口 /dev/ttyUSB0 @ 1000000...
+   # 串口已打开
+   #
+   # 选择模式:
+   #   1. 交互模式 - 手动输入PWM值调试
+   #   2. 回放模式 - 执行 ACTIONS 列表
+   # 输入 1 或 2:
    ```
 
-2. 启动完整 bringup（含底盘 + 机械臂 + odom）：
-   ```bash
-   ros2 launch bringup bringup.launch.py
-   # 预期：
-   # [INFO] [base_driver]: base initialized
-   # [INFO] [arm_controller]: arm initialized
-   # [INFO] [odom_publisher]: odom publishing at 50Hz
+3. 选择模式 `1`（交互模式），按 Enter：
+   ```
+   输入 1 或 2: 1
+   # 预期：打印详细菜单
+   # === 交互调试模式 ===
+   # 命令:
+   #   j1 j2 j3 j4 j5   - 5个关节PWM值(500~2500)
+   #   g <pwm>           - 夹爪PWM值
+   #   s <id> <pwm>      - 单个舵机控制
+   #   r <id>            - 读取单个舵机位置
+   #   read              - 读取所有舵机位置
+   #   save              - 读取当前姿态并保存
+   #   ...
    ```
 
-3. 查看节点与话题：
-   ```bash
-   ros2 node list
-   # 应列出：/base_driver, /arm_controller, /odom_publisher
-   
-   ros2 topic list
-   # 应包含：/arm/joint_command, /arm/joint_states, /arm/set_gripper (srv)
-   #         /arm/go_home (srv), /arm/go_work (srv), /odom
+4. 输入 `read` 测试读取：
+   ```
+   > read
+   # 预期输出：
+   # 读取舵机位置...
+   #   ID    PWM
+   #   ---------
+   #   0    1500
+   #   ...
    ```
 
-4. 查看话题类型：
-   ```bash
-   ros2 topic info /arm/joint_command --verbose
-   # 类型：car1_arm_msgs/msg/JointCommand
-   # 字段：uint8[] ids, uint16[] pwms
-   ros2 service list
-   # 应包含 /arm/set_gripper, /arm/go_home, /arm/go_work
-   ros2 service type /arm/set_gripper
-   # 类型：car1_arm_msgs/srv/SetGripper
-   ```
-
-5. 监控控制循环日志：
-   ```bash
-   ros2 topic echo /arm/controller_status
-   # 或 ros2 topic echo /diagnostics
-   # 预期：每 20ms 一次状态报告
-   ```
+5. 验证通信成功标准：5 个舵机均能读出 1500 附近的 PWM 值（误差 ±20 内）
 
 **易错点**：
-- ⚠️ **启动报"serial port open failed"** → **解决**：检查 `/dev/ttyUSB0` 权限与存在性，必要时 `ls -l /dev/tty*`
-- ⚠️ **启动后立即报"servo not responding"** → **解决**：检查舵机电源、信号线、ID 编号
-- ⚠️ **bringuUp 启动后只有 base 没有 arm** → **解决**：检查 bringup.launch.py 中 `start_arm` 参数是否为 `true`
+- ⚠️ **read 命令一直显示"失败"** → **解决**：检查 5V 电源、信号线、舵机 ID 拨码
+- ⚠️ **read 返回 0 或异常值** → **解决**：可能是 CRC 校验失败，确认 baud=1000000 无误
+- ⚠️ **找不到 `/dev/ttyUSB0`** → **解决**：`dmesg | grep tty` 查看插入的设备名
 
 ---
 
-#### 步骤3：joint_command 话题控制 5 关节（阶段二：能理解，45min）
+#### 步骤3：test_servo_direct interactive_mode 命令详解（阶段二：能理解，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`arm/car1_arm_controller/msg/JointCommand.msg`
+> ⚠️ 本步骤对应 src 目录源码：`test_servo_direct.py` 中 `def interactive_mode(ser)` 函数
 
 **知识点讲解**：
 
-**joint_command 话题设计（2.2.1）**
-- **原理**：`/arm/joint_command` 话题的消息类型为 `car1_arm_msgs/msg/JointCommand`，包含两个数组字段：`uint8[] ids`（关节 ID 列表）与 `uint16[] pwms`（目标 PWM 列表），长度均为 5。这种"并行数组"设计的优势是支持"部分更新"——只发送需要变化的关节，节省带宽。发布频率建议 ≥50Hz 以保证实时性。
-- **源码对应**：`arm/car1_arm_controller/msg/JointCommand.msg`
+**interactive_mode 设计（2.2.2）**
+- **原理**：`interactive_mode` 是 `test_servo_direct.py` 提供的菜单驱动调试界面，相比 ROS2 topic 更直接、响应更快。核心命令分 5 类：(1) **位姿控制**（5 关节 PWM 一次发送 / 单舵机 / 夹爪）；(2) **状态读取**（单舵机 / 全部 / 调试模式）；(3) **动作管理**（save 命名保存 / yaml 导出 / play 回放 / list 列表 / del 删除）；(4) **力矩控制**（free 释放 / load 恢复）；(5) **快速动作**（home / work）。
+- **源码对应**：`test_servo_direct.py` 中 `def interactive_mode(ser)` 函数（L308-482）
 
-**软限位保护**
-- **原理**：arm_controller 在收到 joint_command 后会做软限位检查：将目标 PWM 与配置文件中的 `servo_limits.yaml` 比较，超出 `[min_pwm, max_pwm]` 范围时拒绝执行并报警。这种"软件先于硬件"的保护策略可避免堵转、过流等机械损伤。
-- **源码对应**：`arm/car1_arm_controller/config/servo_limits.yaml`
+**单舵机控制 vs 5 关节协同（2.1.2）**
+- **原理**：单舵机控制（`s <id> <pwm>`）用于精确调试单个关节（如找机械零位）；5 关节协同（`j1 j2 j3 j4 j5`）用于发送完整位姿。两者底层都调用 `move_servos(ser, positions, duration)` 函数。
+- **源码对应**：`test_servo_direct.py` 中 `def move_servos(ser, positions, duration)` 函数（L132-152）
 
 **操作步骤**：
 
-1. 查看 JointCommand 消息定义：
+1. 测试 5 关节控制（输入工作位姿）：
+   ```
+   > 1500 1100 2200 1850 1500
+   # 预期：5 个舵机按 2 秒时长平滑转到工作位姿
+   ```
+
+2. 测试夹爪控制：
+   ```
+   > g 1000
+   # 预期：夹爪张开（1.0s 时长）
+   > g 1500
+   # 预期：夹爪闭合到中位
+   ```
+
+3. 测试单舵机控制（找零位用）：
+   ```
+   > s 1 1520
+   # 预期：仅关节 1（ID=1）转到 1520，其他关节保持不动
+   ```
+
+4. 测试读取：
+   ```
+   > r 1
+   > r 1 -d  # 带调试信息
+   > read
+   ```
+
+5. 测试 home / work 快速动作：
+   ```
+   > home
+   > work
+   ```
+
+6. 测试力矩释放（用于手动掰动找机械零位）：
+   ```
+   > free 1
+   > load 1
+   > free  # 所有 6 个舵机
+   ```
+
+**易错点**：
+- ⚠️ **单舵机命令格式错误** → **解决**：注意是 `s <id> <pwm>` 不是 `s <pwm> <id>`
+- ⚠️ **g 命令无响应** → **解决**：检查夹爪舵机 ID=5 是否正确连接
+- ⚠️ **free 后舵机不响应任何命令** → **解决**：必须先 `load` 恢复力矩
+
+---
+
+#### 步骤4：CRC8 校验与帧格式验证（阶段二：能理解，30min）
+
+> ⚠️ 本步骤对应 src 目录源码：`test_servo_direct.py` 中 `_CRC8_TABLE` (L29-47) 与 `crc8(data)` 函数 (L50-54)；对照参考 `driver/car1_base_driver/car1_base_driver/board_sdk.py`
+
+**知识点讲解**：
+
+**CRC8 查表校验算法（2.1.4）**
+- **原理**：CRC8 是一种 8 位循环冗余校验，用于检测串口通信中的单比特翻转。每次发送数据帧前，先对"功能字+长度+数据"部分按 256 字节查表计算 CRC8 校验和，附加在帧尾。接收方按同样算法重算，若与接收的校验和不一致则丢弃该帧。`test_servo_direct.py` 的 CRC8 表与 `board_sdk.py` 完全一致（256 字节硬编码表）。
+- **源码对应**：`test_servo_direct.py` 中 `_CRC8_TABLE` 常量（L29-47）
+
+**为什么需要 CRC8（2.3.2）**
+- **原理**：1Mbps 串口在长距离或电磁干扰下可能出现单比特翻转（位错误）。没有校验时，错误数据被误执行可能导致：(1) 舵机转到错误角度（撞机械结构）；(2) 控制错位（ID 错乱）；(3) 通信死锁。CRC8 可以 100% 检测单比特错误和大多数多位错误。
+- **源码对应**：`test_servo_direct.py` 中 `send_packet` 函数（L57-61）的 `crc8(bytes(buf[2:]))` 调用
+
+**操作步骤**：
+
+1. 查看 CRC8 查表算法源码：
    ```bash
-   ros2 interface show car1_arm_msgs/msg/JointCommand
+   grep -A 30 "_CRC8_TABLE" test_servo_direct.py | head -40
+   # 预期：256 字节硬编码表
+   ```
+
+2. 查看 `crc8()` 函数实现：
+   ```bash
+   grep -A 5 "def crc8" test_servo_direct.py
    # 预期：
-   # uint8[] ids
-   # uint16[] pwms
+   # def crc8(data):
+   #     check = 0
+   #     for b in data:
+   #         check = _CRC8_TABLE[check ^ b]
+   #     return check & 0xFF
    ```
 
-2. 发送单关节控制指令（关节1转到 PWM=2000）：
+3. 对照 board_sdk.py 验证一致性：
    ```bash
-   ros2 topic pub --once /arm/joint_command car1_arm_msgs/msg/JointCommand "
-   ids: [1, 0, 0, 0, 0]
-   pwms: [2000, 0, 0, 0, 0]
-   "
-   # 预期：关节1（底座）顺时针旋转约 +1.18 rad
+   grep -A 5 "def crc8" ~/ros2_ws/src/xflz_eai_car1/driver/car1_base_driver/car1_base_driver/board_sdk.py
+   # 预期：完全相同的算法
    ```
 
-3. 发送 5 关节同时控制（典型 home 姿态）：
+4. 用 cutecom 手动发一帧并观察应答：
    ```bash
-   ros2 topic pub --once /arm/joint_command car1_arm_msgs/msg/JointCommand "
-   ids: [1, 2, 3, 4, 5]
-   pwms: [1500, 1500, 1500, 1500, 1500]
-   "
-   # 预期：所有关节回到中位（0 rad）
+   cutecom --device /dev/ttyUSB0 --baud 1000000
+   # Hex 发送: AA 55 05 05 00 00 00 00 CRC
+   # 预期：收到舵机 0 位置应答包
    ```
 
-4. PWM↔弧度换算练习：
-   ```bash
-   # 计算 PWM=1800 对应多少 rad？
-   # rad = (1800 - 1500) × 0.002356 = 0.707 rad ≈ 40.5°
-   # 计算 -π/2 rad 对应多少 PWM？
-   # PWM = 1500 + (-1.5708 / 0.002356) = 1500 - 667 = 833
-   ```
-
-5. 周期性摆动测试（用 Python 脚本）：
+5. 故意发错 CRC，观察现象：
    ```python
-   # joint_sine_wave.py
-   import rclpy
-   from rclpy.node import Node
-   from car1_arm_msgs.msg import JointCommand
-   import math, time
-   
-   class JointSineWave(Node):
-       def __init__(self):
-           super().__init__('joint_sine_wave')
-           self.pub = self.create_publisher(JointCommand, '/arm/joint_command', 10)
-           self.timer = self.create_timer(0.05, self.timer_cb)  # 20Hz
-           self.t = 0
-       def timer_cb(self):
-           msg = JointCommand()
-           msg.ids = [1, 2, 3, 4, 5]
-           pwm_center = 1500
-           amp = 200
-           msg.pwms = [int(pwm_center + amp * math.sin(self.t + i*0.5)) for i in range(5)]
-           self.pub.publish(msg)
-           self.t += 0.05
-   
-   rclpy.init()
-   rclpy.spin(JointSineWave())
-   # 预期：5 个关节以正弦曲线缓慢摆动
-   ```
-
-6. 监控当前关节状态：
-   ```bash
-   ros2 topic echo /arm/joint_states
-   # 或 ros2 topic echo /joint_states
-   # 字段：name=["joint1"~"joint5"], position=[...], velocity=[...], effort=[...]
-   ```
-
-7. 软限位测试（尝试超出安全范围）：
-   ```bash
-   ros2 topic pub --once /arm/joint_command car1_arm_msgs/msg/JointCommand "
-   ids: [1, 2, 3, 4, 5]
-   pwms: [2500, 2500, 2500, 2500, 2500]
-   "
-   # 预期：终端打印 WARN: pwm[1]=2500 exceeds limit 2400, clamped
-   # 机械臂按钳制后的 PWM 运动
+   buf = [0xAA, 0x55, 0x05, 0x05, 0x00, 0x00, 0x00, 0xFF]  # 故意写错 CRC
+   import serial
+   ser = serial.Serial('/dev/ttyUSB0', 1000000)
+   ser.write(bytes(buf))
+   # 预期：舵机无响应（CRC 错误被丢弃）
    ```
 
 **易错点**：
-- ⚠️ **话题发送后舵机无响应** → **解决**：检查话题消息格式（特别是 `uint8[]` vs `uint16[]`），必要时使用 `--once` 单次发送调试
-- ⚠️ **舵机抖动** → **解决**：提高发布频率到 ≥50Hz，或启用 arm_controller 的平滑插值
-- ⚠️ **超限指令被静默丢弃** → **解决**：查看终端日志中的 WARN 提示，调整 servo_limits.yaml
+- ⚠️ **手动发帧无响应** → **解决**：检查帧头是否为 0xAA 0x55（不是 0x55 0x55），检查 CRC 计算是否正确
+- ⚠️ **手动发帧舵机乱动** → **解决**：检查功能字 func 是否正确（多舵机控制=0x05）
 
 ---
 
-#### 步骤4：set_gripper 服务控制夹爪（阶段二：能理解，30min）
+#### 步骤5：动作录制与命名快照（阶段三：能改造，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`arm/car1_arm_controller/srv/SetGripper.srv`
+> ⚠️ 本步骤对应 src 目录源码：`test_servo_direct.py` 中 `interactive_mode` 的 `save`/`list`/`del`/`play` 分支
 
 **知识点讲解**：
 
-**set_gripper 服务设计（2.2.2）**
-- **原理**：`/arm/set_gripper` 服务的消息类型为 `car1_arm_msgs/srv/SetGripper`，请求字段为 `uint8 command`（0=open, 1=close, 2=stop），响应字段为 `bool success` 与 `string message`。夹爪使用一个 PWM 舵机控制开合，open 对应 PWM≈2000（张口），close 对应 PWM≈1000（夹紧），stop 停止当前运动。与 joint_command 持续发布不同，服务是"触发式"调用。
-- **源码对应**：`arm/car1_arm_controller/srv/SetGripper.srv`
+**动作列表的内存数据结构（2.2.3）**
+- **原理**：`interactive_mode` 用一个 Python 列表 `actions` 临时保存动作，每项是 3 元组 `(type, data, name)`：type 是 `'arm'` / `'gripper'` / `'home'`；data 是 PWM 列表或单值；name 是用户起的名字。内存中的动作仅在 `interactive_mode` 期间有效，**退出后丢失**（除非用 `yaml` 导出到文件）。
+- **源码对应**：`test_servo_direct.py` 中 `actions = []` 与各种 `actions.append(...)` 调用
 
-**服务 vs 话题的选用**
-- **原理**：服务（Service）适合"一次性请求-响应"场景，如夹爪开/合、归位等离散动作；话题（Topic）适合"持续流式"场景，如关节控制、传感器数据。服务调用会阻塞直到响应返回，适合需要同步确认的场景。
-- **源码对应**：ROS2 service/client 模式（synchronous vs asynchronous）
+**位姿（snapshot）vs 动作（action）的区分（2.2.3 补充）**
+- **原理**：**位姿（snapshot）** 是某一时刻 5 关节的 PWM 状态，是一个"点"；**动作（action）** 是一系列位姿按时间顺序排列，是一条"轨迹"。本实验的 `save` 命令保存的是**位姿列表中的离散位姿**，最终由 `yaml` 命令打包成动作文件。
+- **源码对应**：`test_servo_direct.py` 中 `def save_current_pose(ser, include_gripper=False)` 函数（L251-285）
 
 **操作步骤**：
 
-1. 查看 SetGripper 服务定义：
-   ```bash
-   ros2 service show car1_arm_msgs/srv/SetGripper
-   # 预期：
-   # uint8 OPEN=0
-   # uint8 CLOSE=1
-   # uint8 STOP=2
-   # uint8 command
-   # ---
-   # bool success
-   # string message
+1. 录制第一个动作（work 命名 pre_grasp）：
+   ```
+   > work
+   > save
+   # 提示：保存? 输入名称(回车跳过): pre_grasp
    ```
 
-2. 打开夹爪：
-   ```bash
-   ros2 service call /arm/set_gripper car1_arm_msgs/srv/SetGripper "
-   command: 0
-   "
-   # 预期响应：
-   # success: True
-   # message: 'Gripper opened to PWM=2000'
-   # 现象：夹爪完全张开
+2. 录制夹爪张开动作：
+   ```
+   > g 1000
+   > save
+   # 提示：保存? 输入名称(回车跳过): gripper_open
    ```
 
-3. 闭合夹爪：
-   ```bash
-   ros2 service call /arm/set_gripper car1_arm_msgs/srv/SetGripper "
-   command: 1
-   "
-   # 预期：夹爪闭合
+3. 录制下降到位姿（命名 grasp_down）：
+   ```
+   > 1500 2000 1800 2020 1500
+   > save
+   # 提示：保存? 输入名称(回车跳过): grasp_down
    ```
 
-4. 紧急停止：
-   ```bash
-   ros2 service call /arm/set_gripper car1_arm_msgs/srv/SetGripper "
-   command: 2
-   "
-   # 预期：夹爪立即停止
+4. 录制夹爪闭合动作：
+   ```
+   > g 1500
+   > save
+   # 提示：保存? 输入名称(回车跳过): gripper_close
    ```
 
-5. Python 服务客户端脚本：
+5. 录制抬升位姿（命名 lift）：
+   ```
+   > 2000 1800 2000 2000 1500
+   > save
+   ```
+
+6. 录制返回工作位姿：
+   ```
+   > 1500 1100 2200 1850 1500
+   > save
+   # 提示：保存? 输入名称(回车跳过): back_work
+   ```
+
+7. 查看已保存动作：
+   ```
+   > list
+   # 预期打印：1. [pre_grasp] 2. [gripper_open] 3. [grasp_down] ...
+   ```
+
+8. 试播验证：
+   ```
+   > play
+   # 预期：依次回放 6 个动作
+   ```
+
+9. 删除错误动作（如果录错）：
+   ```
+   > del 3
+   ```
+
+**易错点**：
+- ⚠️ **保存时没等待舵机到位** → **解决**：`save` 命令会自动 `read_servo_position` 读当前位置
+- ⚠️ **动作列表在 quit 后丢失** → **解决**：必须用 `yaml` 导出到文件
+- ⚠️ **play 时机械臂乱动** → **解决**：检查动作顺序与命名
+
+---
+
+#### 步骤6：YAML 文件导出（阶段三：能改造，30min）
+
+> ⚠️ 本步骤对应 src 目录源码：`test_servo_direct.py` 中 `def export_yaml(actions, output_path=None)` 函数（L504-547）
+
+**知识点讲解**：
+
+**action_player 兼容的 YAML 格式（2.2.3）**
+- **原理**：`export_yaml` 导出的 YAML 文件格式与 `action_player.py` 严格兼容，结构为：
+  ```yaml
+  name: <动作组名>
+  description: <描述>
+  actions:
+    - name: <步名>
+      duration: <秒>
+      servos: {<id>: <pwm>, ...}
+  ```
+  文件默认输出到 `arm/car1_arm_controller/config/actions/<name>.yaml`（`get_package_share_directory` 路径）。
+- **源码对应**：`test_servo_direct.py` 中 `def export_yaml` (L504-547) 与 `action_player.py` 中 `def _load_action` (L90-120)
+
+**colcon build 后 YAML 才生效（2.2.3 补充）**
+- **原理**：YAML 文件位于 ROS2 包的 `share/<pkg>/config/actions/` 目录，必须 `colcon build --packages-select car1_arm_controller` 重新安装到 `install/` 目录，exp03 的 `action_player` 节点才能通过 `get_package_share_directory` 找到。
+- **源码对应**：`action_player.py` L48 `pkg_share = get_package_share_directory('car1_arm_controller')`
+
+**操作步骤**：
+
+1. 在 interactive_mode 中输入 `yaml`：
+   ```
+   > yaml
+   # 依次询问参数组名与描述
+   # 动作组名称: pick_and_place
+   # 描述: pick and place demo
+   ```
+
+2. 确认导出路径：
+   ```
+   # 预期打印：
+   #   已导出到: ~/ros2_ws/install/car1_arm_controller/share/car1_arm_controller/config/actions/pick_and_place.yaml
+   #   动作步数: 6
+   #   使用方法:
+   #     ros2 run car1_arm_controller action_player --ros-args -p action_file:=pick_and_place
+   ```
+
+3. 重新编译 ROS2 包（让 install 目录更新）：
+   ```bash
+   cd ~/ros2_ws
+   colcon build --packages-select car1_arm_controller
+   source install/setup.bash
+   ```
+
+4. 查看导出的 YAML 文件：
+   ```bash
+   cat ~/ros2_ws/install/car1_arm_controller/share/car1_arm_controller/config/actions/pick_and_place.yaml
+   ```
+
+5. （**为 exp03 准备**）保持 YAML 文件存在，下一个实验（exp03）将用 `action_player` 节点回放
+
+6. 退出 interactive_mode：
+   ```
+   > quit
+   # 预期：串口已关闭
+   ```
+
+**易错点**：
+- ⚠️ **yaml 命令后找不到文件** → **解决**：检查 `install/` 目录是否存在，必须 `colcon build` 才会复制
+- ⚠️ **YAML 字段名错误** → **解决**：必须是 `name` / `description` / `actions`（小写），与 `action_player.py` 严格匹配
+- ⚠️ **duration 单位混淆** → **解决**：YAML 中 duration 单位是**秒**（不是毫秒）
+
+---
+
+#### 步骤7：综合练习与带宽分析（阶段三：能改造，30min）
+
+> ⚠️ 本步骤综合应用本实验全部知识点，含协议分析、带宽计算、错误排查
+
+**操作步骤**：
+
+1. **带宽计算练习**（用 2.1.2 知识点）：
+   ```
+   # 5 关节 50Hz 控制，每周期发 5 舵机 × 7 字节 = 35 字节
+   # 每秒 50 × 35 = 1750 字节/秒 ≈ 14 kbps
+   # 1Mbps = 1000 kbps，使用率仅 1.4%
+   ```
+
+2. **多关节协同运动**（写一个 Python 脚本调用 `move_servos`）：
    ```python
-   # gripper_client.py
-   import rclpy
-   from rclpy.node import Node
-   from car1_arm_msgs.srv import SetGripper
-   
-   class GripperClient(Node):
-       def __init__(self):
-           super().__init__('gripper_client')
-           self.cli = self.create_client(SetGripper, '/arm/set_gripper')
-           while not self.cli.wait_for_service(timeout_sec=1.0):
-               self.get_logger().info('Waiting for /arm/set_gripper...')
-       
-       def send(self, command):
-           req = SetGripper.Request()
-           req.command = command
-           future = self.cli.call_async(req)
-           rclpy.spin_until_future_complete(self, future)
-           return future.result()
-   
-   rclpy.init()
-   client = GripperClient()
-   resp = client.send(0)  # open
-   print(f'open result: success={resp.success}, msg={resp.message}')
-   rclpy.shutdown()
-   ```
-
-6. 夹爪 PWM 调节（高级）：编辑 `gripper_pwm.yaml` 修改 open/close 对应的 PWM 值，使夹爪适应不同尺寸物体。
-
-**易错点**：
-- ⚠️ **服务调用超时** → **解决**：检查 arm_controller 节点是否运行，`ros2 service list` 中是否存在 `/arm/set_gripper`
-- ⚠️ **夹爪开合方向反了** → **解决**：调换 `gripper_open_pwm` 与 `gripper_close_pwm` 两个值
-
----
-
-#### 步骤5：go_home / go_work 归位服务（阶段三：能改造，30min）
-
-> ⚠️ 本步骤对应 src 目录源码：`arm/car1_arm_controller/srv/GoHome.srv`、`srv/GoWork.srv`
-
-**知识点讲解**：
-
-**预设位姿服务（2.2.3）**
-- **原理**：`/arm/go_home` 与 `/arm/go_work` 服务将机械臂快速复位到预设位姿。home 是收纳/待机位姿（机械臂折叠直立），work 是工作准备位姿（机械臂水平展开）。预设位姿定义在 `home_position.yaml` 中，按 PWM 列表存储。服务调用时，arm_controller 会执行 2 秒线性插值（梯形速度曲线）平滑过渡，避免突变电流冲击。
-- **源码对应**：`arm/car1_arm_controller/config/home_position.yaml`
-
-**梯形速度曲线**
-- **原理**：从当前位置到目标位姿若瞬时跳变，会产生巨大电流冲击导致：(1) 电源电压跌落引起 STM32 复位；(2) 舵机齿轮冲击损坏。梯形速度曲线将运动分为"加速-匀速-减速"三段，总时间 2 秒，最大速度受舵机响应限制。这是工业机械臂的标配策略。
-- **源码对应**：`arm_controller.py` 中 `interpolate_pwm()` 函数
-
-**操作步骤**：
-
-1. 查看 GoHome 服务定义：
-   ```bash
-   ros2 service show car1_arm_msgs/srv/GoHome
-   # 预期：无请求字段（无参触发）
-   # bool success
-   # string message
-   ```
-
-2. 调用 go_home 归位：
-   ```bash
-   ros2 service call /arm/go_home car1_arm_msgs/srv/GoHome
-   # 预期：机械臂在 2 秒内平滑回到 home 位姿
-   ```
-
-3. 调用 go_work 工作位姿：
-   ```bash
-   ros2 service call /arm/go_work car1_arm_msgs/srv/GoWork
-   # 预期：机械臂水平展开到工作位姿
-   ```
-
-4. 查看 home/work 预设值：
-   ```bash
-   cat ~/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/config/home_position.yaml
-   # 预期：
-   # home:
-   #   pwms: [1500, 2000, 1000, 1500, 1500]
-   #   duration_ms: 2000
-   # work:
-   #   pwms: [1500, 1500, 1800, 1500, 1500]
-   #   duration_ms: 2000
-   ```
-
-5. 自定义 home 位姿（实验报告加分项）：
-   ```bash
-   # 1. 手动用 joint_command 摆出希望作为 home 的位姿
-   # 2. 读 /arm/joint_states 获取当前 PWM
-   ros2 topic echo /arm/joint_states
-   # 3. 写入 home_position.yaml
-   # 4. 重启 arm_controller 生效
-   ```
-
-6. 归位过程监控：
-   ```bash
-   ros2 topic echo /arm/controller_status
-   # 预期：interpolation progress 0% -> 100%
-   ```
-
-**易错点**：
-- ⚠️ **归位过程机械臂抖动** → **解决**：检查舵机电源（5V/3A），电流不足会导致 PWM 信号失真
-- ⚠️ **归位后位置与预期不符** → **解决**：执行 exp03 零位校准，更新 servo_offsets.yaml
-
----
-
-#### 步骤6：50Hz 控制循环与 PWM 波形观察（阶段三：能改造，30min）
-
-> ⚠️ 本步骤对应 src 目录源码：`arm_controller.py` 中 `control_loop` 方法
-
-**知识点讲解**：
-
-**50Hz 控制循环实现（2.3.2）**
-- **原理**：控制循环在 `rclpy.timer` 中以 20ms 周期执行。每周期主要步骤：(1) 读取 `self.target_pwms`（由 joint_command 回调更新）；(2) 与 `self.current_pwms` 比较计算差值；(3) 限制每周期最大变化量（防突变）；(4) 通过 `serial_handler.send_pwms()` 发送 5 关节 PWM；(5) 接收舵机应答并更新 `self.current_pwms`；(6) 发布 `/joint_states` 反馈。这种"目标-反馈"闭环是控制系统的标准模式。
-- **源码对应**：`arm_controller.py` 中 `def control_loop(self)`
-
-**PWM 波形观测**
-- **原理**：用示波器或逻辑分析仪夹在舵机信号线上可观察到：(1) **PWM 周期**：50Hz（20ms）；(2) **占空比范围**：5%-10%（对应 500-2500 μs）；(3) **更新时机**：每 20ms 一次，与控制循环同频。多个舵机共享同一总线时信号是"时分复用"的，5 个舵机各占约 1ms 发送窗口。
-- **源码对应**：硬件信号（示波器观察）
-
-**操作步骤**：
-
-1. 用逻辑分析仪连接舵机信号线（黄色线），观察 PWM 波形。
-
-2. 测量控制循环频率：
-   ```bash
-   ros2 topic hz /joint_states
-   # 预期：average rate: 50.0 Hz
-   ```
-
-3. 测量串口通信延迟：
-   ```python
-   # measure_latency.py
-   import rclpy
-   from rclpy.node import Node
-   from car1_arm_msgs.msg import JointCommand
-   from sensor_msgs.msg import JointState
+   # arm_sine_wave.py
+   import serial
+   import math
    import time
+   from test_servo_direct import move_servos, SERIAL_PORT, BAUDRATE
    
-   class LatencyMeasurer(Node):
-       def __init__(self):
-           super().__init__('latency_measurer')
-           self.sub = self.create_subscription(JointState, '/joint_states', self.cb, 10)
-           self.pub = self.create_publisher(JointCommand, '/arm/joint_command', 10)
-           self.t_send = 0
-       def cb(self, msg):
-           t_recv = time.time()
-           print(f'latency: {(t_recv - self.t_send)*1000:.1f}ms')
-       def trigger(self):
-           self.t_send = time.time()
-           msg = JointCommand()
-           msg.ids = [1]
-           msg.pwms = [1500]
-           self.pub.publish(msg)
+   ser = serial.Serial(SERIAL_PORT, BAUDRATE, timeout=1)
+   ser.rts = False
+   ser.dtr = False
+   time.sleep(0.2)
    
-   # 周期性触发并测量
+   t = 0.0
+   try:
+       while True:
+           pwms = [[i, int(1500 + 100 * math.sin(t + i * 0.5))] for i in range(5)]
+           move_servos(ser, pwms, duration=0.05)
+           t += 0.05
+   except KeyboardInterrupt:
+       move_servos(ser, [[i, 1500] for i in range(5)], duration=2.0)
+       break
+   
+   ser.close()
    ```
+   预期：5 个关节以正弦曲线缓慢摆动
 
-4. 控制循环 CPU 占用监控：
-   ```bash
-   top -p $(pgrep -f arm_controller)
-   # 预期：单核 CPU 占用 < 5%
-   ```
-
-5. 串口带宽分析：
-   ```bash
-   sudo apt install cutecom
-   # 设置 1Mbps，监控串口流量
-   # 预期：50Hz × 5舵机 × 7字节 = 1750 字节/秒 ≈ 14kbps（远低于 1Mbps 容量）
-   ```
-
-**易错点**：
-- ⚠️ **控制循环频率低于 50Hz** → **解决**：检查系统负载（`top`），避免在 arm_controller 同核运行重负载进程
-- ⚠️ **PWM 波形抖动** → **解决**：检查电源（建议独立 5V/3A 供电），信号线使用双绞线
-
----
-
-#### 步骤7：多关节协同与安全保护（阶段三：能改造，30min）
-
-**操作步骤**：
-
-1. 5 关节协同运动（写一个 Python 脚本让所有关节按预设轨迹运动）：
+3. **软限位保护验证**（尝试超出范围）：
    ```python
-   # arm_dance.py
-   import rclpy
-   from rclpy.node import Node
-   from car1_arm_msgs.msg import JointCommand
-   import time
-   
-   class ArmDance(Node):
-       def __init__(self):
-           super().__init__('arm_dance')
-           self.pub = self.create_publisher(JointCommand, '/arm/joint_command', 50)
-       
-       def move_to(self, pwms, duration=2.0):
-           """梯形插值运动"""
-           start = [1500]*5
-           steps = int(duration / 0.02)
-           for i in range(steps):
-               alpha = i / steps
-               cur = [int(start[j] + (pwms[j]-start[j])*alpha) for j in range(5)]
-               msg = JointCommand()
-               msg.ids = [1,2,3,4,5]
-               msg.pwms = cur
-               self.pub.publish(msg)
-               time.sleep(0.02)
-           start = pwms
-   
-   rclpy.init()
-   node = ArmDance()
-   
-   # home
-   node.move_to([1500, 2000, 1000, 1500, 1500], 2.0)
-   time.sleep(0.5)
-   # work
-   node.move_to([1500, 1500, 1800, 1500, 1500], 2.0)
-   time.sleep(0.5)
-   # pick
-   node.move_to([2000, 1700, 1500, 1500, 1500], 2.0)
-   time.sleep(0.5)
-   # go home
-   node.move_to([1500, 2000, 1000, 1500, 1500], 2.0)
-   
-   rclpy.shutdown()
+   # 在 Python REPL
+   move_servos(ser, [[0, 300], [1, 2700], [2, 1500], [3, 1500], [4, 1500]], duration=1.0)
+   # 预期：move_servos 函数内部 clamp 到 [500, 2500]
    ```
 
-2. 软限位保护验证：
-   ```bash
-   # 尝试超出范围
-   ros2 topic pub --once /arm/joint_command car1_arm_msgs/msg/JointCommand "
-   ids: [1, 2, 3, 4, 5]
-   pwms: [2600, 2600, 2600, 2600, 2600]
-   "
-   # 预期：终端打印 WARN 并钳制
+4. **通信稳定性测试**（连续 100 次 read）：
+   ```python
+   from test_servo_direct import read_servo_position
+   success_count = 0
+   for i in range(100):
+       pos = read_servo_position(ser, 0)
+       if pos is not None:
+           success_count += 1
+   print(f'成功率: {success_count}/100 = {success_count}%')
+   # 预期：成功率 ≥ 99%
    ```
 
-3. 急停测试：直接拔掉 USB-TTL 串口，观察舵机是否立即停止（应保持当前 PWM 不变）。
-
-4. 性能基线（实验报告必填）：
+5. **性能基线（实验报告必填）**：
 
    | 指标 | 期望值 | 实测值 |
    |------|-------|-------|
-   | bringup 启动时间 | < 10s |  |
-   | 控制循环实际频率 | 50 ± 1 Hz |  |
-   | 单关节指令响应延迟 | < 50ms |  |
-   | 夹爪 open→close 时间 | < 1.5s |  |
-   | 软限位响应时间 | < 20ms |  |
-   | 归位时间（home/work） | ~ 2s |  |
+   | interactive_mode 启动时间 | < 2s |  |
+   | 5 关节指令响应延迟 | < 50ms |  |
+   | 单舵机 read 响应时间 | < 20ms |  |
+   | CRC 校验 100 次成功率 | ≥ 99% |  |
+   | 1Mbps 串口实际带宽利用率 | ~1.4% |  |
 
 **易错点**：
-- ⚠️ **多关节运动不同步** → **解决**：确保 `joint_command` 一次性发布 5 个关节的目标，arm_controller 内部已同步
-- ⚠️ **机械臂运行过程中撞到自身** → **解决**：降低 `arm_controller` 的 `max_pwm_step_per_cycle` 参数
+- ⚠️ **多关节运动不同步** → **解决**：检查 `move_servos` 是否在同一次 `send_packet` 中发送 5 舵机
+- ⚠️ **Ctrl+C 后舵机停在奇怪角度** → **解决**：在 except 块中发送 home 位姿
+- ⚠️ **CRC 校验失败率过高（>5%）** → **解决**：检查 USB-TTL 芯片质量
 
 ---
 
-#### 完整可运行代码 demo_arm_control.py
+#### 完整可运行代码 demo_bare_metal_arm.py
 
-> 独立 demo 脚本：发布 joint_command 指令让机械臂做往返运动（不依赖 bringup，但需要 arm_controller 运行）
+> 独立 demo 脚本：纯 Python 裸机控制舵机做往返运动（不依赖 bringup、不依赖 ROS2）
 
 ```python
 # -*- coding: utf-8 -*-
 """
-实验2 demo：直接通过 ROS2 topic 控制 5 关节运动
+实验2 demo：纯 Python 裸机控制机械臂（不通过 ROS2）
 平台：B2 / C1
-前置：ros2 launch car1_arm_controller arm_controller.launch.py 已运行
-运行：python3 demo_arm_control.py
+前置：test_servo_direct.py 可正常 import
+运行：python3 demo_bare_metal_arm.py
 """
-import rclpy
-from rclpy.node import Node
-from car1_arm_msgs.msg import JointCommand
+import sys
+import os
+import time
 import math
 
+# 把 test_servo_direct.py 所在目录加入 path
+sys.path.insert(0, os.path.join(
+    os.path.dirname(__file__),
+    '../../ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test'
+))
 
-class ArmControllerDemo(Node):
-    """5 关节协调运动：所有关节以正弦曲线缓慢摆动"""
-    
-    PWM_CENTER = 1500
-    PWM_AMP = 300
-    FREQ_HZ = 50  # 50Hz 控制频率
-    
-    def __init__(self):
-        super().__init__('arm_controller_demo')
-        self.pub = self.create_publisher(JointCommand, '/arm/joint_command', 10)
-        self.timer = self.create_timer(1.0 / self.FREQ_HZ, self.timer_cb)
-        self.t = 0.0
-        self.get_logger().info('Arm controller demo started')
-    
-    def timer_cb(self):
-        msg = JointCommand()
-        msg.ids = [1, 2, 3, 4, 5]
-        msg.pwms = [
-            int(self.PWM_CENTER + self.PWM_AMP * math.sin(self.t + i * 0.7))
-            for i in range(5)
-        ]
-        self.pub.publish(msg)
-        self.t += 1.0 / self.FREQ_HZ
-    
-    def pwm_to_rad(self, pwm):
-        return (pwm - self.PWM_CENTER) * 0.002356
+from test_servo_direct import (
+    SERIAL_PORT, BAUDRATE, move_servos, read_all_servos
+)
+import serial
 
 
-def main(args=None):
-    rclpy.init(args=args)
-    node = ArmControllerDemo()
+def main():
+    print(f"打开串口 {SERIAL_PORT} @ {BAUDRATE}...")
     try:
-        rclpy.spin(node)
+        ser = serial.Serial(SERIAL_PORT, BAUDRATE, timeout=1)
+        ser.rts = False
+        ser.dtr = False
+    except Exception as e:
+        print(f"串口打开失败: {e}")
+        return
+
+    print("串口已打开")
+    time.sleep(0.2)
+
+    # 1. 读取初始位置
+    print("\n[1] 读取初始位置:")
+    read_all_servos(ser)
+
+    # 2. 转到工作位姿
+    print("\n[2] 转到工作位姿 [1500, 1100, 2200, 1850, 1500]")
+    work_pwms = [[i, pwm] for i, pwm in enumerate([1500, 1100, 2200, 1850, 1500])]
+    move_servos(ser, work_pwms, duration=2.0)
+    time.sleep(2.5)
+
+    # 3. 正弦摆动 10 秒
+    print("\n[3] 正弦摆动 10 秒（按 Ctrl+C 中断）")
+    t = 0.0
+    pwm_center = 1500
+    amp = 100
+    try:
+        while t < 10.0:
+            pwms = [[i, int(pwm_center + amp * math.sin(t + i * 0.5))] for i in range(5)]
+            move_servos(ser, pwms, duration=0.05)
+            t += 0.05
     except KeyboardInterrupt:
-        node.get_logger().info('Demo stopped by user')
-    finally:
-        # 回到中位
-        msg = JointCommand()
-        msg.ids = [1, 2, 3, 4, 5]
-        msg.pwms = [1500, 1500, 1500, 1500, 1500]
-        node.pub.publish(msg)
-        node.destroy_node()
-        rclpy.shutdown()
+        print("中断")
+
+    # 4. 回到 home
+    print("\n[4] 回到 home [1500, 1500, 1500, 1500, 1500]")
+    home_pwms = [[i, 1500] for i in range(5)]
+    move_servos(ser, home_pwms, duration=2.0)
+    time.sleep(2.5)
+
+    # 5. 最终位置确认
+    print("\n[5] 最终位置:")
+    read_all_servos(ser)
+
+    ser.close()
+    print("\n串口已关闭")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
 ```
 
 ### 1.7 实验总结
 
 **完成成果**：
-- 理解 STM32 1Mbps 串口协议与 PWM 帧格式
-- 启动 bringup.launch 完整加载 base+arm+odom 三节点
-- 通过 `/arm/joint_command` 话题独立控制 5 关节运动
-- 通过 `/arm/set_gripper` 服务控制夹爪开/合/停
-- 通过 `/arm/go_home`、`/arm/go_work` 服务实现位姿快速复位
-- 验证 50Hz 控制循环频率与软限位保护机制
+- 理解 1Mbps 串口协议的字节级细节（0xAA 0x55 帧头、CRC8 校验和、命令/参数结构）
+- 掌握 Python `pyserial` 裸机打开 `/dev/ttyUSB0` 与总线舵机通信的方法
+- 独立使用 `test_servo_direct.py` 的 `interactive_mode` 交互式控制 5 关节 + 夹爪
+- 验证 `save` / `yaml` 命令录制动作并导出与 `action_player` 兼容的 YAML 文件（**供 exp03 消费**）
+- 理解 CRC8 查表校验算法和单线半双工总线的时分复用机制
 
 **技能收获**：
-- 掌握 ROS2 topic/service 通信模型在真实硬件控制中的使用
-- 理解 arm_controller 的"协议转换器"架构
-- 熟悉 PWM↔弧度换算与软限位保护设计
-- 掌握串口帧格式（0x55 0x55 + 长度 + 命令 + 参数 + 校验和）
+- 掌握 1Mbps 串口协议（0xAA 0x55 + 长度 + 命令 + 参数 + CRC8 校验和）
+- 理解"裸机 vs ROS2"两条开发路线的对比（裸机直接 / ROS2 间接）
+- 熟悉 `interactive_mode` 全部命令（位姿/读取/动作/力矩/快速动作）
+- 掌握动作 YAML 录制与导出（为 exp03 的 `action_player` 做准备）
 
 **常见问题与解决**：
 
@@ -1385,21 +1444,29 @@ if __name__ == "__main__":
 |------|------|---------|
 | 串口打开失败 | 权限不足 | `sudo chmod 666 /dev/ttyUSB0` 或加入 dialout 组 |
 | 1Mbps 通信乱码 | USB-TTL 芯片不支持 | 改用 CH340/CP2102/FT232 |
-| 控制循环频率不稳 | 系统负载过高 | 关闭其他进程或设置 CPU affinity |
-| 软限位被频繁触发 | servo_limits 配置过严 | 调整 config/servo_limits.yaml |
-| 归位过程抖动 | 电源功率不足 | 改用 5V/5A 独立电源 |
+| CRC 校验失败率高 | 电磁干扰 / 串口线过长 | 缩短串口线、远离干扰源 |
+| bringup 串口冲突 | 两者都占用 /dev/ttyUSB0 | `pkill -f bringup` 后再启动 test_servo_direct |
+| 找不到导出的 YAML | 未 colcon build | `cd ~/ros2_ws && colcon build --packages-select car1_arm_controller` |
 
 ### 1.8 思考题
 
 1. 为什么 car1 选择 1Mbps 串口而不是更常见的 115200？分析 5 关节 50Hz 控制对串口带宽的最低要求。
 2. PWM_TO_RAD = 0.002356 这个系数是怎么来的？如果换不同型号舵机，这个值需要重新标定吗？为什么？
-3. arm_controller 同时作为 ROS2 服务端与 STM32 串口客户端，这种"双面胶"架构的优缺点是什么？是否存在更好的解耦方式？
-4. 50Hz 控制循环中"防突变"（限制单周期最大 PWM 变化）的物理意义是什么？如果取消这层保护会怎样？
-5. 软限位 vs 硬限位（机械限位）的关系是什么？为什么需要双重保护？
+3. 串口帧格式中"功能字 func"的设计有什么好处？与 ROS2 topic 消息类型相比有什么异同？
+4. CRC8 校验能 100% 检测单比特错误和大多数多位错误，但是否存在 CRC8 也检测不到的错误模式？如果存在该如何增强？
+5. 单线半双工总线的"时分复用"是如何保证 5 个舵机不会同时响应的？硬件层和协议层各做了什么？
+6. 为什么本实验不通过 ROS2 启动 arm_controller 节点而是直接用 `test_servo_direct.py`？对比两条开发路线的优缺点。
 
 ### 1.9 实验报告要求
 
-**评分标准**：硬件连接与串口验证 10 分 + bringup 启动 15 分 + joint_command 话题 25 分 + set_gripper 服务 15 分 + go_home/go_work 服务 15 分 + 实验报告 20 分 = 100 分。
+**评分标准**：硬件连接与串口授权 10 分 + 1Mbps 协议验证 15 分 + interactive_mode 交互调试 25 分 + CRC8 与帧格式 15 分 + 动作录制与 YAML 导出 15 分 + 实验报告 20 分 = 100 分。
+
+**实验报告必含项**：
+- [ ] `cutecom` 手动发送一帧并截图（验证协议）
+- [ ] `interactive_mode` 5 关节 + 夹爪控制演示截图或视频
+- [ ] 录制的 `pick_and_place.yaml` 文件内容（将作为 exp03 的输入）
+- [ ] CRC8 校验 100 次成功率的实测数据
+- [ ] 思考题 6 题全部作答
 
 ---
 
@@ -1408,34 +1475,38 @@ if __name__ == "__main__":
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-08-04 | 初版生成（基于 _registry.yaml human_waiver 模式，标注 [待源码核实]） |
+| v1.1 | 2026-08-10 | 删除 LewanSoul/Hiwonder 品牌信息，替换为"总线舵机" |
+| **v1.2** | 2026-08-10 | **重大重构：放弃 `bringup.launch.py` + `arm_controller` 节点路线，改为 `test_servo_direct.py` 裸机协议演示**。原因：用户反馈 exp02 主题是"底层协议"，应直接演示 1Mbps 串口与 CRC8 校验字节级细节，而非 ROS2 高级封装；新方案让 exp02 真正"裸机"（不依赖 ROS2），输出 `pick_and_place.yaml` 供 exp03 消费；1.1 知识点扩展为 9 个（新增 2.1.4 CRC8、2.2.1 串口设备、2.2.2 interactive_mode、2.2.3 动作录制、2.3.1 裸机 vs ROS2、2.3.2 协议字节级），1.6 重写为 7 步裸机协议演示流程（硬件连接→1Mbps 验证→interactive_mode 命令→CRC8 验证→动作录制→YAML 导出→综合练习） |
 
 ---
 
-## 实验3：机械臂零位校准与动作录制实验（4h）
+## 实验3：机械臂ROS2架构认知与动作回放实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/calibration/` 与 `ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/`，未复制到 `source-codes/EXP005/exp03/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `calibration/launch/servo_calib.launch.py`、`arm/car1_arm_controller/test/test_servo_direct.py`、`arm/car1_arm_controller/launch/action_player.launch.py` 等节点源码。
+> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/`，未复制到 `source-codes/EXP005/exp03/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书 v1.2 改用 `bringup.launch.py` + `action_player` 节点路线（原 v1.1 的 `test_servo_direct.py` 录制迁移至 exp02），按 **3a（系统架构认知）→ 3b（动作回放）→ 3c（零位校准）** 三子阶段组织内容。**严禁使用** `/arm_controller/target_pose`（自动 IK）和 `/arm_controller/pick`/`/arm_controller/place`（完整抓取 pipeline）——这些接口将在 exp05/exp06 讲解，本实验仅使用 `joint_command` 话题和 `action_player` 节点（详见 1.6 步骤 3b）。
 
 ### 1.1 关联知识点
 
-本实验对应第 3 章"零位校准与动作录制回放"，覆盖以下 9 个知识点：
+本实验对应第 3 章"机械臂 ROS2 架构与动作回放"，覆盖以下 10 个知识点：
 
-- 3.1.1 零位校准 > 概念 > 零位校准指将舵机机械中位对齐到软件坐标系原点，避免关节角累积漂移
-- 3.1.2 软件offset > 原理 > 软件层 offset 补偿（写入 servo_offsets.yaml）相比 EEPROM 写入更安全、可热更新
-- 3.1.3 servo_calib > 流程 > `servo_calib.launch.py` 启动校准 GUI，逐关节发送测试 PWM 并记录补偿值
-- 3.2.1 test_servo_direct > 概念 > `test_servo_direct.py` 提供键盘/菜单驱动的单舵机调试界面
-- 3.2.2 键盘调试 > 流程 > 通过 `+/-/[/]` 键实时调整单关节 PWM 并观察响应，验证限位与零位
-- 3.2.3 命名快照 > 概念 > 调试过程中将关键位姿（home/work/pick/place）记录为命名快照便于复用
-- 3.3.1 YAML格式 > 概念 > 动作文件采用 YAML 列表结构，每项包含 joints/gripper/duration_ms 三个字段
-- 3.3.2 action_player > 流程 > `action_player.launch.py` 支持普通/单步/循环三种回放模式，可设置紧急停止
-- 3.3.3 单步/循环/急停 > 原理 > 单步模式逐动作暂停等待 Enter，循环模式按指定次数重复，紧急停止中断串口写
+- 3.1.1 bringup拓扑 > 概念 > `bringup.launch.py` 启动 7~8 个节点的拓扑结构（base_driver / robot_state_publisher / joint_state_publisher / imu_filter / odom_publisher / ekf_filter_node / servo_controller / init_pose）
+- 3.1.2 rqt_graph > 流程 > 用 rqt_graph 插件观察 topic/service 的有向图，识别节点间的发布/订阅关系
+- 3.1.3 node list/topic list > 流程 > `ros2 node list` / `ros2 topic list` / `ros2 service list` 三大命令快速勘察运行时系统
+- 3.2.1 joint_command话题 > 原理 > `/arm_controller/joint_command` 接收 JointState 消息，position 字段为弧度（非 PWM），通过内部 PWM_TO_RAD=0.002356 换算后下发串口
+- 3.2.2 PWM↔rad换算 > 原理 > 公式 `rad = (PWM - 1500) × 0.002356`（等价 `PWM = rad / 0.002356 + 1500`），由 arm_controller 内部自动完成
+- 3.3.1 action_player节点 > 概念 > `action_player` 是 **节点**（非 launch），通过 console_scripts 注册为可执行命令；接收 YAML 动作文件并按顺序回放
+- 3.3.2 YAML格式兼容 > 原理 > 导出的 YAML 字段 `name`/`description`/`actions[].name`/`actions[].duration`/`actions[].servos` 与 exp02 的 `export_yaml` 严格兼容
+- 3.3.3 回放模式 > 概念 > 普通（play 服务）、单步（~/next 服务）、循环（启动时 loop:=true）、急停（~/stop 服务）四种控制方式
+- 3.4.1 软件offset > 原理 > 软件层 offset 补偿（写入 `servo_offsets.yaml`）相比 EEPROM 写入更安全、可热更新，舵机寿命 10 万次
+- 3.4.2 servo_calib GUI > 流程 > `servo_calib.launch.py` 启动校准 GUI 逐关节拖动滑块找机械中位并写入 offset
 
 ### 1.2 实验目标
 
-1. 理解舵机零位校准的必要性（消除装配公差，避免角度累积漂移）— 原理理解
-2. 掌握 servo_calib.launch.py 校准 GUI 的使用方法 — 流程掌握
-3. 独立使用 test_servo_direct.py 完成抓取放置动作的交互式录制 — 独立完成
-4. 能够将动作导出为 YAML 文件并通过 action_player 回放 — 独立完成
-5. 能够在循环/单步/急停模式下验证动作的鲁棒性 — 迁移应用
+1. 理解 `bringup.launch.py` 启动的 7~8 个 ROS2 节点的拓扑结构与协作关系 — 原理理解
+2. 掌握用 `ros2 node list` / `ros2 topic list` / `rqt_graph` 勘察运行时系统的方法 — 流程掌握
+3. 掌握 `/arm_controller/joint_command` 话题发送 5 关节弧度的用法（**严禁用 target_pose 触发 IK**）— 流程掌握
+4. 独立使用 `action_player` 节点回放 exp02 导出的 `pick_and_place.yaml` 动作文件 — 独立完成
+5. 掌握修改 YAML 某步参数后重新 colcon build 并回放观察差异的方法 — 迁移应用
+6. 理解 `servo_calib` 校准 GUI 的工作流程，能用软件 offset 补偿消除装配偏差 — 流程掌握
 
 ### 1.3 实验环境
 
@@ -1443,17 +1514,19 @@ if __name__ == "__main__":
 |------|------|
 | 硬件 | 具身智能实验箱B2 / 机器人小车C1（含 5 自由度机械臂、工作桌面、待抓取物体） |
 | OS | Ubuntu 22.04 + ROS2 Humble |
-| Python | 3.10 |
-| 核心库 | rclpy、pyserial、yaml、pynput（键盘监听） |
-| 校准工具 | servo_calib（图形化 GUI）、test_servo_direct.py（终端交互） |
-| 动作文件 | `arm/car1_arm_controller/config/actions/home.yaml`、`pick.yaml`、`place.yaml` |
-| 主入口 | `calibration/launch/servo_calib.launch.py`（零位校准 GUI）<br>`arm/car1_arm_controller/test/test_servo_direct.py`（交互式录制）<br>`arm/car1_arm_controller/launch/action_player.launch.py`（回放器） |
+| Python | 3.10 + rclpy |
+| 核心工具 | rqt_graph、rqt_topic、ros2 cli |
+| 动作文件 | `arm/car1_arm_controller/config/actions/pick_and_place.yaml`（**由 exp02 生成**） |
+| 校准文件 | `calibration/config/servo_offsets.yaml` |
+| **主入口** | `bringup/launch/bringup.launch.py`（启动 7~8 个节点）<br>`arm/car1_arm_controller/launch/arm_controller.launch.py`（启动 arm_controller，**仅用 joint_command**）<br>`arm/car1_arm_controller/car1_arm_controller/action_player.py`（**节点**而非 launch）<br>`calibration/launch/servo_calib.launch.py`（3c 阶段校准 GUI） |
+
+> ⚠️ **严禁使用** `/arm_controller/target_pose` 话题（会自动调用 IK 解算）、`/arm_controller/pick` 与 `/arm_controller/place` 服务（会执行完整抓取 pipeline）—— 这些是 exp05/exp06 的内容。
 
 ### 1.4 实验难度
 
 - 难度: ⭐⭐ 中
-- 重点: 舵机零位校准；test_servo_direct.py 交互式调试；YAML 动作文件结构
-- 难点: 软件 offset 与 EEPROM 写入的取舍；回放过程中紧急停止的可靠性
+- 重点: ROS2 节点拓扑观察；`joint_command` 话题；`action_player` 节点回放；YAML 修改热更新；软件 offset 校准
+- 难点: 区分 `action_player` 节点与 `action_player.launch.py`（本实验使用的是**节点**）；区分 `joint_command` 弧度与原始 PWM；rqt_graph 大量节点的可视化阅读
 
 ### 1.5 实验现象
 
@@ -1462,17 +1535,21 @@ if __name__ == "__main__":
 1. 连接硬件：确保机械臂通电、串口连接到工作站
 2. 进入工作空间根目录：`cd ~/ros2_ws`
 3. source 环境：`source /opt/ros/humble/setup.bash && source install/setup.bash`
-4. 启动 arm_controller：`ros2 launch car1_arm_controller arm_controller.launch.py`
-5. 启动交互式调试（新终端）：`python3 src/xflz_eai_car1/arm/car1_arm_controller/test/test_servo_direct.py`
-6. 在终端中按数字键选择关节，按 +/- 微调 PWM，观察机械臂响应
-7. 录制完成后回放：`ros2 launch car1_arm_controller action_player.launch.py yaml_file:=pick_place.yaml mode:=normal`
+4. 启动 bringup（新终端）：`ros2 launch car1_bringup bringup.launch.py`
+5. 启动 arm_controller（新终端）：`ros2 launch car1_arm_controller arm_controller.launch.py`
+6. 观察节点列表（新终端）：`ros2 node list`
+7. 启动 action_player（新终端）：`ros2 run car1_arm_controller action_player --ros-args -p action_file:=pick_and_place.yaml`
+8. 触发普通回放（新终端）：`ros2 service call /action_player/play std_srvs/srv/Trigger`
+9. 观察终端日志：依次执行 pre_grasp → gripper_open → grasp_down → gripper_close → lift → back_work，机械臂在 6~10 秒内完成整个抓取循环
+10. 修改 YAML 中 gripper_open 的 PWM 从 1000 改为 1200，重新 `colcon build` 并重放，观察夹爪张开角度变小
 
 **预期效果描述**：
-- **校准阶段**：servo_calib GUI 弹出后，5 个滑块分别控制 5 个关节，用户拖动滑块找到"机械中位"，点击"Save" 后写入 `servo_offsets.yaml`
-- **调试阶段**：test_servo_direct.py 在终端打印菜单，提示 `[1-5] select joint, [+] increase, [-] decrease, [space] snapshot, [q] quit`
-- **回放阶段**：action_player 按 YAML 中的动作列表依次执行，机械臂在 2-3 秒内完成 home→pick→place→home 的完整循环
-- **循环模式**：设置 `loop_count:=3` 后动作循环 3 次后自动停止
-- **急停模式**：回放过程中按 Ctrl+C 立即中断串口写，机械臂停在当前位置
+- **架构阶段**：rqt_graph 弹出后显示有向图，可清晰看到 `servo_controller` → `/servo_command` → 串口 的链路，以及 `arm_controller` 订阅 `/arm_controller/joint_command` 的输入边
+- **回放阶段**：action_player 节点按 YAML 顺序执行，6~10 秒完成一个完整抓放循环，每次执行 5 个舵机同时平滑转动
+- **循环模式**：加 `loop:=true` 参数后无限循环，按 Ctrl+C 停止
+- **单步模式**：调用 `/action_player/next` 服务后每步需手动按一次 Enter 才会执行下一步
+- **急停模式**：调用 `/action_player/stop` 服务后立即中断后续动作，机械臂停在当前位置
+- **校准阶段**：servo_calib GUI 弹出后，5 个滑块分别控制 5 个关节，拖动滑块找机械中位后 Apply，offset 写入 `servo_offsets.yaml`
 
 ### 1.6 实验步骤
 
@@ -1480,97 +1557,410 @@ if __name__ == "__main__":
 
 ```mermaid
 graph LR
-    A[步骤1：舵机零位校准] --> B[步骤2：servo_calib GUI使用]
-    B --> C[步骤3：test_servo_direct交互调试]
-    C --> D[步骤4：命名快照保存]
-    D --> E[步骤5：YAML动作文件生成]
-    E --> F[步骤6：action_player普通回放]
-    F --> G[步骤7：单步/循环/急停模式]
-    G --> H[完成]
+    A[步骤1：启动bringup观察拓扑] --> B[步骤2：joint_command话题控制]
+    B --> C[步骤3a：系统架构认知30min]
+    C --> D[步骤3b：动作回放2h]
+    D --> E[步骤3c：零位校准1.5h]
+    E --> F[完成]
 ```
 
 ---
 
-#### 步骤1：舵机零位校准原理（阶段一：能运行，20min）
+#### 步骤1：启动 bringup 并观察节点拓扑（阶段 3a：能理解，20min）
 
-> ⚠️ 本步骤对应 src 目录源码：`calibration/servo_offsets.yaml`、`arm/car1_arm_controller/config/servo_offsets.yaml`
+> ⚠️ 本步骤对应 src 目录源码：`ros2_ws/src/xflz_eai_car1/bringup/launch/bringup.launch.py`
 
 **知识点讲解**：
 
-**零位校准的必要性（3.1.1）**
-- **原理**：每个舵机的"机械中位"（齿轮对齐的位置）与"软件零位"（URDF 中 0 rad 对应的 PWM）之间存在制造公差。car1 5 个舵机的典型偏差是 ±10 PWM 单位（约 ±2.4°）。如果不校准：(1) 不同舵机的"home"位姿视觉上不水平；(2) 多次运动后误差累积导致动作"漂移"；(3) MoveIt2 规划时坐标系不对齐。校准的目标是让每个舵机的"机械中位 = 软件 0 rad"。
-- **源码对应**：`servo_offsets.yaml` 中 `joint_offsets: [0, 22, 13, 0, 0]` 字段
+**bringup 启动的 7~8 个节点（3.1.1）**
+- **原理**：`bringup.launch.py` 是 car1 系统的"一站式启动入口"，会拉起 7~8 个 ROS2 节点构成完整的小车+机械臂系统。每个节点负责一个独立的功能模块：
+  - `base_driver`：串口桥接，把 `/cmd_vel` 转成底盘串口指令并发布 `/odom`
+  - `robot_state_publisher`：把 URDF 转成 TF 树
+  - `joint_state_publisher`：发布 `/joint_states`
+  - `imu_filter`：IMU 数据滤波
+  - `odom_publisher`：轮式里程计
+  - `ekf_filter_node`：EKF 融合 IMU + 里程计
+  - `servo_controller`：舵机串口桥接，接收 `/servo_command` 发往 5 关节
+  - `init_pose`：初始化位姿
+- **源码对应**：`bringup.launch.py` 中各 `<node>` 标签
 
-**软件 offset vs EEPROM 写入（3.1.2）**
-- **原理**：car1 采用"软件层 offset"方案：(1) **不修改舵机 EEPROM**：原始中位 1500 保持不变；(2) **在 arm_controller 中应用 offset**：实际发送的 PWM = 目标 PWM + offset。例如机械中位实际在 PWM=1522，则 offset=22，所有目标 PWM 加上 22 才是"软件 0 rad"。这种方案的优势是：(1) 损坏时容易恢复（删除 offset 文件即可）；(2) 可热更新（修改 yaml 后重启节点即可）；(3) 不影响其他使用相同舵机的项目。
-- **源码对应**：`arm_controller.py` 中 `self.current_pwms[i] += self.offsets[i]`
+**用 rqt_graph 观察节点拓扑（3.1.2）**
+- **原理**：`rqt_graph` 是 ROS2 官方提供的可视化插件，动态显示当前所有节点、话题、服务的有向图。**节点是圆圈、话题是方框、订阅/发布关系是有向箭头**。这种可视化能帮助快速理解"谁在和谁通信"。在 rqt_graph 中可以拖动节点、过滤话题、按 namespace 折叠。
+- **源码对应**：系统级工具，无需源码
 
 **操作步骤**：
 
-1. 查看当前 servo_offsets.yaml：
+1. 进入工作空间并 source 环境：
    ```bash
-   cat ~/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/config/servo_offsets.yaml
-   # 预期：
-   # # 5 关节 PWM 偏移（相对舵机出厂中位 1500）
-   # joint_offsets:
-   #   joint1: 0     # 底座
-   #   joint2: 22    # 大臂（已校准）
-   #   joint3: 13    # 小臂
-   #   joint4: 0     # 腕部旋转
-   #   joint5: 0     # 腕部俯仰
+   cd ~/ros2_ws
+   source /opt/ros/humble/setup.bash
+   source install/setup.bash
    ```
 
-2. 计算 offset：
-   - 假设关节 2 的机械中位在 PWM=1522（即发送 1500 时机械臂略偏离水平）
-   - offset = 1522 - 1500 = +22
-   - 写入 yaml：`joint2: 22`
-
-3. 备份原始配置：
+2. 启动 bringup：
    ```bash
-   cp servo_offsets.yaml servo_offsets.yaml.bak
+   ros2 launch car1_bringup bringup.launch.py
+   # 预期：终端打印 7~8 个节点的启动日志
+   # [INFO] [base_driver-1]: process started with pid [12345]
+   # [INFO] [robot_state_publisher-2]: process started
+   # ...
+   ```
+
+3. 查看所有运行中的节点（新终端）：
+   ```bash
+   ros2 node list
+   # 预期输出（7~8 个）：
+   # /base_driver
+   # /robot_state_publisher
+   # /joint_state_publisher
+   # /imu_filter
+   # /odom_publisher
+   # /ekf_filter_node
+   # /servo_controller
+   # /init_pose
+   ```
+
+4. 查看所有话题：
+   ```bash
+   ros2 topic list
+   # 预期：/cmd_vel /odom /joint_states /imu/data /servo_command /tf /tf_static 等
+   ```
+
+5. 启动 rqt_graph：
+   ```bash
+   rqt_graph
+   # 预期：弹出可视化窗口，显示节点+话题+箭头
+   # 关键观察：servo_controller → /servo_command（箭头）→ 串口
+   ```
+
+6. 启动 rqt_graph 高级视图（启用 Node-Graph 选项）：
+   - 在 rqt_graph 窗口菜单 `View` → 勾选 `Node-Graph (debug)`
+   - 可看到节点内部的发布/订阅回调函数
+
+7. 验证 `/joint_states` 频率：
+   ```bash
+   ros2 topic hz /joint_states
+   # 预期：约 50Hz
+   ```
+
+8. （**可选**）启动 arm_controller（步骤 3b 才会用）：
+   ```bash
+   ros2 launch car1_arm_controller arm_controller.launch.py
+   # 预期：arm_controller 节点启动
+   ros2 node list
+   # 预期：增加 /arm_controller 节点
    ```
 
 **易错点**：
-- ⚠️ **修改后机械臂动作异常** → **解决**：用 `.bak` 备份恢复，重新校准
-- ⚠️ **不同关节的 offset 互相干扰** → **解决**：每次只修改一个关节，观察后再调下一个
+- ⚠️ **rqt_graph 启动后无显示** → **解决**：先 `ros2 run` 一个节点（如 `ros2 topic pub /cmd_vel ...`），节点至少有一个订阅/发布时才会显示
+- ⚠️ **看不到 arm_controller** → **解决**：arm_controller 由 `arm_controller.launch.py` 单独启动（不在 bringup 中），需手动 `ros2 launch car1_arm_controller arm_controller.launch.py`
+- ⚠️ **节点数 < 7** → **解决**：检查 `bringup.launch.py` 是否完整 source，所有依赖包是否 `colcon build`
 
 ---
 
-#### 步骤2：servo_calib 校准 GUI 使用（阶段一：能运行，45min）
+#### 步骤2：用 joint_command 话题控制 5 关节（阶段 3b 准备，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`calibration/launch/servo_calib.launch.py`、`calibration/servo_calib_node.py`
+> ⚠️ 本步骤对应 src 目录源码：`ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/car1_arm_controller/arm_controller.py`
 
 **知识点讲解**：
 
-**servo_calib 校准工具（3.1.3）**
-- **原理**：`servo_calib.launch.py` 启动一个图形化 GUI 工具（基于 PyQt 或 rqt），提供 5 个关节的独立控制面板。界面包括：(1) 关节选择标签（joint1~joint5）；(2) PWM 滑块（500-2500）；(3) 实时位置显示（rad/deg）；(4) "Save" 按钮（写入 servo_offsets.yaml）。校准流程为：选择关节 → 缓慢移动滑块 → 找到机械中位 → 记录偏差 → 保存。
-- **源码对应**：`ros2_ws/src/xflz_eai_car1/calibration/launch/servo_calib.launch.py`
+**joint_command 话题（3.2.1）**
+- **原理**：`/arm_controller/joint_command` 是 `arm_controller` 节点订阅的**关节角控制话题**，消息类型为 `sensor_msgs/msg/JointState`。关键字段：
+  - `name`：关节名列表，必须为 `['arm_joint1', 'arm_joint2', 'arm_joint3', 'arm_joint4', 'arm_joint5']`
+  - `position`：5 个关节目标**弧度**（rad），不是 PWM
+  - `effort`（可选）：5 个关节的 duration 参数（秒），控制运动时间
+- **源码对应**：`arm_controller.py` 中 `def joint_command_callback(self, msg)` 函数
 
-**机械中位的视觉判断**
-- **原理**：判断舵机"机械中位"的最直接方法是看机械结构。例如 joint2（大臂）的机械中位是"大臂水平向前"，此时 URDF 中 joint2=0 rad 对应大臂水平。但实际舵机中位可能偏差 ±10 PWM，因此需要微调至大臂绝对水平（与地面平行，可用水平仪辅助）。
-- **源码对应**：人工观察
+**PWM ↔ 弧度换算（3.2.2）**
+- **原理**：exp02 学习的 PWM 范围 500~2500、中位 1500、PWM_TO_RAD=0.002356 在本节点内**自动完成**。换算公式为：
+  - `rad = (PWM - 1500) × 0.002356`
+  - `PWM = rad / 0.002356 + 1500`
+  - 例：PWM=1500（home）→ rad=0；PWM=1850 → rad=(1850-1500)×0.002356=0.8246 rad ≈ 47.2°
+- **源码对应**：`arm_controller.py` 中 `self.PWM_TO_RAD = 0.002356` 常量
+
+**为什么不用 target_pose 话题（教学顺序隔离）**
+- **原理**：`/arm_controller/target_pose` 接收 `geometry_msgs/msg/PoseStamped`（末端目标位姿），由 arm_controller 内部调用 IK 解算（`solve_analytical_ik_auto_pitch`）转为 5 关节角再下发。**本实验还未学习 IK**（exp04/exp05 才会学），若用 target_pose 会导致：(1) 跳过 joint_command 的原理理解；(2) 不知道 IK 求解细节；(3) 不符合"螺旋式能力构建"教学顺序。
+- **源码对应**：`arm_controller.py` 中 `def target_pose_callback(self, msg)` 函数（**本实验不调用**）
 
 **操作步骤**：
 
-1. 编译校准包：
+1. 确认 arm_controller 已运行（步骤 1 末尾或重新启动）：
+   ```bash
+   ros2 launch car1_arm_controller arm_controller.launch.py
+   # 预期：arm_controller 节点订阅 /arm_controller/joint_command
+   ros2 node info /arm_controller | grep -A 5 "Subscribers"
+   # 预期：/arm_controller/joint_command: sensor_msgs/msg/JointState
+   ```
+
+2. **测试 home 位姿**（5 关节全 0 rad）：
+   ```bash
+   ros2 topic pub /arm_controller/joint_command sensor_msgs/msg/JointState \
+     "{name: ['arm_joint1','arm_joint2','arm_joint3','arm_joint4','arm_joint5'], position: [0.0, 0.0, 0.0, 0.0, 0.0], effort: [2.0]}" --once
+   # 预期：机械臂回中位，duration 2 秒
+   ```
+
+3. **测试 work 位姿**（弧度来自 exp02 公式换算）：
+   ```bash
+   ros2 topic pub /arm_controller/joint_command sensor_msgs/msg/JointState \
+     "{name: ['arm_joint1','arm_joint2','arm_joint3','arm_joint4','arm_joint5'], position: [0.0, -0.943, 1.65, 0.8246, 0.0], effort: [2.0]}" --once
+   # 预期：5 关节转到 work 位姿 [1500, 1100, 2200, 1850, 1500] PWM
+   # 换算：1500-1500=0, 1100-1500=-400×0.002356=-0.943, 2200-1500=700×0.002356=1.65, 1850-1500=350×0.002356=0.8246
+   ```
+
+4. **测试自定义位姿**：
+   ```bash
+   # 任意目标弧度，例如 J2 抬高 30°（J2 从 0 到 0.524 rad = 30°）
+   ros2 topic pub /arm_controller/joint_command sensor_msgs/msg/JointState \
+     "{name: ['arm_joint1','arm_joint2','arm_joint3','arm_joint4','arm_joint5'], position: [0.0, 0.524, 0.0, 0.0, 0.0], effort: [1.5]}" --once
+   # 预期：J2 单独抬升 30°（PWM=1500+0.524/0.002356=1722）
+   ```
+
+5. **观察 5 关节同步运动**：
+   ```bash
+   ros2 topic echo /joint_states --once
+   # 预期：name=['arm_joint1',...], position=[0, 0.524, 0, 0, 0]
+   ```
+
+6. **测试夹爪**（可选，3b 阶段详细用）：
+   ```bash
+   # 夹爪属于 gripper_controller 节点，不是 arm_controller
+   # 通过 /gripper_controller/gripper_cmd 话题控制
+   ros2 topic pub /gripper_controller/gripper_cmd std_msgs/msg/Float64 "{data: 0.0}" --once
+   # 预期：夹爪张开（0.0=全开）
+   ```
+
+**易错点**：
+- ⚠️ **使用 target_pose 报错"no IK solution"** → **解决**：本实验严禁用 target_pose，改用 joint_command 直接发弧度
+- ⚠️ **机械臂不动** → **解决**：检查 arm_controller 是否运行；检查 `effort` 字段是否 ≥ 0.5（duration 太小舵机来不及响应）
+- ⚠️ **机械臂撞限位** → **解决**：把 `position` 限制在软限位内（如 J2 范围约 -1.5~+1.5 rad）
+- ⚠️ **弧度与 PWM 搞混** → **解决**：joint_command 用弧度，不是 PWM；用公式 `rad = (PWM-1500)×0.002356` 换算
+
+---
+
+#### 步骤3a：系统架构认知（30min）
+
+> ⚠️ 本步骤是阶段 3a 的浓缩，承接步骤 1 的 bringup 启动，重点理解节点间的消息流。
+
+**学习目标**：
+- 能用 `rqt_graph` 画出节点-话题-服务的有向图
+- 区分"发布者"、"订阅者"、"话题"、"服务"四类对象
+- 理解 `servo_controller` 在系统中的位置（串口桥接点）
+
+**操作步骤**：
+
+1. **绘制完整系统图**：
+   ```bash
+   rqt_graph
+   # 预期看到：
+   # /base_driver ─pub─> /cmd_vel ─sub─> 底盘
+   # /servo_controller ─pub─> /servo_command ─sub─> 串口
+   # /arm_controller ─sub─> /arm_controller/joint_command
+   # /joint_state_publisher ─pub─> /joint_states
+   # /ekf_filter_node ─sub─> /imu/data + /odom, ─pub─> /odom/filtered
+   ```
+
+2. **观察 topic 频率**（用 rqt_topic 或 hz 命令）：
+   ```bash
+   ros2 topic hz /joint_states    # 预期 50Hz
+   ros2 topic hz /odom             # 预期 30~50Hz
+   ros2 topic hz /imu/data         # 预期 100~200Hz
+   ```
+
+3. **观察 topic 带宽**：
+   ```bash
+   ros2 topic bw /joint_states
+   # 预期：约 2~5 KB/s
+   ```
+
+4. **查看节点间的 QoS 兼容性**：
+   ```bash
+   ros2 topic info /joint_states --verbose
+   # 预期：Reliability: RELIABLE, Durability: VOLATILE, History: KEEP_LAST, Depth: 10
+   ```
+
+5. **理解 `servo_controller` 的关键地位**：
+   - 它是软件与硬件的**唯一**桥接点
+   - 所有上层节点（arm_controller、joint_state_publisher）都通过它间接控制串口
+   - 关闭它则整个机械臂失联
+
+**易错点**：
+- ⚠️ **rqt_graph 看不到所有节点** → **解决**：rqt_graph 默认 1 秒刷新，可点击 🔄 强制刷新
+- ⚠️ **节点连成一片糊** → **解决**：在 rqt_graph 菜单 `Nodes` → `Hide` 隐藏底盘/IMU 相关节点，只看机械臂部分
+
+---
+
+#### 步骤3b：动作回放（2h）
+
+> ⚠️ 本步骤对应 src 目录源码：`ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/car1_arm_controller/action_player.py`
+
+**知识点讲解**：
+
+**action_player 节点（3.3.1）**
+- **原理**：`action_player` 是 `car1_arm_controller` 包中通过 `console_scripts` 注册的**可执行节点**（不是 launch 文件！）。在 `setup.py` 中注册为 `action_player = car1_arm_controller.action_player:main`，因此可以用 `ros2 run car1_arm_controller action_player` 启动。节点启动时接收 `action_file` 参数指定 YAML 路径，内部解析 YAML 并按顺序回放。
+- **源码对应**：`setup.py` 中 `entry_points={'console_scripts': ['action_player = car1_arm_controller.action_player:main']}`
+
+**YAML 格式兼容（3.3.2）**
+- **原理**：action_player 读取的 YAML 结构由 `action_player.py` 的 `_load_action` 函数定义，**必须与 exp02 的 `export_yaml` 输出一致**：
+  ```yaml
+  name: <动作组名>
+  description: <描述>
+  actions:
+    - name: <步名>
+      duration: <秒>
+      servos: {<id>: <pwm>, ...}
+  ```
+  字段名严格区分大小写，duration 单位是**秒**（不是毫秒），servos 的键是舵机 ID 字符串（"0"~"5"）。
+- **源码对应**：`action_player.py` 中 `def _load_action(yaml_path)` 函数（L90-120）
+
+**回放模式（3.3.3）**
+- **原理**：action_player 提供 4 种控制方式：
+  - **普通（play）**：调用 `/action_player/play` 服务后按顺序执行
+  - **单步（next）**：每次调用 `/action_player/next` 服务执行一步
+  - **循环（loop）**：节点启动时加 `-p loop:=true` 参数
+  - **急停（stop）**：调用 `/action_player/stop` 服务立即中断
+- **源码对应**：`action_player.py` 中各 `srv_callback` 函数
+
+**操作步骤**：
+
+1. **确认 exp02 已生成 pick_and_place.yaml**：
+   ```bash
+   ls -l ~/ros2_ws/install/car1_arm_controller/share/car1_arm_controller/config/actions/pick_and_place.yaml
+   # 预期：文件存在
+   # 若不存在：回到 exp02 重新执行 yaml 导出
+   ```
+
+2. **启动 action_player 节点**（**注意是节点不是 launch**）：
+   ```bash
+   ros2 run car1_arm_controller action_player \
+     --ros-args -p action_file:=pick_and_place.yaml
+   # 预期：终端打印 "Loaded N actions from pick_and_place.yaml"
+   # 节点启动后处于等待状态，等待 /action_player/play 服务
+   ```
+
+3. **查看 action_player 提供的服务**：
+   ```bash
+   ros2 service list | grep action_player
+   # 预期：
+   # /action_player/play
+   # /action_player/next
+   # /action_player/stop
+   ```
+
+4. **触发普通回放**：
+   ```bash
+   ros2 service call /action_player/play std_srvs/srv/Trigger
+   # 预期：节点开始按 YAML 顺序执行，机械臂在 6~10 秒完成整个抓取循环
+   # 终端打印：
+   #   [INFO] Playing action 1/6: pre_grasp
+   #   [INFO] Playing action 2/6: gripper_open
+   #   ...
+   #   [INFO] All actions completed
+   ```
+
+5. **观察执行进度**：
+   ```bash
+   ros2 topic echo /action_player/progress
+   # 预期：current_index, total_count, current_action_name, status
+   ```
+
+6. **修改 YAML 某步参数**：
+   ```bash
+   # 假设 pick_and_place.yaml 在 install 目录下
+   nano ~/ros2_ws/install/car1_arm_controller/share/car1_arm_controller/config/actions/pick_and_place.yaml
+   # 把 gripper_open 的 PWM 从 1000 改为 1200（夹爪张开角度更大）
+   # 改前：  - name: gripper_open  duration: 1.0  servos: {0: 1500, 1: 1100, 2: 2200, 3: 1850, 4: 1500, 5: 1000}
+   # 改后：  - name: gripper_open  duration: 1.0  servos: {0: 1500, 1: 1100, 2: 2200, 3: 1850, 4: 1500, 5: 1200}
+   ```
+
+7. **重新编译安装**（**必须！**）：
+   ```bash
+   cd ~/ros2_ws
+   colcon build --packages-select car1_arm_controller
+   source install/setup.bash
+   # 预期：编译成功
+   ```
+
+8. **重启 action_player 并重放**：
+   ```bash
+   # Ctrl+C 停止原 action_player
+   ros2 run car1_arm_controller action_player --ros-args -p action_file:=pick_and_place.yaml
+   ros2 service call /action_player/play std_srvs/srv/Trigger
+   # 预期：夹爪张开角度比之前大（因为 PWM 1000→1200）
+   ```
+
+9. **单步模式**：
+   ```bash
+   # 重启 action_player，加 step_mode 参数
+   ros2 run car1_arm_controller action_player \
+     --ros-args -p action_file:=pick_and_place.yaml -p step_mode:=true
+   # 每次调用 next 服务执行一步
+   ros2 service call /action_player/next std_srvs/srv/Trigger
+   # 预期：执行 step 1，等待
+   ros2 service call /action_player/next std_srvs/srv/Trigger
+   # 预期：执行 step 2，等待
+   # ...
+   ```
+
+10. **循环模式**：
+    ```bash
+    # Ctrl+C 停止，启动循环模式
+    ros2 run car1_arm_controller action_player \
+      --ros-args -p action_file:=pick_and_place.yaml -p loop:=true
+    # 节点启动后自动开始循环播放
+    # 按 Ctrl+C 停止
+    ```
+
+11. **急停模式**：
+    ```bash
+    # 在循环播放中（新终端）
+    ros2 service call /action_player/stop std_srvs/srv/Trigger
+    # 预期：节点立即停止后续动作，机械臂停在当前位置
+    ```
+
+**易错点**：
+- ⚠️ **"找不到 action_player 命令"** → **解决**：必须 `colcon build --packages-select car1_arm_controller` 后 `source install/setup.bash`
+- ⚠️ **play 服务无响应** → **解决**：检查 YAML 路径是否正确（用 `ros2 pkg prefix car1_arm_controller` 获取 share 路径）
+- ⚠️ **修改 YAML 后重放没变化** → **解决**：必须重新 `colcon build` 才会复制到 install 目录
+- ⚠️ **循环模式停不下来** → **解决**：`ros2 service call /action_player/stop` 或 `kill -9 $(pgrep -f action_player)`
+- ⚠️ **误用 target_pose 触发 IK** → **解决**：本实验严禁 target_pose，仅用 joint_command 话题
+
+---
+
+#### 步骤3c：零位校准（1.5h）
+
+> ⚠️ 本步骤对应 src 目录源码：`ros2_ws/src/xflz_eai_car1/calibration/launch/servo_calib.launch.py`、`ros2_ws/src/xflz_eai_car1/calibration/config/servo_offsets.yaml`
+
+**知识点讲解**：
+
+**软件 offset 方案（3.4.1）**
+- **原理**：car1 采用"软件层 offset"方案：(1) **不修改舵机 EEPROM**：原始中位 1500 保持不变；(2) **在 arm_controller 中应用 offset**：实际发送的 PWM = 目标 PWM + offset。例如机械中位实际在 PWM=1522，则 offset=22，所有目标 PWM 加上 22 才是"软件 0 rad"。这种方案的优势是：(1) 损坏时容易恢复（删除 offset 文件即可）；(2) 可热更新（修改 yaml 后重启节点即可）；(3) 不影响其他使用相同舵机的项目。舵机 EEPROM 寿命约 10 万次写入，软件 offset 可视为"无限寿命"。
+- **源码对应**：`arm_controller.py` 中 `self.current_pwms[i] += self.offsets[i]`
+
+**servo_calib 校准 GUI（3.4.2）**
+- **原理**：`servo_calib.launch.py` 启动一个图形化 GUI 工具，提供 5 个关节的独立控制面板。界面包括：(1) 关节选择标签（joint1~joint5）；(2) PWM 滑块（500-2500）；(3) 实时位置显示（rad/deg）；(4) "Save" 按钮（写入 `servo_offsets.yaml`）。校准流程为：选择关节 → 缓慢移动滑块 → 找到机械中位 → 记录偏差 → 保存。
+- **源码对应**：`ros2_ws/src/xflz_eai_car1/calibration/launch/servo_calib.launch.py`
+
+**操作步骤**：
+
+1. **编译校准包**：
    ```bash
    cd ~/ros2_ws
    colcon build --packages-select calibration
    source install/setup.bash
    ```
 
-2. 启动 arm_controller（必须先运行）：
+2. **启动 arm_controller**（必须先运行）：
    ```bash
    ros2 launch car1_arm_controller arm_controller.launch.py
    ```
 
-3. 启动 servo_calib（新终端）：
+3. **启动 servo_calib**（新终端）：
    ```bash
    ros2 launch calibration servo_calib.launch.py
    # 预期：弹出 GUI 窗口，包含 5 个关节的控制面板
    ```
 
-4. 校准 joint2（大臂）：
+4. **校准 joint2（大臂）**：
    - 在 GUI 中选择"Joint 2"
    - 缓慢拖动 PWM 滑块从 1400 到 1600
    - 观察大臂姿态，找到"大臂水平向前"的位置
@@ -1578,550 +1968,194 @@ graph LR
    - 在 "Offset" 输入框填入 22
    - 点击 "Apply"
 
-5. 校准 joint3（小臂）：
+5. **校准 joint3（小臂）**：
    - 类似方法找到"小臂水平"的 PWM 值（例如 1513）
    - offset = 1513 - 1500 = 13
    - 填入 13 并 Apply
 
-6. 校准剩余关节（可选）：
+6. **校准剩余关节**（可选）：
    - joint1（底座）：offset 通常为 0（旋转对称）
    - joint4/5（腕部）：offset 视具体装配而定
 
-7. 保存配置：
+7. **保存配置**：
    - 点击 "Save All" 按钮
    - 检查 `servo_offsets.yaml` 已更新
 
-8. 验证校准结果：
+8. **验证 offset 已写入**：
    ```bash
-   ros2 service call /arm/go_home car1_arm_msgs/srv/GoHome
-   # 预期：机械臂回到 home 时各关节视觉上对齐（水平、垂直）
+   cat ~/ros2_ws/src/xflz_eai_car1/calibration/config/servo_offsets.yaml
+   # 预期：joint2: 22, joint3: 13
    ```
+
+9. **验证校准后归零对齐**（**用 joint_command 不用 target_pose**）：
+   ```bash
+   ros2 topic pub /arm_controller/joint_command sensor_msgs/msg/JointState \
+     "{name: ['arm_joint1','arm_joint2','arm_joint3','arm_joint4','arm_joint5'], position: [0.0, 0.0, 0.0, 0.0, 0.0], effort: [2.0]}" --once
+   # 预期：机械臂 5 关节全部转到"软件 0 rad"位置，视觉上对齐（水平、垂直）
+   # 此时 arm_controller 内部实际发送的 PWM = [1500+offset1, 1500+offset2, ...]
+   ```
+
+10. **备份与回滚**：
+    ```bash
+    cp ~/ros2_ws/src/xflz_eai_car1/calibration/config/servo_offsets.yaml servo_offsets.yaml.bak
+    # 若校准后异常，恢复：cp servo_offsets.yaml.bak servo_offsets.yaml
+    ```
 
 **易错点**：
 - ⚠️ **校准后机械臂仍不齐** → **解决**：校准是渐进过程，可能需要"先粗调后精调"多轮迭代
 - ⚠️ **GUI 启动报"display not found"** → **解决**：在工作站本地终端运行，不要通过 SSH 远程
-- ⚠️ **Apply 后无响应** → **解决**：检查 arm_controller 是否运行，servo_calib 需要订阅 `/arm/joint_states`
+- ⚠️ **Apply 后无响应** → **解决**：检查 arm_controller 是否运行，servo_calib 需要订阅 `/arm_controller/joint_states`
+- ⚠️ **验证用 target_pose** → **解决**：本实验严禁 target_pose，验证用 joint_command 发 0 rad
 
 ---
 
-#### 步骤3：test_servo_direct 交互式调试（阶段二：能理解，45min）
+#### 完整可运行代码 demo_action_player_pubsub.py
 
-> ⚠️ 本步骤对应 src 目录源码：`arm/car1_arm_controller/test/test_servo_direct.py`
-
-**知识点讲解**：
-
-**test_servo_direct 调试工具（3.2.1）**
-- **原理**：`test_servo_direct.py` 是一个终端交互式脚本，绕过 ROS2 直接通过串口控制单个舵机（也可通过 ROS2 模式）。优势是启动快、调试直观。交互菜单包括：(1) 选择关节（1-5）；(2) +/- 调整 PWM（步长 10）；(3) [/] 步长切换（1/10/50）；(4) 空格 记录当前位姿为命名快照；(5) q 退出。
-- **源码对应**：`ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test/test_servo_direct.py`
-
-**键盘单舵机调试（3.2.2）**
-- **原理**：通过键盘事件实时调整单个关节 PWM 是最直观的调试方式。+/- 按步长增加/减少 PWM，每按一次舵机立即响应，调试者可以"边看边调"找到最佳位置。相比 GUI，键盘调试更适合"盲调"场景（如机械臂已伸出，视线无法同时看屏幕和机械臂）。
-- **源码对应**：`pynput.keyboard.Listener` 监听键盘事件
-
-**操作步骤**：
-
-1. 查看脚本帮助：
-   ```bash
-   python3 ~/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test/test_servo_direct.py --help
-   # 预期输出 usage
-   ```
-
-2. 启动直连串口模式（绕过 ROS2）：
-   ```bash
-   python3 test_servo_direct.py --direct --port /dev/ttyUSB0
-   # 预期打印菜单：
-   # === Servo Direct Test ===
-   # Current joint: 1
-   # Current PWM: 1500
-   # Commands:
-   #   1-5: select joint
-   #   +/-: increase/decrease PWM
-   #   [/]: step size (1/10/50)
-   #   s: save snapshot
-   #   q: quit
-   ```
-
-3. 启动 ROS2 模式（推荐，便于和 arm_controller 协作）：
-   ```bash
-   # 先启动 arm_controller
-   ros2 launch car1_arm_controller arm_controller.launch.py
-   
-   # 新终端启动 test_servo_direct
-   python3 test_servo_direct.py
-   ```
-
-4. 调试单个关节（以 joint2 大臂为例）：
-   - 按 `2` 选中 joint2
-   - 按 `+` 几次（每次 PWM+10），观察大臂上抬
-   - 按 `]` 切换步长到 50，加快调节
-   - 找到"大臂水平"的 PWM（例如 1522）
-   - 按 `s` 保存快照（输入名称 "home"）
-
-5. 调试所有关节：
-   - 依次调试 joint1~joint5，每个都找到合适的 home 位置
-   - 所有 home 位置的 PWM 应该接近 1500（已校准）或带有已知 offset
-
-6. 观察响应延迟：
-   - 按一次 `+`，看机械臂多久开始运动
-   - 预期：< 50ms（直连串口）或 < 100ms（ROS2 模式）
-
-**易错点**：
-- ⚠️ **按键无响应** → **解决**：检查终端是否获得焦点（点击终端窗口后按键）
-- ⚠️ **直连串口模式与 arm_controller 冲突** → **解决**：关闭 arm_controller 再用 --direct 模式，或单独使用
-- ⚠️ **舵机响应与按键不同步** → **解决**：降低按键速度，等待舵机完成当前动作
-
----
-
-#### 步骤4：命名快照保存与位姿复用（阶段二：能理解，30min）
-
-> ⚠️ 本步骤对应 src 目录源码：`test_servo_direct.py` 中 `snapshot_manager.py`
-
-**知识点讲解**：
-
-**命名快照（3.2.3）**
-- **原理**：调试过程中经常需要在多个关键位姿间快速切换（如 home、work、pick、place）。命名快照机制允许用户：(1) 将当前 5 关节 PWM 加上名称保存为 YAML 格式；(2) 通过名称调用快速回放。快照文件 `named_snapshots.yaml` 与动作文件分开保存，前者是"原子位姿"，后者是"位姿序列"。
-- **源码对应**：`arm/car1_arm_controller/config/named_snapshots.yaml`
-
-**位姿 vs 动作的区分**
-- **原理**：**位姿（snapshot）** 是某一时刻 5 关节的 PWM 状态，是一个"点"；**动作（action）** 是一系列位姿按时间顺序排列，是一条"轨迹"。例如 "home" 是位姿，"home→pick→place→home" 是动作。两者都使用 YAML 格式存储但结构不同。
-- **源码对应**：`named_snapshots.yaml`（位姿） vs `actions/home.yaml`（动作）
-
-**操作步骤**：
-
-1. 在 test_servo_direct 中保存 home 快照：
-   - 调整机械臂到 home 位姿（5 关节都在中位）
-   - 按 `s`，输入名称 "home"
-   - 预期：`Snapshot 'home' saved: [1500, 1500, 1500, 1500, 1500]`
-
-2. 保存 work 快照：
-   - 调整到 work 位姿（大臂水平、小臂伸出）
-   - 保存为 "work"
-
-3. 保存 pick 快照：
-   - 调整到 pick 位姿（夹爪朝下、距目标 5cm）
-   - 保存为 "pick"
-
-4. 保存 place 快照：
-   - 调整到 place 位姿（夹爪在放置点上方）
-   - 保存为 "place"
-
-5. 查看保存的快照：
-   ```bash
-   cat named_snapshots.yaml
-   # 预期：
-   # snapshots:
-   #   home:
-   #     pwms: [1500, 1500, 1500, 1500, 1500]
-   #   work:
-   #     pwms: [1500, 1500, 1800, 1500, 1500]
-   #   pick:
-   #     pwms: [2000, 1700, 1500, 1500, 1500]
-   #   place:
-   #     pwms: [1500, 1700, 1500, 1500, 1500]
-   ```
-
-6. 通过快照快速回放：
-   ```bash
-   # 在 test_servo_direct 中按 'l' 加载快照
-   # 输入 "home"，立即跳转
-   ```
-
-**易错点**：
-- ⚠️ **快照名称重复** → **解决**：脚本会询问是否覆盖，输入 y 覆盖或 n 取消
-- ⚠️ **加载快照后机械臂不响应** → **解决**：检查 ROS2 模式 arm_controller 是否运行
-
----
-
-#### 步骤5：YAML 动作文件生成（阶段三：能改造，30min）
-
-> ⚠️ 本步骤对应 src 目录源码：`arm/car1_arm_controller/config/actions/pick.yaml`、`place.yaml`、`home.yaml`
-
-**知识点讲解**：
-
-**YAML 动作文件结构（3.3.1）**
-- **原理**：car1 的动作文件采用 YAML 列表结构，每一项（一个 action）包含三个字段：(1) `joints`：5 关节目标 PWM 列表；(2) `gripper`：夹爪目标（"open" / "close" / "stop"）；(3) `duration_ms`：从当前位姿到此位姿的运动时间（毫秒）。多个 action 顺序排列形成完整动作序列。
-- **源码对应**：`arm/car1_arm_controller/config/actions/pick_place.yaml`（完整抓取放置动作）
-
-**动作 vs 轨迹**
-- **原理**：car1 的"动作"是离散的位姿序列（每个 action 之间通过梯形插值过渡），与 MoveIt2 的"轨迹"（连续关节空间曲线）不同。动作文件的优势是：(1) 简单直观；(2) 易于手工编辑；(3) 不需要规划器。劣势是：(1) 路径不最优；(2) 不做碰撞检测。
-- **源码对应**：action_player.py 中 `parse_yaml()` 函数
-
-**操作步骤**：
-
-1. 查看示例动作文件：
-   ```bash
-   cat ~/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/config/actions/pick_place.yaml
-   # 预期：
-   # - name: "go_pick"
-   #   joints: [2000, 1700, 1500, 1500, 1500]
-   #   gripper: "open"
-   #   duration_ms: 2000
-   # - name: "descend"
-   #   joints: [2000, 1900, 1300, 1500, 1500]
-   #   gripper: "open"
-   #   duration_ms: 1500
-   # - name: "grasp"
-   #   joints: [2000, 1900, 1300, 1500, 1500]
-   #   gripper: "close"
-   #   duration_ms: 1000
-   # - name: "lift"
-   #   joints: [2000, 1700, 1500, 1500, 1500]
-   #   gripper: "close"
-   #   duration_ms: 1500
-   # - name: "go_place"
-   #   joints: [1500, 1700, 1500, 1500, 1500]
-   #   gripper: "close"
-   #   duration_ms: 2000
-   # - name: "release"
-   #   joints: [1500, 1700, 1500, 1500, 1500]
-   #   gripper: "open"
-   #   duration_ms: 1000
-   # - name: "go_home"
-   #   joints: [1500, 1500, 1500, 1500, 1500]
-   #   gripper: "open"
-   #   duration_ms: 2000
-   ```
-
-2. 创建自定义动作文件（实验报告必填）：
-   ```bash
-   cat > /tmp/my_pick_place.yaml << 'EOF'
-   # 自定义抓取放置动作（4 个步骤）
-   - name: "approach"
-     joints: [2000, 1700, 1500, 1500, 1500]
-     gripper: "open"
-     duration_ms: 2000
-   
-   - name: "grasp"
-     joints: [2000, 1900, 1300, 1500, 1500]
-     gripper: "close"
-     duration_ms: 1500
-   
-   - name: "lift"
-     joints: [2000, 1700, 1500, 1500, 1500]
-     gripper: "close"
-     duration_ms: 1500
-   
-   - name: "home"
-     joints: [1500, 1500, 1500, 1500, 1500]
-     gripper: "open"
-     duration_ms: 2000
-   EOF
-   ```
-
-3. 验证 YAML 语法：
-   ```bash
-   python3 -c "import yaml; d = yaml.safe_load(open('/tmp/my_pick_place.yaml')); print(f'OK, {len(d)} actions')"
-   # 预期：OK, 4 actions
-   ```
-
-4. 动作设计原则：
-   - 起点 home：所有关节 1500
-   - 接近目标：移动到目标上方 5-10cm
-   - 下压：仅降低 joint2/joint3，避免横向移动
-   - 抓取：夹爪 close
-   - 抬升：回升到接近高度
-   - 移动到放置点：旋转 joint1（底座）
-   - 下放到放置高度
-   - 释放：夹爪 open
-   - 归位：回 home
-
-**易错点**：
-- ⚠️ **YAML 缩进错误** → **解决**：使用空格（不用 tab），统一缩进 2 空格
-- ⚠️ **duration_ms 设为 0** → **解决**：至少 500ms，否则舵机来不及响应
-- ⚠️ **joints 数组长度不是 5** → **解决**：严格保持 5 个元素
-
----
-
-#### 步骤6：action_player 普通回放（阶段三：能改造，30min）
-
-> ⚠️ 本步骤对应 src 目录源码：`arm/car1_arm_controller/launch/action_player.launch.py`
-
-**知识点讲解**：
-
-**action_player 回放器（3.3.2）**
-- **原理**：`action_player.launch.py` 启动一个节点，订阅 YAML 动作文件并按顺序执行。每次执行包含三个阶段：(1) 发送 joint_command（5 关节目标 PWM）；(2) 等待 `duration_ms` 毫秒；(3) 发送 gripper 指令。完成后自动加载下一动作。支持三种模式：`normal`（普通）、`step`（单步）、`loop`（循环）。
-- **源码对应**：`arm/car1_arm_controller/action_player.py` 中 `play()` 函数
-
-**action_player 与 arm_controller 的协作**
-- **原理**：action_player 不直接控制舵机，而是通过 `joint_command` 话题向 arm_controller 发送目标。arm_controller 收到后做软限位检查并通过串口执行。这种"动作播放器 + 控制器"分离的设计使得：(1) 动作可被多个上层应用复用；(2) 控制器独立升级不影响动作文件。
-- **源码对应**：`action_player.py` 中 `self.joint_pub = create_publisher(JointCommand, '/arm/joint_command', 10)`
-
-**操作步骤**：
-
-1. 启动 arm_controller（必须）：
-   ```bash
-   ros2 launch car1_arm_controller arm_controller.launch.py
-   ```
-
-2. 启动 action_player 普通回放：
-   ```bash
-   ros2 launch car1_arm_controller action_player.launch.py \
-     yaml_file:=/tmp/my_pick_place.yaml \
-     mode:=normal
-   # 预期：机械臂按 4 个动作顺序执行，约 7 秒完成整个抓放循环
-   ```
-
-3. 监控执行进度：
-   ```bash
-   ros2 topic echo /action_player/progress
-   # 字段：current_index, total_count, current_action_name, status
-   ```
-
-4. 回放预定义动作：
-   ```bash
-   ros2 launch car1_arm_controller action_player.launch.py \
-     yaml_file:=$(ros2 pkg prefix car1_arm_controller)/share/car1_arm_controller/config/actions/pick_place.yaml \
-     mode:=normal
-   ```
-
-5. 回放结束后自动停止：
-   - 普通模式下执行完所有动作后 action_player 自动退出
-   - 终端打印 "All actions completed, exiting"
-
-**易错点**：
-- ⚠️ **回放时机械臂动作与预期不符** → **解决**：检查 YAML 中 joints/gripper 字段，确认与期望动作一致
-- ⚠️ **回放过程中关节不动** → **解决**：检查 arm_controller 是否运行，`/arm/joint_command` 话题是否被订阅
-- ⚠️ **YAML 文件找不到** → **解决**：使用绝对路径或 `$(ros2 pkg prefix xxx)/share/...` 形式
-
----
-
-#### 步骤7：单步 / 循环 / 急停模式（阶段三：能改造，30min）
-
-> ⚠️ 本步骤对应 src 目录源码：`action_player.py` 中 mode 参数处理
-
-**知识点讲解**：
-
-**单步模式（3.3.3）**
-- **原理**：单步（step）模式下，每执行一个 action 后暂停并等待用户在终端按 Enter 才继续。这种"人工确认"模式适合：(1) 初次调试新动作时逐步观察；(2) 抓取失败时人工干预；(3) 教学演示时讲解每一步。实现方式是 action_player 阻塞在 `input()` 调用上。
-- **源码对应**：`action_player.py` 中 `if self.mode == 'step': input('Press Enter for next action...')`
-
-**循环模式**
-- **原理**：循环（loop）模式下，整个动作序列按 `loop_count` 次重复执行，间隔 `loop_interval_sec` 秒。这种模式适合：(1) 重复抓取演示；(2) 老化测试；(3) 教学反复演示。循环计数为 0 表示无限循环，需用 Ctrl+C 退出。
-- **源码对应**：`action_player.py` 中 `for i in range(loop_count)` 循环
-
-**紧急停止**
-- **原理**：紧急停止通过监听 SIGINT（Ctrl+C）实现。action_player 在收到信号时立即停止向 arm_controller 发布新指令，但允许"当前 action"完成。急停后舵机保持在最后位置（不会自动回 home）。这种"软急停"设计避免突然断电导致的机械冲击。
-- **源码对应**：`action_player.py` 中 `signal_handler()` 函数
-
-**操作步骤**：
-
-1. 单步模式：
-   ```bash
-   ros2 launch car1_arm_controller action_player.launch.py \
-     yaml_file:=/tmp/my_pick_place.yaml \
-     mode:=step
-   # 预期：执行 1 个 action 后打印 "Press Enter for next action..."，等待输入
-   # 反复按 Enter 逐步完成
-   ```
-
-2. 循环模式（3 次循环）：
-   ```bash
-   ros2 launch car1_arm_controller action_player.launch.py \
-     yaml_file:=/tmp/my_pick_place.yaml \
-     mode:=loop \
-     loop_count:=3 \
-     loop_interval_sec:=2.0
-   # 预期：动作执行 3 次后停止，总耗时 ≈ 3 × (7+2) = 27 秒
-   ```
-
-3. 无限循环（演示用）：
-   ```bash
-   ros2 launch car1_arm_controller action_player.launch.py \
-     yaml_file:=/tmp/my_pick_place.yaml \
-     mode:=loop \
-     loop_count:=0
-   # 预期：无限循环，按 Ctrl+C 停止
-   ```
-
-4. 紧急停止测试：
-   - 启动循环模式（loop_count=5）
-   - 在机械臂运动过程中按 Ctrl+C
-   - 预期：机械臂停在当前位置，终端打印 "Emergency stop triggered"
-
-5. 急停后恢复：
-   ```bash
-   ros2 service call /arm/go_home car1_arm_msgs/srv/GoHome
-   # 手动复位
-   ```
-
-6. 性能基线（实验报告必填）：
-
-   | 指标 | 期望值 | 实测值 |
-   |------|-------|-------|
-   | 校准 GUI 启动时间 | < 5s |  |
-   | 单关节步进响应延迟 | < 50ms |  |
-   | 单个 action 执行误差 | < 5 PWM |  |
-   | 单步模式间隔 | 人工确认 |  |
-   | 循环模式间隔精度 | ±0.1s |  |
-   | 急停响应时间 | < 100ms |  |
-
-**易错点**：
-- ⚠️ **单步模式按 Enter 无响应** → **解决**：检查 action_player 终端是否在前台（SSH 时需注意会话）
-- ⚠️ **循环模式停不下来** → **解决**：Ctrl+C 不响应时使用 `kill -9 $(pgrep -f action_player)`
-- ⚠️ **急停后机械臂缓慢下垂** → **解决**：急停后舵机无主动维持，5V 电源断开后机械臂会因重力下垂
-
----
-
-#### 完整可运行代码 demo_calibration_and_recording.py
-
-> 独立 demo 脚本：完整的校准 + 录制 + 回放流程（依赖 arm_controller 运行）
+> 独立 demo 脚本：用 rclpy 编写一个客户端，调用 action_player 的 play/next/stop 服务
 
 ```python
 # -*- coding: utf-8 -*-
 """
-实验3 demo：零位校准与动作录制回放一体化
+实验3 demo：action_player 服务化控制 demo
 平台：B2 / C1
-前置：ros2 launch car1_arm_controller arm_controller.launch.py 已运行
-运行：python3 demo_calibration_and_recording.py
+前置：ros2 launch car1_bringup bringup.launch.py 与 ros2 launch car1_arm_controller arm_controller.launch.py 已运行
+     ros2 run car1_arm_controller action_player --ros-args -p action_file:=pick_and_place.yaml 已运行
+运行：python3 demo_action_player_pubsub.py
 """
 import rclpy
 from rclpy.node import Node
-from car1_arm_msgs.msg import JointCommand
-from car1_arm_msgs.srv import SetGripper
+from std_srvs.srv import Trigger
 import time
-import yaml
 
 
-class CalibratorAndRecorder(Node):
-    """零位校准 + 抓取动作录制"""
+class ActionPlayerClient(Node):
+    """action_player 服务客户端（普通/单步/急停）"""
     
     def __init__(self):
-        super().__init__('calibrator_and_recorder')
-        self.pub = self.create_publisher(JointCommand, '/arm/joint_command', 50)
-        self.gripper_cli = self.create_client(SetGripper, '/arm/set_gripper')
-        while not self.gripper_cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Waiting for /arm/set_gripper...')
+        super().__init__('action_player_client')
+        self.play_cli = self.create_client(Trigger, '/action_player/play')
+        self.next_cli = self.create_client(Trigger, '/action_player/next')
+        self.stop_cli = self.create_client(Trigger, '/action_player/stop')
+        
+        for cli, name in [(self.play_cli, 'play'),
+                          (self.next_cli, 'next'),
+                          (self.stop_cli, 'stop')]:
+            while not cli.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info(f'Waiting for /action_player/{name}...')
     
-    def move_to_pwm(self, pwms, duration_sec=2.0):
-        """梯形插值运动到目标 PWM"""
-        start_pwms = [1500] * 5  # 假设从 home 出发
-        steps = max(1, int(duration_sec / 0.02))
-        for i in range(steps + 1):
-            alpha = i / steps
-            cur = [int(start_pwms[j] + (pwms[j] - start_pwms[j]) * alpha) for j in range(5)]
-            msg = JointCommand()
-            msg.ids = [1, 2, 3, 4, 5]
-            msg.pwms = cur
-            self.pub.publish(msg)
-            time.sleep(0.02)
-    
-    def set_gripper(self, command):
-        """0=open, 1=close, 2=stop"""
-        req = SetGripper.Request()
-        req.command = command
-        future = self.gripper_cli.call_async(req)
+    def call_play(self):
+        """普通回放：一次执行所有 actions"""
+        future = self.play_cli.call_async(Trigger.Request())
         rclpy.spin_until_future_complete(self, future)
         return future.result()
     
-    def record_pick_place(self, output_file):
-        """录制抓取放置动作"""
-        actions = []
-        
-        # 步骤 1：home
-        self.move_to_pwm([1500, 1500, 1500, 1500, 1500], 2.0)
-        actions.append({'name': 'home', 'joints': [1500, 1500, 1500, 1500, 1500],
-                        'gripper': 'open', 'duration_ms': 500})
-        
-        # 步骤 2：接近 pick 点
-        self.get_logger().info('Adjust to pick position, then press Enter...')
-        input('Press Enter to record pick approach...')
-        actions.append({'name': 'pick_approach', 'joints': [2000, 1700, 1500, 1500, 1500],
-                        'gripper': 'open', 'duration_ms': 2000})
-        
-        # 步骤 3：下压
-        self.get_logger().info('Lower to grasp height, then press Enter...')
-        input('Press Enter to record descend...')
-        actions.append({'name': 'descend', 'joints': [2000, 1900, 1300, 1500, 1500],
-                        'gripper': 'open', 'duration_ms': 1500})
-        
-        # 步骤 4：抓取
-        self.set_gripper(1)  # close
-        actions.append({'name': 'grasp', 'joints': [2000, 1900, 1300, 1500, 1500],
-                        'gripper': 'close', 'duration_ms': 1000})
-        
-        # 步骤 5：抬升
-        actions.append({'name': 'lift', 'joints': [2000, 1700, 1500, 1500, 1500],
-                        'gripper': 'close', 'duration_ms': 1500})
-        
-        # 步骤 6：移动到 place
-        actions.append({'name': 'go_place', 'joints': [1500, 1700, 1500, 1500, 1500],
-                        'gripper': 'close', 'duration_ms': 2000})
-        
-        # 步骤 7：释放
-        self.set_gripper(0)  # open
-        actions.append({'name': 'release', 'joints': [1500, 1700, 1500, 1500, 1500],
-                        'gripper': 'open', 'duration_ms': 1000})
-        
-        # 步骤 8：回 home
-        actions.append({'name': 'home', 'joints': [1500, 1500, 1500, 1500, 1500],
-                        'gripper': 'open', 'duration_ms': 2000})
-        
-        # 写入 YAML
-        with open(output_file, 'w', encoding='utf-8') as f:
-            yaml.dump(actions, f, default_flow_style=False, allow_unicode=True)
-        self.get_logger().info(f'Saved {len(actions)} actions to {output_file}')
+    def call_next(self):
+        """单步模式：执行下一步"""
+        future = self.next_cli.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self, future)
+        return future.result()
+    
+    def call_stop(self):
+        """急停：立即停止"""
+        future = self.stop_cli.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self, future)
+        return future.result()
 
 
 def main():
     rclpy.init()
-    node = CalibratorAndRecorder()
+    node = ActionPlayerClient()
     
-    print('=== 零位校准与动作录制 Demo ===')
-    print('1. 运行校准（请确保机械臂已在中位）')
-    print('2. 录制抓取放置动作')
+    print('=== action_player 控制 Demo ===')
+    print('1. 普通回放（一次执行全部）')
+    print('2. 单步模式（每步按 Enter）')
+    print('3. 急停演示（5秒后自动停止）')
     
-    choice = input('请选择 (1=校准 2=录制 3=退出): ')
+    choice = input('请选择 (1/2/3): ')
     
     if choice == '1':
-        print('请使用 servo_calib.launch.py 进行图形化校准')
+        print('触发普通回放...')
+        result = node.call_play()
+        print(f'结果: success={result.success}, message="{result.message}"')
+    
     elif choice == '2':
-        node.record_pick_place('/tmp/demo_pick_place.yaml')
+        n = int(input('请输入步数（YAML 中 action 数量）: '))
+        for i in range(n):
+            input(f'按 Enter 执行 step {i+1}...')
+            result = node.call_next()
+            print(f'  step {i+1}: success={result.success}')
+    
+    elif choice == '3':
+        print('触发普通回放，5 秒后急停...')
+        node.call_play()
+        time.sleep(5.0)
+        print('急停!')
+        result = node.call_stop()
+        print(f'急停结果: success={result.success}')
+    
     else:
         print('Bye')
     
     rclpy.shutdown()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
 ```
 
 ### 1.7 实验总结
 
 **完成成果**：
-- 理解舵机零位校准原理与软件 offset 方案
-- 使用 servo_calib 校准 GUI 完成至少 2 个关节的零位校准
-- 使用 test_servo_direct.py 完成抓取放置动作的交互式录制
-- 掌握 YAML 动作文件结构并编写了自定义动作
-- 通过 action_player 在 normal/step/loop 模式下验证动作
+- 理解 `bringup.launch.py` 启动的 7~8 个节点拓扑结构与协作关系
+- 掌握用 `rqt_graph` 绘制节点-话题-服务有向图的方法
+- 掌握用 `joint_command` 话题发送 5 关节弧度控制机械臂（**不触发 IK**）
+- 独立使用 `action_player` 节点回放 exp02 导出的 `pick_and_place.yaml`
+- 掌握修改 YAML 某步 PWM 后 `colcon build` 热更新并重放观察差异的方法
+- 掌握 `servo_calib` 校准 GUI 的工作流程，能用软件 offset 补偿消除装配偏差
+- 理解 4 种回放模式（普通/单步/循环/急停）的适用场景
 
 **技能收获**：
-- 掌握舵机校准的工程方法（视觉判断 + 水平仪辅助）
-- 理解软件 offset 相比 EEPROM 写入的优势
-- 熟悉 YAML 动作文件的设计原则（离散位姿序列）
-- 掌握 action_player 多种回放模式与急停机制
+- 掌握 ROS2 节点架构的可视化分析（rqt_graph）
+- 区分 **action_player 节点** vs 常见的 action_player.launch.py
+- 理解 `joint_command`（弧度）vs `target_pose`（末端位姿）的本质差异与教学顺序隔离
+- 掌握动作文件的 YAML 结构、字段含义、热更新流程
+- 掌握软件 offset 方案（不写 EEPROM、可热更新）
 
 **常见问题与解决**：
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| 校准后机械臂仍不齐 | 渐进式校准未完成 | 多轮迭代粗调+精调 |
-| 录制时按键无响应 | 终端未获焦点 | 点击终端窗口后按键 |
-| 回放时机械臂动作跳跃 | duration_ms 过小 | 至少 500ms/步 |
-| 急停不响应 | 进程僵死 | `kill -9 $(pgrep -f action_player)` |
-| YAML 解析失败 | 缩进错误 | 使用 2 空格缩进，不用 tab |
+| 找不到 action_player 命令 | 未编译 | `colcon build --packages-select car1_arm_controller` |
+| play 服务无响应 | YAML 路径错误 | 用 `ros2 pkg prefix car1_arm_controller` 获取 share 路径 |
+| 修改 YAML 后重放没变化 | 未重新 colcon build | 必须 `colcon build` 才会复制到 install |
+| 循环模式停不下来 | stop 服务未调用 | `ros2 service call /action_player/stop` 或 `kill -9` |
+| 误用 target_pose 触发 IK | 教学顺序混淆 | 本实验严禁 target_pose，仅用 joint_command 话题 |
+| 校准后仍不齐 | 渐进式校准未完成 | 多轮迭代粗调+精调 |
+| servo_calib 报"display not found" | SSH 远程无显示 | 在工作站本地终端运行 |
+| rqt_graph 不显示节点 | 节点刚启动未连接 | 点击 🔄 强制刷新或发布任意消息激活节点 |
 
 ### 1.8 思考题
 
-1. 软件 offset 方案相比直接写入舵机 EEPROM 有什么优缺点？在什么场景下必须使用 EEPROM 写入？
-2. 命名快照（snapshot）与动作文件（action）的本质区别是什么？能否将两者合并为同一数据结构？
-3. 单步模式适合哪些调试场景？为什么自动化测试通常不采用单步模式？
-4. 急停后机械臂缓慢下垂的物理原因是什么？工业机械臂如何避免这个问题？
-5. 如果录制的动作在第 3 次回放时失败，可能的原因有哪些？如何设计"自愈"机制？
+1. `bringup.launch.py` 启动的 7~8 个节点中，哪些是"输入"（订阅命令），哪些是"输出"（发布状态）？画出完整的有向数据流图。
+2. `action_player` 是节点还是 launch？为什么 ROS2 项目中既需要 launch（启动多节点）又需要节点（独立可执行）？两者各适合什么场景？
+3. `joint_command` 话题用 `position` 字段（弧度）而不是 `PWM`，这种"应用层 vs 设备层"的抽象隔离有什么好处？如果直接发 PWM 会有什么问题？
+4. 为什么不直接调用 `/arm_controller/target_pose`（更直观），而必须用 `joint_command`（更底层）？在什么教学阶段应该切换到 target_pose？
+5. 软件 offset 方案相比直接写入舵机 EEPROM 有什么优缺点？在什么场景下必须使用 EEPROM 写入？
+6. 命名快照（snapshot）与动作文件（action）的本质区别是什么？能否将两者合并为同一数据结构？
+7. 单步模式适合哪些调试场景？为什么自动化测试通常不采用单步模式？
+8. 急停后机械臂缓慢下垂的物理原因是什么？工业机械臂如何避免这个问题？
 
 ### 1.9 实验报告要求
 
-**评分标准**：校准原理与操作 20 分 + test_servo_direct 交互调试 20 分 + YAML 动作文件设计 25 分 + action_player 三种模式验证 20 分 + 实验报告 15 分 = 100 分。
+**评分标准**：bringup 节点拓扑观察 15 分 + joint_command 弧度控制 15 分 + rqt_graph 架构图 10 分 + action_player 节点回放 20 分 + YAML 修改热更新 15 分 + servo_calib 校准 15 分 + 实验报告 10 分 = 100 分。
+
+**实验报告必含项**：
+- [ ] `rqt_graph` 截图（标注 7~8 个节点的关键链路：`servo_controller` → `/servo_command` → 串口）
+- [ ] `joint_command` 控制 5 关节的录屏或截图（**严禁用 target_pose**）
+- [ ] `action_player` 普通回放的录屏（机械臂完成 pre_grasp→gripper_open→...→back_work 全过程）
+- [ ] YAML 修改前后夹爪张开角度对比图（修改 gripper_open PWM 从 1000→1200）
+- [ ] servo_calib GUI 校准 joint2 截图与 offset 写入验证
+- [ ] 思考题 8 题全部作答
 
 ---
 
@@ -2130,6 +2164,8 @@ if __name__ == "__main__":
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-08-04 | 初版生成（基于 _registry.yaml human_waiver 模式，标注 [待源码核实]） |
+| v1.1 | 2026-08-10 | 删除 LewanSoul/Hiwonder 品牌信息，替换为"总线舵机" |
+| **v1.2** | 2026-08-10 | **重大重构：放弃 test_servo_direct.py 录制 + action_player.launch.py 混合路线，改为 bringup.launch.py + action_player 节点路线**。原因：用户反馈实验3主题应是"ROS2 架构认知与动作回放"，而非重复实验2的 test_servo_direct 录制；新方案按 **3a（系统架构认知 30min）→ 3b（动作回放 2h）→ 3c（零位校准 1.5h）** 三子阶段组织，明确**严禁使用** `/arm_controller/target_pose`（自动 IK）和 `/arm_controller/pick`/`/arm_controller/place`（完整抓取 pipeline），仅使用 `joint_command` 话题和 `action_player` 节点；输入数据来自 exp02 导出的 `pick_and_place.yaml`；新增 10 个知识点（bringup 拓扑、rqt_graph、node list、joint_command、PWM↔rad 换算、action_player 节点、YAML 格式兼容、回放模式、软件 offset、servo_calib GUI）；1.6 重写为 5 步：启动 bringup→joint_command 弧度控制→3a 架构认知→3b 动作回放（4 种模式）→3c 零位校准（software offset） |
 
 ---
 
@@ -2186,7 +2222,9 @@ if __name__ == "__main__":
 
 1. 进入工作空间根目录：`cd ~/ros2_ws/src/xflz_eai_car1/test/car1_web_server/`
 2. 启动 Web 服务器：`python3 server_cors.py`
-3. 浏览器访问：`http://localhost:8000`
+3. 浏览器访问：
+   - 本机访问：`http://localhost:8000/viewer`
+   - 非本机访问（跨设备）：`http://<设备IP>:8000/viewer`（例如 `http://192.168.1.100:8000/viewer`，设备 IP 用 `hostname -I` 或 `ip addr` 查看）
 4. 页面加载：左侧 3D 视口显示 5 自由度机械臂，右侧控制面板
 5. 拖动末端目标球：机械臂实时跟随，IK 求解器面板显示 5 个关节角
 6. 切换 IK 模式："Analytical" / "Numerical" 对比两种求解结果
@@ -2371,7 +2409,8 @@ graph LR
    ```
 
 2. 浏览器访问：
-   - 打开 Chrome/Edge，访问 `http://localhost:8000`
+   - 本机访问：打开 Chrome/Edge，访问 `http://localhost:8000/viewer`
+   - 非本机访问（跨设备）：使用设备 IP + `/viewer`，例如 `http://192.168.1.100:8000/viewer`（IP 用 `hostname -I` 或 `ip addr` 查看）
    - 页面加载约 2-3 秒
    - 预期：左侧 3D 视口显示机械臂，右侧控制面板
 
@@ -2894,14 +2933,22 @@ if __name__ == "__main__":
 1. 连接硬件：确保机械臂通电、串口连接正常
 2. 进入工作空间：`cd ~/ros2_ws`
 3. source 环境：`source /opt/ros/humble/setup.bash && source install/setup.bash`
-4. 启动交互式测试：`python3 src/xflz_eai_car1/arm/kinematics/interactive_ik_test.py --direct`
-5. 终端显示主菜单：`[1] Single Point IK  [2] Batch FK/IK  [3] Workspace Scan  [q] Quit`
-6. 选择 `[1] Single Point IK`：输入目标点 (0.2, 0.0, 0.2)，观察 IK 解与 FK 验证
-7. 选择 `[2] Batch FK/IK`：执行 100 次随机采样闭环验证，输出误差统计
-8. 退出：`q`
+4. 启动交互式测试：`python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct`
+5. 终端显示主菜单：`[1] Single Point IK  [2] Batch FK/IK  [3] Workspace Scan  [4] System Offset Analysis  [5] Send PWM Directly  [q] Quit`
+6. （实机调试时）输入目标点 (0.28, 0, 0.1) 和目标 pitch=180°（即末端夹爪垂直向下），观察 IK 解
+7. 退出：`q`
+
+> ⚠️ **实机验证安全警告（必读）**
+> - 本实验是**第一次将 IK 解实际下发到真实机械臂**，请务必谨慎：
+>   1. **必须先按"提供的 PWM 信息"逐关节核对 IK 解算出的 5 路 PWM 值**，确认与舵机中位/合理工作范围一致后再下发；任何一路 PWM 偏离正常区间（如接近 500 或 2500 极限）都说明目标点超出安全包络，禁止直接执行
+>   2. **设备虽然自带堵转保护**，但堵转期间的瞬时电流会加速舵机齿轮磨损，**长时间或高频堵转仍会损坏设备**
+>   3. 因 PWM 指令误用导致设备损坏属于**使用问题，不在质保范围**
+>   4. **强烈建议在直接调用 `interactive_ik_test.py` 之前**，先进入 `/home/iflytek/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test` 执行 `python test_servo_direct.py`，用 `interactive_mode` 逐关节手发 PWM 验证设备状态与软限位正常
+> - 夹爪垂直向下（pitch=180°）的目标位姿 (0.28, 0, 0.1) 仅作为 IK 算法的示例输入；首次实机验证请先把目标 z 抬高、r 缩小，**逐步逼近到 (0.28, 0, 0.1)**，不要一步到位
+> - 任何情况下，发现机械臂抖动、异响、电流声、舵机发烫，立即断电排查
 
 **预期效果描述**：
-- **单点 IK**：输入目标 (0.2, 0.0, 0.2) → IK 解 [0, -0.5, 1.0, -0.3, -0.2] rad → FK 反算 (0.200, 0.000, 0.200) → 误差 < 0.1mm
+- **单点 IK**：输入目标 (0.28, 0, 0.1)、pitch=180° → IK 解 [q1≈0, q2≈..., q3≈..., q4≈..., q5≈...] → FK 反算 (0.280, 0.000, 0.100)，末端夹爪姿态接近垂直向下
 - **批量验证**：100 次随机采样，平均误差 0.8mm，最大误差 1.5mm，成功率 100%
 - **系统偏移识别**：未补偿时误差均值为 +2.5mm，补偿后降至 +0.3mm
 - **直连串口模式**：--direct 模式下脚本直接通过串口控制舵机，不依赖 ROS2 节点
@@ -3143,22 +3190,22 @@ graph LR
 
 **操作步骤**：
 
-1. 启动交互式测试：
+1. 启动交互式测试（与 1.5 步骤 4 相同，使用 `--direct` 直连串口模式更便于硬件在线验证）：
    ```bash
-   python3 ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/interactive_ik_test.py
+   cd ~/ros2_ws
+   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct \
+     --port /dev/ttyUSB0 --baud 1000000
    ```
 
-2. 选择 [2] Batch FK/IK：
+2. 终端菜单参考（实际菜单以脚本输出为准）：
    ```
-   === Kinematics Test Menu ===
-   [1] Single Point IK
-   [2] Batch FK/IK
+   === Interactive IK Test (Direct Serial Mode) ===
+   [1] Single Point IK + Move Arm
+   [2] Batch FK/IK (no movement)
    [3] Workspace Scan
    [4] System Offset Analysis
+   [5] Send PWM Directly
    [q] Quit
-   
-   Choice: 2
-   Enter sample count (default 100): 100
    ```
 
 3. 等待验证完成（约 5-10 秒），输出报告：
@@ -3212,10 +3259,12 @@ graph LR
 
 **操作步骤**：
 
-1. 启动系统偏移分析：
+1. 启动系统偏移分析（同样使用 `--direct` 直连串口模式，便于在线采集真实舵机反馈）：
    ```bash
-   python3 interactive_ik_test.py
-   # 菜单选择 [4] System Offset Analysis
+   cd ~/ros2_ws
+   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct \
+     --port /dev/ttyUSB0 --baud 1000000
+   # 在菜单中选择 [4] System Offset Analysis
    ```
 
 2. 程序提示测量流程：
@@ -3347,11 +3396,12 @@ graph LR
 
 1. 启动直连串口模式：
    ```bash
-   python3 ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/interactive_ik_test.py --direct \
+   cd ~/ros2_ws
+   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct \
      --port /dev/ttyUSB0 --baud 1000000
    ```
 
-2. 菜单功能：
+2. 终端菜单（实际菜单以脚本输出为准）：
    ```
    === Interactive IK Test (Direct Serial Mode) ===
    [1] Single Point IK + Move Arm
@@ -3362,38 +3412,47 @@ graph LR
    [q] Quit
    ```
 
-3. 单点 IK + 实际运动：
-   - 选择 [1] Single Point IK
-   - 输入目标 (0.2, 0.0, 0.2)
-   - 程序显示 IK 解，询问 "Move arm? (y/n)"
-   - 输入 y，机械臂运动到目标位姿
+3. 实机调试流程（**严格按以下顺序，禁止跳过前置验证**）：
 
-4. 串口监控：
-   - 在另一终端运行串口监控工具：
-     ```bash
-     sudo cutecom --device /dev/ttyUSB0 --baud 1000000
-     # 观察 0x55 0x55 帧的发送频率
-     ```
+   > ⚠️ **实机验证安全警告（必读）**
+   > - 本步骤第一次将 IK 解下发到真实机械臂，**任何错发 PWM 都可能造成堵转损坏**：
+   >   1. **必须先按"提供的 PWM 信息"逐关节核对 IK 解算出的 5 路 PWM 值**，确认与舵机中位/合理工作范围一致后再下发；任何一路 PWM 偏离正常区间（如接近 500 或 2500 极限）都说明目标点超出安全包络，禁止直接执行
+   >   2. **设备虽然自带堵转保护**，但堵转期间的瞬时电流会加速舵机齿轮磨损，**长时间或高频堵转仍会损坏设备**
+   >   3. 因 PWM 指令误用导致设备损坏属于**使用问题，不在质保范围**
+   >   4. **强烈建议在直接调用 `interactive_ik_test.py` 之前**，先进入 `/home/iflytek/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test` 执行 `python test_servo_direct.py`，用 `interactive_mode` 逐关节手发 PWM 验证设备状态与软限位正常
 
-5. 实机 FK/IK 闭环：
-   - 启动直连串口模式
-   - 选择 [2] Batch FK/IK
-   - 程序询问 "Move arm to each pose? (y/n)"
-   - y：机械臂依次运动到 100 个采样点，测量末端位置
-   - n：仅在算法层验证（不开串口）
+   a. **第一步：进入 interactive_mode 验证设备状态**
+      ```bash
+      cd /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test
+      python test_servo_direct.py
+      ```
+      在 `interactive_mode` 下逐个关节发 PWM（500~2500，center=1500），确认：(a) 5 个舵机都能正常响应；(b) 软限位生效；(c) 无异响/抖动/电流声
 
-6. PWM 直发测试：
-   - 选择 [5] Send PWM Directly
+   b. **第二步：进入直连串口 IK 测试，演示目标位姿 (0.28, 0, 0.1)、pitch=180°（夹爪垂直向下）**
+      - 在 `interactive_ik_test.py --direct` 的菜单中查看各功能项
+      - **先仅查看 IK 解（不开实际运动）**，对照提供的 PWM 范围表核对 5 路输出
+      - 确认安全后再决定是否实际下发；**逐步逼近**：建议首次把 z 抬高、r 缩小，**逐步逼近到 (0.28, 0, 0.1)**，不要一步到位
+
+   c. **串口监控**（可选，便于观察协议帧）：
+      - 在另一终端运行串口监控工具：
+        ```bash
+        sudo cutecom --device /dev/ttyUSB0 --baud 1000000
+        # 观察 0x55 0x55 帧的发送频率
+        ```
+
+4. PWM 直发测试（用于熟悉协议帧，不构成实际目标位姿）：
+   - 在 `interactive_ik_test.py --direct` 菜单中选择 [5] Send PWM Directly
    - 输入 `1500 1500 1500 1500 1500`（所有关节回中位）
-   - 观察机械臂回到 home
+   - 观察机械臂回到 home 位姿
 
-7. 对比 ROS2 模式：
+5. 对比 ROS2 模式：
    - 关闭直连串口模式
    - 启动 `ros2 launch car1_arm_controller arm_controller.launch.py`
    - 运行 `ros2 run kinematics interactive_ik_test.py`（不带 --direct）
    - 对比两种模式的便利性
 
 **易错点**：
+- ⚠️ **PWM 误发导致堵转** → **解决**：**严格按步骤 3a → 3b 顺序**，先用 `test_servo_direct.py` interactive_mode 验证设备，再进入 `interactive_ik_test.py --direct`；任何一路 PWM 偏离合理区间立即 Ctrl+C 中断
 - ⚠️ **直连串口模式与 ROS2 模式冲突** → **解决**：二选一，不能同时使用
 - ⚠️ **串口打开失败** → **解决**：检查 `/dev/ttyUSB0` 权限与占用情况
 
@@ -3668,70 +3727,104 @@ if __name__ == "__main__":
 
 ## 实验6：机械臂IK固定抓取实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/simulations/car1_gazebo/` 与 `ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/`，未复制到 `source-codes/EXP005/exp06/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `car1_gazebo/launch/grasp_demo.launch.py`、`arm_controller.py`、`/arm/target_pose` 话题、`/arm/pick`、`/arm/place` 服务等抓取流程源码。
+> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/`，未复制到 `source-codes/EXP005/exp06/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `arm_controller.py`、`/arm/target_pose` 话题、`/arm/pick`、`/arm/place` 服务等抓取流程源码。
+
+> 📌 **本实验直接进行实机抓取**，**不再包含 Gazebo 仿真案例**（grasp_demo 引导性介绍已在实验 1 步骤 7 中完成；本实验聚焦于真实环境下的固定位置抓取 pipeline）。
 
 ### 1.1 关联知识点
 
-本实验对应第 6 章"固定位置IK抓取"，覆盖以下 12 个知识点：
+本实验对应第 6 章"固定位置IK抓取"，覆盖以下 9 个知识点：
 
-- 6.1.1 grasp_demo > 概念 > `grasp_demo.launch.py` 提供 ik/manual/none 三种抓取模式选择
-- 6.1.2 ik/manual模式 > 流程 > ik 模式先调用 IK 反解再驱动 arm_controller；manual 模式直接给关节角
-- 6.1.3 接触力反馈 > 原理 > 仿真抓取支持接触力反馈与抓取稳定性可视化，便于参数调优
-- 6.2.1 target_pose > 流程 > 通过 `/arm/target_pose` (PoseStamped) 设置目标点，调用 `/arm/pick` 服务执行
-- 6.2.2 /arm/place > 概念 > `/arm/place` 服务将物体放置到指定坐标，自动控制夹爪开合
-- 6.2.3 分步移动 > 原理 > 分步移动策略：先转底座 J1 对准目标，再驱动 J2-J5 到目标姿态，避免奇异
-- 6.3.1 gripper_depth > 概念 > gripper_depth 控制夹爪下探深度，需根据物体高度调整
-- 6.3.2 pre_grasp_height > 流程 > pre_grasp_height 与 lift_height 决定预抓取与抬升的安全高度
-- 6.3.3 grasp_pitch > 原理 > grasp_pitch 控制末端俯仰角，水平抓取设为 0°，斜面抓取需正向倾斜
-- 6.4.1 软限位 > 概念 > 关节软限位在 arm_controller 中嵌入，超界时拒绝执行并报警
-- 6.4.2 奇异检测 > 流程 > 奇异位姿检测通过 Jacobian 条件数阈值实现，自动切换到备用解
-- 6.4.3 失败回退 > 原理 > 抓取失败回退机制：先抬升再重试，连续 N 次失败后报警
+- 6.1.1 target_pose > 流程 > 通过 `/arm/target_pose` (PoseStamped) 设置目标点，调用 `/arm/pick` 服务执行
+- 6.1.2 /arm/place > 概念 > `/arm/place` 服务将物体放置到指定坐标，自动控制夹爪开合
+- 6.1.3 分步移动 > 原理 > 分步移动策略：先转底座 J1 对准目标，再驱动 J2-J5 到目标姿态，避免奇异
+- 6.2.1 gripper_depth > 概念 > gripper_depth 控制夹爪下探深度，需根据物体高度调整
+- 6.2.2 pre_grasp_height > 流程 > pre_grasp_height 与 lift_height 决定预抓取与抬升的安全高度
+- 6.2.3 grasp_pitch > 原理 > grasp_pitch 控制末端俯仰角，水平抓取设为 0°，斜面抓取需正向倾斜
+- 6.3.1 软限位 > 概念 > 关节软限位在 arm_controller 中嵌入，超界时拒绝执行并报警
+- 6.3.2 奇异检测 > 流程 > 奇异位姿检测通过 Jacobian 条件数阈值实现，自动切换到备用解
+- 6.3.3 失败回退 > 原理 > 抓取失败回退机制：先抬升再重试，连续 N 次失败后报警
 
 ### 1.2 实验目标
 
-1. 理解 Gazebo 仿真抓取三模式（ik/manual/none）的差异与适用场景 — 原理理解
-2. 掌握 `/arm/target_pose` 话题与 `/arm/pick`、`/arm/place` 服务的工作流程 — 流程掌握
-3. 独立完成从设置目标到执行抓取的完整实机抓取流程 — 独立完成
-4. 能够调优抓取参数（gripper_depth、pre_grasp_height、lift_height、grasp_pitch）— 独立完成
-5. 理解分步移动策略与关节限位保护机制的设计思想 — 迁移应用
+1. 掌握 `/arm/target_pose` 话题与 `/arm/pick`、`/arm/place` 服务的工作流程 — 流程掌握
+2. 独立完成从设置目标到执行抓取的完整实机抓取流程 — 独立完成
+3. 能够调优抓取参数（gripper_depth、pre_grasp_height、lift_height、grasp_pitch）— 独立完成
+4. 理解分步移动策略与关节限位保护机制的设计思想 — 迁移应用
 
 ### 1.3 实验环境
 
 | 类别 | 配置 |
 |------|------|
 | 硬件 | 具身智能实验箱B2 / 机器人小车C1（含 5 自由度机械臂、工作桌面、待抓取物体如立方块/球/圆柱） |
-| OS | Ubuntu 22.04 + ROS2 Humble + Gazebo 11 |
+| OS | Ubuntu 22.04 + ROS2 Humble |
 | Python | 3.10 |
-| 核心库 | rclpy、ros2-control、moveit_ros_planning_interface、gazebo_ros_pkgs |
-| 仿真包 | car1_gazebo（含 grasp_demo.launch.py） |
+| 核心库 | rclpy、ros2-control、moveit_ros_planning_interface |
 | 控制包 | car1_arm_controller（含 arm_controller.py 与 /arm/pick 服务） |
 | 抓取参数 | gripper_depth=0.02m、pre_grasp_height=0.05m、lift_height=0.10m、grasp_pitch=0° |
-| 主入口 | `simulations/car1_gazebo/launch/grasp_demo.launch.py`（Gazebo 仿真抓取）<br>`arm/car1_arm_controller/car1_arm_controller/arm_controller.py`（实机抓取）<br>`/arm/target_pose` (话题)、`/arm/pick` (服务)、`/arm/place` (服务) |
+| 主入口 | `arm/car1_arm_controller/car1_arm_controller/arm_controller.py`（**实机抓取**）<br>`/arm/target_pose` (话题)、`/arm/pick` (服务)、`/arm/place` (服务) |
 
 ### 1.4 实验难度
 
 - 难度: ⭐⭐⭐ 难
-- 重点: 仿真三模式对比；target_pose → pick/place 流程；分步移动策略
-- 难点: 抓取参数（gripper_depth、pre_grasp_height）的调优；奇异检测与回退机制
+- 重点: target_pose → pick/place 流程；分步移动策略；实机抓取参数调优
+- 难点: 抓取参数（gripper_depth、pre_grasp_height）的实机调优；奇异检测与回退机制
 
 ### 1.5 实验现象
 
 **快速验证流程**（帮助学习者快速看到实验效果）：
 
-1. 启动 Gazebo 仿真：`ros2 launch car1_gazebo grasp_demo.launch.py mode:=ik`
-2. 弹出 Gazebo 窗口，加载桌面与立方块物体
-3. 设置目标点：`ros2 topic pub --once /arm/target_pose geometry_msgs/msg/PoseStamped ...`
-4. 触发抓取：`ros2 service call /arm/pick car1_arm_msgs/srv/Pick ...`
-5. 观察机械臂在 Gazebo 中自动：转底座对准 → 大臂下压 → 夹爪闭合 → 抬升
-6. 触发放置：`ros2 service call /arm/place ...`
+> ⚠️ **真实接口说明（已对齐源码）**
+> - 抓取/放置走 `/arm_controller/set_pick_target` 话题（**只存目标，不会让臂先动一次**）；`/arm_controller/target_pose` 会**立即执行 IK 并移动**，用于预检可达性。
+> - `/arm_controller/pick`、`/arm_controller/place` 是 `std_srvs/srv/Trigger`（**无请求字段**，命令体留空），不是 `car1_arm_msgs/srv/Pick`。
+> - 四元数 `(x=0, y=1, z=0, w=0)` 对应 pitch=180°（夹爪垂直朝下）。
+
+1. 连接硬件：确保机械臂通电、串口连接正常。
+2. 进入工作空间：`cd ~/ros2_ws`
+3. source 环境：`source /opt/ros/humble/setup.bash && source install/setup.bash`
+4. 启动实机 arm_controller（新终端）：
+   ```bash
+   ros2 launch car1_arm_controller arm_controller.launch.py
+   ```
+5. 设置抓取目标点（位置 (0.28, 0, 0.10)、pitch=180° 夹爪垂直朝下）：
+   ```bash
+   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
+   "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.28, y: 0.0, z: 0.10}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
+   ```
+6. 触发抓取（`std_srvs/srv/Trigger` 无请求字段）：
+   ```bash
+   ros2 service call /arm_controller/pick std_srvs/srv/Trigger
+   ```
+   等待约 5~8 秒观察完整序列：开爪 → 抬升到 pre_grasp_height → 下探到目标点 → 合爪 → 抬升 → 回 post_grasp_pose。
+7. 设置放置目标点 + 触发放置（位置 (0.20, 0, 0.10) 为示例，按实际放置位修改）：
+   ```bash
+   # 7a. 设置放置目标点（仍走 set_pick_target，update pick_target 缓存）
+   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
+   "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.20, y: 0.0, z: 0.10}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
+   # 7b. 触发放置（std_srvs/srv/Trigger 无请求字段）
+   ros2 service call /arm_controller/place std_srvs/srv/Trigger
+   ```
+
+> ⚠️ **实机验证安全警告（必读）**
+> - 本实验是**第一次完整实机抓取**（接近→夹取→抬升→移动→放置），任何错发指令都可能导致：
+>   1. 机械臂撞桌面 / 撞自身（物体坐标错位或 lift_height 过小）
+>   2. 夹爪未夹稳，物体掉落砸到桌面或自身
+>   3. 关节超限，触发堵转保护或舵机磨损
+> - 抓取前**必须**：
+>   1. 确认物体位置已用刻度尺预标定（不要靠目测）
+>   2. 桌面清空其他杂物，避免夹爪拖带
+>   3. **先在 `/home/iflytek/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test` 执行 `python test_servo_direct.py`** 的 `interactive_mode` 验证设备状态
+>   4. **先单独调用 `/arm/target_pose` 查看 IK 解的 5 路 PWM**，确认无任何一路接近 500 或 2500 极限
+>   5. 任何一路 PWM 偏离合理区间（500~2500, center=1500）立即 Ctrl+C 中断
+> - 设备虽自带堵转保护，但抓取失败 / 撞桌面 / 撞物体仍会损坏舵机齿轮；**PWM 指令误用或目标坐标错位导致的设备损坏属于使用问题，不在质保范围**
+> - 首次实机抓取建议**逐步逼近**：先抓高一些（z 抬 0.05m）、远一些（r 缩 0.05m）的位置，验证流程 OK 再逼近目标
 
 **预期效果描述**：
-- **Gazebo 仿真**：机械臂按 IK 计算路径平滑运动，夹爪夹起立方块（视觉上立方块粘在夹爪上）
-- **接触力反馈**：Gazebo 中可看到接触力箭头（红色），数值显示在 RViz
 - **实机抓取**：发布 target_pose → 调用 pick 后约 5-8 秒完成整个抓取流程
 - **分步移动**：观察到底座先转到目标方位，再下压，避免了"五关节同时动"的奇异
 - **参数调优**：通过修改 gripper_depth 观察抓取深度变化
 - **失败回退**：人为设置不可达点，观察"lift & retry" 机制
+- **接触感知**（实机）：通过夹爪电流反馈 / 抓取后保持时间 / 物体是否跟随机械臂判断抓取成功
 
 ### 1.6 实验步骤
 
@@ -3739,179 +3832,22 @@ if __name__ == "__main__":
 
 ```mermaid
 graph LR
-    A[步骤1：Gazebo仿真环境搭建] --> B[步骤2：grasp_demo三模式对比]
-    B --> C[步骤3：target_pose话题设置]
-    C --> D[步骤4：pick服务触发抓取]
-    D --> E[步骤5：place服务放置]
-    E --> F[步骤6：分步移动策略观察]
-    F --> G[步骤7：抓取参数调优]
-    G --> H[步骤8：失败回退与奇异处理]
-    H --> I[完成]
+    A[步骤1：实机target_pose与pick/place流程] --> B[步骤2：抓取参数调优]
+    B --> C[步骤3：关节限位保护与奇异处理]
+    C --> D[步骤4：端到端实机抓取演示]
+    D --> E[完成]
 ```
 
 ---
 
-#### 步骤1：Gazebo 仿真环境搭建（阶段一：能运行，30min）
-
-> ⚠️ 本步骤对应 src 目录源码：`simulations/car1_gazebo/launch/grasp_demo.launch.py`
-
-**知识点讲解**：
-
-**Gazebo 仿真抓取三模式（6.1.1）**
-- **原理**：`grasp_demo.launch.py` 通过 `mode` 参数选择三种抓取模式：(1) **ik 模式**：调用 IK 库反解目标点为关节角，再驱动 arm_controller；(2) **manual 模式**：直接发布预设关节角序列，不调用 IK；(3) **none 模式**：不执行任何抓取，仅观察环境。ik 模式适合真实场景，manual 模式适合动作回放/调试，none 模式适合视觉/参数验证。
-- **源码对应**：`grasp_demo.launch.py` 中 `<arg name="mode" default="ik"/>`
-
-**接触力反馈（6.1.3）**
-- **原理**：Gazebo 通过物理引擎计算接触力，car1 在仿真中为夹爪指面添加 `<surface>` 配置（摩擦系数、接触刚度），使接触力可视化（RViz 中显示力箭头）。这种"力反馈"对真实抓取至关重要——抓取稳定性取决于：(1) 摩擦力（决定是否能夹持）；(2) 接触点位置（决定力矩平衡）；(3) 接触刚度（决定抓取是否过深）。
-- **源码对应**：`simulations/car1_gazebo/models/cube/model.sdf` 中 `<surface>` 配置
-
-**操作步骤**：
-
-1. 编译 Gazebo 包：
-   ```bash
-   cd ~/ros2_ws
-   colcon build --packages-select car1_gazebo
-   source install/setup.bash
-   ```
-
-2. 启动 ik 模式：
-   ```bash
-   ros2 launch car1_gazebo grasp_demo.launch.py mode:=ik
-   # 预期：
-   # - 弹出 Gazebo 窗口
-   # - 桌面 + 立方块 + 机械臂加载完成
-   # - 终端打印 controller_manager 加载完成
-   ```
-
-3. 查看仿真环境：
-   - 桌面尺寸：约 0.6 × 0.4 × 0.3m
-   - 立方块：约 0.04m³，放置在桌面中央 (0.25, 0, 0.32)
-   - 机械臂：固定在桌面后侧，base_link 位于 (0, 0, 0.30)
-
-4. 切换模式对比：
-   ```bash
-   # manual 模式（先关闭 ik 模式）
-   ros2 launch car1_gazebo grasp_demo.launch.py mode:=manual
-   # 预期：机械臂加载但不动，等待 /arm/manual_action 话题
-   
-   # none 模式（仅观察）
-   ros2 launch car1_gazebo grasp_demo.launch.py mode:=none
-   # 预期：仅加载场景，不启动抓取逻辑
-   ```
-
-5. 接触力可视化：
-   - 启动 RViz：`rviz2`
-   - 添加 Display → Marker（订阅 /contact_forces 话题）
-   - 在 Gazebo 中移动立方块接触机械臂夹爪
-   - RViz 中显示力箭头
-
-6. 仿真环境参数：
-   - 物理引擎：ODE（默认）
-   - 仿真步长：1ms
-   - 实时因子：1.0
-   - 重力：9.8 m/s²
-
-**易错点**：
-- ⚠️ **Gazebo 启动后立方块穿模** → **解决**：检查 model.sdf 中 `<pose>` 与 `<size>` 是否合理
-- ⚠️ **机械臂关节瘫倒** → **解决**：检查 arm_controller 是否激活
-- ⚠️ **mode 参数不生效** → **解决**：重启 launch 并确认参数拼写
-
----
-
-#### 步骤2：Gazebo 仿真抓取流程（阶段二：能理解，30min）
-
-> ⚠️ 本步骤对应 src 目录源码：`simulations/car1_gazebo/launch/grasp_demo.launch.py` 中 ik 模式处理
-
-**知识点讲解**：
-
-**ik 模式实现（6.1.2）**
-- **原理**：ik 模式的工作流程：(1) 监听 `/arm/target_pose` 话题（geometry_msgs/PoseStamped）获取目标位姿；(2) 调用 `ik_solve(target_xyz, target_pitch)` 计算 5 关节角；(3) 通过 joint_trajectory_controller 驱动 Gazebo 中的机械臂；(4) 抓取过程包含"接近-下压-夹取-抬升"4 步子动作。`manual` 模式则跳过 IK 直接发送预设动作（来自 YAML 文件）。
-- **源码对应**：`grasp_demo_node.py` 中 `def on_target_pose()`
-
-**操作步骤**：
-
-1. 启动 ik 模式（步骤 1 已启动）：
-   ```bash
-   ros2 launch car1_gazebo grasp_demo.launch.py mode:=ik
-   ```
-
-2. 查看 target_pose 话题类型：
-   ```bash
-   ros2 topic info /arm/target_pose --verbose
-   # 类型：geometry_msgs/msg/PoseStamped
-   # 字段：header + pose (position xyz + orientation xyzw)
-   ```
-
-3. 设置目标点（立方块位置）：
-   ```bash
-   ros2 topic pub --once /arm/target_pose geometry_msgs/msg/PoseStamped "
-   header: {frame_id: 'base_link'}
-   pose:
-     position: {x: 0.25, y: 0.0, z: 0.32}
-     orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
-   "
-   # 预期：机械臂在 Gazebo 中移动到目标上方
-   ```
-
-4. 触发抓取：
-   ```bash
-   ros2 service list | grep -E '(pick|place|grasp)'
-   # 预期：/arm/pick, /arm/place, /arm/grasp_demo/*
-   
-   ros2 service call /arm/pick car1_arm_msgs/srv/Pick "
-   target_pose:
-     header: {frame_id: 'base_link'}
-     pose:
-       position: {x: 0.25, y: 0.0, z: 0.32}
-       orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
-   gripper_depth: 0.02
-   pre_grasp_height: 0.05
-   lift_height: 0.10
-   grasp_pitch: 0.0
-   "
-   # 预期：机械臂按"接近-下压-夹取-抬升"4 步完成抓取
-   ```
-
-5. 观察抓取过程：
-   - 步骤 1：底座转动到目标方位
-   - 步骤 2：大臂下压到目标高度（z - gripper_depth）
-   - 步骤 3：夹爪闭合
-   - 步骤 4：抬升到 lift_height
-
-6. 抓取结果验证：
-   - 立方块是否跟随机械臂移动？→ 成功
-   - 立方块是否掉落？→ 检查 gripper_depth
-   - 机械臂是否卡住？→ 检查奇异
-
-7. 切换 manual 模式对比：
-   ```bash
-   # 关闭 ik 模式
-   # 启动 manual 模式
-   ros2 launch car1_gazebo grasp_demo.launch.py mode:=manual
-   # 发送预定义动作
-   ros2 topic pub --once /arm/manual_action trajectory_msgs/msg/JointTrajectory "
-   joint_names: ['joint1','joint2','joint3','joint4','joint5']
-   points:
-   - positions: [0.5, -0.5, 1.0, -0.3, -0.2]
-     time_from_start: {sec: 2}
-   "
-   ```
-
-**易错点**：
-- ⚠️ **抓取后立方块掉落** → **解决**：增大 `gripper_depth` 让夹爪夹得更深
-- ⚠️ **机械臂碰撞自身** → **解决**：检查目标点是否合理，使用更高 `pre_grasp_height`
-- ⚠️ **服务调用超时** → **解决**：检查 Gazebo 中 arm_controller 状态
-
----
-
-#### 步骤3：实机 target_pose 与 pick/place 流程（阶段三：能改造，45min）
+#### 步骤1：实机 target_pose 与 pick/place 流程（阶段三：能改造，45min）
 
 > ⚠️ 本步骤对应 src 目录源码：`arm_controller.py` 中 `target_pose_callback()` 与 `pick_service_callback()`
 
 **知识点讲解**：
 
-**实机抓取流程（6.2.1）**
-- **原理**：实机抓取与 Gazebo 类似但更严谨：(1) 接收 `target_pose` 后调用 IK 库（带系统偏移补偿）反解 5 关节角；(2) 调用 `pick_service_callback` 执行抓取，内部维护一个"抓取状态机"（IDLE→APPROACH→DESCEND→GRASP→LIFT→HOLD）；(3) 每个状态转换都做软限位检查和奇异检测；(4) 抓取成功后保持 HOLD 状态，等待 place 或 abort。
+**实机抓取流程（6.1.1）**
+- **原理**：实机抓取流程相比早期原型更严谨：(1) 接收 `target_pose` 后调用 IK 库（带系统偏移补偿）反解 5 关节角；(2) 调用 `pick_service_callback` 执行抓取，内部维护一个"抓取状态机"（IDLE→APPROACH→DESCEND→GRASP→LIFT→HOLD）；(3) 每个状态转换都做软限位检查和奇异检测；(4) 抓取成功后保持 HOLD 状态，等待 place 或 abort。
 - **源码对应**：`arm_controller.py` 中 `class GraspStateMachine`
 
 **place 服务（6.2.2）**
@@ -4431,14 +4367,12 @@ if __name__ == "__main__":
 ### 1.7 实验总结
 
 **完成成果**：
-- 启动 Gazebo grasp_demo 在 ik/manual/none 三模式下完成抓取仿真
 - 在实机环境中通过 `/arm/target_pose` + `/arm/pick` 完成单物体抓取
 - 通过 `/arm/place` 服务完成物体放置
 - 调优抓取参数（gripper_depth、pre_grasp_height、lift_height、grasp_pitch）以适应不同物体
 - 验证分步移动策略、关节软限位保护、奇异检测与失败回退机制
 
 **技能收获**：
-- 掌握 Gazebo 仿真抓取三模式的差异与适用场景
 - 理解 target_pose → pick/place 的服务化抓取流程
 - 熟悉分步移动策略的设计思想
 - 掌握抓取参数调优的工程方法
@@ -4448,7 +4382,7 @@ if __name__ == "__main__":
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| Gazebo 抓取后物体掉落 | gripper_depth 过小 | 增大到 0.025m |
+| 实机抓取后物体掉落 | gripper_depth 过小 | 增大到 0.025m |
 | 实机机械臂撞桌面 | pre_grasp_height 过小 | 增大到 0.10m |
 | 抓取过程中奇异 | 目标在工作空间边界 | 调整目标点 |
 | 软限位报警 | 目标关节角超限 | 检查 servo_limits.yaml |
@@ -4459,12 +4393,11 @@ if __name__ == "__main__":
 1. 为什么 car1 抓取采用"分步移动"（先转底座后动臂）而不是五关节同时运动？这种策略的 trade-off 是什么？
 2. gripper_depth、pre_grasp_height、lift_height 三个参数各自的作用域是什么？它们对不同物体类型如何调整？
 3. 抓取失败回退的"先抬升再重试"机制相比"立即放弃"有什么优势？什么场景下应放弃重试直接报警？
-4. 仿真抓取与实机抓取在哪些环节存在差异？如何缩小"sim-to-real gap"？
-5. 关节软限位（software）相比机械限位（hardware）有什么优势？是否存在软件限位无法防护的场景？
+4. 关节软限位（software）相比机械限位（hardware）有什么优势？是否存在软件限位无法防护的场景？
 
 ### 1.9 实验报告要求
 
-**评分标准**：Gazebo 仿真三模式 15 分 + 实机抓取流程 25 分 + 抓取参数调优 25 分 + 分步移动与保护机制 15 分 + 端到端 pipeline 10 分 + 实验报告 10 分 = 100 分。
+**评分标准**：实机抓取流程 30 分 + 抓取参数调优 25 分 + 分步移动与保护机制 20 分 + 端到端 pipeline 15 分 + 实验报告 10 分 = 100 分。
 
 ---
 
@@ -4473,6 +4406,7 @@ if __name__ == "__main__":
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-08-04 | 初版生成（基于 _registry.yaml human_waiver 模式，标注 [待源码核实]） |
+| v1.2.3 | 2026-08-11 | 移除 Gazebo 仿真抓取（grasp_demo 三模式、接触力反馈、仿真环境搭建等），改为纯实机固定位置抓取；1.5 快速验证流程改为实机 launch+target_pose+pick/place；1.6 流程图由 8 步简化为 4 步；1.7 技能收获删除 Gazebo 仿真抓取三模式；1.8 删除 sim-to-real 思考题；1.9 评分标准删除 Gazebo 仿真三模式 15 分；新增"实机验证安全警告"（test_servo_direct.py 前置验证 + PWM 区间核对 + 损坏不在质保） |
 
 ---
 

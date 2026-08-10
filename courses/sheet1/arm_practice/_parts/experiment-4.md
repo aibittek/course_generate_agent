@@ -51,7 +51,9 @@
 
 1. 进入工作空间根目录：`cd ~/ros2_ws/src/xflz_eai_car1/test/car1_web_server/`
 2. 启动 Web 服务器：`python3 server_cors.py`
-3. 浏览器访问：`http://localhost:8000`
+3. 浏览器访问：
+   - 本机访问：`http://localhost:8000/viewer`
+   - 非本机访问（跨设备）：`http://<设备IP>:8000/viewer`（例如 `http://192.168.1.100:8000/viewer`，设备 IP 用 `hostname -I` 或 `ip addr` 查看）
 4. 页面加载：左侧 3D 视口显示 5 自由度机械臂，右侧控制面板
 5. 拖动末端目标球：机械臂实时跟随，IK 求解器面板显示 5 个关节角
 6. 切换 IK 模式："Analytical" / "Numerical" 对比两种求解结果
@@ -236,7 +238,8 @@ graph LR
    ```
 
 2. 浏览器访问：
-   - 打开 Chrome/Edge，访问 `http://localhost:8000`
+   - 本机访问：打开 Chrome/Edge，访问 `http://localhost:8000/viewer`
+   - 非本机访问（跨设备）：使用设备 IP + `/viewer`，例如 `http://192.168.1.100:8000/viewer`（IP 用 `hostname -I` 或 `ip addr` 查看）
    - 页面加载约 2-3 秒
    - 预期：左侧 3D 视口显示机械臂，右侧控制面板
 
