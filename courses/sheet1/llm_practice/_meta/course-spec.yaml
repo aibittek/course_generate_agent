@@ -1,0 +1,284 @@
+course_code: EXP006
+course_name: 机器人大模型综合应用开发
+category: sheet1
+folder: llm_practice
+prerequisites:
+  - 自然语言处理基础
+  - 机器人ROS2应用与开发
+  - 机器人机械臂控制基础
+  - Python编程
+total_hours: 48
+theory_hours: 0
+lab_hours: 48
+experiment_count: 9
+tech_stack:
+  - 语音交互
+  - ASR
+  - TTS
+  - LLM意图识别
+  - AprilTag视觉检测
+  - 机械臂抓取
+  - 流水线控制
+  - 激光雷达安全联锁
+hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
+description: |
+  本课程围绕具身智能工厂(装货/分拣/码垛/安全生产)综合项目展开，从需求分析、架构设计、接口功能设计出发，分模块完成语音交互、视觉自适应装货、分拣、码垛、危险急停集成测试，最终进行全功能快速验证，构建语音+大模型驱动的具身智能交互系统。
+experiments:
+  - id: exp01
+    experiment_id: 1
+    name: 具身智能工厂--项目需求分析
+    hours: 4
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/eai_factory/
+    main_entry: docs/01_需求总览.md;docs/05_流程与安全.md;README.md
+    knowledge_points:
+      - R1-R10功能需求
+      - 装货/分拣/码垛三大任务流程
+      - 安全联锁需求(激光雷达危险检测→释放舵机力矩)
+      - 语音+大模型自然语言交互
+      - 打断复位(R8)
+      - 双模式(debug/production)
+    objectives:
+      - 理解具身智能工厂综合项目需求(R1-R10)
+      - 掌握装货/分拣/码垛三大任务流程
+      - 理解安全联锁机制(雷达危险→释放力矩)
+      - 理解语音+大模型驱动交互方式
+    exp_content:
+      - 步骤1:阅读需求总览文档docs/01_需求总览.md梳理R1-R10全部需求
+      - 步骤2:绘制装货/分拣/码垛三大任务完整流程图
+      - 步骤3:阅读流程与安全docs/05_流程与安全.md标注语音打断(R8)与雷达急停(R9)点
+      - 步骤4:阅读README.md架构速览理解N1语音/N2调度/N-grasp/N-conveyor/N3安全五模块与关键决策
+      - 步骤5:完成需求阅读笔记
+    notes: 源码位于ros2_ws/src/xflz_eai_car1/app/eai_factory/;纯文档阅读无硬件操作
+
+  - id: exp02
+    experiment_id: 2
+    name: 具身智能工厂--系统架构设计
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/eai_factory/
+    main_entry: docs/02_架构设计.md;eai_factory/scheduler_node.py;eai_factory/grasp_node.py;eai_factory/conveyor_node.py;eai_factory/safety_node.py
+    knowledge_points:
+      - 五节点架构(N1语音/N2调度/N-vision/N-grasp/N-conveyor/N3安全)
+      - 话题/服务通信拓扑
+      - 复用节点(car1_bringup/car1_arm_controller/car1_peripherals)
+      - palletize先送料后抓取编排
+      - launch多节点编排
+    objectives:
+      - 掌握五节点职责与协作关系
+      - 理解N2调度器任务状态机(load/sort/palletize)
+      - 理解码垛先送料后抓取编排
+      - 掌握launch多节点编排方法
+    exp_content:
+      - 步骤1:阅读架构设计文档docs/02_架构设计.md理解N1→N2→N-grasp/N-conveyor拓扑
+      - 步骤2:阅读调度器源码scheduler_node.py理解任务状态机与palletize先送料后抓取编排及grasp未就绪自动重试
+      - 步骤3:阅读执行节点源码grasp_node/conveyor_node/safety_node类结构理解各节点职责与接口
+      - 步骤4:绘制系统架构图并标注接口
+      - 步骤5:完成架构理解笔记
+    notes: 源码位于ros2_ws/src/xflz_eai_car1/app/eai_factory/;纯源码阅读无硬件操作
+
+  - id: exp03
+    experiment_id: 3
+    name: 具身智能工厂--接口功能设计
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/eai_factory/
+    main_entry: docs/02_架构设计.md(接口定义v1章节);config/eai_factory.yaml;eai_factory/voice_node.py;eai_factory/vision_node.py;eai_factory/conveyor_node.py
+    knowledge_points:
+      - A系列接口(N1↔N2:intent/speak/interrupt)
+      - C系列接口(N3:safety/danger/status)
+      - D系列接口(N2↔复用:pick/place/go_work/set_pick_target)
+      - E系列接口(N2对外:start_load/start_sort/start_palletize)
+      - F系列接口(N-conveyor:run/run_until_sensor/emergency_stop)
+      - yaml配置与意图映射
+    objectives:
+      - 掌握A/C/D/E/F系列接口定义与消息类型
+      - 理解意图→任务→执行接口调用链
+      - 掌握config/eai_factory.yaml参数配置方法
+    exp_content:
+      - 步骤1:阅读接口定义docs/02_架构设计.md接口定义(v1)章节记录A/C/D/E/F系列接口与消息类型
+      - 步骤2:阅读主配置config/eai_factory.yaml理解mode/grasp.tasks/safety/conveyor/intents配置与意图映射(load→/eai_factory/start_load)
+      - 步骤3:源码联查对照各_node.py核对接口实现确认接口创建/订阅/发布位置
+      - 步骤4:用ros2 topic list/ros2 interface list验证(可选)
+      - 步骤5:完成接口清单表
+    notes: 源码位于ros2_ws/src/xflz_eai_car1/app/eai_factory/;可纯文档也可起环境验证
+
+  - id: exp04
+    experiment_id: 4
+    name: 具身智能工厂--语音交互集成测试
+    hours: 6
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/eai_factory/
+    main_entry: eai_factory/voice_node.py;eai_factory/scheduler_node.py;config/eai_factory.yaml(voice段);config/hotwords.txt;docs/07_语音测试用例.md
+    knowledge_points:
+      - KWS唤醒词配置
+      - ASR热词(modified_beam_search)
+      - LLM意图三分类(load/sort/palletize)
+      - TTS固定播报
+      - 语音打断(R8)
+      - 意图话题发布
+    objectives:
+      - 掌握语音链路(KWS→ASR→LLM→TTS)
+      - 能够配置唤醒词/热词/意图提示词
+      - 理解语音打断机制
+      - 完成语音→意图→任务闭环测试
+    exp_content:
+      - 步骤1:启动eai_factory运行ros2 launch eai_factory eai_factory.launch.py观察voice/scheduler节点启动日志
+      - 步骤2:唤醒词测试说唤醒词(小飞小飞/小飞同学/芝麻开门)观察KWS提示音与识别状态及ASR/LLM日志
+      - 步骤3:意图识别测试说"开始装货"/"分拣"/"码垛"观察LLM意图→/eai_factory/intent→scheduler路由与服务调用
+      - 步骤4:语音打断测试任务执行中再次唤醒说出打断指令观察interrupt信号与任务中断
+      - 步骤5:按docs/07_语音测试用例.md完成全部用例
+    notes: 按docs/07_语音测试用例.md执行;语音节点需venv(sherpa_onnx);LLM占用~500MB
+
+  - id: exp05
+    experiment_id: 5
+    name: 具身智能工厂--视觉自适应装货集成测试
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/eai_factory/
+    main_entry: eai_factory/vision_node.py;eai_factory/grasp_node.py(load任务);config/eai_factory.yaml(grasp.tasks.load);docs/08_视觉测试用例.md;docs/09_抓取测试用例.md
+    knowledge_points:
+      - AprilTag检测(tag36h11/PnP位姿)
+      - 相机坐标系→base_link TF变换
+      - load任务观察位/放置位(视觉抓取)
+      - 双模式(debug需confirm/production自动)
+      - rqt可视化
+      - pick_offset补偿
+    objectives:
+      - 掌握AprilTag检测与位姿解算
+      - 掌握视觉抓取链路(检测→TF→IK抓取)
+      - 理解双模式confirm机制
+      - 能够调优pick_offset补偿定位偏差
+    exp_content:
+      - 步骤1:启动视觉与抓取运行ros2 launch eai_factory eai_factory.launch.py start_voice:=false观察vision/grasp节点与rqt调试画面
+      - 步骤2:AprilTag检测放置tag_id=3的AprilTag到装货区观察/eai_factory/vision/target位姿发布与debug_image
+      - 步骤3:装货抓取运行ros2 service call /eai_factory/start_load std_srvs/srv/Trigger观察移观察位→检测→TF→set_pick_target→pick→place链路debug模式停等/eai_factory/grasp/confirm
+      - 步骤4:参数调优修改grasp.pick_offset_x/y/z与observe_pose/place_pose验证夹爪到位精度
+      - 步骤5:按docs/08_视觉测试用例.md与docs/09_抓取测试用例.md完成用例
+    notes: 按docs/08/docs/09测试用例执行;相机HP60C+AprilTag;vision需venv python(cv2 4.11)
+
+  - id: exp06
+    experiment_id: 6
+    name: 具身智能工厂--分拣集成测试
+    hours: 4
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/eai_factory/
+    main_entry: eai_factory/grasp_node.py(sort任务);eai_factory/scheduler_node.py;config/eai_factory.yaml(grasp.tasks.sort);docs/09_抓取测试用例.md
+    knowledge_points:
+      - 固定点位抓取(vision=false)
+      - sort观察位/放置位手动打点
+      - 机械臂动作原语(移观察位→提前开爪→抓取→抬升→放置)
+      - 无视觉抓取局限
+    objectives:
+      - 掌握固定点位抓取原理
+      - 理解sort任务配置(observe_pose/place_pose)
+      - 掌握手动打点方法
+      - 完成分拣任务集成测试
+    exp_content:
+      - 步骤1:打点配置手动调机械臂到分拣取料位并记录姿态写入grasp.tasks.sort确认observe_pose/place_pose配置
+      - 步骤2:启动分拣运行ros2 service call /eai_factory/start_sort std_srvs/srv/Trigger观察移观察位→提前开爪→抓取→抬升→放置序列
+      - 步骤3:参数调优修改sort的place_pose/lift_height验证分拣放置精度
+      - 步骤4:语音联动语音"分拣"触发完整链路观察完成播报"分拣完成"
+      - 步骤5:按docs/09_抓取测试用例.md完成用例
+    notes: 按docs/09_抓取测试用例.md执行;sort为固定点位无视觉
+
+  - id: exp07
+    experiment_id: 7
+    name: 具身智能工厂--码垛集成测试
+    hours: 6
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/eai_factory/
+    main_entry: eai_factory/conveyor_node.py;eai_factory/grasp_node.py(palletize任务);eai_factory/scheduler_node.py;config/eai_factory.yaml(conveyor段);docs/10_流水线测试用例.md
+    knowledge_points:
+      - 流水线电机控制(复用底盘电机M1)
+      - 光电传感器定点停(run_until_sensor)
+      - 防抖(sensor_blocked)
+      - palletize先送料后抓取编排
+      - 急停/复位
+      - 码垛取料/放置位打点
+    objectives:
+      - 掌握流水线电机+光电定点停控制
+      - 掌握palletize先送料后抓取编排
+      - 掌握流水线状态机(idle/running/sensor_blocked/emergency)
+      - 完成码垛任务集成测试
+    exp_content:
+      - 步骤1:流水线单测运行ros2 service call /eai_factory/conveyor/run_until_sensor std_srvs/srv/Trigger观察电机运转→光电遮挡→定点停
+      - 步骤2:码垛任务运行ros2 service call /eai_factory/start_palletize std_srvs/srv/Trigger观察送料→sensor_blocked→抓取→放置→回work完整流程
+      - 步骤3:急停测试运行ros2 service call /eai_factory/conveyor/emergency_stop std_srvs/srv/Trigger观察急停→reset_emergency恢复
+      - 步骤4:语音联动语音"码垛"触发完整链路观察完成播报"码垛完成"
+      - 步骤5:按docs/10_流水线测试用例.md完成用例
+    notes: 按docs/10_流水线测试用例.md执行;流水线电机为底盘电机M1需先运行scripts/setup_conveyor_gpio.sh导出GPIO
+
+  - id: exp08
+    experiment_id: 8
+    name: 具身智能工厂--危险急停集成测试
+    hours: 4
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/eai_factory/
+    main_entry: eai_factory/safety_node.py;eai_factory/conveyor_node.py(emergency);config/eai_factory.yaml(safety段);docs/11_安全测试用例.md
+    knowledge_points:
+      - 激光雷达前方扇区检测(60°/20cm/0.5s)
+      - 释放6舵机力矩(/car1_base_driver/bus_servo/set_state)
+      - danger/status话题
+      - 危险解除恢复+回work
+      - 打断分层(雷达>语音)
+    objectives:
+      - 掌握激光雷达危险检测原理(扇区/距离/持续)
+      - 掌握危险时释放舵机力矩保护
+      - 掌握危险解除恢复流程
+      - 完成安全联锁集成测试
+    exp_content:
+      - 步骤1:只起雷达安全运行ros2 launch eai_factory eai_factory.launch.py start_base:=false start_voice:=false start_vision:=false start_grasp:=false start_conveyor:=false start_radar:=true观察safety节点与/eai_factory/safety/status
+      - 步骤2:危险触发手臂前方20cm内放障碍物并保持0.5s观察danger=true+6舵机力矩释放(机械臂变软)
+      - 步骤3:危险解除移开障碍物观察danger=false+恢复+go_work回位验证机械臂回到work位
+      - 步骤4:任务中急停联动执行装货/分拣/码垛中触发雷达危险观察N-grasp/conveyor响应danger停止动作
+      - 步骤5:按docs/11_安全测试用例.md完成用例
+    notes: 按docs/11_安全测试用例.md执行;务必确认机械臂处于安全位置再释放力矩
+
+  - id: exp09
+    experiment_id: 9
+    name: 具身智能工厂--全功能快速验证
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/eai_factory/
+    main_entry: launch/eai_factory.launch.py;config/eai_factory.yaml;scripts/stop_eai_factory.sh;README.md(常用命令)
+    knowledge_points:
+      - 一键启动全部节点(7开关:start_base/start_viz/start_voice/start_vision/start_grasp/start_conveyor/start_radar)
+      - 语音→意图→任务→执行→完成播报全链路闭环
+      - 停止脚本防残留
+      - 故障排查
+    objectives:
+      - 掌握一键启动与模块化开关
+      - 完成装货/分拣/码垛/急停全链路快速验证
+      - 掌握停止与故障排查
+    exp_content:
+      - 步骤1:全功能启动运行ros2 launch eai_factory eai_factory.launch.py观察bringup→arm_controller→peripherals→eai_factory节点分阶段启动
+      - 步骤2:装货验证语音"装货"或调用/eai_factory/start_load观察检测→抓取→放置→"装货完成"播报
+      - 步骤3:分拣/码垛验证依次语音"分拣""码垛"观察完整任务链路与完成播报
+      - 步骤4:急停验证任务中触发雷达危险观察释放力矩→解除→回work
+      - 步骤5:停止运行bash scripts/stop_eai_factory.sh确认无残留进程
+    notes: "全功能验证主命令为ros2 launch eai_factory eai_factory.launch.py;按需用start_voice:=false等节省内存;用stop_eai_factory.sh防残留"
+
+_source:
+  csv_path: input/course_spec.csv
+  csv_sha256: a6f77f01ea50f5f398ac8ff37b7c7b7f438f73abdc8b4e6aa15dc24f0402986b
+  parsed_at: 2026-08-14T16:02:34
+  parser: spec-parser-skill
