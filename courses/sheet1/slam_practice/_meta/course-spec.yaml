@@ -1,0 +1,164 @@
+course_code: EXP004
+course_name: 机器人SLAM与Nav应用开发
+category: sheet1
+folder: slam_practice
+prerequisites:
+  - C++或Python编程
+  - 机器人ROS2应用与开发
+total_hours: 48
+theory_hours: 0
+lab_hours: 48
+experiment_count: 7
+tech_stack:
+  - SLAM
+  - SLAM_Toolbox
+  - Nav2
+  - AMCL
+  - DWA
+  - TEB
+  - RTAB-Map
+  - 激光雷达
+hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
+description: 本课程聚焦SLAM建图与自主导航技术，覆盖二维激光建图、Nav2导航栈、AMCL定位、动态避障与三维视觉SLAM，强调从原理到工程落地的完整链路。
+experiments:
+  - id: exp01
+    experiment_id: 1
+    name: SLAM建图原理与URDF模型加载实验
+    hours: 4
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: source-codes/exp01/
+    objectives:
+      - 掌握SLAM建图的基本原理与流程
+      - 能够完成URDF模型加载与建图环境的搭建
+    exp_content:
+      - URDF模型简介与Xacro模型扩展语法
+      - ROS机器人URDF模型结构解析（主体、机械臂、爪子）
+      - SLAM简介与建图原理（同时定位与地图构建）
+      - 地图构建注意事项与结果判断标准
+      - 完成建图环境的搭建与验证
+    notes: 有资源，需修改
+
+  - id: exp02
+    experiment_id: 2
+    name: 基于SLAM_Toolbox的二维激光建图实验
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp02/
+    objectives:
+      - 掌握SLAM_Toolbox框架的配置与使用方法
+      - 能够完成室内环境的二维栅格地图构建
+    exp_content:
+      - 配置SLAM_ToolBOX建图参数（分辨率、回环检测策略、地图更新策略）
+      - 启动激光雷达数据采集与实时建图流程
+      - 在Rviz中可视化地图构建过程（占据栅格地图、轨迹、粒子分布）
+      - 实现室内环境二维栅格地图构建
+      - 完成地图保存（map_server）与加载
+      - 验证建图精度与鲁棒性（不同环境、不同速度）
+    notes: 有资源，需修改
+
+  - id: exp03
+    experiment_id: 3
+    name: 基于Nav2的机器人自主导航实验
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp03/
+    objectives:
+      - 掌握ROS2导航栈（Nav2）的架构与配置方法
+      - 能够实现基于已知地图的全局自主导航
+    exp_content:
+      - 搭建ROS2 Nav2导航栈
+      - 配置全局路径规划器（Navfn/Smac）与代价地图（Global Costmap）
+      - 配置行为树（Behavior Tree）实现导航状态机
+      - 设定导航目标点，实现机器人从起点到目标点的自主移动
+      - 处理静态障碍物避让
+      - 验证导航成功率与路径平滑度
+    notes: 有资源，需修改
+
+  - id: exp04
+    experiment_id: 4
+    name: 基于AMCL的自适应蒙特卡罗定位实验
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp04/
+    objectives:
+      - 掌握AMCL粒子滤波定位算法原理
+      - 能够在已知地图中实现机器人的稳定位姿估计
+    exp_content:
+      - AMCL算法原理：粒子滤波、自适应粒子数调整
+      - 配置AMCL参数（粒子数、激光扫描匹配参数、初始位姿估计）
+      - 在Rviz中可视化粒子分布与定位误差椭圆
+      - 测试kidnapped robot问题恢复能力（全局定位重初始化）
+      - 验证AMCL在动态环境下的位姿估计精度与收敛速度
+    notes: 有资源，需修改
+
+  - id: exp05
+    experiment_id: 5
+    name: 局部路径规划与动态避障实验
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp05/
+    objectives:
+      - 掌握DWA与TEB局部规划算法的原理与配置
+      - 能够实现动态环境下的实时避障与路径跟踪
+    exp_content:
+      - DWA（动态窗口法）算法原理与参数配置（速度采样空间、评价函数权重）
+      - TEB（时间弹性带）算法原理与参数配置（时间分辨率、障碍物约束）
+      - 配置局部代价地图（Local Costmap）与避障约束
+      - 在存在动态障碍物的场景中测试避障响应与速度平滑性
+      - 对比两种规划器的避障效果，优化参数提升动态避障能力
+    notes: 有资源，需修改
+
+  - id: exp06
+    experiment_id: 6
+    name: 基于激光雷达的单点与多点导航避障实验
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp06/
+    objectives:
+      - 掌握基于激光雷达的导航任务调度方法
+      - 能够实现单点/多点连续导航与避障
+    exp_content:
+      - 基于激光雷达数据实现单点导航（单次目标点设定与执行）
+      - 实现多点连续导航（目标点序列管理与任务调度）
+      - 在包含静态/动态障碍物的环境中测试避障策略
+      - 验证导航任务的连续性与安全性
+      - 实现多任务导航调度，评估复杂场景下的导航鲁棒性
+    notes: 有资源，需修改
+
+  - id: exp07
+    experiment_id: 7
+    name: 基于RTAB-Map的三维视觉SLAM导航实验
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp07/
+    objectives:
+      - 掌握RTAB-Map视觉SLAM框架的使用方法
+      - 能够构建三维点云/八叉树地图并实现三维空间导航
+    exp_content:
+      - RTAB-Map框架简介与VSLAM原理
+      - 利用深度相机数据构建三维点云地图与八叉树地图（OctoMap）
+      - 基于三维地图实现机器人位姿估计
+      - 实现三维空间导航（点目标导航与路径规划）
+      - 在Rviz中可视化三维环境与导航路径
+      - 对比二维导航与三维导航的适用场景与精度差异
+    notes: 无资源
+
+_source:
+  csv_path: input/course_spec.csv
+  csv_sha256: 7a19e14a1973c42831ff6ade5dc99fa2351aa238d05742e2383af845c14a7641
+  parsed_at: 2026-08-14T18:02:58
+  parser: spec-parser-skill
