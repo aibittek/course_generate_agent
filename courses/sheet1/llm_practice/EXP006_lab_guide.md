@@ -876,20 +876,18 @@ self.run_until_sensor_srv = self.create_service(
 
 **快速验证流程**：
 
-> 本实验为**纯语音链路**实验，只启动语音（N1 voice）与意图路由（N2 scheduler）两个模块，**不启动机械臂 / 视觉 / 流水线 / 安全**模块。
-
-1. 最小化启动（仅语音模块）：`ros2 launch eai_factory eai_factory.launch.py start_base:=false start_vision:=false start_grasp:=false start_conveyor:=false start_safety:=false`，观察 voice/scheduler 节点日志
+1. 一键启动系统：`ros2 launch eai_factory eai_factory.launch.py`，观察 voice/scheduler 节点日志
 2. 对麦克风说「小飞小飞」→ 听到 KWS 提示音，日志出现 `IDLE → LISTENING`
-3. 接着说「开始装货」→ 日志出现 `[LLM] LLM 分类: "load"`，终端 2 的 `ros2 topic echo /eai_factory/intent` 输出 `data: 'load'`，扬声器播报"好的，开始装货"
-4. 播报"好的…"尚未结束再说「小飞小飞」→ 播报被打断，`/eai_factory/interrupt` 输出 `data: true`
+3. 接着说「开始装货」→ 日志出现 `[LLM] LLM 分类: "load"`，终端 2 的 `ros2 topic echo /eai_factory/intent` 输出 `data: 'load'`
+4. 扬声器播报"好的，开始装货"；任务执行完成后调度器经 /eai_factory/speak 请求播报"装货完成"
+5. 播报"好的…"尚未结束再说「小飞小飞」→ 播报被打断，`/eai_factory/interrupt` 输出 `data: true`
 
 **预期效果描述**：
 
 - 三个唤醒词（小飞小飞/小飞同学/芝麻开门）均可唤醒，每次唤醒都能听到提示音
-- 三条任务指令（开始装货/开始分拣/开始码垛）均被正确分类为对应意图并发布 `/eai_factory/intent`；无关指令（如"讲个笑话"）播报"未识别指令，请重新唤醒"且不发布 intent
+- 三条任务指令（开始装货/开始分拣/开始码垛）均被正确分类并路由到对应任务服务；无关指令（如"讲个笑话"）播报"未识别指令，请重新唤醒"且不发布 intent
 - 热词启用后"开始分拣"等词条识别更稳（可与关闭热词 A/B 对比）
-- 打断后回到监听态，可继续说新指令
-- 本实验不启动机械臂，"装货完成/分拣完成/码垛完成"等任务完成播报留待 exp09 全功能验证
+- 打断后回到监听态，可继续说新指令；机械臂动作中打断会停止动作并回 work
 
 ### 4.6 实验步骤
 
@@ -897,15 +895,15 @@ self.run_until_sensor_srv = self.create_service(
 
 ```mermaid
 graph LR
-    A[步骤1：最小化启动与节点观察] --> B[步骤2：唤醒词测试]
+    A[步骤1：一键启动与节点观察] --> B[步骤2：唤醒词测试]
     B --> C[步骤3：意图识别测试]
     C --> D[步骤4：语音打断测试]
-    D --> E[步骤5：语音链路闭环与测试用例]
+    D --> E[步骤5：全链路闭环与测试用例]
 ```
 
 ---
 
-#### 步骤1：最小化启动（仅语音）与节点观察（50min）
+#### 步骤1：一键启动与节点观察（50min）
 
 **知识点讲解**：
 
@@ -926,19 +924,16 @@ if result:
 
 **操作步骤**：
 
-1. 终端 1 最小化启动（仅语音模块，关闭机械臂/视觉/流水线/安全）：
+1. 终端 1 一键启动系统：
    ```bash
    source /opt/ros/humble/setup.bash
    source /home/iflytek/ros2_ws/install/setup.bash
-   ros2 launch eai_factory eai_factory.launch.py \
-     start_base:=false start_vision:=false start_grasp:=false \
-     start_conveyor:=false start_safety:=false
+   ros2 launch eai_factory eai_factory.launch.py
    ```
-   参数说明：`start_base:=false` 不启动底盘/机械臂/相机底层；`start_vision:=false`、`start_grasp:=false`、`start_conveyor:=false` 不启动视觉/抓取/流水线节点；`start_safety:=false` 不启动安全节点。保留 `start_voice`（默认 true）与 `start_scheduler`（默认 true）。
 2. 观察启动日志（docs/07 L19-33）：`eai_factory_voice`（N1）与 `eai_factory_scheduler`（N2）进程启动；voice 日志依次出现"使用麦克风阵列: 录音=plughw:x,0" → "启动 LLM: Qwen3.5-0.8B… (端口 8080)" → "LLM 服务就绪" → "N1 voice node 初始化完成" → "N1 voice 就绪 — 说唤醒词开始"
 3. 终端 2 验证节点与 LLM 服务：
    ```bash
-   ros2 node list        # 应只看到 /eai_factory_voice /eai_factory_scheduler（无 vision/grasp/conveyor/safety）
+   ros2 node list        # 应看到 /eai_factory_voice /eai_factory_scheduler 等
    curl -s http://127.0.0.1:8080/v1/models   # LLM 服务，返回模型 JSON
    ```
 
@@ -946,7 +941,6 @@ if result:
 
 - ⚠️ 日志卡在"启动 LLM"或"LLM 启动超时" → LLM 服务占用约 500MB 内存、首次加载慢；内存不足时可用 `start_voice:=false` 跳过（launch L77-78），但本实验必须语音，需保证内存充足
 - ⚠️ 看不到"使用麦克风阵列"日志 → 麦克风阵列未识别自动回退板载 mic（`voice_node.py` L259-269），唤醒灵敏度会下降；重新插拔阵列后重启
-- ⚠️ `ros2 node list` 出现 vision/grasp 等节点 → 参数未生效，检查是否拼写错误（如 `start_vision:=false`）；最小化启动后这些节点应不存在
 
 ---
 
@@ -1028,7 +1022,7 @@ user_prompt = (
 
 1. 终端 2 监听 intent 话题：`ros2 topic echo /eai_factory/intent`
 2. 依次唤醒后说「开始装货」「开始分拣」「开始码垛」，对照 docs/07 TC2（L69-97）核对：终端 2 依次输出 `data: 'load' / 'sort' / 'palletize'`，扬声器播报"好的，开始装货"等
-3. 观察 N2 路由日志：`[SCHEDULER] intent: load`（scheduler L75-94）。本实验 grasp 未启动，scheduler 会提示 `grasp service not ready — will retry in 2s`（L136-144 自动重试），属预期现象，验证到"语音→意图"为止
+3. 观察 N2 路由日志：`[SCHEDULER] intent: load` → `[SCHEDULER] set grasp task -> load` → `[SCHEDULER] triggering grasp for task: load`（scheduler L148-150）
 4. 无关指令测试（docs/07 TC3）：说「讲个笑话」→ 播报"未识别指令，请重新唤醒"，intent 无输出，日志 `LLM 分类: "none"`
 5. 热词 A/B 对比：把 `hotwords_enable` 改为 false 重启，多次说「开始分拣」，观察 ASR 是否出现"风景/封建"等误识别；再改回 true 对比
 
@@ -1045,7 +1039,7 @@ user_prompt = (
 **知识点讲解**：
 
 **语音打断（3.2.3）**
-- **原理**：打断是 R8 需求的实现。TTS 播报（SPEAKING 态）期间，用户再说唤醒词即可中止当前播报：voice 节点的 `_handle_speaking`（L636-661）在 SPEAKING 态继续跑 KWS，检测到唤醒词后 `interrupt_event.set()`、`playback.interrupt()`（kill 掉 aplay 停止当前播报）、发布 /eai_factory/interrupt=true，然后回到 LISTENING 听新指令。scheduler 收到 interrupt 后记录任务中止（`_interrupt_cb`，L181-185）。本实验只验证"播报中打断"；任务执行中打断（涉及机械臂 N-grasp 联动，grasp_node.py L179-186）留待 exp09 全功能验证。注意 `interrupt_event` 只置位一次，`_start_speaking`（L796）在开播前会 clear，避免陈旧信号压制新播报。
+- **原理**：打断是 R8 需求的实现。TTS 播报（SPEAKING 态）或任务执行期间，用户再说唤醒词即可中止当前流程：voice 节点的 `_handle_speaking`（L636-661）在 SPEAKING 态继续跑 KWS，检测到唤醒词后 `interrupt_event.set()`、`playback.interrupt()`（kill 掉 aplay 停止当前播报）、发布 /eai_factory/interrupt=true，然后回到 LISTENING 听新指令。scheduler 收到 interrupt 后记录任务中止（`_interrupt_cb`，L181-185）；N-grasp 收到 interrupt 会停止机械臂动作并回 work（grasp_node.py L179-186）。注意 `interrupt_event` 只置位一次，`_start_speaking`（L796）在开播前会 clear，避免陈旧信号压制新播报。
 - **源码对应**：`voice_node.py` L636-661（SPEAKING 态打断检测）、L822-825（发布 interrupt）；`scheduler_node.py` L181-185（中断日志）；`grasp_node.py` L179-186（中止动作回 work）
 
 ```python
@@ -1067,7 +1061,7 @@ if result:
 2. 唤醒后说「开始装货」，在"好的…"还没播完时立刻说「小飞小飞」（docs/07 TC4，L117-133）
 3. 核对现象：播报被中途掐断；终端 2 输出 `data: true`；日志 `[KWS] 打断: 硬件唤醒` + `[Main] SPEAKING → LISTENING (打断)`
 4. 打断后继续说「开始分拣」，确认能正常重新识别（回到监听态）
-5. 扩展实验（可选，需 grasp/arm_controller 已启动）：触发装货任务后，在机械臂动作中发 interrupt，观察 grasp 日志 `VOICE INTERRUPT — stopping grasp, going work` 与机械臂停止动作回 work（docs/09 TG7）——此联动留待 exp09
+5. 扩展实验（结合机械臂）：触发装货任务后，在机械臂动作中发 interrupt，观察 grasp 日志 `VOICE INTERRUPT — stopping grasp, going work` 与机械臂停止动作回 work（docs/09 TG7）
 
 **易错点**：
 
@@ -1076,12 +1070,12 @@ if result:
 
 ---
 
-#### 步骤5：语音链路闭环与测试用例（90min）
+#### 步骤5：全链路闭环与测试用例（90min）
 
 **知识点讲解**：
 
 **TTS 固定播报（3.1.3）**
-- **原理**：播报文案分两段：(1) 识别确认段——`phrase_recognize_ok`（"好的，"）+ `phrases_task_start`（"开始装货/开始分拣/开始码垛"），由 voice 节点在意图发布后立即 TTS（L759）；(2) 任务完成段——`phrases_task_done`（"装货完成/分拣完成/码垛完成"），由 scheduler 收到 grasp 完成状态后经 /eai_factory/speak 请求 voice 播报（依赖 grasp 节点，本实验不启动，留待 exp09 验证）。TTS 用 sherpa_onnx OfflineTts（Matcha 声学模型 + vocos 声码器，L409-432）离线合成 PCM，通过常驻 aplay 管道播放，无网络依赖。
+- **原理**：播报文案分两段：(1) 识别确认段——`phrase_recognize_ok`（"好的，"）+ `phrases_task_start`（"开始装货/开始分拣/开始码垛"），由 voice 节点在意图发布后立即 TTS（L759）；(2) 任务完成段——`phrases_task_done`（"装货完成/分拣完成/码垛完成"），由 scheduler 收到 grasp 完成状态后经 /eai_factory/speak 请求 voice 播报。TTS 用 sherpa_onnx OfflineTts（Matcha 声学模型 + vocos 声码器，L409-432）离线合成 PCM，通过常驻 aplay 管道播放，无网络依赖。
 - **源码对应**：`voice_node.py` L302-307（固定文案）、L409-432（TTS 初始化）、L827-830（_speak_cb）；`scheduler_node.py` L195-210（grasp 完成→播报）
 
 ```python
@@ -1097,26 +1091,27 @@ if status == 'done':
 
 **操作步骤**：
 
-1. 终端 2 同时监听语音链路话题（docs/07 TC6）：
+1. 终端 2 同时监听三个话题（docs/07 TC6）：
    ```bash
    ros2 topic echo /eai_factory/intent
+   ros2 topic echo /eai_factory/grasp/status
    ros2 topic echo /eai_factory/speak
    ```
-2. 唤醒后说「开始分拣」，对照 docs/07 L163-173 核对语音链路时序：`[VOICE] intent: sort` → 终端 2 `data: 'sort'` → `[SCHEDULER] intent: sort`（grasp 未启动，任务执行段留待 exp09）
-3. N2 播报请求直测（docs/07 TC5）：终端 2 发布 `ros2 topic pub -1 /eai_factory/speak std_msgs/msg/String "data: '装货完成'"`，验证 voice 节点收到 speak 请求后 TTS 播报
+2. 唤醒后说「开始分拣」，对照 docs/07 L163-173 核对全链路时序：`[VOICE] intent: sort` → `[SCHEDULER] set grasp task -> sort` → grasp 固定抓取序列执行 → `grasp: status: sort|done` → `[SCHEDULER] task sort done — announce "分拣完成"` → `[VOICE] speak request: "分拣完成"` → 扬声器播出"分拣完成"
+3. N2 播报请求直测（docs/07 TC5）：终端 2 发布 `ros2 topic pub -1 /eai_factory/speak std_msgs/msg/String "data: '装货完成'"`
 4. 依次执行 docs/07 全部用例 TC1~TC6，记录每条用例的操作、日志摘录与结果
 
 **易错点**：
 
-- ⚠️ 完成播报（"装货完成"）缺失 → 本实验 grasp 未启动，`grasp: status: task|done` 不会产生，"装货完成"段播报属预期缺失；若需验证请启动 grasp（`start_grasp:=true`）
-- ⚠️ scheduler 反复提示 `grasp service not ready — will retry in 2s` → 正常现象（2s 定时器自动重试，L136-144），本实验仅验证语音→意图链路
-- ⚠️ 终端 2 echo 话题时命令串行阻塞 → 分多个终端分别 echo，或用 `tmux` 分窗
+- ⚠️ 完成播报缺失 → grasp 未发 status（检查 `grasp: status: task|done` 日志）或 scheduler 未订阅（`grasp_status_sub`，L50-51）；全链路要求 grasp 节点在跑
+- ⚠️ 全链路时机械臂不动但播报正常 → 语音闭环（N1↔N2）正常但 N-grasp/arm_controller 未就绪；scheduler 有 2s 定时器自动重试（L136-144），确认 `ros2 service list | grep grasp`
+- ⚠️ 终端 2 echo 三个话题时命令串行阻塞 → 分三个终端分别 echo，或用 `tmux` 分窗
 
 ### 4.7 注意事项
 
 - ⚠️ 语音节点必须用 ros2_venv python 启动（sherpa_onnx 仅 venv 有），launch 已自动配置（`eai_factory.launch.py` L99-105）；不要手动用系统 python 跑 voice_node.py
 - ⚠️ LLM 服务占用约 500MB 内存并自动拉起（端口 8080）；内存不足时 `start_voice:=false` 跳过（launch L77-78）
-- ⚠️ 本实验最小化启动（仅语音模块），不启动机械臂/视觉/流水线/安全；如需进行机械臂联动验证请保留 `start_grasp:=true` 并按 exp09 全功能流程执行
+- ⚠️ 实机联调时确保机械臂周围无人员/障碍，打断与急停测试遵循"先预演、后实机"原则
 - ⚠️ 唤醒/识别对安静环境敏感，测试时避免空调风噪与多人同时说话
 - ⚠️ 每次交互结束需重新唤醒；长时间未操作自动回 IDLE
 
@@ -1124,11 +1119,11 @@ if status == 'done':
 
 **完成成果**：
 
-- 最小化启动（仅语音模块）并定位 N1 voice / N2 scheduler 节点与 LLM 服务
+- 一键启动 eai_factory 并定位 N1 voice / N2 scheduler 节点与 LLM 服务
 - 完成三个唤醒词的唤醒测试，验证提示音与 IDLE→LISTENING 状态迁移
-- 完成三条任务指令的意图识别测试，验证 LLM 分类 + 关键字兜底双保险与 `/eai_factory/intent` 发布
+- 完成三条任务指令的意图识别与路由测试，验证 LLM 分类 + 关键字兜底双保险
 - 完成热词 A/B 对比与 intent_hints 误识别词补充，理解配置驱动价值
-- 完成语音打断测试与语音链路闭环（唤醒→识别→意图→TTS 播报）
+- 完成语音打断测试与全链路闭环（语音→意图→任务→完成播报）
 - 按 docs/07 用例表完成 TC1~TC6 全部记录
 
 **技能收获**：
@@ -1147,7 +1142,7 @@ if status == 'done':
 | 唤醒词修改不生效 | 参数启动时一次性读取 | 修改 yaml 后重启 launch |
 | LLM 意图误判 | 小模型（0.8B）对生僻词不稳 | 依赖关键字兜底；在 intent_hints 补充误识别词 |
 | 打断无 interrupt 输出 | 不在 SPEAKING 态 | 在播报"好的…"期间打断；确认麦克风阵列唤醒正常 |
-| scheduler 提示 grasp 未就绪 | 本实验未启动 grasp（预期） | 属正常重试日志；如需任务执行请 `start_grasp:=true` |
+| 完成播报缺失 | grasp 未发 status | 确认 grasp 节点运行与 `grasp: status: task\|done` 日志 |
 
 ### 4.9 实验报告要求
 
@@ -1159,7 +1154,7 @@ if status == 'done':
 4. 语音打断（R8）通过 interrupt 话题传播，如果打断发生在 N-grasp 机械臂动作中，任务状态如何恢复？结合 grasp_node.py 的 _interrupt_cb 说明。
 5. 若要把任务从三类扩展到四类（例如新增"巡检"），需要修改哪些配置与代码？哪些环节可以不动代码完成？
 
-**评分标准**：最小化启动与节点观察 15 分 + 唤醒词测试 20 分 + 意图识别与热词对比 25 分 + 语音打断测试 15 分 + 语音链路闭环与用例记录 25 分 = 100 分。
+**评分标准**：一键启动与节点观察 15 分 + 唤醒词测试 20 分 + 意图识别与热词对比 25 分 + 语音打断测试 15 分 + 全链路闭环与用例记录 25 分 = 100 分。
 
 
 # 实验5：具身智能工厂--视觉自适应装货集成测试（8h）

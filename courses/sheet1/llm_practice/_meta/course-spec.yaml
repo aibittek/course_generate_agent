@@ -126,16 +126,16 @@ experiments:
       - 语音打断(R8)
       - 意图话题发布
     objectives:
-      - 步骤1:最小化启动(仅语音模块)运行ros2 launch eai_factory eai_factory.launch.py start_base:=false start_vision:=false start_grasp:=false start_conveyor:=false start_safety:=false 观察voice/scheduler节点启动日志与LLM服务就绪
-      - 步骤2:唤醒词测试说唤醒词(小飞小飞/小飞同学/芝麻开门)观察KWS提示音与识别状态及ASR/LLM日志
-      - 步骤3:意图识别测试说"开始装货"/"分拣"/"码垛"观察LLM意图→/eai_factory/intent发布与scheduler路由(本实验不启动机械臂,验证到语音→意图为止,scheduler提示grasp未就绪重试属预期)
-      - 步骤4:语音打断测试播报"好的…"期间再次唤醒观察interrupt信号与播报打断
-      - 步骤5:按docs/07_语音测试用例.md完成TC1~TC6全部用例
+      - 掌握语音链路(KWS→ASR→LLM→TTS)
+      - 能够配置唤醒词/热词/意图提示词
+      - 理解语音打断机制
+      - 完成语音→意图→任务闭环测试
     exp_content:
-      - 纯语音实验,最小化启动仅保留voice+scheduler,不涉及机械臂/视觉/流水线/安全
-      - 任务执行与"装货完成"等完成播报留待exp09全功能验证
-      - 语音节点需venv(sherpa_onnx)
-      - LLM占用~500MB
+      - 步骤1:启动eai_factory运行ros2 launch eai_factory eai_factory.launch.py观察voice/scheduler节点启动日志
+      - 步骤2:唤醒词测试说唤醒词(小飞小飞/小飞同学/芝麻开门)观察KWS提示音与识别状态及ASR/LLM日志
+      - 步骤3:意图识别测试说"开始装货"/"分拣"/"码垛"观察LLM意图→/eai_factory/intent→scheduler路由与服务调用
+      - 步骤4:语音打断测试任务执行中再次唤醒说出打断指令观察interrupt信号与任务中断
+      - 步骤5:按docs/07_语音测试用例.md完成全部用例
     notes: 按docs/07_语音测试用例.md执行;语音节点需venv(sherpa_onnx);LLM占用~500MB
 
   - id: exp05
@@ -279,6 +279,6 @@ experiments:
 
 _source:
   csv_path: input/course_spec.csv
-  csv_sha256: 7a19e14a1973c42831ff6ade5dc99fa2351aa238d05742e2383af845c14a7641
-  parsed_at: 2026-08-14T16:17:30
+  csv_sha256: a6f77f01ea50f5f398ac8ff37b7c7b7f438f73abdc8b4e6aa15dc24f0402986b
+  parsed_at: 2026-08-14T16:02:34
   parser: spec-parser-skill
