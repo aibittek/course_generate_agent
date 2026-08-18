@@ -13,7 +13,7 @@ from typing import Any
 
 # ---------- 校验规则常量 ----------
 
-COURSE_ID_PATTERN = re.compile(r"^(EXP|IND)\d{3}$")
+COURSE_ID_PATTERN = re.compile(r"^(EXP|IND)\d{3}[a-z]?$")
 FOLDER_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,19}$")
 SHEET_VALUES = {"sheet1", "sheet2"}
 DIFFICULTY_VALUES = {1, 2, 3}
