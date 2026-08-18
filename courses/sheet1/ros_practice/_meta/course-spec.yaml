@@ -1,0 +1,444 @@
+course_code: EXP003
+course_name: 机器人ROS2应用与开发
+category: sheet1
+folder: ros_practice
+prerequisites:
+  - C++或Python编程
+  - Linux系统应用
+total_hours: 48
+theory_hours: 0
+lab_hours: 48
+experiment_count: 21
+tech_stack:
+  - ROS2
+  - DDS
+  - TF2
+  - URDF
+  - Xacro
+  - Gazebo
+  - Rviz2
+  - Launch
+hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
+description: 本课程以ROS2为核心，系统讲授分布式机器人操作系统的通信机制、坐标变换、建模、仿真与可视化，覆盖从环境搭建到仿真平台的全链路实践。
+experiments:
+  - id: exp01
+    experiment_id: 1
+    name: ROS2简介
+    hours: 2
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: source-codes/exp01/
+    objectives:
+      - 掌握ROS2的基本概念与发展背景
+      - 理解ROS2相比ROS1的核心改进
+      - 能够使用ros2命令行工具查看系统信息
+    exp_content:
+      - ROS2与ROS1对比：通信架构（DDS vs TCPROS）、编译系统（colcon vs catkin）、生命周期管理
+      - ROS2设计目标与适用场景
+      - 使用ros2 --help查看可用命令
+      - 运行ros2 run demo_nodes_cpp talker/listener体验节点通信
+    notes: 有资源，可复用
+
+  - id: exp02
+    experiment_id: 2
+    name: ROS2常用命令工具
+    hours: 2
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: source-codes/exp02/
+    objectives:
+      - 掌握ROS2常用命令行工具的使用
+      - 能够使用CLI工具查看节点、话题、服务、参数信息
+    exp_content:
+      - ros2 node list/info：查看运行中的节点
+      - ros2 topic list/echo/info/hz/pub：查看和操作话题
+      - ros2 service list/type/call：查看和调用服务
+      - ros2 param list/get/set/dump：管理参数
+      - ros2 bag record/play/info：录制与回放数据
+      - ros2 interface list/show：查看消息接口定义
+    notes: 有资源，可复用
+
+  - id: exp03
+    experiment_id: 3
+    name: ROS2工作空间
+    hours: 2
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: source-codes/exp03/
+    objectives:
+      - 掌握ROS2工作空间的创建与编译
+      - 理解overlay工作空间与底层工作空间的关系
+    exp_content:
+      - 创建ROS2工作空间目录结构与src文件夹
+      - 使用colcon build编译工作空间
+      - source install/setup.bash加载环境
+      - 理解underlay(/opt/ros/humble)与overlay层级关系
+      - 使用ros2 pkg create创建功能包
+    notes: 有资源，可复用
+
+  - id: exp04
+    experiment_id: 4
+    name: ROS2功能包
+    hours: 2
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: source-codes/exp04/
+    objectives:
+      - 掌握ROS2功能包的创建与结构
+      - 理解package.xml和setup.py/CMakeLists.txt的配置
+    exp_content:
+      - 使用ros2 pkg create --build-type ament_python/ament_cmake创建功能包
+      - 理解package.xml组成：包名、版本、依赖（build_depend/exec_depend）
+      - 配置setup.py(setup.cfg)或CMakeLists.txt
+      - 实现多节点功能包的注册与安装
+      - 使用ros2 pkg list/xml查看已安装的包信息
+    notes: 有资源，可复用
+
+  - id: exp05
+    experiment_id: 5
+    name: ROS2节点
+    hours: 2
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp02/
+    objectives:
+      - 掌握ROS2节点的创建与完整生命周期
+      - 能够编写HelloWorld发布者与订阅者节点并理解节点运行机制
+    exp_content:
+      - 继承rclpy.node.Node创建自定义HelloWorld节点类
+      - 节点生命周期四阶段:构造函数(节点配置name+参数声明)→spin(进入事件循环等待回调)→destroy_node(释放定时器/发布器/订阅器等资源)→shutdown(进程退出)
+      - 编写HelloWorld发布者节点:create_publisher(String
+    notes: "'/hello_topic'"
+
+  - id: exp06
+    experiment_id: 6
+    name: ROS2话题通讯(MQ5气体传感器)
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/ros_sensor/
+    main_entry: gas_sensor_node.py(发布) + gas_monitor.py(订阅)
+    objectives:
+      - 掌握ROS2话题通信的发布者/订阅者模型
+      - 能够使用标准Float32消息接口实现MQ5气体传感器数据的持续发布与订阅
+    exp_content:
+      - 案例:MQ5可燃气体传感器(ADC模拟量采集)通过Topic发布浓度数据
+      - 编写gas_sensor_node发布节点:declare_parameter('publish_period',1.0)声明发布周期→配置QoSProfile(Reliable+KeepLast(10))→create_publisher(Float32,'/gas_sensor')→定时器回调调用common.read_mq5_once()读取ADC原始值并换算电压与ppm(voltage_to_ppm对数曲线)→publish浓度值
+      - 编写gas_monitor订阅节点:declare_parameter('alarm_threshold',500.0)→create_subscription(Float32,'/gas_sensor',callback)→回调中判断浓度是否超阈值并log_warn报警
+      - 使用ros2 topic echo /gas_sensor观察实时浓度
+      - ros2 topic hz /gas_sensor查看发布频率
+      - 使用--ros-args -p publish_period:=0.5调整发布周期
+      - 对比话题(持续数据流)与服务/动作的适用场景
+    notes: 有资源，可复用
+
+  - id: exp07
+    experiment_id: 7
+    name: ROS2服务通讯(指纹传感器)
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/ros_sensor/
+    main_entry: fingerprint_server.py(服务端) + fingerprint_client.py(客户端)
+    objectives:
+      - 掌握ROS2服务通信的客户端/服务器同步RPC模型
+      - 能够基于UART串口实现指纹传感器的身份验证服务
+    exp_content:
+      - 案例:指纹传感器(UART串口)通过Service提供指纹验证
+      - 编写fingerprint_server服务端节点:declare_parameter(port默认/dev/ttyS10,baud默认57600,retries)→create_service(VerifyFingerprint,'/verify_fingerprint',handle_request)→回调中通过串口采集指纹图像(get_image)→生成特征(gen_char)→搜索指纹库(search)→返回Response{success:bool,user_id:int32,message:string}
+      - 编写fingerprint_client客户端节点:create_client(VerifyFingerprint,'verify_fingerprint')→wait_for_service等待服务→call_async发送验证请求→spin_until_future_complete等待响应→打印success/user_id/message
+      - 指纹录入用python3 fingerprint_enroll.py enroll -i 1独立完成(ROS仅做验证)
+      - 使用ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprint查看验证结果
+      - 对比服务(同步请求-响应单次调用)与话题(持续数据流)的适用场景
+    notes: 有资源，可复用
+
+  - id: exp08
+    experiment_id: 8
+    name: ROS2动作通讯(MFRC522读卡器)
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/ros_sensor/
+    main_entry: rfid_action_server.py(服务端) + rfid_action_client.py(客户端)
+    objectives:
+      - 掌握ROS2动作通信的目标-反馈-结果异步模型
+      - 能够基于SPI接口实现MFRC522刷卡检测的长耗时异步动作任务
+    exp_content:
+      - 案例:MFRC522射频读卡器(SPI+GPIO)通过Action实现刷卡检测
+      - 编写rfid_action_server节点:ActionServer(RfidScan,'rfid_scan',execute_callback,goal_callback,cancel_callback)→declare_parameter(spi_bus/spi_device/cs_gpio/rst_gpio/spi_speed)→execute_cb中SPI初始化(MFRC522.open→hw_reset→self_test→init)→循环内publish_feedback实时反馈状态(SCANNING→CARD_FOUND→READING_UID→VERIFYING)→request_a寻卡+anticoll防冲突读取UID→classify_card判断卡类型→goal_handle.succeed返回Result{success,card_uid,card_type,message}
+      - 编写rfid_action_client节点:ActionClient(RfidScan,'rfid_scan')→send_goal_async发送Goal{timeout_sec默认30}→feedback_cb打印状态→result_cb处理读卡结果
+      - 实现动作取消(超时未检测到卡或主动cancel→goal_handle.canceled)
+      - 使用ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan '{timeout_sec:30}' --feedback命令行调试
+      - 对比动作(异步长耗时+中间反馈)、服务(同步短耗时单次调用)、话题(持续数据流)的适用场景
+    notes: 有资源，可复用
+
+  - id: exp09
+    experiment_id: 9
+    name: ROS2自定义接口消息(传感器接口包)
+    hours: 2
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/ros_sensor/ros_sensor_interfaces/
+    objectives:
+      - 掌握自定义消息接口(.msg/.srv/.action)的定义与编译
+      - 能够为MQ5/指纹/MFRC522等传感器创建ros_sensor_interfaces接口包
+    exp_content:
+      - 定义ros_sensor_interfaces接口包(ament_cmake)包含传感器专用接口:msg/TemperatureHumidity(float32 temperature,float32 humidity)用于DHT11温湿度
+      - msg/HeartRateSpO2(float32 heart_rate,float32 spo2,bool valid)用于MAX30102心率血氧
+      - msg/PhotoState(bool level,bool changed)用于光电传感器
+      - srv/VerifyFingerprint请求(空)响应(bool success,int32 user_id,string message)用于指纹验证
+      - srv/TriggerRelay请求(int32 relay_id,float32 duration)响应(bool success,string message)用于继电器控制
+      - action/RfidScan定义Goal(int32 timeout_sec)与Result(bool success,string card_uid,string card_type,string message)与Feedback(string status)用于刷卡检测
+      - 在CMakeLists.txt中配置rosidl_generate_interfaces编译.msg/.srv/.action
+      - 节点包ros_sensor在package.xml中声明<depend>ros_sensor_interfaces</depend>
+      - 使用ros2 interface show ros_sensor_interfaces/srv/VerifyFingerprint等查看接口定义
+      - 对比标准接口(std_msgs/example_interfaces)与自定义传感器专用接口的差异
+    notes: 有资源，可复用
+
+  - id: exp10
+    experiment_id: 10
+    name: ROS2参数服务案例
+    hours: 2
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp02/
+    objectives:
+      - 掌握ROS2参数服务器的声明与动态回调机制
+      - 能够基于真实MQ5可燃气体传感器实现带参数配置的采样应用
+    exp_content:
+      - 声明参数declare_parameter并设置默认值与类型(采样率sample_rate_hz、使能sensor_enabled、报警阈值alarm_threshold_ppm)
+      - 运行时读写参数get_parameter/set_parameter
+      - 注册动态参数回调add_on_set_parameters_callback
+      - 参数描述符ParameterDescriptor限制参数范围
+      - 定时器回调中调用common.read_mq5_once()读取真实MQ5浓度(raw/voltage/ppm)并判断报警
+      - 使用ros2 param命令行工具查看与设置参数
+    notes: 有资源，可复用
+
+  - id: exp11
+    experiment_id: 11
+    name: ROS2时间相关API
+    hours: 2
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: source-codes/exp11/
+    objectives:
+      - 掌握ROS2中的时间类型与定时器使用
+      - 理解时间戳在真实MQ5传感器数据中的实际应用
+    exp_content:
+      - ROS2时间类型：builtin_interfaces/msg/Time与rclpy.time.Time
+      - 获取当前时间get_clock().now()并转换秒/纳秒
+      - 创建定时器create_timer实现周期性回调
+      - 定时器回调中调用common.read_mq5_once()读取真实MQ5浓度并为其Header.stamp打上采集时刻时间戳
+      - 使用ros2 topic delay查看端到端延迟
+      - 理解use_sim_time与仿真时间的同步机制
+    notes: 无资源
+
+  - id: exp12
+    experiment_id: 12
+    name: ROS2 DDS
+    hours: 2
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp12/
+    objectives:
+      - 掌握ROS2底层DDS通信中间件的工作原理
+      - 理解RTPS协议与DDS发现机制
+    exp_content:
+      - ROS2 RMW层架构：DDS实现（Fast-DDS/CycloneDDS）可切换
+      - RTPS协议原理：Participant→Endpoint→Writer/Reader
+      - DDS发现机制：Simple Discovery Protocol参与者发现+端点发现
+      - QoS策略配置：Reliability/Best Effort、Durability、History Depth
+      - 查看DDS通信状态：ros2 daemon与fastdds discovery工具
+    notes: 无资源
+
+  - id: exp13
+    experiment_id: 13
+    name: ROS2分布式通讯
+    hours: 2
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp13/
+    objectives:
+      - 掌握ROS2多机分布式通信的配置方法
+      - 能够实现局域网内跨设备的节点通信
+    exp_content:
+      - ROS2 Domain ID配置：ROS_DOMAIN_ID环境变量隔离通信域
+      - 多机通信前提：同一网段+同一Domain ID
+      - 配置ROS_DISCOVERY_SERVER实现中心化发现
+      - 局域网通信验证：两台设备节点话题/服务互通测试
+      - 网络安全：ROS2 Security（DDS-Security）启用加密通信
+    notes: 无资源
+
+  - id: exp14
+    experiment_id: 14
+    name: ROS2 Rqt工具箱
+    hours: 2
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: source-codes/exp14/
+    objectives:
+      - 掌握rqt工具箱的核心插件使用方法
+      - 能够使用rqt进行系统调试与数据可视化
+    exp_content:
+      - rqt_graph：查看节点-话题-服务关系图
+      - rqt_plot：实时绘制话题数据曲线
+      - rqt_console：查看ROS2日志级别（DEBUG/INFO/WARN/ERROR）
+      - rqt_reconfigure：动态调参界面
+      - rqt_topic：话题数据可视化发布与监控
+      - rqt_bag：录制包数据可视化回放
+    notes: 无资源
+
+  - id: exp15
+    experiment_id: 15
+    name: ROS2 Rviz2使用
+    hours: 2
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp15/
+    objectives:
+      - 掌握Rviz2三维可视化平台的核心功能
+      - 能够配置多种Display面板实现传感器数据与机器人状态的立体展示
+    exp_content:
+      - 启动Rviz2并配置固定参考坐标系(Fixed Frame)
+      - 添加并配置RobotModel面板加载URDF模型
+      - 添加TF面板可视化坐标变换树
+      - 添加LaserScan/PointCloud2/Image面板可视化传感器数据
+      - 添加Path/Marker面板显示导航路径与目标点
+      - 保存与加载rviz配置文件实现调试环境快速复现
+    notes: 无资源
+
+  - id: exp16
+    experiment_id: 16
+    name: ROS2录制回放工具
+    hours: 2
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: source-codes/exp16/
+    objectives:
+      - 掌握ros2 bag的录制与回放功能
+      - 能够录制传感器数据并在离线环境下重现场景
+    exp_content:
+      - ros2 bag record -a录制所有话题数据
+      - ros2 bag record /topic1 /topic2选择性录制指定话题
+      - ros2 bag info查看录制包信息（话题数量、消息数量、时长）
+      - ros2 bag play回放录制数据并调整播放速率
+      - 在Rviz2中可视化回放数据进行离线分析
+    notes: 无资源
+
+  - id: exp17
+    experiment_id: 17
+    name: ROS2 Launch启动文件配置
+    hours: 2
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp17/
+    objectives:
+      - 掌握Python/XML/YAML格式Launch文件的编写
+      - 能够实现复杂多节点系统的一键启动与参数化配置
+    exp_content:
+      - Launch文件三种格式（Python推荐/XML/YAML）的语法对比
+      - 编写Python Launch文件：Node声明、参数配置、重映射(remap)
+      - 配置节点启动顺序与依赖管理
+      - 条件启动(IfCondition/UnlessCondition)与事件触发(OnProcessExit)
+      - Launch参数传递（LaunchArgument）与include嵌套
+    notes: 无资源
+
+  - id: exp18
+    experiment_id: 18
+    name: ROS2元功能包介绍
+    hours: 2
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: source-codes/exp18/
+    objectives:
+      - 理解元功能包的概念与作用
+      - 能够创建元功能包组织相关功能包
+    exp_content:
+      - 元功能包(Metapackage)概念：不包含代码仅聚合依赖
+      - 使用ament_cmake创建元功能包的package.xml格式
+      - 构建元功能包执行依赖(exec_depend)声明
+      - 元功能包的典型应用场景（如ros2_desktop/navigation2）
+      - 对比功能包集合与元功能包的区别
+    notes: 无资源
+
+  - id: exp19
+    experiment_id: 19
+    name: ROS2 TF2坐标变换
+    hours: 2
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp19/
+    objectives:
+      - 掌握TF2坐标变换树的构建与查询方法
+      - 能够实现机器人多坐标系之间的位置变换
+    exp_content:
+      - TF2坐标变换树概念：父子坐标系关系与树形结构
+      - 发布静态坐标变换(StaticTransformBroadcaster)
+      - 发布动态坐标变换(TransformBroadcaster)持续更新
+      - 监听坐标变换(Buffer+TransformListener)查询相对位姿
+      - 使用tf2_echo/view_frames工具可视化TF树
+      - tf2_ros与tf2_geometry_msgs库实现坐标换算
+    notes: 无资源
+
+  - id: exp20
+    experiment_id: 20
+    name: ROS2 URDF模型
+    hours: 2
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: source-codes/exp20/
+    objectives:
+      - 掌握URDF模型的编写方法
+      - 能够建立完整的机器人运动学模型并在Rviz2中验证
+    exp_content:
+      - URDF文件编写：定义连杆(link)的视觉(visual)、碰撞(collision)、惯性(inertial)属性
+      - 定义关节(joint)类型(旋转/固定/移动/连续)与运动学约束
+      - Xacro宏语言简化复杂模型描述(宏定义/数学表达式/文件include)
+      - 将URDF模型加载到Rviz2验证坐标系与运动学结构
+      - 检查并修复URDF模型常见错误(joint→link连接关系)
+    notes: 无资源
+
+  - id: exp21
+    experiment_id: 21
+    name: ROS2 Gazebo仿真平台
+    hours: 2
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp21/
+    objectives:
+      - 掌握Gazebo三维物理仿真的基本使用
+      - 能够搭建包含多传感器的完整机器人仿真环境
+    exp_content:
+      - Gazebo GUI界面介绍与World文件结构
+      - 导入URDF机器人模型到Gazebo仿真环境并添加物理参数
+      - 配置Gazebo插件(gazebo_ros2_control)实现ROS2控制接口
+      - 设置物理引擎参数(重力/碰撞/摩擦)测试运动仿真
+      - 模拟传感器(激光雷达/深度相机/IMU)数据通过ROS2话题发布
+      - 使用ros2 control启动控制器驱动虚拟机器人运动
+    notes: 无资源
+
+_source:
+  csv_path: input/course_spec.csv
+  csv_sha256: f4edb1ec2c95aff59436fb265925c105234902916bf9b111b29671a687b014ba
+  parsed_at: 2026-08-13T01:23:52
+  parser: spec-parser-skill

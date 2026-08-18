@@ -146,7 +146,7 @@ graph LR
    ```
 3. 用 Python 验证配置加载与校验逻辑：
    ```bash
-   python -c "from config import load_config; cfg = load_config('config/defect_config.yaml'); print(cfg['infer'])"
+   python -c "import yaml; cfg = yaml.safe_load(open('config/defect_config.yaml')); print(cfg['infer'])"
    # 预期输出：{'imgsz': 640, 'score_thr': 0.25, 'iou_thr': 0.45, 'pad_color': [0, 0, 0]}
    ```
 4. 验证缺键报错（观察 ConfigError 契约）：
@@ -338,7 +338,7 @@ graph TD
    source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
    export ROS_DOMAIN_ID=2
    ros2 launch ascamera hp60c.launch.py
-
+   
    # 终端 2：运行缺陷检测（同一 ROS_DOMAIN_ID）
    source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
    export ROS_DOMAIN_ID=2
@@ -1262,7 +1262,7 @@ graph LR
 
 ## 实验5：基于OpenCV的多边形轮廓拟合实验（4h）
 
-> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/05_line_following/`。⚠️ **内容说明**：课程名义为「自主巡线」，实际内容 = 亚博课程「OpenCV应用——多边形轮廓」：不规则轮廓 → 拟合规则几何形状（凸包/多边形）并标注顶点数。纯 OpenCV 方案（用户指示：不参考 car1_app/line_following.py）。单测 21/21 全绿，板端验证通过。
+> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/05_line_following/`。⚠️ **内容说明**：课程名义为「自主巡线」，实际内容 = 「OpenCV应用——多边形轮廓」：不规则轮廓 → 拟合规则几何形状（凸包/多边形）并标注顶点数。纯 OpenCV 方案（用户指示：不参考 car1_app/line_following.py）。单测 21/21 全绿，板端验证通过。
 
 ### 1.1 关联知识点
 
