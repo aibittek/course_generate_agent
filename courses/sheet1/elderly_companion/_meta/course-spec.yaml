@@ -1,0 +1,291 @@
+course_code: EXP006a
+course_name: 机器人大模型综合应用开发
+category: sheet1
+folder: elderly_companion
+prerequisites:
+  - 机器人视觉应用与开发
+  - 机器人自然语言交互应用与开发
+  - Python编程
+  - 边缘计算基础
+total_hours: 48
+theory_hours: 0
+lab_hours: 48
+experiment_count: 9
+tech_stack:
+  - YOLOv8
+  - 人体姿态估计(BlazePose/RTMPose)
+  - RKNN NPU
+  - 语音唤醒KWS
+  - 流式ASR
+  - 本地TTS
+  - 本地大模型RKLLM
+  - 跌倒状态机
+  - 串口告警
+  - MJPEG推流
+hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
+description: |
+  本课程围绕老人跌倒监护(行人检测/姿态估计/跌倒判定/语音交互/本地大模型/告警证据)综合项目展开，从需求分析、架构设计、配置与接口设计出发，分模块完成语音交互、视觉检测与姿态估计、跌倒判定、告警与证据、LLM对话与VLM复核集成测试，最终进行全功能快速验证，构建语音+大模型驱动的老人跌倒监护系统。
+experiments:
+  - id: exp01
+    experiment_id: 1
+    name: 老人跌倒监护--项目需求分析
+    hours: 4
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+    main_entry: docs/01_需求总览.md;docs/05_流程与安全.md;README.md
+    knowledge_points:
+      - R1-R12功能需求
+      - 跌倒→ASK→ALERT→取消全流程
+      - 语音打断与重问机制
+      - 超时兜底(12s确认超时)
+      - 文本调试模式(--text)与状态机统一
+    objectives:
+      - 理解老人跌倒监护综合项目需求(R1-R12)
+      - 掌握跌倒→询问→告警→取消完整流程
+      - 理解语音交互与视觉判定分层设计
+    exp_content:
+      - 步骤1:阅读需求总览文档docs/01_需求总览.md梳理R1-R12全部需求
+      - 步骤2:绘制跌倒检测/语音询问/告警存档三大流程完整流程图
+      - 步骤3:阅读流程与安全docs/05_流程与安全.md标注ASK重问/超时兜底/语音打断点
+      - 步骤4:阅读README.md架构速览理解common/vision/fall/speech/llm五层结构与关键决策
+      - 步骤5:完成需求阅读笔记
+    notes: 源码位于ros2_ws/src/xflz_eai_car1/app/elderly_companion/;纯文档阅读无硬件操作
+
+  - id: exp02
+    experiment_id: 2
+    name: 老人跌倒监护--系统架构设计
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+    main_entry: docs/02_架构设计.md;fall/monitor.py;speech/voice_loop.py;common/source.py
+    knowledge_points:
+      - 分层架构(apps/common/vision/fall/speech/llm)
+      - 视觉流水线(YOLO→IoU→姿态→状态机)
+      - 语音单状态机(IDLE/LISTENING/SPEAKING)
+      - 单录音线程+队列路由
+      - monitor↔VoiceLoop三接口(on_kws/on_asr/has_ask_session)
+      - 多输入源抽象(FrameSource)
+    objectives:
+      - 掌握六层模块职责与依赖方向
+      - 理解跌倒判定与语音链路的解耦设计
+      - 掌握单录音线程+队列的音频路由机制
+    exp_content:
+      - 步骤1:阅读架构设计文档docs/02_架构设计.md理解common→vision→fall与speech/llm的依赖关系
+      - 步骤2:阅读fall/monitor.py理解process_frame视觉流水线与on_kws/on_asr/has_ask_session三接口
+      - 步骤3:阅读speech/voice_loop.py理解IDLE/LISTENING/SPEAKING状态机与录音线程+队列路由
+      - 步骤4:绘制视觉与语音双流水线数据流图
+      - 步骤5:说明为什么文本模式(--text)与音频模式走同一状态机
+    notes: 源码位于ros2_ws/…;纯阅读无硬件操作
+
+  - id: exp03
+    experiment_id: 3
+    name: 老人跌倒监护--配置与接口设计
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+    main_entry: config/fall_config.yaml;config/config_schema.py;docs/04_配置方案.md;docs/10_程序参数详解.md
+    knowledge_points:
+      - fall_config.yaml十四段配置(model/detect/source/speech/state/interaction/alert/evidence/llm)
+      - config_schema强制键校验
+      - CLI传参与配置覆盖规则
+      - 模型路径/阈值/端口/串口映射
+      - VLM开关(model.vlm.enabled)
+    objectives:
+      - 掌握fall_config.yaml各段配置含义与调参方法
+      - 理解config_schema.py校验机制
+      - 掌握CLI参数与配置文件覆盖优先级
+    exp_content:
+      - 步骤1:阅读配置方案docs/04_配置方案.md记录十四段配置键
+      - 步骤2:阅读config/fall_config.yaml对照model/detect/speech/alert/llm各段
+      - 步骤3:故意改错一个键运行config/config_schema.py验证校验拦截
+      - 步骤4:运行python3 common/env_check.py自检依赖/模型/串口完整性
+      - 步骤5:阅读docs/10_程序参数详解.md掌握全部入口CLI参数与覆盖规则
+    notes: 源码位于ros2_ws/…;需板端Python3.10+环境
+
+  - id: exp04
+    experiment_id: 4
+    name: 老人跌倒监护--语音交互集成测试
+    hours: 6
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+    main_entry: speech/voice_loop.py;speech/xfm_wake.py;speech/kws.py;speech/asr.py;speech/tts.py;config/kws_keywords.txt;docs/07_语音测试用例.md
+    knowledge_points:
+      - XFM六麦硬件唤醒(AIUI事件)
+      - 软件KWS关键词检出(sherpa-onnx)
+      - 流式ASR(zipformer)
+      - TTS播报与预合成缓存
+      - 唤醒后启动录音(XFM时序)
+      - 提示音双次排空防回声
+      - ASK应答窗口与2s兜底快答
+      - 单次应答防重复
+    objectives:
+      - 掌握语音链路唤醒→提示音→ASR→应答→打断全流程
+      - 理解录音线程在硬件唤醒后才启动的原因
+      - 完成语音模块测试用例验证
+    exp_content:
+      - 步骤1:运行python3 apps/speech_text_demo.py文本模式验证状态机(小飞小飞=唤醒/救命=呼救/没事=取消)
+      - 步骤2:依次运行apps/speech_kws_test.py与apps/speech_asr_test.py与apps/speech_tts_test.py单点验证
+      - 步骤3:启动语音全链路python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
+      - 步骤4:输入小飞小飞验证唤醒→提示音→对话→播报闭环
+      - 步骤5:按docs/07_语音测试用例.md逐条执行唤醒/打断/ASK应答用例
+      - 步骤6:修改config/kws_keywords.txt加入自定义唤醒词重新测试
+    notes: 源码位于ros2_ws/…;--text模式无需麦克风/扬声器
+
+  - id: exp05
+    experiment_id: 5
+    name: 老人跌倒监护--视觉检测与姿态估计集成测试
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+    main_entry: vision/yolo/detector.py;vision/pose/engine.py;vision/pose_rtm/engine.py;apps/detect_demo.py;apps/pose_demo.py;config/fall_config.yaml(detect段);docs/08_视觉测试用例.md
+    knowledge_points:
+      - YOLOv8行人检测(RKNN NPU)
+      - BlazePose 33关键点
+      - RTMPose 17关键点(SimCC双头解码)
+      - letterbox预处理与NMS后处理
+      - core_mask NPU核选择
+      - 检测/姿态双后端切换
+    objectives:
+      - 掌握YOLOv8行人检测与NMS解码链路
+      - 掌握BlazePose/RTMPose姿态估计双后端
+      - 理解letterbox→RGB→RKNN→decode推理流程
+    exp_content:
+      - 步骤1:运行python3 apps/detect_demo.py --input testdata/stand_up.jpg --save验证行人检测
+      - 步骤2:运行python3 apps/pose_demo.py --input testdata/fall_1.png --save验证姿态估计
+      - 步骤3:切换pose/pose_rtm双后端对比关键点输出
+      - 步骤4:运行python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text观察检测框+骨架叠加
+      - 步骤5:按docs/08_视觉测试用例.md逐条执行检测/姿态用例
+      - 步骤6:修改config/fall_config.yaml中detect.confidence阈值观察检测结果变化
+    notes: 源码位于ros2_ws/…;需模型文件(rtmpose_s_256x192_int8.rknn已内置)
+
+  - id: exp06
+    experiment_id: 6
+    name: 老人跌倒监护--跌倒判定集成测试
+    hours: 4
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+    main_entry: fall/monitor.py;fall/state_machine.py;fall/assoc.py;fall/geometry.py;fall/interaction.py;docs/08_视觉测试用例.md
+    knowledge_points:
+      - 每帧流水线(YOLO→IoU关联→姿态→特征→状态机)
+      - 躯干角>50°判定
+      - 检测框宽高比<0.5与髋部速度尖峰
+      - 六状态机(IDLE/FALLING/LYING/ASK/ALERT/CANCELLED)
+      - IoU跨帧人员关联
+      - ASK→救命=ALERT/没事=取消
+      - cooldown 60s
+    objectives:
+      - 掌握跌倒判定的几何特征(躯干角/宽高比/髋部速度)
+      - 理解每人独立状态机与IoU人员关联
+      - 完成跌倒→询问→应答全流程验证
+    exp_content:
+      - 步骤1:运行python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
+      - 步骤2:视频出现跌倒时观察FALLING→LYING→ASK状态流转与您还好吗播报
+      - 步骤3:输入救命验证ALERT告警流程
+      - 步骤4:重新运行并输入没事验证CANCELLED取消流程
+      - 步骤5:调低state阈值参数观察误报变化
+      - 步骤6:按docs/08_视觉测试用例.md执行跌倒判定用例
+    notes: 源码位于ros2_ws/…;离线视频即可完成本实验
+
+  - id: exp07
+    experiment_id: 7
+    name: 老人跌倒监护--告警与证据存档集成测试
+    hours: 4
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+    main_entry: fall/alert_hw.py;fall/evidence.py;vision/yolo/mjpeg_server.py;common/stm32_protocol.py;docs/09_告警与证据测试用例.md
+    knowledge_points:
+      - STM32串口告警协议(0xAA 0x55帧+CRC8)
+      - 蜂鸣器/LED/OLED控制与告警节流
+      - 证据存档(FrameRing前后帧截图/.avi视频/events.jsonl)
+      - MJPEG推流(:8088/fall.mjpg)
+      - 运行产物不入库(runs/)
+      - 资源清理(pkill aplay/llm_server)
+    objectives:
+      - 掌握STM32串口告警链路与CRC8校验
+      - 理解证据存档三件套(截图/视频/事件日志)
+      - 掌握MJPEG实时推流验证方法
+    exp_content:
+      - 步骤1:阅读common/stm32_protocol.py理解帧结构与CRC8校验
+      - 步骤2:触发一次ALERT后检查runs/evidence/下截图与.avi与events.jsonl
+      - 步骤3:启动--mjpeg在浏览器打开http://板端IP:8088/fall.mjpg观察实时画面
+      - 步骤4:多次触发验证alert_hw.py告警节流不刷屏
+      - 步骤5:按docs/09_告警与证据测试用例.md执行用例
+      - 步骤6:运行pkill -9 aplay清理残留播放进程
+    notes: 源码位于ros2_ws/…;需STM32串口告警硬件
+
+  - id: exp08
+    experiment_id: 8
+    name: 老人跌倒监护--LLM对话与VLM复核集成测试
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+    main_entry: llm/llm_server.py;llm/chat.py;llm/server_manager.py;fall/vision_judge.py;apps/llm_chat_test.py;apps/vlm_demo.py;config/fall_config.yaml(llm段)
+    knowledge_points:
+      - RKLLM本地大模型(Qwen3.5 RK3576 NPU)
+      - Flask OpenAI兼容HTTP服务
+      - 多轮对话历史滑动窗口
+      - server_manager子进程生命周期
+      - VLM视觉复核(vision_judge)
+      - VLM默认关闭(内存考虑)
+    objectives:
+      - 掌握本地大模型服务启动与多轮对话
+      - 理解VLM复核在跌倒判定中的作用与开关
+      - 完成LLM对话链路验证
+    exp_content:
+      - 步骤1:运行python3 apps/llm_chat_test.py验证单轮对话
+      - 步骤2:在apps/speech_text_demo.py中输入多轮对话验证历史滑动窗口
+      - 步骤3:开启config/fall_config.yaml中model.vlm.enabled:true并运行python3 apps/vlm_demo.py --image testdata/fall_1.png
+      - 步骤4:观察server_manager端口自动管理与子进程清理
+      - 步骤5:验证跌倒播报与LLM对话回答可并存不冲突
+    notes: 源码位于ros2_ws/…;需RKLLM模型(约1.5G内存);VLM开启后内存紧张需谨慎
+
+  - id: exp09
+    experiment_id: 9
+    name: 老人跌倒监护--全功能快速验证
+    hours: 6
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+    main_entry: apps/fall_app.py;apps/fall_video_demo.py;common/env_check.py;README.md(常用命令);docs/03_开发模式与验证.md
+    knowledge_points:
+      - 三模式入口(--mode camera/image/video)
+      - 文本→音频→摄像头三级开发模式
+      - 实时摄像头(需ROS相机节点)
+      - 环境自检env_check
+      - 全链路故障排查
+      - 证据/日志完整性
+    objectives:
+      - 掌握fall_app.py三模式启动方法
+      - 完成唤醒→对话→跌倒→询问→应答→告警→存档全链路验证
+      - 掌握故障排查与资源清理
+    exp_content:
+      - 步骤1:先运行python3 common/env_check.py确认环境完整
+      - 步骤2:python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --mjpeg离线全链路
+      - 步骤3:另终端ros2 launch car1_peripherals depth_camera.launch.py启动相机
+      - 步骤4:python3 apps/fall_app.py --mode camera --mjpeg --save实时全链路
+      - 步骤5:按docs/03_开发模式与验证.md五步验证手册逐项检查
+      - 步骤6:验证runs/下证据与日志完整性并清理残留进程
+    notes: 源码位于ros2_ws/…;实时模式需深度相机HP60C
+
+_source:
+  csv_path: input/course_spec_elderly_companion.csv
+  csv_sha256: 25bbf32ee1338458fb35907cc9fd3786a6b833d8cb75b5f9f163ad0a87ccdbc4
+  parsed_at: 2026-08-18T10:28:00
+  parser: spec-parser-skill
