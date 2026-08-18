@@ -5,7 +5,7 @@ version: v1.0
 generated_at: 2026-08-10
 generator: KnowledgeGraphAgent
 source_spec: courses/sheet1/robot_vision/_meta/course-spec.yaml
-csv_sha256: a62ebbd162049af2d9d9e5f66a46591aba86264574e26993b4f896bf5de7c4ac
+csv_sha256: c3fb485ce0dc2b232dbbc1a51e5481523482d42b36a758503e4ee6b11e71ce5b
 ---
 
 # 机器人视觉应用与开发 知识图谱

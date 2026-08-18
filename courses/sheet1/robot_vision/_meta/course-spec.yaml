@@ -7,8 +7,8 @@ prerequisites:
   - OpenCV基础
   - 边缘计算基础
 total_hours: 48
-theory_hours: 18
-lab_hours: 30
+theory_hours: 0
+lab_hours: 48
 experiment_count: 12
 tech_stack:
   - OpenCV
@@ -60,16 +60,16 @@ experiments:
     main_entry: src/app.py
     knowledge_points:
       - 图像分类原理
-      - MobileNet模型
+      - YOLOv5检测头
       - 数据集搭建
-      - 模型训练
-      - RKNN部署
+      - 模型部署
+      - 4大类映射
     objectives:
-      - 掌握图像分类数据集搭建与模型训练流程
+      - 掌握图像分类数据集搭建与模型部署流程
       - 实现基于视觉的垃圾分类与机械臂分拣联动
     exp_content:
       - 搭建垃圾分类数据集（可回收、厨余、有害、其他四类）
-      - 使用图像分类模型MobileNet/ResNet训练并评估分类器
+      - 使用YOLOv5式检测头模型部署并评估分类器
       - 实现摄像头实时拍摄并自动分类输出类别名称与置信度
       - 根据分类结果调用机械臂控制接口完成分拣动作
       - 设计分类结果可视化交互界面
@@ -90,11 +90,11 @@ experiments:
       - 形态学运算
       - 轮廓检测
     objectives:
-      - 掌握Lab色彩空间阈值调节方法
+      - 掌握HSV色彩空间阈值调节方法
       - 实现摄像头实时采集图像并完成多色目标检测与标注
     exp_content:
-      - 使用LAB TOOL工具调节红蓝绿三色的色彩阈值范围
-      - 编写OpenCV程序采集摄像头RGB图像转换至Lab色彩空间
+      - 使用调参工具调节红蓝绿三色的色彩阈值范围
+      - 编写OpenCV程序采集摄像头RGB图像转换至HSV色彩空间
       - 通过阈值掩膜与形态学运算（开运算、闭运算）提取目标区域
       - 用圆形轮廓标识目标并在窗口左下方打印颜色名称
     notes: 源码已就位;已测试;24用例全绿;板端验证通过50fps
@@ -111,8 +111,8 @@ experiments:
     knowledge_points:
       - 二维码编码原理
       - QRCode库
-      - pyzbar解码
       - OpenCV实时检测
+      - 多码循环
     objectives:
       - 掌握二维码的编码生成原理
       - 使用摄像头实时检测并解析二维码内容
@@ -322,7 +322,7 @@ experiments:
     notes: 源码已就位;已测试;85用例全绿;板端验证通过
 
 _source:
-  csv_path: input/course_spec.csv
-  csv_sha256: a62ebbd162049af2d9d9e5f66a46591aba86264574e26993b4f896bf5de7c4ac
-  parsed_at: 2026-08-10T15:31:04
+  csv_path: input/course_spec_robot_vision.csv
+  csv_sha256: c3fb485ce0dc2b232dbbc1a51e5481523482d42b36a758503e4ee6b11e71ce5b
+  parsed_at: 2026-08-18T17:40:29
   parser: spec-parser-skill
