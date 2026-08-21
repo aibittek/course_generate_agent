@@ -1,0 +1,892 @@
+[33mcommit 5cc9bb3de71dd8b2a7627ab9b2f61d1d2631bfd4[m
+Author: 霍路远 <2103115718@qq.com>
+Date:   Fri Aug 21 21:02:26 2026 +0800
+
+    增加ROS应用指导手册图片
+
+ .claude/agents/knowledge-point-enhancer.md         |  122 [32m+[m
+ .claude/commands/knowledge-enhance.md              |   67 [32m+[m
+ .../skills/knowledge-point-enhancement/SKILL.md    |  315 [32m++[m
+ .gitignore                                         |    7 [32m+[m
+ .../sheet1/elderly_companion/EXP006a_lab_guide.md  | 1283 [32m++++[m[31m-[m
+ .../elderly_companion/_parts/experiment-1.md       |   95 [32m+[m[31m-[m
+ .../elderly_companion/_parts/experiment-2.md       |   74 [32m+[m
+ .../elderly_companion/_parts/experiment-3.md       |  140 [32m+[m[31m-[m
+ .../elderly_companion/_parts/experiment-4.md       |  294 [32m++[m
+ .../elderly_companion/_parts/experiment-5.md       |  205 [32m+[m[31m-[m
+ .../elderly_companion/_parts/experiment-6.md       |  159 [32m+[m[31m-[m
+ .../elderly_companion/_parts/experiment-7.md       |   93 [32m+[m[31m-[m
+ .../elderly_companion/_parts/experiment-8.md       |  151 [32m+[m[31m-[m
+ .../elderly_companion/_parts/experiment-9.md       |  111 [32m+[m[31m-[m
+ .../assets/8eecee834d3640889ca0b6c65669b767.png    |  Bin [31m0[m -> [32m198030[m bytes
+ .../assets/image-20260821172932524.png             |  Bin [31m0[m -> [32m64730[m bytes
+ .../assets/image-20260821172956864.png             |  Bin [31m0[m -> [32m295301[m bytes
+ .../assets/image-20260821173149153.png             |  Bin [31m0[m -> [32m183059[m bytes
+ .../assets/image-20260821173749502.png             |  Bin [31m0[m -> [32m287715[m bytes
+ .../assets/image-20260821174838243.png             |  Bin [31m0[m -> [32m173636[m bytes
+ .../assets/image-20260821175227096.png             |  Bin [31m0[m -> [32m168735[m bytes
+ .../assets/image-20260821175349036.png             |  Bin [31m0[m -> [32m258523[m bytes
+ .../sheet1/robot_vision/EXP001_knowledge_graph.md  |   15 [32m+[m[31m-[m
+ courses/sheet1/robot_vision/EXP001_lab_guide.md    | 3980 [32m+++++++++++++[m[31m--[m
+ courses/sheet1/robot_vision/EXP001_quiz.md         |  551 [32m+++[m
+ courses/sheet1/robot_vision/EXP001_syllabus.md     |  405 [32m++[m
+ courses/sheet1/robot_vision/_meta/course-spec.yaml |   28 [32m+[m[31m-[m
+ courses/sheet1/robot_vision/_parts/experiment-1.md |  319 [32m+[m[31m-[m
+ .../sheet1/robot_vision/_parts/experiment-10.md    |  298 [32m+[m[31m-[m
+ .../sheet1/robot_vision/_parts/experiment-11.md    |  354 [32m+[m[31m-[m
+ .../sheet1/robot_vision/_parts/experiment-12.md    |  320 [32m+[m[31m-[m
+ courses/sheet1/robot_vision/_parts/experiment-2.md |  269 [32m+[m[31m-[m
+ courses/sheet1/robot_vision/_parts/experiment-3.md |  332 [32m+[m[31m-[m
+ courses/sheet1/robot_vision/_parts/experiment-4.md |  279 [32m+[m[31m-[m
+ courses/sheet1/robot_vision/_parts/experiment-5.md |  267 [32m+[m[31m-[m
+ courses/sheet1/robot_vision/_parts/experiment-6.md |  401 [32m+[m[31m-[m
+ courses/sheet1/robot_vision/_parts/experiment-7.md |  421 [32m+[m[31m-[m
+ courses/sheet1/robot_vision/_parts/experiment-8.md |  266 [32m+[m[31m-[m
+ courses/sheet1/robot_vision/_parts/experiment-9.md |  388 [32m+[m[31m-[m
+ .../assets/1157643a6d094c2589f57e1c7aaed5a6.png    |  Bin [31m0[m -> [32m185077[m bytes
+ .../assets/1ebb040adac1e258c00d6e0868727559.jpeg   |  Bin [31m0[m -> [32m1417470[m bytes
+ .../assets/5264cd2124d946a88822e237f5c5fb89.png    |  Bin [31m0[m -> [32m73698[m bytes
+ ...465316-4a282000-3a02-11e9-8e85-0006e3100da0.png |  Bin [31m0[m -> [32m491091[m bytes
+ .../assets/848c3779e8734ca5868b4edfba4c4fd4.png    |  Bin [31m0[m -> [32m407724[m bytes
+ courses/sheet1/robot_vision/assets/OIP.webp        |  Bin [31m0[m -> [32m12336[m bytes
+ courses/sheet1/robot_vision/assets/PR_curve.png    |  Bin [31m0[m -> [32m198060[m bytes
+ courses/sheet1/robot_vision/assets/c250066-1.jpg   |  Bin [31m0[m -> [32m284607[m bytes
+ .../robot_vision/assets/confusion_matrix.png       |  Bin [31m0[m -> [32m143779[m bytes
+ .../assets/format,png-1787193812094-8.png          |  Bin [31m0[m -> [32m83779[m bytes
+ courses/sheet1/robot_vision/assets/format,png.png  |  Bin [31m0[m -> [32m86412[m bytes
+ .../assets/image-20260819164309192.png             |  Bin [31m0[m -> [32m167407[m bytes
+ .../assets/image-20260819164332854.png             |  Bin [31m0[m -> [32m189530[m bytes
+ .../assets/image-20260819172223216.png             |  Bin [31m0[m -> [32m122147[m bytes
+ .../assets/image-20260819172236760.png             |  Bin [31m0[m -> [32m184011[m bytes
+ .../assets/image-20260819173659479.png             |  Bin [31m0[m -> [32m367767[m bytes
+ .../assets/image-20260819173701539.png             |  Bin [31m0[m -> [32m367767[m bytes
+ .../assets/image-20260820091625899.png             |  Bin [31m0[m -> [32m2043272[m bytes
+ .../assets/image-20260820091701693.png             |  Bin [31m0[m -> [32m458945[m bytes
+ .../assets/image-20260820091716936.png             |  Bin [31m0[m -> [32m409976[m bytes
+ .../assets/image-20260820094534557.png             |  Bin [31m0[m -> [32m528450[m bytes
+ .../assets/image-20260820100141487.png             |  Bin [31m0[m -> [32m28262[m bytes
+ .../assets/image-20260820101124412.png             |  Bin [31m0[m -> [32m29945[m bytes
+ .../assets/image-20260820101126152.png             |  Bin [31m0[m -> [32m29945[m bytes
+ .../assets/image-20260820102754705.png             |  Bin [31m0[m -> [32m186359[m bytes
+ .../assets/image-20260820103851330.png             |  Bin [31m0[m -> [32m301254[m bytes
+ .../assets/image-20260820111204789.png             |  Bin [31m0[m -> [32m354377[m bytes
+ .../assets/image-20260820111609703.png             |  Bin [31m0[m -> [32m432767[m bytes
+ .../assets/image-20260820112500424.png             |  Bin [31m0[m -> [32m5077[m bytes
+ .../assets/image-20260820133314253.png             |  Bin [31m0[m -> [32m66256[m bytes
+ .../assets/image-20260820133755142.png             |  Bin [31m0[m -> [32m14765[m bytes
+ .../assets/image-20260820133805085.png             |  Bin [31m0[m -> [32m14765[m bytes
+ .../assets/image-20260820133830333.png             |  Bin [31m0[m -> [32m5077[m bytes
+ .../assets/image-20260820133843520.png             |  Bin [31m0[m -> [32m5047[m bytes
+ .../assets/image-20260820133853554.png             |  Bin [31m0[m -> [32m3538[m bytes
+ .../assets/image-20260820133900996.png             |  Bin [31m0[m -> [32m3538[m bytes
+ .../assets/image-20260820134031321.png             |  Bin [31m0[m -> [32m3538[m bytes
+ .../assets/image-20260820134309004.png             |  Bin [31m0[m -> [32m384874[m bytes
+ .../assets/image-20260820135450778.png             |  Bin [31m0[m -> [32m864370[m bytes
+ .../assets/image-20260820135550076.png             |  Bin [31m0[m -> [32m615573[m bytes
+ .../assets/image-20260820141003711.png             |  Bin [31m0[m -> [32m402170[m bytes
+ .../assets/image-20260820141504801.png             |  Bin [31m0[m -> [32m146375[m bytes
+ .../assets/image-20260820142623859.png             |  Bin [31m0[m -> [32m244678[m bytes
+ .../assets/image-20260820142635892.png             |  Bin [31m0[m -> [32m73068[m bytes
+ .../assets/image-20260820142819982.png             |  Bin [31m0[m -> [32m110660[m bytes
+ .../assets/image-20260820143524994.png             |  Bin [31m0[m -> [32m889299[m bytes
+ .../assets/image-20260820151553584.png             |  Bin [31m0[m -> [32m68366[m bytes
+ .../assets/image-20260820151705697.png             |  Bin [31m0[m -> [32m319553[m bytes
+ .../assets/image-20260820152158765.png             |  Bin [31m0[m -> [32m113085[m bytes
+ .../assets/image-20260820152210667.png             |  Bin [31m0[m -> [32m113085[m bytes
+ .../assets/image-20260820153940571.png             |  Bin [31m0[m -> [32m734523[m bytes
+ .../assets/image-20260820154112741.png             |  Bin [31m0[m -> [32m266488[m bytes
+ .../assets/image-20260820154142218.png             |  Bin [31m0[m -> [32m297915[m bytes
+ .../assets/image-20260820154206605.png             |  Bin [31m0[m -> [32m297915[m bytes
+ .../assets/image-20260820160047483.png             |  Bin [31m0[m -> [32m19207[m bytes
+ .../assets/image-20260820160346076.png             |  Bin [31m0[m -> [32m422107[m bytes
+ .../assets/image-20260820163436128.png             |  Bin [31m0[m -> [32m285952[m bytes
+ .../assets/image-20260820164529174.png             |  Bin [31m0[m -> [32m87017[m bytes
+ .../assets/image-20260820165757651.png             |  Bin [31m0[m -> [32m750316[m bytes
+ .../assets/image-20260820170410617.png             |  Bin [31m0[m -> [32m626075[m bytes
+ .../assets/image-20260820172101101.png             |  Bin [31m0[m -> [32m336187[m bytes
+ .../assets/image-20260820173535847.png             |  Bin [31m0[m -> [32m137879[m bytes
+ .../assets/image-20260820173756242.png             |  Bin [31m0[m -> [32m337324[m bytes
+ .../assets/image-20260821090257502.png             |  Bin [31m0[m -> [32m197084[m bytes
+ .../assets/image-20260821093802989.png             |  Bin [31m0[m -> [32m118244[m bytes
+ .../assets/image-20260821094007732.png             |  Bin [31m0[m -> [32m336513[m bytes
+ .../assets/image-20260821100414144.png             |  Bin [31m0[m -> [32m411344[m bytes
+ .../assets/image-20260821100430852.png             |  Bin [31m0[m -> [32m366106[m bytes
+ .../assets/image-20260821100830923.png             |  Bin [31m0[m -> [32m228128[m bytes
+ .../assets/image-20260821100946681.png             |  Bin [31m0[m -> [32m128969[m bytes
+ .../assets/image-20260821101054253.png             |  Bin [31m0[m -> [32m449839[m bytes
+ .../assets/image-20260821101136188.png             |  Bin [31m0[m -> [32m422789[m bytes
+ .../assets/image-20260821101202609.png             |  Bin [31m0[m -> [32m444796[m bytes
+ .../v2-84f08e9fef72bbd32f533ab4c068151c_720w.webp  |  Bin [31m0[m -> [32m9874[m bytes
+ .../robot_vision/assets/val_batch0_labels.jpg      |  Bin [31m0[m -> [32m1156955[m bytes
+ .../sheet1/robot_vision/content-audit-report.md    |  118 [32m+[m
+ courses/sheet1/robot_vision/generation-progress.md |   55 [32m+[m
+ .../sheet1/robot_vision/quality-review-report.md   |  106 [32m+[m
+ courses/sheet1/robot_vision/source-sync-plan.md    |  128 [32m+[m
+ .../assets/image-20260821182635862.png             |  Bin [31m0[m -> [32m262819[m bytes
+ .../assets/image-20260821182700575.png             |  Bin [31m0[m -> [32m273620[m bytes
+ .../assets/image-20260821182921634.png             |  Bin [31m0[m -> [32m482167[m bytes
+ .../assets/image-20260821182938200.png             |  Bin [31m0[m -> [32m1738403[m bytes
+ .../assets/image-20260821183053729.png             |  Bin [31m0[m -> [32m193061[m bytes
+ .../assets/image-20260821183108808.png             |  Bin [31m0[m -> [32m340244[m bytes
+ .../assets/image-20260821183128226.png             |  Bin [31m0[m -> [32m335563[m bytes
+ .../assets/image-20260821183237881.png             |  Bin [31m0[m -> [32m1033255[m bytes
+ .../assets/image-20260821183258468.png             |  Bin [31m0[m -> [32m834830[m bytes
+ .../assets/image-20260821183429592.png             |  Bin [31m0[m -> [32m241463[m bytes
+ .../assets/image-20260821183542587.png             |  Bin [31m0[m -> [32m177156[m bytes
+ .../assets/image-20260821183615295.png             |  Bin [31m0[m -> [32m199379[m bytes
+ .../assets/image-20260821183633603.png             |  Bin [31m0[m -> [32m418864[m bytes
+ .../assets/image-20260821183649865.png             |  Bin [31m0[m -> [32m418864[m bytes
+ .../assets/image-20260821183719195.png             |  Bin [31m0[m -> [32m237879[m bytes
+ .../assets/image-20260821183801665.png             |  Bin [31m0[m -> [32m618964[m bytes
+ .../assets/image-20260821183937791.png             |  Bin [31m0[m -> [32m98004[m bytes
+ .../assets/image-20260821184026834.png             |  Bin [31m0[m -> [32m136545[m bytes
+ .../assets/image-20260821184101472.png             |  Bin [31m0[m -> [32m188305[m bytes
+ .../assets/image-20260821184140393.png             |  Bin [31m0[m -> [32m110144[m bytes
+ .../assets/image-20260821184237344.png             |  Bin [31m0[m -> [32m486348[m bytes
+ .../assets/image-20260821184511260.png             |  Bin [31m0[m -> [32m266786[m bytes
+ .../assets/image-20260821184634628.png             |  Bin [31m0[m -> [32m202408[m bytes
+ .../assets/image-20260821184714874.png             |  Bin [31m0[m -> [32m225212[m bytes
+ .../assets/image-20260821184746190.png             |  Bin [31m0[m -> [32m353912[m bytes
+ .../assets/image-20260821184813453.png             |  Bin [31m0[m -> [32m467075[m bytes
+ .../assets/image-20260821184830543.png             |  Bin [31m0[m -> [32m319325[m bytes
+ .../assets/image-20260821185200617.png             |  Bin [31m0[m -> [32m504762[m bytes
+ .../assets/image-20260821185226315.png             |  Bin [31m0[m -> [32m465553[m bytes
+ .../assets/image-20260821185244341.png             |  Bin [31m0[m -> [32m345282[m bytes
+ .../assets/image-20260821185311396.png             |  Bin [31m0[m -> [32m418738[m bytes
+ .../assets/image-20260821185415983.png             |  Bin [31m0[m -> [32m698391[m bytes
+ .../assets/image-20260821185438874.png             |  Bin [31m0[m -> [32m1216086[m bytes
+ .../assets/image-20260821185523937.png             |  Bin [31m0[m -> [32m376820[m bytes
+ .../assets/image-20260821185605592.png             |  Bin [31m0[m -> [32m437136[m bytes
+ .../assets/image-20260821185627155.png             |  Bin [31m0[m -> [32m361538[m bytes
+ .../assets/image-20260821185651404.png             |  Bin [31m0[m -> [32m692569[m bytes
+ .../sheet1/ros_practice/ros_practice_lab_guide.md  | 5088 [32m+++++++++[m[31m-----------[m
+ courses/sheet1/ros_practice/test_write.md          |   20 [31m-[m
+ input/course_spec_robot_vision.csv                 |   13 [32m+[m
+ ...0\206\346\236\220\346\212\245\345\221\212.docx" |  Bin [31m0[m -> [32m51366[m bytes
+ ...5\204\346\272\220\345\210\227\350\241\250.xlsx" |  Bin [31m0[m -> [32m27913[m bytes
+ ...4\200\345\217\221\350\256\241\345\210\222.xlsx" |  Bin
+ 161 files changed, 13993 insertions(+), 3544 deletions(-)
+
+[33mcommit 3cd71ae63116e9e99c1145fd3b6cf53bb9cd1965[m
+Merge: 02cbae2 931e89b
+Author: 霍路远 <2103115718@qq.com>
+Date:   Tue Aug 18 15:44:34 2026 +0800
+
+    Merge branch 'master' of https://gitee.com/aiotmaker/course_generate_agent
+
+[33mcommit 02cbae2bbf714695e5ed388c515b24749ea49593[m
+Author: 霍路远 <2103115718@qq.com>
+Date:   Tue Aug 18 14:52:09 2026 +0800
+
+    增加ROS应用实践课程
+
+ courses/sheet1/robot_vision/EXP001_lab_guide.md    |     6 [32m+[m[31m-[m
+ courses/sheet1/ros_practice/EXP003_syllabus.md     |   363 [32m+[m
+ courses/sheet1/ros_practice/_exp03_07.md           |  3121 [32m+++++[m
+ courses/sheet1/ros_practice/_meta/course-spec.yaml |   444 [32m+[m
+ courses/sheet1/ros_practice/_parts/experiment-6.md |   376 [32m+[m
+ courses/sheet1/ros_practice/_parts/experiment-7.md |   351 [32m+[m
+ courses/sheet1/ros_practice/_parts/experiment-8.md |   370 [32m+[m
+ courses/sheet1/ros_practice/_parts/experiment-9.md |   340 [32m+[m
+ courses/sheet1/ros_practice/_parts/header.md       |   243 [32m+[m
+ .../ros_practice/ros_practice_knowledge_graph.md   |   594 [32m+[m
+ .../sheet1/ros_practice/ros_practice_lab_guide.md  | 11634 [32m+++++++++++++++++++[m
+ courses/sheet1/ros_practice/test_write.md          |    20 [32m+[m
+ 12 files changed, 17859 insertions(+), 3 deletions(-)
+
+[33mcommit 931e89b99c13d3019607ecd67ada6808a3511677[m
+Author: 楽楽楽 <hjl3489236148@gmail.com>
+Date:   Tue Aug 18 13:58:06 2026 +0800
+
+    feat(EXP006a): 新增机器人大模型综合应用开发(老人跌倒监护)课程资源包v1.0
+    
+    本次提交新增了完整的EXP006a课程资源包，包含：
+    1. 课程核心文档：知识图谱、教学大纲、实验指导书与练测题库
+    2. 9个实验的详细指导文档，覆盖需求分析到全功能验证全流程
+    3. 配套的内容审核与质量审核报告，评级为A级
+    4. 课程生成进度记录与版本更新记录
+    5. 课程规格独立CSV文件与spec解析器课程ID格式兼容性调整
+    
+    资源包围绕老人跌倒监护(elderly_companion)综合项目构建，包含YOLOv8行人检测、人体姿态估计(BlazePose/RTMPose)、六状态机跌倒判定、语音唤醒/流式ASR/TTS交互与本地大模型(RKLLM Qwen3.5)等完整功能，总学时48小时，符合本科高年级专业核心课程要求。课程规格存放于独立CSV(input/course_spec_elderly_companion.csv)，未并入主规格文件。
+
+ .claude/memory/generation-progress.md              |   17 [32m+[m[31m-[m
+ .claude/skills/spec-parser-skill/validator.py      |    2 [32m+[m[31m-[m
+ .../elderly_companion/EXP006a_knowledge_graph.md   |  385 [32m++[m
+ .../sheet1/elderly_companion/EXP006a_lab_guide.md  | 3679 [32m++++++++++++++++++++[m
+ courses/sheet1/elderly_companion/EXP006a_quiz.md   |  642 [32m++++[m
+ .../sheet1/elderly_companion/EXP006a_syllabus.md   |  304 [32m++[m
+ courses/sheet1/elderly_companion/README.md         |   82 [32m+[m
+ .../_meta/content-audit-report.md                  |  294 [32m++[m
+ .../elderly_companion/_meta/course-spec.yaml       |  291 [32m++[m
+ .../_meta/quality-review-report.md                 |  236 [32m++[m
+ .../elderly_companion/_parts/experiment-1.md       |  334 [32m++[m
+ .../elderly_companion/_parts/experiment-2.md       |  446 [32m+++[m
+ .../elderly_companion/_parts/experiment-3.md       |  422 [32m+++[m
+ .../elderly_companion/_parts/experiment-4.md       |  522 [32m+++[m
+ .../elderly_companion/_parts/experiment-5.md       |  355 [32m++[m
+ .../elderly_companion/_parts/experiment-6.md       |  325 [32m++[m
+ .../elderly_companion/_parts/experiment-7.md       |  410 [32m+++[m
+ .../elderly_companion/_parts/experiment-8.md       |  395 [32m+++[m
+ .../elderly_companion/_parts/experiment-9.md       |  359 [32m++[m
+ input/course_spec_elderly_companion.csv            |   10 [32m+[m
+ 20 files changed, 9502 insertions(+), 8 deletions(-)
+
+[33mcommit 9a79fdf84825a450d359b30bf895e26fa412c10a[m
+Merge: ddf28cd 18b1692
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Fri Aug 14 19:28:35 2026 +0800
+
+    Merge branch 'master' of https://gitee.com/aiotmaker/course_generate_agent
+
+[33mcommit ddf28cd7f46cdba907e1f8d312abf3c24c8e4f87[m
+Merge: 5c24d68 fc36986
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Fri Aug 14 17:54:18 2026 +0800
+
+    feat: 新增EXP004机器人SLAM与Nav应用开发课程资源包
+    
+    新增完整的机器人SLAM与导航应用开发课程资源包，包含：
+    1. 课程说明文档与生成进度报告
+    2. 7个实验指导书（含URDF、建图、导航、定位、避障、多点导航、三维SLAM）
+    3. 教学大纲、知识图谱、练测题库
+    4. 课程元数据与审核报告
+    5. 附带课程规格源文件与修改记录
+
+[33mcommit 18b169243234e14c3f6f4d4918e70b8b93853088[m
+Merge: 5c24d68 fc36986
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Fri Aug 14 17:54:18 2026 +0800
+
+    docs(llm实验指南): 移除合并冲突残留的分支代码
+    
+    清理EXP006实验指南中多余的HEAD与远程分支标记代码，保留纯语音链路实验的正确流程描述，修正实验步骤与验证说明的不一致内容。
+
+[33mcommit 5c24d6837e324fb591e82d7c64889850f77ed09e[m
+Merge: eefdfb3 5241d81
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Fri Aug 14 16:34:19 2026 +0800
+
+    docs(llm-lab): 更新实验4语音交互实验指南
+    
+    调整实验4为纯语音链路实验，新增最小化启动命令，拆分测试步骤，将任务执行与播报留待exp09验证，更新启动观察、测试步骤与评分标准，补充参数说明与注意事项
+
+[33mcommit fc36986e0319169541034221349147b2a2b48634[m
+Merge: eefdfb3 5241d81
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Fri Aug 14 16:34:19 2026 +0800
+
+    merge: 合并 origin/master 的 EXP006 机器人应用开发课程资源包 v4.0 (5241d81)
+    
+    本地 refactor(llm-practice) 与远程 EXP006 v4.0 在 llm_practice 三个文件上冲突；
+    按用户决定采用远程版本 (git checkout --theirs) 解决。
+
+[33mcommit eefdfb33adcf93b93737988c512feadd0abd37e7[m
+Merge: ac11e1b f2f8428
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Thu Aug 13 20:22:23 2026 +0800
+
+    refactor(llm-practice): 将exp04改为纯语音实验并统一实验名前缀
+    
+    本次提交对llm_practice课程的exp04实验进行大幅调整：
+    1.  所有实验名统一添加"具身智能工厂--"前缀，同步更新csv、yaml和文档
+    2.  exp04改为纯语音链路实验，移除机械臂/视觉/流水线相关内容
+    3.  新增启动开关参数，支持最小化启动仅保留语音和调度模块
+    4.  调整实验步骤、预期效果和注意事项，明确仅验证语音链路闭环
+    5.  任务完成播报留待exp09全功能验证，更新对应测试用例说明
+
+[33mcommit 5241d81739caa188659e4134e697b2a27127b1b5[m
+Merge: ac11e1b f2f8428
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Thu Aug 13 20:22:23 2026 +0800
+
+    feat(EXP006): 新增机器人大模型综合应用开发课程资源包v4.0
+    
+    本次提交新增了完整的EXP006课程资源包，包含：
+    1. 课程核心文档：知识图谱、教学大纲、实验指导书与练测题库
+    2. 9个实验的详细指导文档，覆盖需求分析到全功能验证全流程
+    3. 配套的内容审核与质量审核报告，评级为A级
+    4. 课程生成进度记录与版本更新记录
+    
+    资源包围绕具身智能工厂(eai_factory)综合项目构建，包含语音交互、视觉装货、分拣码垛与激光雷达安全联锁等完整功能，总学时48小时，符合本科高年级专业核心课程要求。
+
+[33mcommit ac11e1b635fc760f840bac1f15568c451317c13a[m
+Author: 楽楽楽 <hjl3489236148@gmail.com>
+Date:   Mon Aug 10 16:16:08 2026 +0800
+
+    docs: 更新机械臂实验文档与实验步骤
+    
+    1.  为experiment-6.md补充bringup启动步骤、预演工具与更安全的实机流程
+    2.  更新EXP005_lab_guide.md的流程拓扑、新增端到端工具章节与实机预演指南
+    3.  修正course_spec.csv中机械臂实验的步骤描述与工具说明
+
+ courses/sheet1/arm_practice/EXP005_lab_guide.md    |  138 [32m+[m[31m-[m
+ courses/sheet1/arm_practice/_parts/experiment-6.md |   48 [32m+[m[31m-[m
+ .../sheet1/robot_vision/EXP001_knowledge_graph.md  | 1017 [32m++++++[m
+ courses/sheet1/robot_vision/EXP001_lab_guide.md    | 3510 [32m++++++++++++++++++++[m
+ courses/sheet1/robot_vision/_meta/course-spec.yaml |  328 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-1.md |  405 [32m+++[m
+ .../sheet1/robot_vision/_parts/experiment-10.md    |  278 [32m++[m
+ .../sheet1/robot_vision/_parts/experiment-11.md    |  281 [32m++[m
+ .../sheet1/robot_vision/_parts/experiment-12.md    |  272 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-2.md |  277 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-3.md |  285 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-4.md |  241 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-5.md |  269 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-6.md |  289 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-7.md |  282 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-8.md |  277 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-9.md |  285 [32m++[m
+ input/course_spec.csv                              |   12 [32m+[m[31m-[m
+ 18 files changed, 8457 insertions(+), 37 deletions(-)
+
+[33mcommit f2f8428ea8b5e02f6786c636cce4d3ddcc29548c[m
+Author: 楽楽楽 <hjl3489236148@gmail.com>
+Date:   Mon Aug 10 16:16:08 2026 +0800
+
+    feat(robot_vision): 完成EXP001机器人视觉应用与开发12个实验课程资源生成
+    
+    1. 完成12项视觉实验完整配置、知识点、实验步骤元数据
+    2. 课程元数据csv、yaml、大纲全部更新
+
+ .../sheet1/robot_vision/EXP001_knowledge_graph.md  | 1017 [32m++++++[m
+ courses/sheet1/robot_vision/EXP001_lab_guide.md    | 3510 [32m++++++++++++++++++++[m
+ courses/sheet1/robot_vision/_meta/course-spec.yaml |  328 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-1.md |  405 [32m+++[m
+ .../sheet1/robot_vision/_parts/experiment-10.md    |  278 [32m++[m
+ .../sheet1/robot_vision/_parts/experiment-11.md    |  281 [32m++[m
+ .../sheet1/robot_vision/_parts/experiment-12.md    |  272 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-2.md |  277 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-3.md |  285 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-4.md |  241 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-5.md |  269 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-6.md |  289 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-7.md |  282 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-8.md |  277 [32m++[m
+ courses/sheet1/robot_vision/_parts/experiment-9.md |  285 [32m++[m
+ 15 files changed, 8296 insertions(+)
+
+[33mcommit 6033acc12c3da6a19d4d1bfcf7e6589242863a4d[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Mon Aug 10 19:14:45 2026 +0800
+
+    docs: 更新实验文档与教学大纲，重构exp02/exp03教学体系
+    
+    1.  实验1新增grasp_demo抓取演示步骤与教学说明
+    2.  重构exp02为底层舵机裸机控制，exp03为ROS2架构认知
+    3.  更新exp06移除Gazebo仿真环节，聚焦实机抓取
+    4.  同步课程大纲、知识图谱与csv配置文件
+
+ .../sheet1/arm_practice/EXP005_knowledge_graph.md  |  321 [32m+[m[31m--[m
+ courses/sheet1/arm_practice/EXP005_lab_guide.md    | 2372 [32m++++++++++[m[31m----------[m
+ courses/sheet1/arm_practice/EXP005_syllabus.md     |   90 [32m+[m[31m-[m
+ courses/sheet1/arm_practice/_meta/course-spec.yaml |  672 [32m++++[m[31m--[m
+ courses/sheet1/arm_practice/_parts/experiment-1.md |  106 [32m+[m[31m-[m
+ courses/sheet1/arm_practice/_parts/experiment-2.md |  996 [32m++++[m[31m----[m
+ courses/sheet1/arm_practice/_parts/experiment-3.md |  935 [32m++++[m[31m----[m
+ courses/sheet1/arm_practice/_parts/experiment-4.md |    7 [32m+[m[31m-[m
+ courses/sheet1/arm_practice/_parts/experiment-5.md |  110 [32m+[m[31m-[m
+ courses/sheet1/arm_practice/_parts/experiment-6.md |  314 [32m+[m[31m--[m
+ courses/sheet1/arm_practice/generation-progress.md |  283 [32m++[m[31m-[m
+ input/course_spec.csv                              |    8 [32m+[m[31m-[m
+ 12 files changed, 3386 insertions(+), 2828 deletions(-)
+
+[33mcommit 26e3b4a94dbf3fbfac14090b9c8a4305ecfd4737[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Fri Aug 7 12:41:35 2026 +0800
+
+    fix(course_spec): 修正实验4的学分参数
+    
+    将原实验4的8学分改为4学分，匹配其他同系列实验的学分设置
+
+ courses/sheet1/speech_practice/EXP002_lab_guide.md | 1243 [32m++++++++++++[m[31m--------[m
+ input/course_spec.csv                              |    2 [32m+[m[31m-[m
+ 2 files changed, 769 insertions(+), 476 deletions(-)
+
+[33mcommit 722a056653dca2ba4207265a6598978a3da50daa[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Fri Aug 7 12:05:54 2026 +0800
+
+    docs(speech_practice): 更新EXP002实验文档与题库至v3.3
+    
+    1. 重构第2章ASR教学内容，替换为asr_test.py7模块拆解全流程
+    2. 更新实验2名称、关联知识点与课程表项
+    3. 新增14道ASR相关练习题与知识点映射
+    4. 同步更新知识图谱与版本信息
+    5. 修正课程spec.csv中实验2配置
+
+ .../speech_practice/EXP002_knowledge_graph.md      |  139 [32m+[m[31m-[m
+ courses/sheet1/speech_practice/EXP002_lab_guide.md | 2848 [32m+++++++++++[m[31m---------[m
+ courses/sheet1/speech_practice/EXP002_quiz.md      |  158 [32m+[m[31m-[m
+ courses/sheet1/speech_practice/EXP002_syllabus.md  |   42 [32m+[m[31m-[m
+ .../sheet1/speech_practice/_parts/experiment-2.md  | 1259 [32m+++++[m[31m----[m
+ .../sheet1/speech_practice/_parts/experiment-3.md  | 1395 [32m++++++[m[31m----[m
+ .../sheet1/speech_practice/_parts/experiment-4.md  | 1708 [32m+++++++[m[31m-----[m
+ .../sheet1/speech_practice/_parts/experiment-5.md  | 1531 [32m++++++[m[31m-----[m
+ .../sheet1/speech_practice/_parts/experiment-6.md  | 1556 [32m++++++[m[31m-----[m
+ input/course_spec.csv                              |   12 [32m+[m[31m-[m
+ input/course_spec.xlsx                             |  Bin [31m441849[m -> [32m443537[m bytes
+ 11 files changed, 6363 insertions(+), 4285 deletions(-)
+
+[33mcommit 8b6606071eedadd949cae15657892962915a141a[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Wed Aug 5 11:19:17 2026 +0800
+
+    docs(speech-exp02): 重构实验1内容，替换为讯飞六麦阵列串口通信教程
+    
+    整体替换原语音唤醒章节的全部文档内容，将基于sherpa-onnx的KWS实验改为基于讯飞六麦阵列的串口通信与唤醒事件实验，包括：
+    1.  重写实验目标、知识点、步骤与总结
+    2.  更新实验题与大纲章节
+    3.  替换示例代码为xf_mic_array串口唤醒实现
+
+ .../speech_practice/EXP002_knowledge_graph.md      |  25 [32m+[m[31m-[m
+ courses/sheet1/speech_practice/EXP002_lab_guide.md | 645 [32m++++++[m[31m---------------[m
+ courses/sheet1/speech_practice/EXP002_quiz.md      |  42 [32m+[m[31m-[m
+ courses/sheet1/speech_practice/EXP002_syllabus.md  |  29 [32m+[m[31m-[m
+ .../sheet1/speech_practice/_parts/experiment-4.md  |  46 [32m+[m[31m-[m
+ 5 files changed, 256 insertions(+), 531 deletions(-)
+
+[33mcommit f49e477e5c90006d788e4fbe92945b4559ed7914[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Wed Aug 5 11:10:44 2026 +0800
+
+    refactor(speech_practice): 调整语音交互课程实验结构与内容
+    
+    1. 减少总实验数从7到6，移除原exp01语音环境搭建实验
+    2. 重命名实验序号与章节，更新课程大纲与知识图谱
+    3. 重构首实验为讯飞六麦阵列串口通信与唤醒实验
+    4. 更新实验配置、描述与关联知识点
+    5. 同步更新csv与yaml课程元数据
+
+ .../speech_practice/EXP002_knowledge_graph.md      | 1022 [32m++++++++[m[31m---------[m
+ courses/sheet1/speech_practice/EXP002_lab_guide.md |  744 [32m++[m[31m----------[m
+ courses/sheet1/speech_practice/EXP002_quiz.md      | 1212 [32m++++++++++[m[31m----------[m
+ courses/sheet1/speech_practice/EXP002_syllabus.md  |  563 [32m+++++[m[31m----[m
+ .../sheet1/speech_practice/_meta/course-spec.yaml  |   81 [32m+[m[31m-[m
+ .../sheet1/speech_practice/_parts/experiment-1.md  |  946 [32m++++++++[m[31m-------[m
+ .../sheet1/speech_practice/_parts/experiment-2.md  |  664 [32m+++++[m[31m------[m
+ .../sheet1/speech_practice/_parts/experiment-3.md  |  701 [32m++++++[m[31m-----[m
+ .../sheet1/speech_practice/_parts/experiment-4.md  |  845 [32m+++++++[m[31m-------[m
+ .../sheet1/speech_practice/_parts/experiment-5.md  |  921 [32m+++++++[m[31m--------[m
+ .../sheet1/speech_practice/_parts/experiment-6.md  |  942 [32m++++++++[m[31m-------[m
+ .../sheet1/speech_practice/_parts/experiment-7.md  |  669 [31m-----------[m
+ input/course_spec.csv                              |   13 [32m+[m[31m-[m
+ input/course_spec.xlsx                             |  Bin [31m441776[m -> [32m441849[m bytes
+ 14 files changed, 4140 insertions(+), 5183 deletions(-)
+
+[33mcommit 6ee728a785a6900eea630df22600f4fe990de7a3[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Tue Aug 4 19:57:34 2026 +0800
+
+    feat: 完成EXP002和EXP005课程的全量资源生成
+    
+    本次提交新增了两门机器人课程的完整教学资源：
+    1. EXP002机器人自然语言交互应用与开发：新增课程配置、教学大纲、知识图谱、练测题
+    2. EXP005机器人机械臂应用与开发：新增课程配置、教学大纲、知识图谱、练测题与生成进度文档
+    
+    同时更新了：
+    - .gitignore：添加ROS2工作空间忽略规则
+    - 进度文档：更新v3.3版本信息与EXP002课程技术栈升级
+    - 课程规格表：更新EXP005课程的实验细节与技术栈
+
+ .claude/memory/generation-progress.md              |   17 [32m+[m[31m-[m
+ .gitignore                                         |    8 [32m+[m[31m-[m
+ .../sheet1/arm_practice/EXP005_knowledge_graph.md  |  772 [32m+++[m
+ courses/sheet1/arm_practice/EXP005_lab_guide.md    | 5964 [32m++++++++++++++++++++[m
+ courses/sheet1/arm_practice/EXP005_quiz.md         |  503 [32m++[m
+ courses/sheet1/arm_practice/EXP005_syllabus.md     |  357 [32m++[m
+ courses/sheet1/arm_practice/_meta/course-spec.yaml |  180 [32m+[m
+ courses/sheet1/arm_practice/_parts/experiment-1.md |  560 [32m++[m
+ courses/sheet1/arm_practice/_parts/experiment-2.md |  738 [32m+++[m
+ courses/sheet1/arm_practice/_parts/experiment-3.md |  719 [32m+++[m
+ courses/sheet1/arm_practice/_parts/experiment-4.md |  704 [32m+++[m
+ courses/sheet1/arm_practice/_parts/experiment-5.md |  823 [32m+++[m
+ courses/sheet1/arm_practice/_parts/experiment-6.md |  807 [32m+++[m
+ courses/sheet1/arm_practice/_parts/experiment-7.md | 1483 [32m+++++[m
+ courses/sheet1/arm_practice/generation-progress.md |  135 [32m+[m
+ .../speech_practice/EXP002_knowledge_graph.md      |  523 [32m++[m
+ courses/sheet1/speech_practice/EXP002_lab_guide.md | 4082 [32m++++++++++++++[m
+ courses/sheet1/speech_practice/EXP002_quiz.md      |  628 [32m+++[m
+ courses/sheet1/speech_practice/EXP002_syllabus.md  |  294 [32m+[m
+ .../sheet1/speech_practice/_meta/course-spec.yaml  |  157 [32m+[m
+ .../sheet1/speech_practice/_parts/experiment-1.md  |  564 [32m++[m
+ .../sheet1/speech_practice/_parts/experiment-2.md  |  500 [32m++[m
+ .../sheet1/speech_practice/_parts/experiment-3.md  |  456 [32m++[m
+ .../sheet1/speech_practice/_parts/experiment-4.md  |  551 [32m++[m
+ .../sheet1/speech_practice/_parts/experiment-5.md  |  616 [32m++[m
+ .../sheet1/speech_practice/_parts/experiment-6.md  |  617 [32m++[m
+ .../sheet1/speech_practice/_parts/experiment-7.md  |  669 [32m+++[m
+ input/course_spec.csv                              |   15 [32m+[m[31m-[m
+ input/course_spec.xlsx                             |  Bin [31m426439[m -> [32m441776[m bytes
+ 29 files changed, 23428 insertions(+), 14 deletions(-)
+
+[33mcommit d4a3a6e7193a08832c370e77ef04c066fbc20f7a[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Sun Aug 2 17:37:33 2026 +0800
+
+    docs: 修改课程生成架构图
+
+ ...6\221\345\205\263\347\263\273\345\233\276.html" |  422 [32m+++[m[31m----[m
+ ...0\213\345\205\263\347\263\273\345\233\276.html" | 1278 [32m++++++++++[m[31m----------[m
+ 2 files changed, 850 insertions(+), 850 deletions(-)
+
+[33mcommit 54551109c2546d90b21177fae280aa36d2878077[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Sun Aug 2 17:31:47 2026 +0800
+
+    docs: 更新高职和本科具身智能人才培养方案
+    
+    统一更新课程名称、调整部分课程配置，优化课程体系与产业需求对应关系，新增专业方向分类，修订版次与发布时间
+
+ ...\271\346\241\210_\346\234\254\347\247\221.docx" | Bin [31m274167[m -> [32m850639[m bytes
+ ...\271\346\241\210_\351\253\230\350\201\214.docx" | Bin [31m258850[m -> [32m835510[m bytes
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+
+[33mcommit 52338c90151c6ecfb5516bc5200dfb4afdde3fda[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Sun Aug 2 15:34:47 2026 +0800
+
+    docs: 更新课程名称为机器人相关命名
+    
+    更新了硬件平台规格、命名规范、生成进度等文档中的课程名称，将原课程名称统一调整为更贴合机器人领域的命名，同时同步更新了示例文档中的对应名称。
+
+ .claude/agents/code-registry-protocol.md           | 1006 [32m++++++++[m[31m---------[m
+ .claude/agents/content-audit-agent.md              |  736 [32m++++++[m[31m-------[m
+ .claude/agents/course-resource-orchestrator.md     |  502 [32m++++[m[31m-----[m
+ .claude/agents/incremental-update-agent.md         | 1156 [32m++++++++++[m[31m----------[m
+ .claude/agents/knowledge-graph-agent.md            |  444 [32m++++[m[31m----[m
+ .claude/agents/quiz-agent.md                       |  830 [32m+++++++[m[31m-------[m
+ .claude/agents/resource-integrator-agent.md        |  544 [32m++++[m[31m-----[m
+ .claude/agents/resource-parser-agent.md            |  584 [32m+++++[m[31m-----[m
+ .claude/agents/source-code-analysis-agent.md       |  634 [32m+++++[m[31m------[m
+ .claude/hooks/SINGLE-EXPERIMENT-TEST.md            |  376 [32m+++[m[31m----[m
+ .claude/hooks/TEST-VERIFICATION.md                 |  768 [32m++++++[m[31m-------[m
+ .claude/memory/course-knowledge-base.md            |  814 [32m+++++++[m[31m-------[m
+ .claude/memory/course-scope-memory.md              |  376 [32m+++[m[31m----[m
+ .claude/memory/generation-progress.md              |  212 [32m++[m[31m--[m
+ .claude/memory/hardware-platform-spec.md           |   14 [32m+[m[31m-[m
+ .claude/memory/rule-library.md                     |  404 [32m+++[m[31m----[m
+ .claude/rules/naming-convention.md                 |  278 [32m++[m[31m---[m
+ .claude/rules/version-control.md                   |  336 [32m+++[m[31m---[m
+ .../skills/incremental-update-skill/EXAMPLES.md    |  840 [32m+++++++[m[31m-------[m
+ .claude/skills/incremental-update-skill/README.md  |  770 [32m++++++[m[31m-------[m
+ .claude/skills/incremental-update-skill/SKILL.md   |  450 [32m++++[m[31m----[m
+ .claude/skills/spec-parser-skill/schema.yaml       |  302 [32m++[m[31m---[m
+ input/course_spec.csv                              |  126 [32m+[m[31m--[m
+ input/course_spec.xlsx                             |  Bin [31m431823[m -> [32m426439[m bytes
+ ...\271\346\241\210_\346\234\254\347\247\221.docx" |  Bin [31m0[m -> [32m274167[m bytes
+ ...\271\346\241\210_\351\253\230\350\201\214.docx" |  Bin [31m0[m -> [32m258850[m bytes
+ ...6\221\345\205\263\347\263\273\345\233\276.html" |  589 [32m++++++++++[m
+ ...0\213\345\205\263\347\263\273\345\233\276.html" |   50 [32m+[m[31m-[m
+ 28 files changed, 6866 insertions(+), 6275 deletions(-)
+
+[33mcommit 1539f3e61144d35fc57a180cf25a3fa516497e18[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Wed Jun 24 19:41:28 2026 +0800
+
+    docs: 新增题库模式相关规范并更新各文档
+    
+    1. 新增质量标准4.5节题库模式完整规范
+    2. 更新数据一致性规则，拆分试卷/题库模式检查
+    3. 更新内容审核Agent，支持双模式审核
+    4. 更新练测题生成Agent，新增v2.0题库模式支持
+
+ .claude/agents/content-audit-agent.md  |  27 [32m++++++++[m[31m-[m
+ .claude/agents/quiz-agent.md           | 101 [32m+++++++++++++++++++++++++++++++[m[31m--[m
+ .claude/rules/data-consistency-rule.md |  23 [32m+++++++[m[31m-[m
+ .claude/rules/quality-standard.md      |  81 [32m++++++++++++++++++++++++++[m
+ 4 files changed, 225 insertions(+), 7 deletions(-)
+
+[33mcommit 7774f2cbb6824a46a26647fa816184428ca859e5[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Wed Jun 24 19:00:04 2026 +0800
+
+    docs: add source code reverse sync case and workflow diagram
+    
+    重构了案例3为源码反向同步场景，新增完整工作流步骤说明，并添加了源码同步工作流的HTML架构图
+
+ README.md                      |  88 [32m+++++++[m[31m-[m
+ source-code-sync-workflow.html | 469 [32m+++++++++++++++++++++++++++++++++++++++++[m
+ 2 files changed, 555 insertions(+), 2 deletions(-)
+
+[33mcommit 75f4e31e96f0a39c76dd302a2cb94e4f8e795c07[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Wed Jun 24 18:05:24 2026 +0800
+
+    feat(skill): 新增 source-code-sync-skill — 源码反向同步CSV
+    
+    补全单向链路 (CSV → 文档) 为闭环 (源码改 → 自动检测 → 更新CSV → 同步下游)。
+    
+    解决核心问题：案例代码功能改变后，CSV 作为唯一可信源也必须跟进，
+    否则下游知识图谱/大纲/实验指导书/题库会基于过时CSV生成错误内容。
+    
+    新增 .claude/skills/source-code-sync-skill/ 四个文件：
+    
+    - SKILL.md
+      完整说明（触发方式/流程/字段规则/限制/与其他skill协作）
+    
+    - extract_capabilities.py（~300 行，纯标准库）
+      确定性源码分析器：AST 解析 import / requirements.txt → tech_stack；
+      docstring / README / 文件名 → experiment_name 候选；
+      代码量 + 依赖数 + 训练关键词 → hours/difficulty/experiment_type 估算
+    
+    - suggest_csv_update.py（~200 行）
+      CSV 现值 vs 提取能力字段级对比，输出 old/new/confidence/reason
+      /cascade_impact 清单。LLM 协作位（objectives/exp_content）标记
+      action: manual_review，附源码关键函数供 Claude 在对话中调 LLM 重写
+    
+    - apply_updates.py（~200 行）
+      三层安全写回：CSV 备份 → 字段白名单 → 变更日志（csv-sync-log.md）
+    
+    实测验证（EXP001 exp04，CSV"指尖轨迹" vs 源码"姿态分类"）：
+    正确识别 6 处差异（4 可自动应用 + 2 manual_review），dry-run 边界正确。
+    
+    下游链路：apply 后调用 spec-parser-skill/diff.py → IncrementalUpdateAgent
+    模式0 自动同步知识图谱 / 大纲 / 实验指导书 / 题库受影响段落。
+    
+    Co-Authored-By: Claude Opus 4 <noreply@anthropic.com>
+
+ .claude/skills/source-code-sync-skill/SKILL.md     | 246 [32m++++++++++++[m
+ .../skills/source-code-sync-skill/apply_updates.py | 280 [32m++++++++++++++[m
+ .../source-code-sync-skill/extract_capabilities.py | 414 [32m+++++++++++++++++++++[m
+ .../source-code-sync-skill/suggest_csv_update.py   | 332 [32m+++++++++++++++++[m
+ 4 files changed, 1272 insertions(+)
+
+[33mcommit d692f65110a563cc0a5692628ed62b2d4a94a171[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Wed Jun 24 18:04:49 2026 +0800
+
+    refactor(rules): 规则文档体系修复（waiver入规则 + 命名统一 + 删废弃agent）
+    
+    三类修复，统一收敛规则文档：
+    
+    1. waiver 入规则（与已实现的 hook 对齐）
+       - source-constraint-rule.md 新增"§三 无源码豁免协议"章节：
+         豁免场景/对话授权方式/registry配置方式/强制标注/限制与责任
+       - code-registry-protocol.md 决策矩阵新增"豁免状态"列：
+         missing + waiver:true → ⚠️PASS（已在 hook 实现）
+       - 后续章节编号顺延
+    
+    2. course-info.yaml → course-spec.yaml 命名统一
+       - 实际产出和所有 agent 读的都是 course-spec.yaml
+       - 修正 4 个残留：naming-convention.md / template-library.md /
+         resource-integrator-agent.md / course-generation-workflow.md
+       - naming-convention 表头同步改为"课程规格"
+    
+    3. 删除废弃的 lab-guide-agent.md
+       - 已被 lab-guide-orchestrator + lab-guide-experiment 双 agent 取代
+       - course-resource-orchestrator.md 同步更新：
+         sub-agent 表替换、流程图 Step3 改写为"源码HOOK + 实验循环"、
+         总步数 6 → 7
+    
+    Co-Authored-By: Claude Opus 4 <noreply@anthropic.com>
+
+ .claude/agents/code-registry-protocol.md        |  17 [32m+[m[31m-[m
+ .claude/agents/course-resource-orchestrator.md  |  22 [32m+[m[31m-[m
+ .claude/agents/lab-guide-agent.md               | 497 [31m------------------------[m
+ .claude/agents/resource-integrator-agent.md     |   6 [32m+[m[31m-[m
+ .claude/memory/template-library.md              |   4 [32m+[m[31m-[m
+ .claude/rules/naming-convention.md              |   4 [32m+[m[31m-[m
+ .claude/rules/source-constraint-rule.md         |  83 [32m+++[m[31m-[m
+ .claude/workflows/course-generation-workflow.md |   2 [32m+[m[31m-[m
+ 8 files changed, 104 insertions(+), 531 deletions(-)
+
+[33mcommit 37e02b844db9de4af91e59aa9c0de36c794d0617[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Wed Jun 24 12:08:09 2026 +0800
+
+    chore: 补回 .env 忽略规则并移除 hook 备份文件
+    
+    - .gitignore 恢复 .env / .env.local 忽略，防止密钥误提交
+    - 从版本库移除 enforce-source-*.ps1.bak（本地保留）
+    
+    Co-Authored-By: Claude Opus 4 <noreply@anthropic.com>
+
+ .claude/hooks/enforce-source-hook.ps1.bak    | 122 [31m-----------------------[m
+ .claude/hooks/enforce-source-on-edit.ps1.bak | 140 [31m---------------------------[m
+ .gitignore                                   |   4 [32m+[m
+ 3 files changed, 4 insertions(+), 262 deletions(-)
+
+[33mcommit 3b8a43039b8087950713dc5e612508d66a4c27fb[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Tue Jun 23 20:51:15 2026 +0800
+
+    refactor: 完成课程资源系统从xlsx到csv的迁移与hooks完善
+    
+    主要变更：
+    1. 将课程数据源从course_spec.xlsx切换为course_spec.csv
+    2. 新增完整的git hooks系统，实现csv漂移自动检测与提示
+    3. 重构Agent文档，支持多课程csv批量生成
+    4. 新增增量更新技能与源码检查HOOK体系
+    5. 清理废弃文件与旧配置，统一文档格式与约束规则
+
+ .claude/agents/code-registry-protocol.md           | 500 [32m++++++++++++++++[m
+ .claude/agents/content-audit-agent.md              |  10 [32m+[m[31m-[m
+ .claude/agents/course-resource-orchestrator.md     |  33 [32m+[m[31m-[m
+ .claude/agents/incremental-update-agent.md         | 578 [32m+++++++++++++++++++[m
+ .claude/agents/knowledge-graph-agent.md            |   8 [31m-[m
+ .claude/agents/lab-guide-experiment-agent.md       | 479 [32m+++++++++[m[31m-------[m
+ .claude/agents/lab-guide-orchestrator-agent.md     | 627 [32m++++++++++++[m[31m---------[m
+ .claude/agents/quiz-agent.md                       |   8 [31m-[m
+ .claude/agents/resource-parser-agent.md            | 496 [32m+++++++[m[31m---------[m
+ .claude/agents/source-code-analysis-agent.md       | 317 [32m+++++++++++[m
+ .claude/agents/syllabus-agent.md                   |   8 [31m-[m
+ .claude/hooks/SINGLE-EXPERIMENT-TEST.md            | 188 [32m++++++[m
+ .claude/hooks/TEST-VERIFICATION.md                 | 384 [32m+++++++++++++[m
+ .claude/hooks/enforce-source-hook.ps1              | 216 [32m+++++++[m
+ .claude/hooks/enforce-source-hook.ps1.bak          | 122 [32m++++[m
+ .claude/hooks/enforce-source-on-edit.ps1           | 205 [32m+++++++[m
+ .claude/hooks/enforce-source-on-edit.ps1.bak       | 140 [32m+++++[m
+ .claude/hooks/log-agent-call.ps1                   |  36 [32m++[m
+ .claude/rules/source-constraint-rule.md            |  13 [32m+[m[31m-[m
+ .claude/settings.json                              |  42 [32m+[m[31m-[m
+ .claude/settings.local.json                        |  27 [31m-[m
+ .../skills/incremental-update-skill/EXAMPLES.md    | 420 [32m++++++++++++++[m
+ .claude/skills/incremental-update-skill/README.md  | 385 [32m+++++++++++++[m
+ .claude/skills/incremental-update-skill/SKILL.md   | 225 [32m++++++++[m
+ .../incremental-update-skill/document_replacer.py  | 286 [32m++++++++++[m
+ .../test_incremental_update.py                     | 285 [32m++++++++++[m
+ .../skills/incremental-update-skill/test_simple.py | 232 [32m++++++++[m
+ .claude/skills/source-code-hook-skill/SKILL.md     | 195 [32m+++++++[m
+ .claude/skills/spec-parser-skill/SKILL.md          | 286 [32m++++++++++[m
+ .claude/skills/spec-parser-skill/diff.py           | 472 [32m++++++++++++++++[m
+ .claude/skills/spec-parser-skill/parser.py         | 340 [32m+++++++++++[m
+ .claude/skills/spec-parser-skill/schema.yaml       | 151 [32m+++++[m
+ .claude/skills/spec-parser-skill/validator.py      | 217 [32m+++++++[m
+ .claude/workflows/course-generation-workflow.md    | 618 [32m+++++++[m[31m-------------[m
+ .githooks/README.md                                |  78 [32m+++[m
+ .githooks/_lib_csv_drift.sh                        | 135 [32m+++++[m
+ .githooks/install.ps1                              |  21 [32m+[m
+ .githooks/install.sh                               |  25 [32m+[m
+ .githooks/post-checkout                            |  31 [32m+[m
+ .githooks/post-merge                               |  24 [32m+[m
+ .githooks/pre-commit                               |  42 [32m++[m
+ .gitignore                                         |   6 [32m+[m[31m-[m
+ ...5\201\346\236\266\346\236\204\345\233\276.html" | 397 [31m-------------[m
+ CLAUDE.md                                          |  18 [32m+[m[31m-[m
+ README.en.md                                       |  36 [31m--[m
+ README.md                                          | 519 [32m++++++++++++++++[m[31m-[m
+ input/course_spec.csv                              |  63 [32m+++[m
+ ...Agent\345\267\245\344\275\234\346\265\201.html" | 349 [32m++++++++++++[m
+ ...Agent\345\267\245\344\275\234\346\265\201.html" | 540 [32m++++++++++++++++++[m
+ 49 files changed, 9132 insertions(+), 1701 deletions(-)
+
+[33mcommit 33b3915d04523d3ead83712ad4998be647f6c8d3[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Sun Jun 21 19:55:27 2026 +0800
+
+    refactor: 重构实验指导书生成流程，拆分编排与单实验Agent
+    
+    1. 删除旧示例文件与冗余Agent文档，清理示例代码
+    2. 新增LabGuideOrchestratorAgent负责整体编排调度
+    3. 拆分LabGuideExperimentAgent实现单实验独立生成
+    4. 更新工作流文档，支持并行生成实验
+    5. 新增xlsx解析脚本，支持课程规格表解析
+    6. 调整.gitignore与CLAUDE.md适配新架构与存档路径
+    7. 更新进度跟踪文档，统一版本管理
+
+ .claude/agents/example-agent.md                 |  10 [31m-[m
+ .claude/agents/lab-guide-agent-v2.md            | 499 [31m---------------[m
+ .claude/agents/lab-guide-agent.md               | 792 [32m+++++++++++++++[m[31m---------[m
+ .claude/agents/lab-guide-experiment-agent.md    | 416 [32m+++++++++++++[m
+ .claude/agents/lab-guide-orchestrator-agent.md  | 351 [32m+++++++++++[m
+ .claude/agents/resource-parser-agent.md         |  53 [32m++[m
+ .claude/memory/generation-progress.md           | 108 [32m++[m[31m--[m
+ .claude/rules/example-rule.md                   |  10 [31m-[m
+ .claude/skills/example-skill/SKILL.md           |  10 [31m-[m
+ .claude/workflows/course-generation-workflow.md |  44 [32m+[m[31m-[m
+ .gitignore                                      |   2 [32m+[m
+ CLAUDE.md                                       |   2 [32m+[m[31m-[m
+ scripts/inspect_xlsx.py                         |  22 [32m+[m
+ 13 files changed, 1422 insertions(+), 897 deletions(-)
+
+[33mcommit dfab6d870a0e6b71f4c8af2054c87676d8a7274c[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Thu Jun 18 20:01:20 2026 +0800
+
+    refactor: 统一项目可信源文件路径为 input/course_spec.xlsx
+    
+    将所有文档中引用的旧路径「资源开发列表.xlsx」「具身智能人培方案SOP/课程逻辑/资源开发列表.xlsx」统一替换为新的标准路径 input/course_spec.xlsx，修正文件引用不一致的问题
+
+ .claude/agents/content-audit-agent.md                             | 2 [32m+[m[31m-[m
+ .claude/agents/course-resource-orchestrator.md                    | 4 [32m++[m[31m--[m
+ .claude/agents/resource-parser-agent.md                           | 8 [32m++++[m[31m----[m
+ .claude/memory/course-knowledge-base.md                           | 8 [32m++++[m[31m----[m
+ .claude/memory/course-scope-memory.md                             | 4 [32m++[m[31m--[m
+ .claude/rules/source-constraint-rule.md                           | 4 [32m++[m[31m--[m
+ .claude/workflows/course-generation-workflow.md                   | 4 [32m++[m[31m--[m
+ ...\275\234\346\265\201\346\236\266\346\236\204\345\233\276.html" | 2 [32m+[m[31m-[m
+ CLAUDE.md                                                         | 4 [32m++[m[31m--[m
+ 9 files changed, 20 insertions(+), 20 deletions(-)
+
+[33mcommit 702e586145ca5d66d404319467034ba67a8372ec[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Thu Jun 18 19:49:47 2026 +0800
+
+    build: 初始化具身智能课程资源项目，添加基础框架和示例资源
+    
+    添加了完整的课程资源开发框架，包括：
+    - 新增.claude目录结构，包含规则、技能、Agent、记忆库等核心配置
+    - 添加课程规格模板和资源开发列表基础结构
+    - 初始化11门具身智能相关课程的基础资源
+    - 配置.gitignore和项目基础依赖
+    - 添加完整的质量规范和开发流程文档
+
+ .claude/agent-memory/.gitkeep                      |   0
+ .claude/agents/content-audit-agent.md              | 353 [32m++++++++++++[m
+ .claude/agents/course-resource-orchestrator.md     | 222 [32m+++++++[m
+ .claude/agents/example-agent.md                    |  10 [32m+[m
+ .claude/agents/knowledge-graph-agent.md            | 230 [32m++++++++[m
+ .claude/agents/lab-guide-agent-v2.md               | 499 [32m++++++++++++++++[m
+ .claude/agents/lab-guide-agent.md                  | 295 [32m++++++++++[m
+ .claude/agents/quality-review-agent.md             | 348 [32m+++++++++++[m
+ .claude/agents/quiz-agent.md                       | 330 [32m+++++++++++[m
+ .claude/agents/resource-integrator-agent.md        | 272 [32m+++++++++[m
+ .claude/agents/resource-parser-agent.md            | 321 [32m+++++++++++[m
+ .claude/agents/syllabus-agent.md                   | 216 [32m+++++++[m
+ .claude/commands/example-command.md                |  17 [32m+[m
+ .claude/memory/MEMORY.md                           |  15 [32m+[m
+ .claude/memory/course-knowledge-base.md            | 407 [32m+++++++++++++[m
+ .claude/memory/course-scope-memory.md              | 188 [32m++++++[m
+ .claude/memory/generation-progress.md              | 132 [32m+++++[m
+ .claude/memory/hardware-platform-spec.md           | 286 [32m+++++++++[m
+ .claude/memory/rule-library.md                     | 202 [32m+++++++[m
+ .claude/memory/template-library.md                 | 292 [32m++++++++++[m
+ .claude/memory/user_role_example.md                |  13 [32m+[m
+ .claude/output-styles/formal-report.md             |  12 [32m+[m
+ .claude/output-styles/quick-analysis.md            |  11 [32m+[m
+ .claude/prompts/example-prompt.md                  |  17 [32m+[m
+ .claude/rules/content-accuracy.md                  | 142 [32m+++++[m
+ .claude/rules/data-consistency-rule.md             | 291 [32m++++++++++[m
+ .claude/rules/example-rule.md                      |  10 [32m+[m
+ .claude/rules/naming-convention.md                 | 139 [32m+++++[m
+ .claude/rules/output-format.md                     | 223 [32m++++++++[m
+ .claude/rules/quality-standard.md                  | 173 [32m++++++[m
+ .claude/rules/source-constraint-rule.md            | 133 [32m+++++[m
+ .claude/rules/version-control.md                   | 168 [32m++++++[m
+ .claude/settings.json                              |  10 [32m+[m
+ .claude/settings.local.json                        |  27 [32m+[m
+ .claude/skills/architecture-diagram/SKILL.md       | 177 [32m++++++[m
+ .../architecture-diagram/resources/template.html   | 434 [32m++++++++++++++[m
+ .claude/skills/course-design-expert/SKILL.md       | 174 [32m++++++[m
+ .claude/skills/course_workload_calculator/SKILL.md | 210 [32m+++++++[m
+ .claude/skills/embodied-ai-domain/SKILL.md         | 207 [32m+++++++[m
+ .claude/skills/example-skill/SKILL.md              |  10 [32m+[m
+ .claude/skills/knowledge-graph-drawing/SKILL.md    | 196 [32m+++++++[m
+ .claude/workflows/course-generation-workflow.md    | 489 [32m++++++++++++++++[m
+ .claude/workflows/example-workflow.md              |  14 [32m+[m
+ .gitignore                                         |  48 [32m++[m
+ ...5\201\346\236\266\346\236\204\345\233\276.html" | 397 [32m+++++++++++++[m
+ CLAUDE.md                                          | 115 [32m++++[m
+ input/course_spec.xlsx                             | Bin [31m0[m -> [32m431823[m bytes
+ ...0\213\345\205\263\347\263\273\345\233\276.html" | 637 [32m+++++++++++++++++++++[m
+ 48 files changed, 9112 insertions(+)
+
+[33mcommit 4393b8ef64a913513f22bc414a29ff08216fd9cd[m
+Author: AIoTMaker <12272833+aiotmaker@user.noreply.gitee.com>
+Date:   Thu Jun 18 11:35:55 2026 +0000
+
+    Initial commit
+
+ README.en.md | 36 [32m++++++++++++++++++++++++++++++++++++[m
+ README.md    | 39 [32m+++++++++++++++++++++++++++++++++++++++[m
+ 2 files changed, 75 insertions(+)
