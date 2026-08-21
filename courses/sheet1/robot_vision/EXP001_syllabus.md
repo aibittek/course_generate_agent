@@ -1,7 +1,7 @@
 ---
 course_code: EXP001
 course_name: 机器人视觉应用与开发
-version: v1.0
+version: v1.1
 generated_at: 2026-08-10
 generator: SyllabusAgent
 source_spec: courses/sheet1/robot_vision/_meta/course-spec.yaml
@@ -216,7 +216,7 @@ csv_sha256: c3fb485ce0dc2b232dbbc1a51e5481523482d42b36a758503e4ee6b11e71ce5b
 - Kalman 滤波 8 维状态（xyah + 速度，std 按 h 缩放，马氏门限 CHI2INV95）
 - 匈牙利算法最小代价匹配（cosine 外观 + IoU）
 - DeepSORT 级联匹配（time_since_update 从新到旧）
-- ReID 外观特征（64×128→128-d）与遮挡恢复
+- ReID 外观特征（deepsort.rknn，[1,3,128,64]→[1,512]→512-d）与遮挡恢复
 - 轨迹生命周期（n_init/max_age）与 sort 回退
 - 三处并行（检测池/ReID 池/双缓冲）
 
@@ -310,6 +310,8 @@ csv_sha256: c3fb485ce0dc2b232dbbc1a51e5481523482d42b36a758503e4ee6b11e71ce5b
 
 #### 教学内容
 - 动作分类方案对比（几何规则 vs 学习式）
+- Action 类定义（name,label）+ 常量 STOP/FORWARD/BACKWARD/TURN_LEFT/TURN_RIGHT
+- classify_action 接收像素坐标+帧尺寸，内部 _norm() 归一化后判定
 - 5 动作规则设计（下蹲/双手举/左手举/右手举/停止，阈值 0.72/0.08）
 - 优先级（squat > both_up > left/right）与 vis 过滤/髋部兜底
 - 动作→控制指令映射（前进/后退/左转/右转/停止）
@@ -382,7 +384,7 @@ csv_sha256: c3fb485ce0dc2b232dbbc1a51e5481523482d42b36a758503e4ee6b11e71ce5b
 
 ### 数据集与模型
 - NEU-DET.v1i.yolov8（工业缺陷数据集，6 类）
-- `rubbish_2_7.rknn`（20 类垃圾分类模型）
+- `garbage_yolov5_20cls.rknn`（20 类垃圾分类模型）
 - `models/` 下随仓库交付的各实验 rknn 模型（fp16/int8）
 
 ---
@@ -400,3 +402,4 @@ csv_sha256: c3fb485ce0dc2b232dbbc1a51e5481523482d42b36a758503e4ee6b11e71ce5b
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-08-10 | 初始化 12 章 48h 教学大纲（基于 course_spec_robot_vision.csv，理论 0 + 实验 48，做中学模式），对齐知识图谱 12 章结构与 12 实验明细 |
+| v1.1 | 2026-08-19 | 源码同步：D1 模型名 rubbish_2_7→garbage_yolov5_20cls；D2 ReID 128-d→512-d（deepsort.rknn）；D4 第11章 actions.py Action 类+classify_action 像素坐标归一化 |

@@ -122,7 +122,7 @@ def detect(self, bgr_img: np.ndarray) -> list[Detection]:
 
 ### 一、单项选择题（每题 2 分）
 
-**5. [知识点 2.1.2]** 垃圾分类模型 `rubbish_2_7.rknn` 的 YOLOv5 式检测头，每尺度输出通道数为？
+**5. [知识点 2.1.2]** 垃圾分类模型 `garbage_yolov5_20cls.rknn` 的 YOLOv5 式检测头，每尺度输出通道数为？
 
 A. 75 = 3 anchors × (4 + 1 + 20)
 B. 64 = 4 × 16（DFL bins）
@@ -337,16 +337,16 @@ D. max_age 越大跟踪一定越准
 **21. [知识点 7.1.2/7.3.2]** 简述 DeepSORT 相比 SORT 的核心改进，并说明遮挡恢复的完整机制。
 
 **参考答案**: 
-- SORT 纯 IoU 关联，无外观信息，目标被遮挡后重现会分配新 ID；DeepSORT 增加 ReID 外观特征（128-d cosine 距离）参与关联。
+- SORT 纯 IoU 关联，无外观信息，目标被遮挡后重现会分配新 ID；DeepSORT 增加 ReID 外观特征（512-d cosine 距离）参与关联。
 - 遮挡恢复机制：(1) 目标被遮挡时检测丢失，轨迹靠 Kalman 预测续命（max_age 帧内保持 missed 状态）；(2) 目标重现后，其 ReID 特征与原轨迹的外观特征 cosine 距离小，级联匹配中优先关联；(3) 关联成功恢复原 ID 并更新轨迹。
 
 ### 四、编程题（每题 5 分）
 
-**22. [知识点 7.2.1/7.3.1]** 实现 DeepSORT 数据关联的核心——给定已确认轨迹（含预测框与 128-d 外观特征）与当前帧检测（框 + 外观特征），用 cosine 距离 + IoU 构造代价矩阵并调用匈牙利算法求解匹配。
+**22. [知识点 7.2.1/7.3.1]** 实现 DeepSORT 数据关联的核心——给定已确认轨迹（含预测框与 512-d 外观特征）与当前帧检测（框 + 外观特征），用 cosine 距离 + IoU 构造代价矩阵并调用匈牙利算法求解匹配。
 
 ```python
 def associate(tracks, detections, max_dist=0.2, max_iou=0.7):
-    # tracks: [(track_id, xyah, feature_128d)], detections: [(det_idx, xyah, feature_128d)]
+    # tracks: [(track_id, xyah, feature_512d)], detections: [(det_idx, xyah, feature_512d)]
     # 1) 外观代价：cosine 距离（1 - 归一化内积）
     cost = cosine_dist([t[2] for t in tracks], [d[2] for d in detections])  # (M,N)
     # 2) 几何门限：马氏/xyah 距离 > 阈值置 inf（gate_cost_matrix 语义）
@@ -548,3 +548,4 @@ D. 逆映射必须用同一仿射矩阵，否则骨架错位
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-08-10 | 初始化 36 题（20 单选 + 10 多选 + 4 简答 + 2 编程），覆盖 12 章 61%+ 显式知识点（含隐含覆盖 ≥90%），难度 50/31/19 |
+| v1.1 | 2026-08-19 | 源码同步：题5 模型名 rubbish_2_7.rknn → garbage_yolov5_20cls.rknn；题21/22 ReID 维度 128-d → 512-d（deepsort.rknn 用户重导） |
