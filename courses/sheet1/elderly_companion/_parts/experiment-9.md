@@ -38,7 +38,7 @@
 **快速验证流程**：
 
 ```bash
-cd /home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 
 # Step 1: 环境自检
 python3 common/env_check.py --config config/fall_config.yaml
@@ -53,7 +53,7 @@ python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --mjpeg
 # Step 4: 实时摄像头（需 ROS2 相机节点 + 深度相机 HP60C）
 source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
 ros2 launch car1_peripherals depth_camera.launch.py   # 另一终端
-python3 apps/fall_app.py --mode camera --mjpeg --save
+python3 apps/fall_app.py --mode camera --mjpeg
 
 # Step 5: 资源清理
 pkill -9 aplay; pkill -f llm_server; pkill -f fall_video_demo; pkill -f fall_app
@@ -104,6 +104,20 @@ cd /home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 python3 common/env_check.py --config config/fall_config.yaml
 ```
 
+**知识储备补充**：
+
+- **背景与动机**：环境自检对应"能停不下就绝不静默失败"的原则（`apps/` 入口在装配任何组件前先 `env_check`）。跌倒监护链路上游是 RKNN 模型、sherpa-onnx 语音、FLask 推流 + STM32 硬件告警——任一依赖缺失都会在运行时 mid-stream 崩溃（如 `rknnlite` 未装 → `import` 即抛 `ImportError`；模型文件被置空 → 推理产出 NaN/空框；串口 `/dev/ttyUSB0` 消失 → `HardwareAlert` 写阻塞）。与其等到推理进入一半再崩，不如在入口用一次 `env_check` 把"能否开机"决策前置，用 `return 2`（非零退出码）阻止残缺环境启动，也方便 CI/脚本判断。
+
+- **依赖库检查机制（`_check_imports`，`common/env_check.py L30-L42`）**：遍历 `("numpy","cv2","scipy","rknnlite","sherpa_onnx","serial","yaml")` 七个模块，逐个 `importlib.import_module(mod)` 动态导入并与 `importlib.import_module` 配套读取 `mod.__version__`。动态导入（而非 `from xxx import yyy`）的好处：导入失败时以 `ImportError` 被过程捕获，能区分"这一项缺失"，而不是整个脚本在第一行就崩。版本号 `getattr(m, "__version__", "?")`——部分库（如 scipy）可能不导出 `__version__`，缺失时打印 `?` 仍判 OK（只判"能 import"，不判版本下限）。
+
+- **模型/资源逐项检查（`_check_files`，`common/env_check.py L45-L120`）**：内部定义 `check(path, hint)` 闭包，对每个资源做"存在 + 非空"二元判定：`p.exists() and p.stat().st_size > 0`。统计上 `st_size == 0` 视为缺——因为空文件无法被模型加载。检查对象分层：① YOLO 检测模型 `models/yolov8n.rknn` + COCO 类名表；② 姿态模型 `pose_landmark_full.rknn`；③ KWS 三件套（encoder/decoder/joiner）；④ ASR 三件套；⑤ TTS 八件套；⑥ VLM（`model.vlm.enabled=true` 时才查 vision/llm 模型 + `/usr/lib/librkllmrt.so`）；⑦ STM32 告警串口（`alert.port`，`L107-L113` 用 `Path(port).exists()` 判设备节点在不在）。缺项打印 `MISSING <路径> 提示: <hint>`，`hint` 告诉学生该去哪修，且**绝不自动 pip install**——板上禁装规则。
+
+- **config schema 校验**：`env_check` 分支前 `load_config(cfg_path, REQUIRED)` 已用 `fall/config_schema.py` 的 `REQUIRED` 嵌套字典校验必需键存在与类型。这保证自检读到的 `cfg` 一定含所有模型/串口键；若 config 缺键，会在 `load_config` 阶段抛 `ConfigError`（返回码 2），根本走不到自检打印。
+
+- **返回值与退出码语义**：`env_check` 聚合 `_check_imports().and(_check_files)` 的布尔结果，`main` 里 `return 0 if env_check(cfg) else 2`（`L126-L139`）。`0`=通过、`2`=有缺失——与 shell 通用约定一致：**非 0 即失败**，可被 `.sh`/CI 用 `$?` 捕获；`apps/` 入口收到 `False` 后 `log.error("环境自检失败，退出"); return 2`（如 `apps/fall_app.py L204-205`）。
+
+- **参考资源**：[Python importlib 官方文档](https://docs.python.org/3/library/importlib.html)；[Python os.path.exists 与 stat 文档](https://docs.python.org/3/library/os.path.html)；[Linux 退出码约定（exit codes）](https://tldp.org/LDP/abs/html/exitcodes.html)。
+
 **操作步骤**：
 
 1. 进入 `elderly_companion` 项目根目录。
@@ -131,6 +145,30 @@ python3 common/env_check.py --config config/fall_config.yaml
 cd /home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
 ```
+
+**知识储备补充**：
+
+- **三级开发模式的验证学动机**：它本质是"最弱假设先跑通、最强假设最后验证"的递进策略（`docs/03_开发模式与验证.md L3-L13`）。硬件环节（录音/识别/播放）是故障密度最高的部分，若先接音频再去排查状态机逻辑，两个变量同时扰动，无法定位根因。项目把验证拆成三级：
+
+  ① `--text` 只验证纯软件状态机/词表/LLM/告警路由；
+
+  ② 音频模式复核新增三个硬件环节；
+
+  ③ 摄像头模式换实时输入流。三级的验证对象逐层增加，但**每一级验证过的下层必然成立**——因为同一份 `VoiceLoop` 状态机代码同时服务文本与音频（`docs/03 L5-L8`）。
+
+- **text_mode 的单一开关实现**：三级模式的软件开关不是三份代码，而是 config 里**一个布尔开关**——`cfg["speech"]["text_mode"]`。`fall_video_demo.py L91` 的 `--text` 标志在 `L132` 置 `text_mode=True`；`VoiceLoop` 收到 `text_mode` 后决定启动录音线程还是启用 stdin 喂词线程（`apps/fall_video_demo.py L263-L266` 用 `threading.Thread(target=_stdin_loop, daemon=True)` 起 daemon 线程不断 `loop.feed_text(line)`）。同一状态机、同一回调，只是输入源从 ALSA 换成 stdin——这正是"逻辑必然成立"的代码依据。
+
+- **stdin 喂词线程的 daemon 性质**：`daemon=True` 意味着主程序 `Ctrl+C` 退出时，喂词线程随之被强杀，**不阻塞进程退出**，也无需显式 join。`feed_text` 把整行喂进 `loop` 内部队列，与音频块同一路由处理。
+
+- **全链路闭环六阶段的数学意义**（六状态机，`docs/03 L7-L13`）：
+
+  $$
+  \mathrm{IDLE} \xrightarrow{\text{唤醒词/文字}} \mathrm{DIALOG} \xrightarrow{\text{视频跌倒}} \mathrm{FALLING} \to \mathrm{LYING} \xrightarrow{3\text{s 确认}} \mathrm{ASK} \xrightarrow{\text{救命}} \mathrm{ALERT},\quad \mathrm{ASK} \xrightarrow{\text{没事}} \mathrm{CANCELLED}, \quad \mathrm{ASK} \xrightarrow{12\text{s 超时}} \mathrm{ALERT}
+  $$
+
+  每条迁移最终都落到**证据**（`runs/evidence/` 截图 / `.avi` / events.jsonl 事件）。因此"闭环验证"不只是"日志对"，还要每个状态在证据里留下对应事件——这正是步骤6判定完整性的依据。
+
+- **参考资源**：[ROS2 话题通信入门](https://docs.ros.org/en/humble/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Topics/Understanding-ROS2-Topics.html)；[sherpa-onnx 语音识别](https://k2-fsa.github.io/sherpa/onnx/)；[Ultralytics YOLOv8 文档（跌倒检测常基于该检测模型）](https://docs.ultralytics.com/)。
 
 **stdin 交互（与音频模式同一状态机）**：
 
@@ -161,7 +199,10 @@ python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
 
 **2.2.3 运行产物不入库与资源清理 + 3.2.2 唤醒后启动录音**
 
-- **原理**：音频模式在文本模式基础上新增三个硬件环节：① **XFM 硬件唤醒**（`/dev/ttyACM0` AIUI 事件）→ ② **ALSA 录音**（`plughw:4,0`，录音线程在唤醒后才启动，`apps/fall_video_demo.py L158-L160`）→ ③ **TTS 播报**（`plughw:3,0` aplay 持久管道）。录音线程在唤醒后才启动是因为 XFM 硬件在监听态不上送音频流，提前打开 ALSA 会导致唤醒后仍无音频。音频模式启动前必须清理残留进程：`pkill -9 aplay`（占播放设备）+ `pkill -f llm_server`（占串口/端口），否则播报无声或 XFM 唤醒失效。运行产物（`runs/evidence/` 截图/视频/events.jsonl、`runs/tts_cache/` TTS 预合成缓存、`runs/*.log` 日志）均不入库（gitignore），证据视频增长快（告警前后 ~5s×n），需定期清理。
+- **原理**：音频模式在文本模式基础上新增三个硬件环节：
+
+  ① **XFM 硬件唤醒**（`/dev/ttyACM0` AIUI 事件）→ ② **ALSA 录音**（`plughw:4,0`，录音线程在唤醒后才启动，`apps/fall_video_demo.py L158-L160`）→ ③ **TTS 播报**（`plughw:3,0` aplay 持久管道）。录音线程在唤醒后才启动是因为 XFM 硬件在监听态不上送音频流，提前打开 ALSA 会导致唤醒后仍无音频。音频模式启动前必须清理残留进程：`pkill -9 aplay`（占播放设备）+ `pkill -f llm_server`（占串口/端口），否则播报无声或 XFM 唤醒失效。运行产物（`runs/evidence/` 截图/视频/events.jsonl、`runs/tts_cache/` TTS 预合成缓存、`runs/*.log` 日志）均不入库（gitignore），证据视频增长快（告警前后 ~5s×n），需定期清理。
+
 - **源码对应**：`apps/fall_video_demo.py L146-L165（ASR/KWS/Wake 组件装配）、L242-L253（VoiceLoop 启动与硬件唤醒等待）、docs/06_环境依赖.md L67-L72（启动顺序/清环境）、README.md L78（资源清理命令）`
 
 ```bash
@@ -171,6 +212,18 @@ pkill -9 aplay; pkill -f llm_server
 # 音频全链路（离线视频 + 真实语音）
 python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --mjpeg
 ```
+
+**知识储备补充**：
+
+- **"唤醒后才启动录音"的时序原理**：XFM 六麦阵列在空闲监听态**不上送原始音频流**（只上送极稀疏的帧，`[diag] 录音 10 帧/5s` ),只有被"小飞小飞"硬件唤醒后才切到全速上送（`[diag] 录音 50 帧/5s`）。若在唤醒前就 `open` ALSA 设备，会抢占 `plughw:4,0` 且拿到的全是稀疏流，唤醒后反而拿不到完整流。因此代码把录音线程的启动放在 `唤醒事件之后`（`apps/fall_video_demo.py` 中录音线程随 `VoiceLoop` 在唤醒流就绪后启动），并配 `[diag]` 帧率诊断日志判断流健康度（`docs/03 L74-L75`）。
+
+- **ALSA 设备句柄是排他资源**：`plughw:3,0`（播放）/`plughw:4,0`（录音）是 ALSA PCM 硬件句柄，**同一时刻只能一个进程持有**。`aplay` 残留进程会一直占着播放设备，导致 TTS 播报无声；`log_server`（串口 `8090` 服务）与 AIUI 唤醒共用 `/dev/ttyACM0`，占着就抢不到唤醒事件。这是"音频模式前必须 `pkill -9 aplay; pkill -f llm_server`"的根因（`docs/03 L62`、README L78）。
+
+- **`_warn_residual` 启动告警**：`apps/fall_video_demo.py L34-L50` 在启动时用 `subprocess.run(["pgrep","-f",...])` 探测上一次 `Ctrl+C` 是否留下残留实例，残留会抢 XFM 唤醒帧 / 占播放设备，因此提前告警并给出 `pkill` 提醒。
+
+- **运行产物不入库的磁盘动机**：证据视频增长快（告警前后约 `pre_seconds + post_seconds = 3.0+2.0=5s`，`config` 的 `evidence.pre_seconds/post_seconds`，× n 次告警线性膨胀），TTS 预合成缓存（`runs/tts_cache/*.pcm`）与日志也不该进 git，因此全部 gitignore。这里有一个"缓存换延迟"的典型取舍：`speaker.pre_synthesize([ASK/CANCEL/ALERT/无人提示], cache_dir=runs/tts_cache)`（`apps/fall_video_demo.py L198` 附近）把固定提示语预合成落盘，二次启动**零合成延迟**直接播放，省去每次 ~1s 在线合成。
+
+- **参考资源**：[ALSA PCM 设备命名与独占性说明](https://www.alsa-project.org/wiki/Asoundrc)；[Linux 后台进程 daemon 与资源清理](https://man7.org/linux/man-pages/man7/daemon.7.html)；[gitignore 文档](https://git-scm.com/docs/gitignore)。
 
 **音频模式流程与判定**：
 
@@ -211,8 +264,22 @@ ros2 launch car1_peripherals depth_camera.launch.py
 
 # 终端 2：启动实时摄像头模式
 cd /home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion
-python3 apps/fall_app.py --mode camera --mjpeg --save
+python3 apps/fall_app.py --mode camera --mjpeg
 ```
+
+**知识储备补充**：
+
+- **三模式的抽象统一（`FrameSource`）**：`common/source.py` 用 `FrameSource` 把三种输入源收敛成统一接口 `read()/isOpened()/release()`（`source.py L19-L88`）。`open()` 按 `mode` 分派：`image` 走 `cv2.imread`；`video` 走 `cv2.VideoCapture`；`camera` 走 `Ros2Camera` 订阅 ROS 话题。因此主循环 `source.read()` 一视同仁，换模式只改 config `source.mode`——这是"多模式"不需要多份逻辑的架构关键。
+
+- **camera 模式的 ROS 依赖**：`camera` 模式**不是**读 USB 摄像头，而是假设 ROS2 相机节点已在跑（`ros2 launch car1_peripherals depth_camera.launch.py`）。`common/ros2_camera.py`（L1-116）惰性导入 rclpy，`open()` 时才 `rclpy.init()` + `node.create_subscription(Image, "/ascamera_hp60c/camera_publisher/rgb0/image", ...)`（默认话题，`DEFAULT_TOPIC`，L29/L64），用 daemon 线程 `rclpy.spin` 驱动回调。若相机节点未启动或话题无数据，`open()` 返回失败并提示"ROS 相机订阅失败 + 请先启动节点的 hint"（`source.py L47-L50`）——这就是 `易错点 1` 的代码依据。`FrameSource` 与 `Ros2Camera` 的惰性导入（`import rclpy` 只在 `open()` 内）保证 x86 无 ROS 环境也能测试回调逻辑。
+
+- **camera 模式"等待硬件唤醒"的特殊时序**：`apps/fall_app.py L383-L390` 明确 `if wake is not None and wake.available and not text_mode and cfg["source"]["mode"] == "camera"` 时才 `loop.wake_seen.wait()`。原因：实时相机推流消耗算力，若未唤醒就开跑，跌倒→ASR 的应答窗口会与唤醒时序错位；且唤醒态只有 ~10s 完成"跌倒→ASK→应答"，ASR 才有音频流。`image/video` 模式离线调试则自动跑、不等待。
+
+- **三模式与 `--input` 的参数路由**：`--mode camera/image/video` + `--input` 在 `_merge_args`（`apps/fall_app.py L96-133`）按 mode 处理——`--input` 在 `video`/camera 时写 `video_path`、否则写 `image_path`。`--mjpeg` 打开 MJPEG 推流（8088），`--save` 开 `save.enabled` 写标注视频。
+
+- **camera 模式读取失败的重试语义**：主循环里 `fall_app.py` 对 camera 模式 `if not ok: log.warning("相机读取失败，重试..."); time.sleep(0.2); continue`——即相机断连不会让程序崩溃，而是退避重试；而 video/image 模式读到结尾即 `break` 正常退出。
+
+- **参考资源**：[ROS2 订阅者实现（rclpy）官方教程](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html)；[OpenCV VideoCapture 文档](https://docs.opencv.org/4.x/d8/dfe/classcv_1_1VideoCapture.html)；[ROS2 Launch 文件入门](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/Launch-Main.html)。
 
 **操作步骤**：
 
@@ -239,6 +306,21 @@ python3 apps/fall_app.py --mode camera --mjpeg --save
 - **原理**：`docs/03_开发模式与验证.md` 的"分步验证手册"（L22-L95）定义了从零到全链路的五个 Step，是系统完整性验证的权威清单。Step 1 环境自检（`env_check.py`）；Step 2 文本全链路（`fall_video_demo --text`，stdin 交互验证状态机）；Step 3 音频全链路（`fall_video_demo --mjpeg`，真实语音验证唤醒/ASR/TTS）；Step 4 音频链路故障排查（按出现概率排序的五类问题与处理方法，`docs/03 L63-L83`）；Step 5 摄像头模式（整机实时验证）。每个 Step 都有明确的"预期日志"与"判定标准"，逐项对照即可判断系统是否完整可用。Step 4 的故障排查表覆盖：唤醒后无录音线程（串口占用）、录音帧率低（设备态异常）、无 ASR 实时输出（模型/配置）、ASK 窗口时序错（触发逻辑）、播报无声（aplay 残留）。这是课程所有实验的"集成验收标准"。
 - **源码对应**：`docs/03_开发模式与验证.md L1-L14（三级开发模式）、L22-L38（Step 1-2）、L42-L53（Step 3 音频流程）、L63-L83（Step 4 故障排查表）、L86-L95（Step 5 摄像头模式）`
 
+**知识储备补充**：
+
+- **分步验证手册的方法论**：`docs/03` 五步手册是"分而治之 + 逐层加硬件"的工程实践（L22-L95）。Step 1-3 已在文本/音频模式完成验证，Step 4 是故障画像、Step 5 是整机实时验收。每个 Step 都有明确的"预期日志 + 判定标准"——这比"逐行读源码找 bug"更适合集成验收，因为验收关心的是"系统是否可用"而非"哪里坏了"。
+
+- **Step 4 故障排查表的分层思想**：五类高频问题按**出现概率排序**（`docs/03 L77-L85`），且把"软/硬"分层处理：
+  - **唤醒后无录音线程** → 软件层（`notify_wake` 串口事件在 `/dev/ttyACM0` 被 log_server 占用时到不了）；
+  - **录音 10 帧/5s** → 硬件层（XFM 固件/接线，与代码无关——明确标注"与代码无关"避免误杀）；
+  - **有录音无 `[ASR 实时]`** → 模型/配置层（`decoding_method`、`runs/tts_cache/*.pcm` 直喂验证模型）；
+  - **ASK 开听过早** → 时序层（`has_ask_session` 上升沿、VoiceLoop 等 playback 播完）；
+  - **播报无声** → 进程/设备层（aplay 残留、`ttyUSB0` 告警串口）。把症状映射到"软/硬件/模型/时序/进程"五个层面，是故障排查的核心。
+
+- **分步判定与回归的严谨性**：必须严格 Step1→2→3→4→5 顺序，因为每级用"上一步已通过"作为前提（如 Step 5 摄像头模式依赖 Step 2 状态机逻辑正确）。跳过 Step 1（环境自检）直接跑 Step 3 会因模型缺失在运行时崩溃——这正是"分层验证强度递增、级间依赖不可跳过"的体现。
+
+- **参考资源**：[系统化调试方法论（Debug Like a Human）](https://www.debuglike.com/)；[进程管理与信号处理（man signal）](https://man7.org/linux/man-pages/man7/signal.7.html)；[ALSA 音频故障排查](https://wiki.archlinux.org/title/Advanced_Linux_Sound_Architecture)。
+
 **操作步骤**：
 
 1. 打开 `docs/03_开发模式与验证.md`，对照"分步验证手册"的 Step 1-5 逐项执行。
@@ -264,6 +346,7 @@ python3 apps/fall_app.py --mode camera --mjpeg --save
 - **源码对应**：`apps/fall_video_demo.py L267-L316（finally 块资源释放）、apps/fall_app.py L54-L70（_atexit_cleanup 兜底释放）、L370-L398（finally 块释放 monitor/source/speaker/hw/wake/llm_mgr）、README.md L98-L101（常用命令/资源清理）、docs/06_环境依赖.md L77（runs/ 磁盘说明）`
 
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 # 1. 检查 runs/evidence/ 证据完整性
 ls -la runs/evidence/
 # 预期：有 .jpg 截图、.avi 视频、events.jsonl
@@ -285,6 +368,20 @@ pgrep -af "aplay|llm_server|fall_video_demo|fall_app"
 # 6. （可选）清理 runs/ 释放磁盘
 rm -rf runs/evidence/*.avi runs/evidence/*.jpg
 ```
+
+**知识储备补充**：
+
+- **证据的三种介质与格式**：完整告警链路在 `runs/evidence/` 沉淀三类证据：
+  - **前后帧截图**（JPEG）：由 `FallMonitor` 的 `FrameRing` 环形缓冲区提供——圈内保留最近 N 帧，跌倒触发时取"前帧 + 后帧"各一帧落盘。**为什么不是只存跌倒瞬间**：前帧能证明"跌倒前是正常站立"（区分跌倒 vs 本来就躺着），后帧证明"确实持续倒下"（防抖动误判），二者是"这件事真的发生"的最小可验证对。
+  - **告警视频**（`.avi`，`cv2.VideoWriter` 写 `fall_annotated.avi`）：截取的告警前后共 `pre_seconds+post_seconds=5s` 连续流（`config` 的 `evidence.pre_seconds/post_seconds`），与单帧截图互补——帧是静态证据，视频是时序证据。
+  - **事件日志**（`events.jsonl`）：每行一条 JSON 事件（时间戳、事件类型、状态机状态），`FALLING/ASK/ALERT（或 CANCELLED）` 全部落盘，构成"推理过程"的可审计轨迹。
+    判定完整性的充要条件：截图 + 视频 + 事件日志**三件套齐**，且事件类型覆盖 `FALLING→ASK→ALERT`（或 `CANCELLED`）——这正是步骤6每一 checks 的判定标准。
+
+- **证据目录的磁盘经济**：`runs/evidence/` 设 `max_files`（默认 100，`config_schema`）上限，超过会被清理策略淘汰；`runs/tts_cache/` 是 TTS 预合成 PCM 缓存（二次启动零合成），`runs/*.log` 是日志。三者全部 gitignore（运行产物不入库）。证据视频增长快（每次告警 ~5s），故需定期 `rm -rf runs/evidence/*.avi` 释放磁盘。
+
+- **资源清理的进程树语义**：资源释放沿进程层次：`pkill -9 aplay` 杀残留播放进程（占 `plughw:3,0`）→ `pkill -f llm_server` 停 LLM Flask 子进程（占端口 8080 + ~1.5G 内存）→ `pkill -f fall_video_demo/fall_app` 停主程序。`pgrep -af` 复查确认无残留（否则下次启动串口/Aplay 被占）。程序内 `finally` 也会释放 monitor/loop/source/speaker/hw/wake/llm_mgr（`apps/fall_video_demo.py L313-L326`、`apps/fall_app.py L451-L470`），`_atexit_cleanup`（`apps/fall_app.py L58-L70`）兜底崩溃路径。
+
+- **参考资源**：[JBOD 环形缓冲区（FrameRing 循环缓存）概念](https://en.wikipedia.org/wiki/Circular_buffer)；[FFmpeg/OpenCV VideoWriter 视频编码格式](https://docs.opencv.org/4.x/dd/d9e/classcv_1_1VideoWriter.html)；[Linux 进程信号与清理（kill/pkill）](https://man7.org/linux/man-pages/man1/pkill.1.html)。
 
 **操作步骤**：
 
@@ -357,3 +454,9 @@ rm -rf runs/evidence/*.avi runs/evidence/*.jpg
 - 思考题回答（20 分）：回答准确，结合源码行号与设计原理，分析有深度。总分 100 分。
 
 ---
+
+### 更新日志
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.1 | 2026-08-21 | 知识点补充（每知识点追加知识储备：三模式入口/环境自检/三级开发模式/全链路故障排查/证据完整性） |

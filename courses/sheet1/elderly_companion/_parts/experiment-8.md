@@ -40,6 +40,7 @@
 **快速验证命令**：
 
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 # 在 elderly_companion 目录下
 
 # 1. LLM 单轮对话
@@ -66,6 +67,15 @@ ss -tlnp | grep 8080
 - VLM复核（开启后）：输入跌倒图片→输出label=fall/not_fall/uncertain + confidence + reason。
 - 端口管理：服务启动后`ss -tlnp | grep 8080`可见监听；退出后端口释放。
 - 进程清理：退出llm_chat_test后`ps aux | grep llm_server`无残留flask进程。
+
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/elderly_companion$ python3 apps/llm_chat_test.py --prompt "你好，你是谁？"
+[2026-08-21 18:00:13,655][INFO][llm_mgr] 拉起 LLM 服务: /home/iflytek/ros2_venv/bin/python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion/llm/llm_server.py --rkllm_model_path /home/iflytek/models/rkllm/Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm --target_platform rk3576 --port 8080（日志 runs/logs/llm_server.log，首次加载 30-60s）
+[2026-08-21 18:00:17,678][INFO][llm_mgr] LLM 服务就绪: http://127.0.0.1:8080
+LLM 就绪: http://127.0.0.1:8080（输入 exit 退出）
+[5.9s] 回复: 你好！我是 Qwen3.5，是通义千问系列大模型中的一个版本。我具备人类语言模型所具备的多种能力：包括逻辑推理、代码编写、数学计算、文本生成等。
+[2026-08-21 18:00:24,511][INFO][llm_mgr] LLM 服务子进程已停止
+```
 
 ### 1.6 实验步骤
 
@@ -109,9 +119,30 @@ def chat(self, messages: list[dict], max_tokens: int = 200) -> str:
     ...
 ```
 
+**知识储备补充**：
+
+- **量化与内存**：Qwen3.5-0.8B 为约 8 亿参数的 decoder-only 模型，即约 $0.8 \times 10^9$ 个权重。以 FP16 存储需 $0.8 \times 2 \approx 1.6\,\mathrm{GB}$；本工程用 w4a16 量化（权重 4bit、激活 16bit），权重下压至约 `0.8 × 0.5 ≈ 0.4 GB`，加激活/中间态后实测约 1.5G。量化损失精度换取 NPU 上可运行性——RK3576 板端 RAM 有限，FP16 全精度模型无法常驻。
+
+- **采样参数与数学含义**（`llm/llm_server.py L259-L272`，`RKLLM.__init__` 预设）：`temperature=0.8` 控制下一个 token 概率分布的软化程度；`top_p=0.9`（nucleus 采样）只从累积概率达 0.9 的 token 集合中采样；`top_k=1` 即贪心解码（取概率最高 token）；`repeat_penalty=1.1` 对已生成 token 的概率打折抑制重复；`max_context_len=4096` 为上下文长度上限。这些参数同时可经 POST `/v1/chat/completions` 的请求体按次覆盖（`llm/llm_server.py L617-621`）。
+
+- **采样公式**：在每一步，模型输出词表上的 logits 向量 $z_i$，经 softmax 得概率。加入 temperature 后：
+
+  $$
+  P(w_i \mid \mathrm{context}) = \frac{\exp(z_i / T)}{\sum_{j} \exp(z_j / T)}, \qquad T = \mathrm{temperature}
+  $$
+
+  $T > 1$ 使分布更均匀（更随机），$T \to 0$ 逼近贪心（取 argmax）。top_p 在其上再做截断：设 $V = \{w_i : \sum_{i'\in V} P_{i'} \approx 0.9\}$ 为概率和贴近 0.9 的最小累积集合，仅在该集合内重归一化采样。逐 token 由 C++ 侧 `callback_impl` 回调到 Python，累积入 `global_text` 全局列表（`llm/llm_server.py L221-232`）。
+
+- **回调即流式**：`callback_impl(result, userdata, state)` 的 state 取 `LLMCallState`（NORMAL=0/FINISH=2/ERROR=3）。NORMAL 时把 `result.contents.text` 追加进 `global_text`——每个 token 到达都会触发一次回调，因此**无需额外改动即天然构成逐 token 输出流**；`generate_stream()`（`llm/llm_server.py L563`）正是消费这个队列按 token yield，供 Flask SSE 推送。
+
+- **SSE 流式协议**：OpenAI 兼容端点在与 `stream=true` 时逐块返回 `text/event-stream`，每块形如 `data: {"choices":[{"delta":{"content":"..."}}]}\n\n`，结尾 `data: [DONE]`。`LLMClient.chat_stream`（`llm/llm_client.py L98-L145`）逐行解析 `data:` 前缀取 `delta.content`，遇 `[DONE]` 停止。非流式 `chat()`（`L59-L96`）则一次读回完整 JSON，解析 `choices[0].message.content`。
+
+- **参考资源**：Rockchip RKLLM 文档 `https://github.com/airockchip/rknn-llm`；OpenAI Chat Completions 流式规范 `https://platform.openai.com/docs/api-reference/chat`；Qwen 量化 w4a16 说明（`https://qwen.readthedocs.io/`）。
+
 **操作步骤**：
 
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 # 单发模式：输入一个问题，获取回复后退出
 python3 apps/llm_chat_test.py --prompt "你好，你是谁？"
 ```
@@ -147,9 +178,26 @@ if self.history:
                "不要复述记录：\n" + "\n".join(lines))
 ```
 
+**知识储备补充**：
+
+- **滑动窗口数学**：`LLMChat.history` 按 `[user, assistant]` 交替追加（`llm/chat.py L70-71`），每次 `ask` 增 2 条。窗口取最近 `max_history` 轮，即 `self.history[-2*max_history:]`（`L43`）——`max_history=6` 时保留最近 6 轮共 12 条消息，更早的被丢弃。token 占用上界近似：
+
+  $$
+  \mathrm{tokens}_{window} \approx \sum_{i=1}^{2 \cdot max\_history} \mathrm{len\_tokens}(m_i) + \text{固定前缀开销}
+  $$
+
+  每多保留 1 轮多约 2 条消息长度；窗口过大虽有更多上下文，却逼近 `max_context_len=4096`（`llm/llm_server.py L259`）上限，超出会被 RKLLM 截断或降质。故窗口是"上下文深度"与"token 预算"的折中。
+
+- **为什么要拼接进单条 user 消息**：RKLLM 服务端 `get_last_input()`（`llm/llm_server.py L468`）用 `_last_messages` 记录上次请求，只取"本次新增的 user/tool 消息"作为 prompt——历史列表会被忽略（不参与拼接）。因此 `LLMChat` 把历史主动拼成 `用户：xxx\n小飞：xxx` 文本注入单条 content，配合提示语（`llm/chat.py L36-46`）提示模型"据此回答最后一句"。这是 RKLLM 不支持原生多轮数组时的工程代偿：上下文由**客户端拼接**而非服务端自动维护。
+
+- **截断双层防内存**：窗口截断在**消息构造层**（`L43` 只取最近窗口）；另有**历史存储层**兜底（`L73-74`）：`len(history) > 2*max_history+8` 时才裁到 `[-2*max_history:]`。两者约束不同：前者控制单次请求的 token 量（服务端正例），后者防 Python 侧 `self.history` 无限增长。`reset()`（`L139-140`）直接置 `self.history = []` 清空。
+
+- **参考资源**：Tiktoken 词元切分原理 `https://github.com/openai/tiktoken`；Qwen Chat Template 说明 `https://qwen.readthedocs.io/`。
+
 **操作步骤**：
 
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 # 交互模式：输入 exit 退出，输入 reset 清空历史
 python3 apps/llm_chat_test.py
 ```
@@ -159,6 +207,22 @@ python3 apps/llm_chat_test.py
 3. 输入第三轮：`今天天气怎么样？`→ 观察是否仍记得名字（窗口内）。
 4. 输入`reset`→ 再问`我叫什么名字？`→ 观察上下文已清空。
 5. 输入`exit`退出。
+
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/elderly_companion$ python3 apps/llm_chat_test.py
+[2026-08-21 18:03:37,544][INFO][llm_mgr] 拉起 LLM 服务: /home/iflytek/ros2_venv/bin/python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion/llm/llm_server.py --rkllm_model_path /home/iflytek/models/rkllm/Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm --target_platform rk3576 --port 8080（日志 runs/logs/llm_server.log，首次加载 30-60s）
+reset[2026-08-21 18:03:41,562][INFO][llm_mgr] LLM 服务就绪: http://127.0.0.1:8080
+LLM 就绪: http://127.0.0.1:8080（输入 exit 退出）
+> 
+[2026-08-21 18:03:44,934][INFO][llm_chat] LLM 对话历史已清空
+> 我的名字叫张三
+[3.1s] 你好，张三！很高兴认识你。
+
+我是 Qwen3.5 的 AI 助手，我的名字叫**Qwen**。如果你有任何问题或需要帮助，请随时告诉我！
+> 我叫做什么名字
+[1.6s] 你好，张三！
+> 
+```
 
 **易错点**：
 
@@ -190,11 +254,38 @@ LABELS = ("fall", "not_fall", "uncertain")
 PROMPT = "图中的人是否摔倒了？只回答'是'或'否'或'不确定'，然后写一句理由。"
 ```
 
+**知识储备补充**：
+
+- **多模态输入原理**：VLM 需把图像"翻译"成 LLM 可读的 token 序列。本工程双模型方案（`fall/vision_judge.py L243-309 _load`）：① `RKNNLite` 加载视觉编码器 `Qwen3.5-0.8B_vision_rk3576.rknn`，把 448×448 图像 encoder 成**视觉嵌入** `embed`（`L330-333`，`_encode_image` 输出 1×196×1024 展平）；② 嵌入经 `RKLLM_INPUT_MULTIMODAL`（`input_type=3`）注入 LLM，配特殊标记 `<|vision_start|>…<|image_pad|>…<|vision_end|>`（`L345-356`）告知模型此段为图像 token。LLM 端 `max_context_len=2048`、`max_new_tokens=256`（`L267-268`），`temperature=0.6`（`L271`）比纯文本对话（0.8）更保守，求回答稳定。
+
+- **视觉嵌入 token 数**：`n_image_tokens=196`、`embed_size=1024`（`L234-235`）来自 448×448 输入经 VIT 后的 patch 化：448×448 切成 32×32 patch（共 $14 \times 14 = 196$ 个 token），每个 patch 映射到 1024 维嵌入。
+
+  $$
+  n\_image\_tokens = \left(\frac{448}{32}\right)^2 = 14^2 = 196,\qquad d_{embed} = 1024
+  $$
+
+  这 196 个图像 token 与文本 token 一起进入 LLM 的自注意力，故模型能"看图作答"。
+
+- **三分类判定逻辑（`_parse`，L404-413）**：按关键词匹配返回 `JudgeResult`：
+
+  $$
+  \mathrm{label} = \begin{cases} \mathrm{fall} & \text{含"是"且不含"否"} \\ \mathrm{not\_fall} & \text{含"否"} \\ \mathrm{uncertain} & \text{含"不确定" 或 无关键词 / 报错} \end{cases}
+  $$
+
+  `confidence` 为预设值：`fall`/`not_fall` → 0.8，`uncertain` → 0.5。这是规则式解析而非概率校准——置信度仅反映判定确定性档位，不来自模型 logits。
+
+- **懒加载与降级**：`_load()`（`L243`）首次 judge 时才初始化（10-60s，含 vision encoder + LLM 双模型加载）；`_loaded` 标志后续复用。任何加载/推理异常（`L388-399`）都捕获并返回 `JudgeResult("uncertain", 0.0, "VLM error: …")`——**主流程永不因 VLM 故障崩溃**，这是降级策略。`close()`（`L415`）释放 `rkllm_destroy` 与 `rknn.release()`。
+
+- **内存权衡（默认关闭原因）**：LLM 主模型约 1.5G，VLM 另加约 1.3G（视觉编码器 + 第二个 LLM），总计 3.0G+。RK3576 板端 RAM 仅 2G/4G，2G 板开启必 OOM。故 `config/fall_config.yaml L13` `vlm.enabled: false` 默认关闭，用 `FakeVisionJudge`（`L40-44`）恒返 uncertain 保持接口兼容——只在明确测试或 4G 板端临时开启。
+
+- **参考资源**：RKLLM 多模态输入 API `https://github.com/airockchip/rknn-llm`；RKNN 模型转换 `https://github.com/airockchip/rknn-toolkit2`；Qwen-VL 架构说明 `https://qwen.readthedocs.io/`。
+
 **操作步骤**：
 
 1. **修改配置**：编辑`config/fall_config.yaml`，将`model.vlm.enabled: false`改为`true`（`L13`）。
 
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 # 修改前
 sed -n '13p' config/fall_config.yaml
 # 预期输出:     enabled: false
@@ -211,6 +302,17 @@ python3 apps/vlm_demo.py --image testdata/fall_1.png
 
 3. 观察输出：首次加载约10-60s（懒加载），随后输出`label=fall`/`not_fall`/`uncertain`、`confidence=0.8`、`reason=...`。
 4. **恢复配置**：测试完成后务必将`vlm.enabled`改回`false`，避免内存持续占用。
+
+```bash
+I rkllm: Enabled cpus: [4, 5, 6, 7]
+I rkllm: Enabled cpus num: 4
+I rkllm: Using mrope
+[2026-08-21 18:04:59,256][I][vlm] VLM 就绪
+[2026-08-21 18:05:03,880][I][vlm] VLM: vision 0.87s, llm 3.76s, answer='是'
+label=fall
+confidence=0.8
+reason=是
+```
 
 **易错点**：
 
@@ -244,11 +346,32 @@ def stop(self) -> None:
         self._proc = None
 ```
 
+**知识储备补充**：
+
+- **端口预检原理（`pick_free_port`，L33-40）**：从 `start=8080` 起对每个端口 `socket.connect_ex(("127.0.0.1", port))`——连接成功（返回 0）说明端口被占用，连接被拒（非 0）则空闲可取。从 8080 递增最多 20 个（8080-8099），全占则抛 `RuntimeError`。这是典型的"探测式选端口"，无注册中心，靠 TCP 握手失败判断可用性。
+
+  $$
+  p_{free}(n) = \min\{p \ge 8080 : connect\_ex(p) \neq 0\}
+  $$
+
+  配 `llm.server.port=0` 时（`L58-60`）自动调用此函数选端口；配具体值则直接使用。
+
+- **复用 vs 拉起的决策树**：`ensure_running()`（`L55-111`）：① 端口占用 → 探测 `/v1/models`，返回 200 说明已是兼容 RKLLM 服务则**直接复用**（`_endpoint` 记录，`self._proc` 保持 None）；② 端口占用但非 LLM 服务 → 报错拒绝，防误用；③ 端口空闲 → 若 `auto_start=true`（默认）则 `subprocess.Popen` 拉起子进程（`L91-110`），否则报错。设计目标是"多入口共享一个服务"：首个入口拉起，后续复用，避免每入口各占一份模型内存。
+
+- **就绪轮询与超时**：拉起后 `while time.time() < deadline(120s)` 循环，每 2s `_models_ok(endpoint)`（GET `/v1/models`）探测一次（`L106-110`）；若子进程 `poll()` 提前退出（NPU 被占/内存不足/模型路径错）立即报错并 `self._proc=None`。120s 超时未就绪则 `stop()` 后抛异常——上限覆盖 RKLLM 模型首次加载（30-60s）。
+
+- **优雅终止三阶段（`stop`，L113-124）**：`self._proc.terminate()`（SIGTERM 软终止）→ `wait(timeout=5)` 等 5s → 仍未退出 `self._proc.kill()`（SIGKILL 强杀）。软→硬递进：先给 Flask 优雅关停机会，超时再强制；`self._proc=None` 置空避免二次终止。**仅清理自己拉起的进程**，外部复用服务（`self._proc` 为 None）不动——这是"不干扰他人服务"的关键。
+
+- **子进程日志隔离**：Popen 的 `stdout`/`stderr` 重定向到 `runs/logs/llm_server.log`（`L85-89`），子进程崩溃时靠该日志排查（NPU 占用/内存/OOM/路径错），同时不污染调用终端的 stdout。
+
+- **参考资源**：Python `subprocess.Popen` 生命周期 `https://docs.python.org/3/library/subprocess.html`；TCP 端口探测 `https://docs.python.org/3/library/socket.html`。
+
 **操作步骤**：
 
 1. **启动LLM服务**：
 
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 python3 apps/llm_chat_test.py --prompt "你好"
 # 观察启动日志中 "LLM 就绪: http://127.0.0.1:8080" 字样
 ```
@@ -294,11 +417,30 @@ ss -tlnp | grep 8080
 
 - **源码对应**：`llm/llm_server.py L598-L690（chat_completions路由，Flask处理并发请求）`；`speech/voice_loop.py`（状态机控制TTS与录音互斥）；`config/fall_config.yaml L140-L151（llm配置段）`
 
+**知识储备补充**：
+
+- **GIL 下的"伪并发"**：Python 的 GIL（全局解释器锁）使同一进程内 CPU 密集线程无法真正并行。但 LLM 对话的 IO 是**网络阻塞 + 子进程/C 库**：`LLMClient` 的 `urllib.urlopen` 等待 HTTP 响应时释放 GIL，让出 CPU 给视觉/状态机线程；RKLLM 推理本身跑在 C++ 库内也释放 GIL。故"跌倒检测与 LLM 对话并存"实质为**IO 阻塞交错**而非真正并行——同一进程内仍可能有轻微延迟抖动（这正是实验步骤 5 易错点提到"ALERT 期间 LLM 响应变慢"的根源）。
+
+- **TTS 播放设备互斥**：LLM 回复与告警播报都经 `aplay -D plughw:3,0`（同一音频设备）。`voice_loop.py` 状态机把 TTS 期间置为 SPEAKING（`speech/voice_loop.py` 状态定义），此期间不录音、不触发新对话；告警 ALERT 时告警 TTS 循环播报（`alert_tts_interval`），LLM 回复缓冲等待。分时复用单一音频设备，避免两个 PCM 流争抢 `plughw:3,0` 造成爆音/错乱。
+
+- **状态机优先级模型**：系统的行为可用有限状态机描述——state ∈ {IDLE, LISTENING, SPEAKING}（语音侧）+ 视觉侧 {TRACKING, ASK, ALERT}。并行请求按优先级仲裁：
+
+  $$
+  \mathrm{优先级:}\quad \mathrm{ALERT\ 告警} > \mathrm{ASK\ 询问} > \mathrm{SPEAKING\ 播报} > \mathrm{LLM\ 闲聊}
+  $$
+
+  告警（老人安全）永远最高，LLM 闲聊最低——故告警期间 LLM 请求被排队，这是**安全设计**而非 bug。`monitor` 的 `on_kws/on_asr/has_ask_session` 三接口（`fall/monitor.py`）把视觉告警状态暴露给语音链路，是实现抢占比的耦合点。
+
+- **端口与连接治理**：Flask 端点 `POST /v1/chat/completions`（`llm/llm_server.py L599` 起）用 `lock` + `is_blocking` 全局标志串行化 RKLLM 推理（同一模型句柄一次只能跑一个推理），并发请求后者返回 `503 server busy`——`LLMClient` 重试或回退非流式处理。故"对话与告警并存"在 HTTP 层也是一对一的串行，仅请求排队不互阻。
+
+- **参考资源**：CPython GIL 文档 `https://docs.python.org/3/glossary.html#term-global-interpreter-lock`；Flask 并发与多线程 `https://flask.palletsprojects.com/`；有限状态机设计模式 `https://en.wikipedia.org/wiki/Finite-state_machine`。
+
 **操作步骤**：
 
 1. **启动文本模式全链路**：
 
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 python3 apps/speech_text_demo.py
 ```
 
@@ -314,7 +456,8 @@ python3 apps/speech_text_demo.py
 3. **模拟跌倒场景**（另开终端，使用离线视频）：
 
 ```bash
-python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
+python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text --mjpeg
 ```
 
 4. **观察并存行为**：
@@ -393,3 +536,9 @@ curl http://127.0.0.1:8080/v1/models
 - 并存验证与思考题（15分）：并存行为观察正确、思考题分析深入 = 100分
 
 ---
+
+## 更新日志
+
+| 版本 | 日期 | 内容 |
+|------|------|------|
+| v1.1 | 2026-08-21 | 知识点补充 |

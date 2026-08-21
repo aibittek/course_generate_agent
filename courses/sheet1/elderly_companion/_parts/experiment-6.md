@@ -38,7 +38,7 @@
 
 ```bash
 cd ros2_ws/src/xflz_eai_car1/app/elderly_companion/
-python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
+python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text --mjpeg
 ```
 
 **预期效果描述**：
@@ -48,6 +48,26 @@ python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
 - 在 stdin 输入 `救命` → 状态跳转 `ALERT`，日志输出 `ALERT: {...}`。
 - 重新运行并输入 `没事` → 状态跳转 `CANCELLED`，日志输出 `EVENT to=CANCELLED` + "好的，请注意安全"。
 - 画面叠加骨架（RTMPose 17 点），标注 `ang=XX spd=X.X` 实时特征值。
+
+```bash
+[2026-08-21 17:48:24,857][I][sink] EVENT {'person_id': 1, 'from': 'IDLE', 'to': 'FALLING', 'ts': 1787305704.803625, 'confidence': 1.0}
+[2026-08-21 17:48:25,124][I][sink] EVENT {'person_id': 2, 'from': 'IDLE', 'to': 'FALLING', 'ts': 1787305705.05645, 'confidence': 1.0}
+[2026-08-21 17:48:26,394][I][sink] EVENT {'person_id': 1, 'from': 'FALLING', 'to': 'LYING', 'ts': 1787305706.3412068, 'confidence': 1.0}
+[2026-08-21 17:48:26,712][I][sink] EVENT {'person_id': 2, 'from': 'FALLING', 'to': 'LYING', 'ts': 1787305706.6617327, 'confidence': 1.0}
+[2026-08-21 17:48:29,445][I][sink] EVENT {'person_id': 1, 'from': 'LYING', 'to': 'ASK', 'ts': 1787305709.3878348, 'confidence': 1.0}
+[2026-08-21 17:48:29,445][I][sink] EVENT {'person_id': 1, 'from': 'LYING', 'to': 'ASK', 'ts': 1787305709.3878348, 'confidence': 1.0, 'vlm': {'label': 'uncertain', 'confidence': 0.0, 'reason': 'VLM not integrated'}}
+[2026-08-21 17:48:29,446][I][tts] [TTS] 您还好吗？需要帮助吗？
+[2026-08-21 17:48:29,449][I][fall_video_demo] ASK 会话建立 → 请求语音应答窗口
+[2026-08-21 17:48:29,776][I][sink] EVENT {'person_id': 2, 'from': 'LYING', 'to': 'ASK', 'ts': 1787305709.7178295, 'confidence': 1.0}
+[2026-08-21 17:48:29,778][I][sink] EVENT {'person_id': 2, 'from': 'LYING', 'to': 'ASK', 'ts': 1787305709.7178295, 'confidence': 1.0, 'vlm': {'label': 'uncertain', 'confidence': 0.0, 'reason': 'VLM not integrated'}}
+[2026-08-21 17:48:29,779][I][monitor] ASK 会话已存在（person 1），person 2 进入 ASK 静默合并
+[2026-08-21 17:48:36,680][I][monitor] ASK 会话迁移到 person 2
+[2026-08-21 17:48:36,681][I][tts] [TTS] 您还好吗？需要帮助吗？
+[2026-08-21 17:48:36,749][I][monitor] ASK 会话结束（目标消失）——应答窗口由 session 超时兜底关闭
+[2026-08-21 17:48:37,963][I][voice_loop] 开始聆听（mode=ASK）...
+```
+
+![image-20260821174838243](assets/image-20260821174838243.png)
 
 ### 1.6 实验步骤
 
@@ -76,8 +96,34 @@ flowchart TD
 - 躯干角计算原理：`fall/geometry.py L58-L60`（`np.degrees(np.arctan2(abs(dx), abs(dy)))`：dx 为肩髋水平偏移、dy 为垂直偏移）
 - 判据函数：`fall/state_machine.py L111-L126`（`_is_lying`：angle>thr 或 aspect<thr 或 bbox 形态）、`L127-L138`（`_speed_ok`：hip_speed > factor × bh 或 center_y_speed > factor × bh）
 
+**知识储备补充**：
+
+- **几何特征的计算前提**：`fall_features()`（`fall/geometry.py` L42-L82）输入的姿态关键点来自 BlazePose 33 点（肩 11/12、髋 23/24）或 COCO 17 点（RTMPose，肩 5/6、髋 11/12），`joint_indices()`（L26-L30）按关键点数自动选择索引。所有几何量都在**原图像素坐标系**下计算，与画面分辨率、裁剪 offset 无关。
+
+- **躯干角数学定义**：设肩中点为 $S=\frac{P_{11}+P_{12}}{2}$（px 坐标），髋中点为 $H=\frac{P_{23}+P_{24}}{2}$，水平偏移 $dx=H_x-S_x$、垂直偏移 $dy=H_y-S_y$，则躯干角为（`fall/geometry.py` L65）：
+
+  $$
+  \theta = \frac{180}{\pi}\arctan_2\left(\left|dx\right|,\; \left|dy\right|\right)
+  $$
+
+  其中 $\arctan_2$ 为四象限反正切，`abs` 使角度对左右倾斜对称。直立时 $dx\approx0\Rightarrow\theta\approx0^\circ$；水平躺地时 $dx\gg dy\Rightarrow\theta\approx90^\circ$。注意此定义以竖直方向为基准（0° 站立），与部分文献以水平方向为 0° 的定义互为余角。
+
+- **检测框宽高比**：$r_{aspect}=h/w$（高 / 宽，`fall/geometry.py` L77）。站立姿态检测框竖长，$r_{aspect}>1.5$；躺地后框变扁，$r_{aspect}$ 趋近 0.5~1.0。当 $r_{aspect}<aspect\_thr=0.5$ 时判躺——这等价于"框宽是高的 2 倍以上"。
+
+- **髋部速度**：髋中点帧间像素位移（`fall/geometry.py` L88）：
+
+  $$
+  v_{hip}=\sqrt{(H_x^{(t)}-H_x^{(t-1)})^2+(H_y^{(t)}-H_y^{(t-1)})^2}
+  $$
+
+  跌倒瞬间躯干急速下坠，$v_{hip}$ 突破 `speed_factor × bbox_h`（默认 $0.25\times$ 框高）即"速度尖峰"。**速度必须除以框高归一化**——近处大目标与远处小目标的绝对像素位移不可直接比较，归一化后阈值与距离无关。
+
+- **形态 + 速度双条件**：`_is_lying`（`fall/state_machine.py` L111-L121，角度/宽高比，表达"静止躺姿"）与 `_speed_ok`（L127-L136，速度尖峰，表达"正在倒下"）是**与关系**（`update` 中 `if self._is_lying(f) and self._speed_ok(f)`）。弯腰捡物角度虽大到 40°-60°，但髋速度慢、宽高比仍在 y>0.5，不会同时满足两条件，从而不误报。
+
+- **参考资源**：Yu et al., "Fall detection for elderly person care in a vision-based home surveillance environment using a monocular camera"（UR Fall Detection Dataset）；BlazePose 论文 Bazarevsky et al., "BlazePose: On-device Real-time Body Pose tracking"；OpenCV `arctan2` 文档；`fall/geometry.py`、`fall/state_machine.py` 源码。
+
 ```bash
-cd ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
 ```
 
@@ -87,6 +133,8 @@ python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
 2. 程序启动后，加载 YOLOv8 行人检测模型和 RTMPose 姿态模型（约 5s），终端输出 `全部设备就绪，开始推理`。
 3. 视频开始播放，画面左上角显示 FPS 和 ALERT 状态，检测框标注 `#1 IDLE`（白色）。
 4. 当视频中人物跌倒时，观察检测框颜色和标注变化——这是几何特征触发状态转移的可视化。
+
+![image-20260821173149153](assets/image-20260821173149153.png)
 
 **易错点**：
 
@@ -107,6 +155,37 @@ python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
 - 状态转移逻辑：`fall/state_machine.py L134-L230`（`update` 方法：每个 `if self.state is PersonState.XXX` 分支对应一个状态的转移判据）
 - 事件分发：`fall/monitor.py L340-L383`（`_dispatch` 方法：ASK→播报"您还好吗"+开应答窗口；ALERT→启动告警+证据存档；CANCELLED→停告警+播报"好的请注意安全"）
 
+**知识储备补充**：
+
+- **每帧流水线数据流**：单帧主入口 `process_frame()`（`fall/monitor.py` L247-L294）按序执行：**YOLO 检测** → **IoU 跨帧关联**（`self._assoc.update`）→ **每人姿态估计**（`_analyze_person` 裁剪→姿态→特征）→ **特征增强**（`_augment_bbox_features` 并 bbox 时序特征）→ **状态机推进**（`machine.update`）→ **事件分发**（`_dispatch`）。所有特征都是**以帧为单位**计算并喂给状态机，状态机本身是纯逻辑无 IO，同一份特征可被多人在不同机器实例上消费。
+
+- **六状态拓扑**：`PersonState` 枚举（`fall/state_machine.py` L13-L29）定义六态。转移图如下（六节点状态机，含"恢复/冷却"时序条件）：
+
+  ```mermaid
+  graph TD
+      A["IDLE"] --> B["FALLING"]
+      B --> C["LYING"]
+      C --> D["ASK"]
+      D -->|"确认词"| E["ALERT"]
+      D -->|"取消词/超时限"| F["CANCELLED"]
+      C -->|"恢复"| A
+      D -->|"恢复"| A
+      E -->|"恢复"| A
+      F -->|"冷却结束+恢复"| A
+  ```
+
+- **判据三件套的物理与数学含义**（`fall/state_machine.py` L111-L144）：
+
+  - **躺地判据** `_is_lying`（L111-L121）：`torso_angle_deg > angle_thr(50°)` 或 `bbox_aspect < aspect_thr(0.5)`；姿态不可信时用 bbox 形态（`bbox_aspect < bbox_lying_aspect(1.2)` 视为躺/蹲，或 bbox 高度收缩 + 中心下移超过阈值）。
+  - **速度判据** `_speed_ok`（L127-L136）：`hip_speed > speed_factor × bbox_h`（默认 $0.25\times$ 框高）。
+  - **恢复判据** `_is_recovered`（L138-L143）：bbox 恢复竖长（`bbox_aspect > 1.5`，站姿）或角度小于 `recovery_angle`。
+
+- **时序条件（时间窗口）**：`fall_cue_ts` 记录进入 FALLING 的时刻（ L172-L173），`lying_since` 记录连续 LYING 起点；相邻状态转移由**时间窗**保证：`falling_window`（1.5s）确认"确实在倒"，`lying_time`（3s）确认"起不来"才进入 ASK，`ask_timeout`（12s）内无人应答自动升级 ALERT。
+
+- **恢复 vs. 冷却**：进入 ALERT/CANCELLED 时 `_cooldown_until = now + cooldown`（`fall/state_machine.py` L106-L107），冷却期内 LYING 分支被 `if now < self._cooldown_until: return None` 挡回（L200-L201），但 CANCELLED 态仍可被新跌倒判据推入 FALLING（L228-L232，注释"冷却期只挡 ASK，不挡新的跌倒判定"）——这是防止漏报的关键设计。
+
+- **参考资源**：US Department of Health fall prevention 指南；IEEE 跌倒监测综述（"Vision-based Fall Detection: A systematic review"）；`fall/state_machine.py` 源码；`docs/08_视觉测试用例.md`。
+
 ```bash
 # 保持步骤1运行，观察终端 EVENT 日志
 # 当视频中人物跌倒时，依次看到：
@@ -122,6 +201,12 @@ python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
 3. 再约 3s 后输出 `EVENT from=LYING to=ASK`——"起不来"确认。
 4. 同时观察画面：检测框颜色从黄色（FALLING）→ 橙色（LYING）→ 紫色（ASK），叠加显示实时 `ang=XX spd=X.X`。
 5. TTS 播报"您还好吗？需要帮助吗？"（text 模式下终端打印而非语音）。
+
+![image-20260821173149153](assets/image-20260821173149153.png)
+
+![image-20260821174838243](assets/image-20260821174838243.png)
+
+![image-20260821175227096](assets/image-20260821175227096.png)
 
 **易错点**：
 
@@ -142,6 +227,16 @@ ASK 窗口打开后（12s 超时），系统通过 `VoiceLoop.trigger_ask()` 开
 - 应答分类：`fall/interaction.py L12-L20`（`classify_response`：先匹配 confirm_words，再匹配 cancel_words）
 - 确认词列表：`config/fall_config.yaml L77`（`confirm_words: [救命, 帮, 疼, 摔, 起不来, 救]`）
 
+**知识储备补充**：
+
+- **确认优先（安全第一）**：`classify_response()`（`fall/interaction.py` L11-L20）**先匹配 confirm_words 再匹配 cancel_words**。因此"不用救我"这类同时含取消词"不用"与确认词"救"的句子会判为**确认**（ALERT）而非取消——安全设计保证歧义时倾向告警。关键词匹配使用 `common/keywords.py` 的 `match_keywords`（子串包含匹配）。
+
+- **一次应答只作用于一个会话**：`monitor.on_asr()`（`fall/monitor.py` L213-L237）遍历 machines，命中第一个有状态转移的机器后 `break`。原理：若多人同时处于 ASK（静默合并成一个 `_ask_session`），一个"没事"会匹配到多台机器各自触发 CANCELLED 并重复播报；`break` 保证一次语音只推进一个人（源码注释 L232：实测一个'没事'曾引发 3 次 CANCELLED + 3 遍 TTS 的 bug）。
+
+- **ASK→ALERT 两条路径**：一是 `respond()` 确认词命中（`fall/state_machine.py` L243-L247）；二是 `ask_timeout` 超时自动升级（`update` 中 `now >= self._ask_deadline`，L214）——超时代表"无法确认安全"，保守升级告警。
+
+- **参考资源**：ECT（长者技术）跌倒应答交互设计指南；`fall/interaction.py`、`fall/monitor.py` 源码；`config/fall_config.yaml` interaction 段。
+
 ```bash
 # ASK 状态下，在 stdin 输入：
 救命
@@ -155,6 +250,13 @@ ASK 窗口打开后（12s 超时），系统通过 `VoiceLoop.trigger_ask()` 开
 3. 观察日志：`EVENT from=ASK to=ALERT`，`ALERT: {'person_id': 1, 'from': 'ASK', 'to': 'ALERT', ...}`。
 4. 画面左上角 `ALERT: True` 变红，检测框闪烁（`_annotate` 中 ALERT 状态隔帧变色 `L463-L464`）。
 5. 证据自动存档：`runs/evidence/` 下生成截图 + `.avi` 视频片段 + `events.jsonl`。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
+python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text --mjpeg
+```
+
+![image-20260821175349036](assets/image-20260821175349036.png)
 
 **易错点**：
 
@@ -176,9 +278,22 @@ ASK 窗口打开后（12s 超时），系统通过 `VoiceLoop.trigger_ask()` 开
 - 冷却期逻辑：`fall/state_machine.py L189-L190`（LYING→ASK 前检查 `_cooldown_until`）
 - CANCELLED→FALLING 重新判定：`fall/state_machine.py L215-L220`（"冷却期只挡 ASK，不挡新的跌倒判定"）
 
+**知识储备补充**：
+
+- **取消流程的安全性设计**：CANCELLED 是"虚惊一场"的**正向反馈**路径，其动作链（`fall/monitor.py` L492-L495）为：清 `_ask_session`（关闭 ASK 窗口）→ `_stop_alarm()`（停蜂鸣器/LED/OLED）→ TTS 播报"好的，请注意安全"。这一步保证取消后系统回到待机、不会残留告警占用。
+
+- **冷却期的数学含义**：进入 ALERT/CANCELLED 时 `_cooldown_until = now + cooldown`，时间戳式而非计数式（`fall/state_machine.py` L106-L107）。冷却期内 LYING→ASK 被挡（L200-L201 `if now < self._cooldown_until: return None`），但 CANCELLED 态的**新跌倒判据仍可将其推入 FALLING**（L228-L232）——即"冷却只抑制询问次数，不抑制跌倒检测"，避免老人 60s 内真实二次跌倒时漏报。
+
+- **ALERT 态取消的窄表设计**：`respond()` 在 ALERT 态仅匹配窄表 `("没事","不用")`（`fall/state_machine.py` L254-L256），不用宽表 `cancel_words`。原因：宽表含"没有"，实测闲聊"好像能用了…没有呼叫…"会误触发取消——窄表在"安全优先级最高"的 ALERT 态故意收紧，防止误取消告警。
+
+- **恢复判据（起身）**：CANCELLED 态若 `now >= _cooldown_until` 且 `_is_recovered(f)`（bbox 恢复竖长）则回 IDLE（L234-L236）——起身恢复由检测框宽高比（>1.5）而非姿态角度判定，因为板端 BlazePose 躺姿角度输出不可信。
+
+- **参考资源**：`fall/state_machine.py` 源码（respond/update）；`fall/monitor.py` `_dispatch/_stop_alarm`；`docs/08_视觉测试用例.md` T8-4 起身场景断言。
+
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 # 重新启动（Ctrl+C 退出后重新运行）：
-python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
+python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text --mjpeg
 # 等待 ASK 状态出现后输入：
 没事
 # 预期：EVENT from=ASK to=CANCELLED，播报"好的，请注意安全"
@@ -212,7 +327,20 @@ python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
 - bbox 形态备选判据：`fall/state_machine.py L42-L47`（`bbox_shrink_thr`/`bbox_center_drop_thr`/`bbox_lying_aspect`）
 - docs/08 调参参考：`docs/08_视觉测试用例.md T8-5`（调参效果表）
 
+**知识储备补充**：
+
+- **阈值是二分决策边界**：三个判据本质上是将连续量映射为二值的**阈值分类器**。对 LR/PR（漏报率/误报率）权衡：阈值调低 → 更易触发 → 误报率（FP）上升、漏报率（FN）下降；调高则反之。临床上跌倒漏报（老人真倒却没告警）代价远高于误报（弯腰被错报），故默认参数偏向**低漏报**方向。
+
+- **角度阈值的几何敏感区**：弯腰捡物时躯干角实测约 40°-60°。因此 `angle_thr=50` 恰好把弯腰（<50° 居多）与卧倒（>50°）分开；调至 30° 会把弯腰纳入 FALLING 判据——但还需速度双条件，弯腰时髋速尖峰很小，仍不易误报（这就是步骤5"只调角度不够"要领悟的）。
+
+- **speed_factor 的物理含义**：`speed_factor=0.25` 表示"跌倒瞬间髋部位移须超过框高的 25%"才触发。归一化（除以 `bbox_h`）使阈值**与相机距离/目标远近无关**——近处大框的绝对位移大、远处小框位移小，但归一化后同一物理速度对应同一比值。这是速度判据能在不同距离下一致工作的数学基础（`fall/geometry.py` L88、`fall/state_machine.py` L127-L136）。
+
+- **调参遵循"单变量调试"**：多个判据共享特征（角度/宽高比/速度），一次改多个参数会混淆"哪个旋钮起了作用"。方法论：固定其余、只改一个 → 记录基线 EVENT 序列 → 对比误报/漏报变化 → 恢复。
+
+- **参考资源**：IEEE 跌倒监测综述（Fall Detection Systems survey）；ROC（Receiver Operating Characteristic）阈值权衡理论；`config/fall_config.yaml` state 段；`docs/08_视觉测试用例.md` T8-5。
+
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 # 编辑 config/fall_config.yaml，修改 state 段：
 #   angle_thr: 30.0      # 从 50 降到 30（更敏感）
 #   speed_factor: 0.10   # 从 0.25 降到 0.1（更敏感）
@@ -249,6 +377,25 @@ IoU 关联器（`fall/assoc.py L28-L67`）解决"同一目标在连续帧中保�
 - 贪心关联：`fall/assoc.py L48-L67`（`update` 方法：过期清理 → 贪心配对 → 未关联分配新 ID）
 - ASK 全局会话合并：`fall/monitor.py L351-L354`（`_dispatch ASK`：已有 `_ask_session` 时静默合并，不重复播报）
 - docs/08 测试用例：`docs/08_视觉测试用例.md T8-4`（状态迁移断言表）
+
+**知识储备补充**：
+
+- **IoU 数学定义**：设两框 $A=(x_1,y_1,x_2,y_2)$、$B=(b_1,b_2,b_3,b_4)$，交集为 $I$、并集为 $U$，IoU（交并比）为（`fall/assoc.py` L10-L23）：
+
+  $$
+  IoU(A,B)=\frac{|A\cap B|}{|A\cup B|}
+  =\frac{I_w\cdot I_h}{(A_w\cdot A_h)+(B_w\cdot B_h)-(I_w\cdot I_h)}
+  $$
+
+  其中 $I_w=\max(0,\; \min(x_2,b_3)-\max(x_1,b_1))$、$I_h$ 同理。IoU∈[0,1]：0 表示两框完全不相交，1 表示完全重合。`iou_thr=0.3` 要求重叠至少 30% 才认为"同一目标"（`fall/assoc.py` L6/L43）。
+
+- **贪心匹配（Greedy Matching）**：`update()`（`fall/assoc.py` L32-L61）每帧把检测框与既有轨迹**按 IoU 降序**逐对贪心匹配：每条轨迹取 IoU 最高的未分配框，超过阈值才关联；未关联的检测分配新 ID。轨迹按 `last_seen` 由旧到新遍历（保证老轨迹先认领）。复杂度 $O(N_{track}\times N_{det})$，适合少目标静态相机场景——多目标密集场景建议匈牙利算法（Kuhn-Munkres）求全局最优而非贪心。
+
+- **ID 生命周期**：`max_age=3.0` 秒（`fall/assoc.py` L26-L30）——轨迹 `now - last_seen > max_age` 被释放（L36），ID 回收可复用；未关联检测分配新 ID（L44-L50）。这解释了文档所述"走出画面再回来重新获得新 ID"。每个关联到的 ID 在 `monitor` 中对应独立的 `FallStateMachine`（`fall/monitor.py` L82-L84 `_machines`），保证每人状态独立。
+
+- **ASK 全局会话合并的用途**：多人先后跌倒时，各自状态机独立推进到 ASK，但全局只维护一个 `_ask_session`（`fall/monitor.py` L91/L468-L487）——第一个 ASK 播报询问并开应答窗口，后续 ASK 静默合并（L484-L487），避免"每人都问一遍"导致录播互斥、ASR 反复暂停丢失答话。
+
+- **参考资源**：Everingham et al., "The PASCAL VOC Challenge"（VOC IoU 定义）；Kalman 多目标跟踪综述（SORT: Simple Online and Realtime Tracking）；`fall/assoc.py` 源码；`docs/08_视觉测试用例.md` T8-4。
 
 ```bash
 # 按 docs/08 T8-4 执行：
@@ -323,3 +470,9 @@ IoU 关联器（`fall/assoc.py L28-L67`）解决"同一目标在连续帧中保�
 - 思考题回答（10 分）：≥2 题回答完整、有源码引用、逻辑清晰 = 100 分。
 
 ---
+
+## 更新日志
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.1 | 2026-08-21 | 知识点补充 |

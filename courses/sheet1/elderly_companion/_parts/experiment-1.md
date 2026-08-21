@@ -37,6 +37,8 @@
 
 ```bash
 # 在 elderly_companion 包目录下
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion     
+
 ls docs/
 grep -n "R[0-9]" docs/01_需求总览.md          # 快速定位 R1-R12 各条款行号
 grep -n "时序防护\|兜底\|重问\|打断" docs/05_流程与安全.md  # 定位时序防护章节
@@ -81,6 +83,37 @@ graph TD
 ### R6. 呼救直告警
 - 任意时刻喊"救命/帮帮我/摔倒了" → 直接升级 ALERT（不等待 ASK）
 ```
+
+**知识储备补充**：
+
+- **需求工程三层结构（功能/非功能/边界）**：软件需求工程把系统边界内的需求分为**功能需求**（系统"做什么"，对应状态转换与事件流）、**非功能需求**（质量属性，如 R2 的 YOLOv8 推理延迟、R7 告警循环播报间隔、R11 证据保存 `max_files`、R12 的资源自动释放）与**约束/边界**（不做什么）。本项目把约束显式写入"非目标（范围边界）"节（`docs/01_需求总览.md L22-L27`）：不做 ROS 业务节点、不做多人会话仲裁。划分三层后，每条需求才能落到具体实现模块——需求编号（功能层）→ 量化约束（非功能层）→ 实现位置（`docs/01_需求总览.md L9-L20` 的表格）。
+
+- **可量化约束建模**：判断"需求是否可验收"，关键在于把自然语言转成带单位、带阈值的**可量化约束**。本项目在需求表内直接给出可测条件，例如 R4 的三个几何判定条件、R5 的 12s ASK 窗口、R7 的 ALERT 播报间隔。这些数值集中定义在 `config/fall_config.yaml` 的 `state:` 段（`angle_thr: 50.0`、`aspect_thr: 0.5`、`speed_factor: 0.25`、`falling_window: 1.5`、`lying_time: 3.0`、`ask_timeout: 12.0`、`cooldown: 60.0`），成为后续所有实验的"研究基线"——改一个阈值即可调跌倒灵敏度，业务代码零改动，这正是"量化约束"支撑可演进性的意义。
+
+- **R4 三个几何判定条件的数学含义**：R4 的"躯干角>50° 或 宽高比<0.5 且 髋部速度尖峰"是三个分立的几何/运动学判据，来自 `fall/geometry.py`（肩髋中点连线特征）与 `fall/state_machine.py` 的 `_is_lying` / `_speed_ok`。其一，**躯干角**用肩中点→髋中点连线与竖直方向的夹角度量，`geometry.py L63-65` 的表达式为：
+
+  $$
+  \theta=\arctan2\big(|\Delta x|,\ |\Delta y|\big),\qquad
+  \Delta x=x_{\text{髋}}-x_{\text{肩}},\quad \Delta y=y_{\text{髋}}-y_{\text{肩}}
+  $$
+
+  直立时肩髋基本垂直排列（$\Delta x\approx 0$）故 $\theta\approx 0°$；水平躺地时 $\Delta y\approx 0$ 故 $\theta\to 90°$。配置 `angle_thr=50°` 即当 $\theta>50°$ 判为躺倒。其二，**检测框宽高比**取 $r=\frac{b_h}{b_w}$（`geometry.py L76`，$b_h,b_w$ 为框高、框宽），站姿框竖长 $r>1$，躺倒变方/扁 $r<1$，`aspect_thr=0.5` 是"横躺打到竖不起来"的方形阈值。其三，**髋部速度尖峰**是相邻两帧髋中点像素位移，`geometry.py L71` 用欧氏距离：
+
+  $$
+  v_{\text{hip}}=\sqrt{(\Delta x_{\text{hip}})^2+(\Delta y_{\text{hip}})^2}
+  $$
+
+  并以其是否超过 $0.25\times b_h$ 作为"尖峰"判据（`speed_factor`）。三者的逻辑组合写入需求：**FALL_CUE** =（$\theta>50°$ 或 $r<0.5$）且 $v_{\text{hip}}>0.25\,b_h$（角度/宽比判姿态、速度判"跌倒瞬间"，防止静止被误判）；后续 **LYING** 只需角度/宽比判据、无需速度（长时间不起身，`state_machine.py L7-L8`）。
+
+- **R12 文本调试模式的工程动机**：R12 要求 `--text` 文本调试模式与音频模式走**完全相同的状态机与回调链**（`speech/voice_loop.py` 顶部注释 说明：`feed_text` 与音频路径共用 `feed_text` 同一状态机，`voice_loop.py L20、L154-190`）。工程动机三方面：
+
+  ①**解耦硬件依赖**——文本模式不依赖麦克风/扬声器/NPU，可在工程机立即打通"跌倒检测→ASK→应答→ALERT"全链路，验证逻辑正确性，排除串口/ALSA 层故障；
+
+  ②**同一状态机**——若为文本单独写一套简化状态机，音频路径的 bug（如 ASK 窗口时序错位）在文本下测不出，违背"集成测试可靠性"；
+
+  ③**可回归**——`--text` 支持 stdin 喂词（`小飞小飞`=唤醒、`救命`=呼救、`没事`=取消），可脚本化做自动回归（`fall_video_demo.py L265`、`fall_app.py L368` 的 `loop.feed_text(line)`）。
+
+- **参考资源**：IEEE 830 / ISO/IEC/IEEE 29148 软件需求工程规范标准说明；UR Fall Detection（躺地几何特征判据参考数据集）；YOLOv8 官方文档、BlazePose 关键点说明（每一个 `fall/geometry.py` 判据对应的模型与关键点布局）；本仓库 `config/fall_config.yaml` 的 `state:` 段、`fall/geometry.py`、`fall/state_machine.py` 对应源码。
 
 - **配图**（需求分组图）：把 R1-R12 分成"输入（R1）、检测（R2-R3）、判定（R4）、交互（R5-R6, R9, R10）、告警（R7-R8）、证据（R11）、调试（R12）"七组，并标注每组之间的依赖箭头（如 R2-R3 检测 → R4 判定 → R5/R6 交互 → R7 告警 → R11 证据）。
 
@@ -134,7 +167,14 @@ graph TD
 
 **1.1.2 跌倒→ASK→ALERT→取消全流程**
 
-- **原理**：系统运行时存在三条核心时序流程，贯穿 R4-R8 需求：①跌倒检测流程——YOLOv8 行人检测 → IoU 跨帧关联 → BlazePose/RTMPose 姿态估计 → 几何特征提取（躯干角>50° 或 宽高比<0.5 且髋速尖峰）→ FALLING 状态（1.5s 确认）→ LYING 状态（3s 确认）→ 触发 ASK；②语音询问流程——monitor 触发 ask_tts 播"您还好吗？" → VoiceLoop.trigger_ask() 开听 → ASR 端点检测 → 用户应答（救命/没事）→ monitor.on_asr 判定 → ALERT 或 CANCELLED；③告警存档流程——ALERT 触发 STM32 串口告警（蜂鸣器/LED/OLED）→ TTS 循环播报 → 证据存档（FrameRing 前后帧截图/.avi 视频/events.jsonl）。三条流程共享"每人独立状态机"与"IoU 跨帧人员关联"机制，确保多人同框时互不干扰。绘制流程图时应把 FALLING→LYING 的确认时间、ASK 12s 超时、cooldown 60s 等关键时间节点显式标注。
+- **原理**：系统运行时存在三条核心时序流程，贯穿 R4-R8 需求：
+
+  ①跌倒检测流程——YOLOv8 行人检测 → IoU 跨帧关联 → BlazePose/RTMPose 姿态估计 → 几何特征提取（躯干角>50° 或 宽高比<0.5 且髋速尖峰）→ FALLING 状态（1.5s 确认）→ LYING 状态（3s 确认）→ 触发 ASK；
+
+  ②语音询问流程——monitor 触发 ask_tts 播"您还好吗？" → VoiceLoop.trigger_ask() 开听 → ASR 端点检测 → 用户应答（救命/没事）→ monitor.on_asr 判定 → ALERT 或 CANCELLED；
+
+  ③告警存档流程——ALERT 触发 STM32 串口告警（蜂鸣器/LED/OLED）→ TTS 循环播报 → 证据存档（FrameRing 前后帧截图/.avi 视频/events.jsonl）。三条流程共享"每人独立状态机"与"IoU 跨帧人员关联"机制，确保多人同框时互不干扰。绘制流程图时应把 FALLING→LYING 的确认时间、ASK 12s 超时、cooldown 60s 等关键时间节点显式标注。
+
 - **源码对应**：`docs/05_流程与安全.md L1-L41（跌倒全流程时序完整时间线）、docs/01_需求总览.md L13-L19（R4-R8 需求条款）`
 
 ```markdown
@@ -145,6 +185,18 @@ graph TD
 - 用户答话："救命"→ALERT / "没事"→CANCELLED
 - 会话结束 → 回 IDLE（等待下一次唤醒）
 ```
+
+**知识储备补充**：
+
+- **时序状态机概念**：本实验的"跌倒→ASK→ALERT→取消全流程"是一个典型**有限状态机（FSM）**——系统在任何时刻只处于有限状态之一（IDLE/FALLING/LYING/ASK/ALERT/CANCELLED），状态转移由**事件**（跌倒检测、语音应答、超时、起身恢复）触发。`fall/state_machine.py` 顶部注释定义了完整状态集合（`IDLE → FALLING → LYING → ASK → ALERT | CANCELLED`，任意态可 `RECOVERED → IDLE`，`L3-L4`）。关键设计是**每人一个状态机实例**（`self.person_id`，`state_machine.py L37`）：多人同框时各自独立推进，互不干扰，再通过 IoU 跨帧关联绑定同一人的连续身份。状态机把"先验证再动作"的时序纪律代码化——任何"先干断言再做判断"都会破坏 FSM 的不变量。
+
+- **FALLING(1.5s)/LYING(3s) 确认窗口防误报原理**：单帧几何特征不足以判定跌倒（短暂蹲下、弯腰、镜头颠簸都可能瞬间满足"躯干角>50°"）。因此状态机用**时间上连续确认**来抗噪：先进入 FALLING 观察窗，`state_machine.py L179` 要求"持续躺倒 $\ge$ falling_window(1.5s)"才进入 LYING；再在 LYING 态要求"持续躺地 $\ge$ lying_time(3s)"（`L199`）才触发 ASK。数学上等价于对离散帧事件做**计数窗**：若单帧判躺概率为 $p$，则连续 $N$ 帧均判躺、从而通过窗口的概率为 $p^N$——窗口越长越能压低"抖动误触发"，代价是告警延迟增加。1.5s+3s 的权衡保证"真跌倒越快确认越好、假跌倒越不被确认越好"（真倒时 FALL 到 ASK 全程约 3-6s，与 `docs/05_流程与安全.md L20` 一致）。
+
+- **cooldown 60s 的作用**：`cooldown=60.0`（`fall_config.yaml` `state.cooldown`）在触发一次 ASK 并结束（ALERT 或 CANCELLED）后启动，`state_machine.py L107` 置 `_cooldown_until = now + cooldown`；冷却期内即使仍躺地也不再触发 ASK（`L201` "冷却期：继续躺，不触发 ASK"）。它的角色是**防抖/节流**：一次跌倒事件已经处理完毕（老人已应答"没事"或已被确认救助），若老人仍躺在原地不动，状态机没有理由在 60s 内再问一次、再报一次警——重复 ASK 会反复打断、重复告警会浪费医疗资源。注意**冷却期只挡 ASK，不挡新的跌倒判定**（`L228-L231`）：若冷却期内又检测到一次**新的、带速度尖峰**的跌倒，仍会重新走 FALLING→LYING，保证真实的第二次跌倒不被压制。
+
+- **ASK 12s 窗口的超时概率意义**：ASK 会话（应答窗口）在触发 ASK 时设 `_ask_deadline = now + ask_timeout`（`ask_timeout=12.0`，`state_machine.py L203`、`fall_config.yaml`），窗口内监听用户语音应答；窗口结束后若无应答或目标消失，`L214` 直接 `ASK→ALERT` 升级告警。这个 12s 是"给老人留出回应时间，又不无限等待"的工程折衷：若老人只是受惊未答，12s 足够；若老人失能/昏迷无法应答，则不能无限挂起——**超时本身就是安全的兜底路径**（无人应答 → 按最坏情况 ALERT）。从概率角度，设计者假设"能答应的老人几乎总在 12s 内答完"，若任意时刻答应的概率密度为 $f(t)$，则 $(1-\int_0^{12s} f)$ 为超时概率；放大窗口虽降低超时率，却推迟真实无助者的获救时间，故在"误报升警"与"延迟获救"之间取 12s 平衡。
+
+- **参考资源**：有限状态机（Wikipedia）/并行 FSM 的每人独立实例模式；MECE / 状态转移图（ASTD）规范说明；时序安全与超时设计（safety-critical 实时系统会议材料）；本仓库 `fall/state_machine.py`、`fall/monitor.py` 中 FALLING/LYING/ASK/cooldown/ask_timeout 判定逻辑。
 
 - **配图**（三条核心流程融合时序图）：纵轴为时间线，横轴分三列（检测/交互/告警），用颜色区分不同状态（IDLE 灰色、FALLING 橙色、ASK 蓝色、ALERT 红色、CANCELLED 绿色），标注每个状态转换的触发条件与时间阈值。
 
@@ -187,7 +239,20 @@ sequenceDiagram
 
 **1.1.3 语音打断/重问/超时兜底(12s)机制**
 
-- **原理**：时序防护是语音交互可靠性的核心。系统设计了六类防护机制：①ASK 开听晚于 ask 播完——`trigger_ask` 等 `playback_event` set→clear（8s 未播/15s 未播完双超时兜底），防止 ASR 把 ask 播报回声当成用户应答；②DIALOG 无话超时——10s 无 partial → 关窗回 IDLE（防唤醒后无人说话一直听）；③ASK 快答兜底——partial 非空且 2s 无变化 → 强制提交（不必等 4.5s 端点静音），确保用户说"救命/没事"后快速响应；④打断丢弃——SPEAKING 中新的唤醒/跌倒 → `epoch+1` → LLM worker 完成后发现 epoch 变化即丢弃回复（防打断后迟到播报）；⑤单次应答——`on_asr` 对首个响应会话 break，多人（ASK 静默合并/ALERT 多台机器）只响应一次，防重复告警播报；⑥重问与超时归 monitor——`ask_retry_interval=8s` 静默重播 ask；ASK 超时（目标消失）→ 会话结束回 IDLE，语音层不重复实现。其中重问（静默重播）与超时（12s ASK 会话超时）是两类独立机制：重问是"没听清再问一次"，超时是"人可能不在了直接结束"。
+- **原理**：时序防护是语音交互可靠性的核心。系统设计了六类防护机制：
+
+  ①ASK 开听晚于 ask 播完——`trigger_ask` 等 `playback_event` set→clear（8s 未播/15s 未播完双超时兜底），防止 ASR 把 ask 播报回声当成用户应答；
+
+  ②DIALOG 无话超时——10s 无 partial → 关窗回 IDLE（防唤醒后无人说话一直听）；
+
+  ③ASK 快答兜底——partial 非空且 2s 无变化 → 强制提交（不必等 4.5s 端点静音），确保用户说"救命/没事"后快速响应；
+
+  ④打断丢弃——SPEAKING 中新的唤醒/跌倒 → `epoch+1` → LLM worker 完成后发现 epoch 变化即丢弃回复（防打断后迟到播报）；
+
+  ⑤单次应答——`on_asr` 对首个响应会话 break，多人（ASK 静默合并/ALERT 多台机器）只响应一次，防重复告警播报；
+
+  ⑥重问与超时归 monitor——`ask_retry_interval=8s` 静默重播 ask；ASK 超时（目标消失）→ 会话结束回 IDLE，语音层不重复实现。其中重问（静默重播）与超时（12s ASK 会话超时）是两类独立机制：重问是"没听清再问一次"，超时是"人可能不在了直接结束"。
+
 - **源码对应**：`docs/05_流程与安全.md L44-L51（关键时序防护六要点完整列表）、docs/05_流程与安全.md L11-L41（全流程时间线含 ASK/打断/取消节点）`
 
 ```markdown
@@ -199,6 +264,26 @@ sequenceDiagram
 5. 单次应答：on_asr 对首个响应 break
 6. 重问与超时归 monitor：ask_retry_interval=8s 静默重播
 ```
+
+**知识储备补充**：
+
+- **六类时序防护原理**：语音交互的可靠性核心是**时序纪律**——六个防护项本质是六个"必须满足的时序约束"，每一类都针对一个典型的语音链路故障模式：
+
+  ①ASK 开听晚于 ask 播完（防**回声误答**）；
+
+  ②DIALOG 无话超时 10s（防**唤醒后无人说话还一直听**）；
+
+  ③ASK 快答兜底 2s（防**ASR 端点检测过慢、应答卡死**）；
+
+  ④打断丢弃 `epoch+1`（防**打断后迟到播报**）；
+
+  ⑤单次应答 break（防**重复告警**）；⑥重问与超时（防**没听清/人已不在**）。把六条合起来是一个"窗口 + 兜底 + 降级"的组合：主路径是"正常播报→开听→端点检测→应答"，每条可能失败的路径都准备了显式兜底（超时/重问/快答/丢弃），保证任何异常都将系统收敛回 IDLE 或安全升级 ALERT，而不陷入挂起。
+
+- **回声消除（AEC）工程背景与双次排空**：扬声器播报时，麦克风会把播报声音**经空气与机身拾回**（喇叭声反馈入麦克风），这个"回声"若被 ASR 当作用户语音，会造成"自问自答"式的误触发。成熟方案是硬件级/算法级**回声消除**（AEC：自适应滤波器估计并减去回声路径）。本系统在既有硬件/引擎受限下，选择了**纯软件时序排空**来规避：`_start_listening` 播完提示音后调用两次 `self._drain_q()`（`voice_loop.py L371-373`），两次排空间隔 `0.2s` 睡眠；`_do_trigger_ask` 在等 ask 播完后同样双次排空（`L417-419`）；`_drain_q` 把录音队列中残留的音频块整体丢弃（`L422-432`）。机制是"让回声先入队、再在开 ASR 前把它们丢掉"。叠加"ASK 开听晚于 ask 播完"（`_do_trigger_ask` 等 `playback_event` set→clear，8s 未播 / 15s 未播完双超时兜底，`L403-416`），两道防线共同杜绝"ASR 把 ask 播报回声当成用户应答"。
+
+- **ASR 端点检测概念**：端点检测（Endpoint Detection，语料里叫 VAD 的语音活动检测是粗判，端点检测是细粒度记"何时说完整句"）用于判断**一句话何时结束**。采集端送来的是**连续音频流**，识别器需实时判定 utterance 边界。系统用 sherpa-onnx recognizer 内置端点检测（`speech/asr.py L7-8`、`L73-76`）：`rule1_min_trailing_silence=4.5s`（完全静音 4.5s 判说完）、`rule2_min_trailing_silence=1.5s`（已识出部分内容时尾部静音 1.5s 判完）、`rule3_min_utterance_length=300ms`（最短语句 300ms）。运行机制是：`feed`（每块 audio）产生流式**partial**（实时中间结果），当命中端点规则时 `is_endpoint` 返回真、`final` 给出完整语句（`asr.py L88-100`）。ASK 场景用 4.5s 静音 + 2s 快答兜底，都是"尽量快确认应答、又不被回声/停顿误触发"的折中——这正是"端点检测 + 快答兜底"双保险的意义。
+
+- **参考资源**：sherpa-onnx 端点检测规则（rule1/rule2/rule3 参数说明，`speech/asr.py` 注释与配置）；WebRTC AEC（回声消除）方案与双端检测原理文档；语音活动检测（VAD）概念条目；本仓库 `speech/asr.py`（端点参数）、`speech/voice_loop.py`（`_do_trigger_ask` / `_drain_q` 时序）对应源码。
 
 - **配图**（ASK 会话时序防护图）：纵轴为时间线，标注 ask 播报时段→等待 playback clear→双次排空→开听→ASR 端点检测（4.5s 静音）→2s 快答兜底→8s 重问→12s 超时回 IDLE 的完整时序，突出每个防护节点的触发条件。
 
@@ -332,3 +417,9 @@ graph LR
 - 笔记规范与行号引用（10 分）：引用真实文档行号、结构完整 = 100 分。
 
 ---
+
+## 更新日志
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.1 | 2026-08-21 | 知识点补充 |

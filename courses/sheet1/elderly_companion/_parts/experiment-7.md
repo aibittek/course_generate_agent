@@ -41,7 +41,7 @@
 
 ```bash
 # 进入源码目录
-cd ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 
 # 1. 查看STM32协议帧结构
 grep -n "build_frame\|checksum_crc8\|0xAA" common/stm32_protocol.py
@@ -49,7 +49,7 @@ grep -n "build_frame\|checksum_crc8\|0xAA" common/stm32_protocol.py
 # 2. 查看告警配置
 grep -A5 "^alert:" config/fall_config.yaml
 
-# 3. 运行文本模式触发告警
+# 3. 运行文本模式触发告警 ask的时候回复救命
 python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
 
 # 4. 检查证据文件
@@ -125,6 +125,30 @@ graph LR
     end
 ```
 
+**知识储备补充**：
+
+- **背景与动机**：串口（UART/USB-虚拟串口）是字节流式、无帧边界的信道，收发双方必须靠"帧头 + 长度 + 校验"自行切分并验证一条完整报文。帧头 `0xAA 0x55`（两字节互补值）用于字节级同步对齐——只要在收端滑动窗口匹配到这两个字节，就认为找到了帧起点；`Len` 让接收端知道一段 Data 要收多少字节，形成"帧头→Len→按Len收Data→读CRC→校验"的确定性解析流程。CRC（循环冗余校验）相比简单的累加和/异或校验，能在**省一个字节校验位的前提下**检测出更多种错误形态（突发位翻转、整字节丢失/重复、字节顺序交换等），因此嵌入式点对点协议普遍用 CRC8/CRC16。
+- **CRC8 数学定义**：本协议使用 **CRC-8/MAXIM**（多项式 $x^8 + x^5 + x^4 + 1$，即十六进制 `0x31`，反射多项式 `0x8C`），标准的校验字节计算式（字节按位、反射形式）：
+
+  $$
+  \begin{aligned}
+  \mathrm{crc} &= 0x00 \\
+  \text{对每个字节 } b_i &\in \text{payload}: \quad \mathrm{crc} \leftarrow \mathrm{crc} \oplus b_i, \quad \text{逐位 } 8 \text{ 次} \\
+  \mathrm{crc} &\leftarrow \begin{cases}
+  (\mathrm{crc} \gg 1) \oplus 0x8C & \text{if } \mathrm{crc} \And 1 = 1 \\
+  \mathrm{crc} \gg 1 & \text{otherwise}
+  \end{cases}
+  \end{aligned}
+  $$
+
+  其中 `payload = [func, len(data)] + data`（`build_frame` L45），即从 Func 到 Data 末尾，**不含帧头**。标准校验值校验：`checksum_crc8(b"123456789") == 0xA1`（CRC-8/MAXIM 的公开 check 值，可作为实现是否正确的手工对拍基准）。
+- **查表法原理**：逐位移位 8 次太慢——对每个输入字节，其影响可以预先算好一次移位结果并固化成 256 项表 $T[x]$。查表法把 `crc ^= byte; crc = 移位8次的结果(byte)` 预先做到表里，运行时每字节仅一次异或 + 一次查表（两行代码），1Mbps 下每帧（≤13 字节）CRC 只需微秒级，几乎零开销。
+- **数值示例手工验证**：取 `build_buzzer(1000, 0.15, 0.15, 0)`，`len(data_)=8`（`<HHHH`），`payload = [0x02, 0x08] + 0xE803_9600_9600_0000`（小端）：
+
+  运行 `checksum_crc8` 得到 `0x2D`，完整帧为 `AA 55 02 08 E8 03 96 00 96 00 00 00 2D`；可把 `0x2D` 与逐字节手算表值对拍。
+- **三种设备帧的 Data 编码**：协议用 `struct.pack`（`<` 小端）构造。蜂鸣器 `<HHHH>`（4×uint16=8B，低字节在前）：频率Hz、响ms、停ms、重复次数；LED `<BHHH>`（1×uint8 + 3×uint16=7B）：LED编号、亮ms、灭ms、重复；OLED `bytes([line, len(tb)]) + tb`（2×uint8 + UTF-8 变长）：行号、文本字节长、UTF-8 文本。注意 OLED 的 `Len` = 2 + `len(tb)`（含 line 与 utf8 长度两字节），如 `build_oled(0,"跌倒告警!")` 的 `tb` 为 13 字节（4 汉字×3 + `!`×1），`Len=0x0F=15`（实测整帧 `AA 55 0A 0F 00 0D …`，CRC=0x8A）。
+- **参考资源**：CRC-8/MAXIM 参数表（RevEng CRC Catalogue）；`struct` 打包格式官方文档（`<HHHH` 小端语义）。
+
 **操作步骤**：
 
 1. 打开 `common/stm32_protocol.py`，通读全文，重点理解 `_CRC8_TABLE`（L9-28 查找表）、`checksum_crc8`（L36-40 查表法）、`build_frame`（L44-47 帧构造）三个核心函数。
@@ -171,18 +195,39 @@ def _start_alarm(self, ev: dict) -> None:
     self._refresh_alarm(force=True)
 ```
 
+**知识储备补充**：
+
+- **背景与动机**：跌倒事件只有"事后复盘"价值，若只在 ALERT 触发当下才开存，会丢失触发前关键的"姿态前兆帧"（老人是怎么倒的、摔倒前画面）；若全程录像，文件体积与写入开销又难以接受。环形缓冲（ring buffer）正解法——**始终只保留最近一个时间窗的帧**，触发瞬间即可"取回带时间戳的前段"，无需提前知道事件何时发生。
+- **环形缓冲与容量**：`collections.deque(maxlen=capacity)`（`evidence.py L24`）是数组化、线程安全的双端队列，当长度达到 `maxlen` 时，新 `append` 自动挤出最旧元素——这就是"环形"语义：容量固定为
+
+  $$
+  \text{capacity} = \max(1, \lfloor \text{pre\_seconds} \times \text{fps} \rfloor)
+  $$
+
+  默认 `3.0s × 10fps = 30` 帧。内存占用 ≈ `capacity × W × H × 3` 字节（仅存 ndarray 引用，不拷贝像素）：30 帧 640×480×3 ≈ 27.6 MB。增加 `pre_seconds` 或 `fps` 会线性加大常驻内存——板端 RK3576 只有 ~4GB 可用内存，故容量必须克制。
+- **时间窗提取（window）**：`window(now, pre_seconds)`（`evidence.py L29-32`）以**时间戳**而非帧计数筛帧——返回 `t >= now - pre_seconds` 的所有帧。要点：容量是按预分配时间窗算的，但"取回多少"看 `last` 分支的 `now - pre_seconds` 截止时刻；若检测帧率低于 `fps`（掉帧），实际取回帧数可能少于 30，这是环形缓冲"按时间而非按数量"设计的健壮性来源。
+- **双阶段 `_pending_save` 收集**：ALERT 触发时只做两件事——①提取前段 `pre`（**立即**，从 ring 取 `last` 秒窗口）；②登记 `_pending_save = {ts, pid, pre, post:[], due, events}`（`monitor.py L508-512`）。之后的每一帧 `process_frame` 都往 `post` 追加当前帧（`L356`），直到 `now >= due`（`due = ALERT时刻 + post_seconds=2.0`，`L510`）才落盘。因此截图"触发前最后一帧"取自 `pre_frames[-1]`、"触发后首帧"取自 `post_frames[0]`（`evidence.py L57/L59`）。
+- **落盘与轮转清理**：`save_evidence`（`evidence.py L42-86`）按 `pre_frames[-1]`/`post_frames[0]` 写主 jpg 与 `_post.jpg`，合并视频用 `cv2.VideoWriter_fourcc(*"mp4v")` 写 `.avi`（≥2 帧才写，L62）；事件 JSON 以追加行写 `events.jsonl`（每行一个对象，`ensure_ascii=False` 保留中文）。轮转（L74-80）：按 `fall_*.jpg` 主文件计数，超过 `max_files`（默认100）删最旧（连带同名 `_post.jpg`/`.avi`），保证长期运行目录不无限膨胀。
+- **参考资源**：CPython `collections.deque` maxlen 环形队列官方文档；OpenCV `VideoWriter` 与 FourCC 编码列表官方文档。
+
 **操作步骤**：
 
 1. 运行文本模式跌倒演示，触发一次ALERT：
    ```bash
-   cd ros2_ws/src/xflz_eai_car1/app/elderly_companion/
+   cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
    python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
    ```
 2. 观察日志输出：状态机流转 `IDLE → FALLING → LYING → ASK → "您还好吗？"` → 输入"救命" → `ALERT: {person_id: 0, from: "ASK", to: "ALERT", …}`。
 3. 等待证据收集完成（`post_seconds=2.0s`），检查 `runs/evidence/` 目录：
    ```bash
+   cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
    ls -la runs/evidence/
-   cat runs/evidence/events.jsonl | python3 -m json.tool
+   
+   python3 -c "
+   import json,sys
+   lst=[json.loads(l) for l in open('runs/evidence/events.jsonl') if l.strip()]
+   print(json.dumps(lst,ensure_ascii=False,indent=2))
+   "
    ```
 4. 验证三件套完整性：
    - `fall_<timestamp>_<person_id>.jpg`：触发前最后一帧截图（尺寸与视频帧一致）。
@@ -211,6 +256,14 @@ python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text --mjp
 # 另开浏览器访问（板端IP替换为实际地址）
 # http://192.168.x.x:8088/fall.mjpg
 ```
+
+**知识储备补充**：
+
+- **MJPEG 协议原理**：MJPEG（Motion JPEG）不是"视频编码"，而是把每一帧 JPEG 编码成独立图像，再由 HTTP 以 **`multipart/x-mixed-replace`** 的流式响应逐个推送——浏览器收到后自动换帧，形成连续画面。它**没有帧间压缩**（不像 H.264 用参考帧），因此码率高、文件大，但换来的是**低延迟**（<100ms 级）与**实现简单**（每帧独立编码，丢一帧不影响后续帧）——这正是告警监看场景需要的特性（要"尽量实时"而非"尽量省码率"）。流地址 `http://<IP>:<port>/<stream_name>.mjpg` 中的流名会被 `MjpegServer.__init__` 自动补全 `.mjpg`（若未带，`mjpeg_server.py L42`）。
+- **HTTP/1.1 chunked 流式响应**：服务器把 `multipart/x-mixed-replace` boundary 分隔的多帧 JPEG 作为响应体持续输出，连接不断开；服务端每推一帧就用当前 JPEG 字节覆写一段 body，客户端逐段渲染。请求建立后是一"长连接"（非一次性响应），因此 `set_frame(bgr)`（`L61-63`）可被不断调用而无需重建会话。
+- **端口预检（防静默 404）**：`start()`（`L47-57`）先用 `socket.create_connection(("127.0.0.1", self.port), timeout=0.3)` 探测端口——若 0.3s 内有连接，说明端口已被占用，立即 `raise SystemExit("MJPEG 端口 … 已被占用…")`，避免用户在浏览器里看到一片空白/404 却不知根因。正常启动则 `self._server.start()`。
+- **`stop()` 的 `GracefulExit` 兜底**：`mjpeg_streamer` 库内部用 aiohttp 的 daemon 线程；进程退出时库可能抛 `aiohttp.GracefulExit`（是 `BaseException` 而非 `Exception`，普通 `try/except Exception` 捕不到）——`stop()`（`L68-71`）用 `except BaseException` 吞掉，防止 `Aborted (core dumped)` 崩溃。这解释了为什么"一个守护线程的退出异常比主流程更值得专门捕获"。
+- **参考资源**：`multipart/x-mixed-replace` RFC（RFC 2046 §5.1 媒体类型）；`mjpeg_streamer` PyPI 包与仓库说明。
 
 **操作步骤**：
 
@@ -252,6 +305,15 @@ def _refresh_alarm(self, force: bool = False) -> None:
         self._last_alert_tts = now
 ```
 
+**知识储备补充**：
+
+- **背景与动机**：ALERT 态持续期间 `_refresh_alarm` 每帧都被调用（在 `process_frame` 主链路上），若每帧都发送字节到串口，1Mbps 下瞬间刷屏会溢出 STM32 的串口 FIFO / 缓冲区，蜂鸣器也会因指令不停而长鸣失真。节流（throttling)= 对**同一外部副作用**（串口写 / TTS 播报）设置最小触发间隔，把"高频轮询"收敛成"低频采样发出"。
+- **两套独立定时器为何不合并**：硬件告警（蜂鸣/LED/OLED，5s）与语音告警（TTS，10s）是**不同生理通道**，语义与周期都不同——蜂鸣是"持续提醒声"（间隔短、不打断对话），语音是"询问式播报"（间隔长、避免骚扰老人）。若合并成单一定时器，要么语音被硬件的 5s 节奏拖得太频（骚扰），要么硬件被语音的 10s 拖得太疏（提醒不足）。故 `buzzer.refresh` 与 `alert_tts_interval` 分别维护各自上一触发戳 `_last_buzzer` / `_last_alert_tts`，独立分支判断，节奏互补而非同步。
+- **门控逻辑拆解**：第一分支（`L518`）闸 `force or now - _last_buzzer >= buzzer.refresh`；第二分支（`L523`）闸 `now - _last_alert_tts >= alert_tts_interval`。条件用**单调时间戳差值**而非计数/累加器——天然免疫主循环帧率波动：无论帧率多少，只要距上次 ≥ 阈值就发，严格保证最小间隔 = 阈值。
+- **force 语义**：`force=True` 让第一次（刚进入 ALERT）无条件立即响，避免"老人刚摔倒、系统却要等 5s 才响"的安全空洞（`_start_alarm` L513 传入 `force=True`）。后续每轮由时间差闸住。
+- **硬件帧只发"偏置"**：`buzzer.refresh=5s` 时，STM32 每 5s 才收到一次 `build_buzzer` 帧，但其 `repeat=0` 表示"按给定 on/off 交替无限重复"——一次指令即可持续响 5s，节流不减少响铃覆盖、只减少串口写入频率。这是"节流"与"抑制"的关键区别：**周期短于硬件自持时长也能连续发声**。
+- **参考资源**：Linux 单调时钟 `time.time()`/`time.monotonic()` 文档（节流时间差用单调时钟更稳）；通用 rate-limiting（令牌桶/min-interval）设计模式说明。
+
 **操作步骤**：
 
 1. 启动跌倒演示并触发第一次ALERT（输入"救命"），记录日志中 `buzzer_on` 出现的时间。
@@ -275,6 +337,7 @@ def _refresh_alarm(self, force: bool = False) -> None:
 - **源码对应**：`docs/09_告警与证据测试用例.md` 全文（T9-1至T9-8）、`fall/alert_hw.py L25-34`（串口打开失败降级逻辑）
 
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 # T9-1: 蜂鸣器触发与停止
 python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text
 # 输入"救命" → 观察蜂鸣器响 / 日志 buzzer_on
@@ -299,6 +362,14 @@ python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text --mjp
 # 期望: 启动报错退出（端口冲突）
 ```
 
+**知识储备补充**：
+
+- **背景与动机**：告警与证据是"安全关键"路径，必须靠**结构化测试用例**逐条固化行为，否则回归风险高（改状态机或证据逻辑时无意破坏降级/轮转/端口检测）。T9-1 至 T9-8 按 4 大类组织，把"正常流 + 异常流"都覆盖：正常（T9-1/T9-3/T9-5/T9-6）、降级（T9-2）、轮转（T9-4）、冲突/失败（T9-7/T9-8）。逐条执行并记录 Pass/Fail，是这类嵌入式告警集成模块的标准验收方式。
+- **T9-2 串口降级的边界设计**：拔掉 USB0 后，`HardwareAlert.start()` 的 `uart.open()` 抛异常，被 `except Exception`（`alert_hw.py L34-37`）捕获置 `available=False` 并 WARN。之后 `buzzer_on/led_on/oled_text` 全走 `_gated()`（L70-78）——`not self.available` 分支直接 DEBUG 返回 False，**不会触碰 `self.uart.send`**，因此不会因 `NoneType` 崩溃。这就是"降级而不崩溃"的关键：把"串口是否可用"抽成门控条件，所有设备操作共用。
+- **T9-7 端口冲突检测链路**：修改 `server.port` 与 `llm.server.port` 均为 8080 后，`apps/fall_app.py L336` 在装配阶段比较两者（`server.port == llm.server.port`）即报错退出；即便未显式比较，`MjpegServer.start()` 的 socket 预检（`mjpeg_server.py L52-57`）也会因 `llm` 已占 8080 而探测到占用 → `SystemExit`。双保险：配置层显式校验 + 运行时端口探测。
+- **T9-8 退出清理的双层保障**：应用层 `shutdown()`（`monitor.py L580-588`）先强制落盘未保存的 `_pending_save` 证据，再释放 pose 引擎；进程层 `atexit`/`_cleanup` 兜底关闭硬件；独立子进程（aplay/llm_server/mjpeg_streamer）需 `pkill -9` 单独清理。真正"无残留"需三层都做——这不只是礼貌，还影响下轮实验（端口占用、音频设备被占）。
+- **参考资源**：IEEE 829 软件测试文档标准（测试用例=前置条件+步骤+期望结果）；ISTQB 测试用例设计（正常/异常/边界流）通用方法。
+
 **操作步骤**：
 
 1. 打开 `docs/09_告警与证据测试用例.md`，通读T9-1至T9-8全部用例。
@@ -322,6 +393,7 @@ python3 apps/fall_video_demo.py --video testdata/fall_slow_x264.mp4 --text --mjp
 - **源码对应**：`fall/alert_hw.py L86-92`（`close` 串口关闭）、`fall/monitor.py L579-588`（`shutdown` 证据强制落盘+资源释放）、`common/stm32_protocol.py`（帧构造纯函数无状态，无需清理）
 
 ```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/elderly_companion
 # 清理残留音频播放进程
 pkill -9 aplay
 pgrep -f aplay   # 应返回空
@@ -337,6 +409,14 @@ pgrep -f mjpeg_streamer
 # 清理运行产物（可选，下次运行自动重建）
 rm -rf runs/evidence/*
 ```
+
+**知识储备补充**：
+
+- **背景与动机**：嵌入式/ROS 进程常派生"一次性外部子进程"（音频用 `aplay`/`paplay`、语音服务用 Flask/`llm_server`、推流用 aiohttp daemon 线程）。这类子进程**不随父进程 Ctrl+C 自动回收**——尤其 ALSA `aplay` 会持续占用声卡、aiohttp daemon 线程会残留占用端口。不清理的后果直接落到下一轮实验：`No available audio device`、`端口 8088 已被占用` 报错。故清理是"可复现实验"的必备环节而非可选动作。
+- **进程树 vs 守护线程的清理差异**：`aplay`/`llm_server` 是**独立进程**（有 PID），用 `pgrep -f` 按命令行模糊匹配 + `pkill -9 -f` 强杀；`mjpeg_streamer` 的 aiohttp daemon 线程**没有独立 PID**，`pkill -9 -f mjpeg_streamer` 匹配的是包含 `mjpeg_streamer` 字样的 Python 主进程——因此日志里"查无此进程"反而可能是好事（daemon 线程已随主进程退出）。`hw_alert.close()`（`alert_hw.py L86-93`）负责串口关闭，`atexit` 在进程退出时兜底调用，确保串口 fd 不泄漏。
+- **退出后端口必须被释放的时间差**：已 close 的 socket 端口会进入短时 `TIME_WAIT`，若立刻重启程序探测端口可能仍显示占用——用 `lsof -i :8088` 确认占用进程是"僵尸 TIME_WAIT"还是"真残留进程"，后者才需 `pkill`。
+- **运行产物不入库的原因**：`runs/`（证据 jpg/avi、日志、TTS 缓存）体积大、易漂移、含隐私（跌倒人像），纳入 git 会污染仓库且版本对比失真；用 `.gitignore` 排除，下次运行自动重建，目录本身代码创建。
+- **参考资源**：Linux 进程管理 `pgrep`/`pkill`/`kill` 手册页（`-f` 匹配完整命令行、`-9` SIGKILL 语义）；ALSA `aplay` 播放器文档（设备占用与 `-D` 指定设备）。
 
 **操作步骤**：
 
@@ -408,3 +488,8 @@ rm -rf runs/evidence/*
 - 测试用例执行与资源清理（25分）：T9-1至T9-8逐条执行记录、pkill清理检查清单、进程残留确认无 = 100分
 
 ---
+## 更新日志
+
+| 版本 | 日期 | 变更说明 |
+|------|------|----------|
+| v1.1 | 2026-08-21 | 知识点补充 |
