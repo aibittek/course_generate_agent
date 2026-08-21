@@ -22,6 +22,9 @@ courses_archive/
 *.png
 *.jpg
 *.pdf
+# 课程资源 assets 图片（不排除）
+!courses/**/assets/**/*.png
+!courses/**/assets/**/*.jpg
 
 # AI Models
 models/
