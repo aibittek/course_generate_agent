@@ -9,22 +9,20 @@ source_knowledge_graph: courses/sheet1/ros_practice/ros_practice_knowledge_graph
 
 # 机器人ROS2应用与开发 实验指导书
 
-> 课程代码: EXP003
 > 总学时: 48h（全实验）
-> 实验数量: 21
-> 硬件平台: 具身智能实验箱B2 / 具身智能机器人小车C1
-> 生成日期: 2026-08-10
+> 实验数量: 20
+> 硬件平台: 具身智能实验箱B2
 
 ---
 
-## 实验1: ROS2简介
+## 实验1：ROS2简介
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 1.1.1 | ROS2框架概念与设计目标 | 概念 | 第1章 ROS2基础与环境搭建 → 1.1 ROS2概述与架构 |
 | 1.1.2 | DDS去中心化通信架构原理 | 原理 | 第1章 ROS2基础与环境搭建 → 1.1 ROS2概述与架构 |
 | 1.1.3 | ROS2环境搭建与节点通信验证流程 | 流程 | 第1章 ROS2基础与环境搭建 → 1.1 ROS2概述与架构 |
@@ -41,7 +39,7 @@ source_knowledge_graph: courses/sheet1/ros_practice/ros_practice_knowledge_graph
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
+|---|---|
 | 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
@@ -53,16 +51,18 @@ source_knowledge_graph: courses/sheet1/ros_practice/ros_practice_knowledge_graph
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐（容易） |
 | 实验类型 | 验证性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 理解 DDS 去中心化架构如何消除 ROS1 Master 的单点故障风险
 - 掌握 `ros2` 统一命令行工具的六大子命令组结构
 
 **难点**：
+
 - 区分 DDS 的"自动发现"与 ROS1 的"Master 注册"两种节点发现范式
 - 理解 colcon 编译系统与 catkin 在包组织方式上的变化
 
@@ -80,7 +80,7 @@ source_knowledge_graph: courses/sheet1/ros_practice/ros_practice_knowledge_graph
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `ros2 --help` | 列出 node、topic、service、param、action、bag、interface、launch、run、pkg 等子命令 |
 | `ros2 run demo_nodes_cpp talker` | 每秒输出一行 `[INFO] [...] Publishing: 'Hello World: N'` |
 | `ros2 node list`（另一终端） | `/talker` |
@@ -94,7 +94,7 @@ source_knowledge_graph: courses/sheet1/ros_practice/ros_practice_knowledge_graph
 
 #### 整体流程
 
-```
+```text
 [1. 环境检查] ──► [2. ROS2 vs ROS1 对比认知] ──► [3. 启动 talker 节点]
        │                                                    │
        └────────────────────────────────────────────────────┘
@@ -104,9 +104,10 @@ source_knowledge_graph: courses/sheet1/ros_practice/ros_practice_knowledge_graph
 
 ---
 
-#### 步骤 1：环境检查（5 分钟）
+#### 步骤 1：环境检查
 
 **知识点讲解**：
+
 ROS2 安装后，核心可执行文件位于 `/opt/ros/humble/bin/`，环境变量通过 `setup.bash` 脚本注入。执行 `source /opt/ros/humble/setup.bash` 后，`ros2` 命令才能被终端识别。如果希望每次打开终端自动加载，可以将该命令写入 `~/.bashrc`。
 
 **操作**：
@@ -125,7 +126,7 @@ ros2 --help
 
 **预期输出**：
 
-```
+```text
 usage: ros2 [-h] Call `ros2 <command> -h` for more detailed usage. ...
 
 ros2 is an extensible command-line tool for ROS 2.
@@ -153,39 +154,46 @@ Commands:
 
 **知识点讲解**：
 
-##### 2.1 通信架构：DDS（去中心化）vs TCPROS（中心化）
+**2.1 通信架构：DDS（去中心化）vs TCPROS（中心化）**
 
 **是什么**：
+
 - ROS1 采用 TCPROS 协议 + 中心化 Master（roscore），所有节点启动时必须向 Master 注册，节点间通信需先通过 Master 查询对端地址，建立 P2P TCP 连接后传输数据
 - ROS2 采用 DDS（Data Distribution Service）协议，节点间通过 RTPS（Real-Time Publish-Subscribe）协议自动发现彼此，无需中心节点
 
 **为什么**：
+
 - Master 是单点故障源 —— roscore 崩溃 → 全系统通信中断（即使已有连接也会逐步失效）
 - 多机器人场景下，Master 必须部署在某一台机器上，其他机器人依赖网络访问该 Master
 - DDS 的自动发现机制使每个节点独立运行，任意节点随时加入/离开而不影响整体系统
 
 **怎么用**：
+
 - 开发者无需关心 DDS 底层 —— ROS2 的 `rcl`（ROS Client Library）+ `rmw`（ROS Middleware Wrapper）隔离了 DDS 实现细节
 - 默认使用 Fast-DDS（eProsima），可通过 `RMW_IMPLEMENTATION` 环境变量切换为 CycloneDDS 等其他实现
 
-##### 2.2 编译系统：colcon vs catkin
+**2.2 编译系统：colcon vs catkin**
 
 **是什么**：
+
 - ROS1 使用 catkin（基于 CMake），在 catkin_ws 中执行 `catkin_make` 编译
 - ROS2 使用 colcon（command line tool for colcon），在任意工作空间执行 `colcon build`
 
 **为什么切换**：
+
 - catkin 要求所有包同时编译，不支持纯 Python 包的独立构建
 - colcon 支持 ament_cmake（C++）、ament_python（Python）两种构建类型混合编译
 - colcon 通过 `--packages-select` 支持单包增量编译，大幅提升开发效率
 
-##### 2.3 生命周期管理
+**2.3 生命周期管理**
 
 **是什么**：
+
 - ROS1 节点没有标准的状态机 —— 节点启动即进入事件循环，`Ctrl+C` 终止即退出
 - ROS2 引入 Managed Node（生命周期节点），定义 Unconfigured → Inactive → Active → Finalized 四种标准状态
 
 **为什么重要**：
+
 - 生命周期状态机使外部工具（如 ros2_control、Nav2）可以在运行时精确控制节点的状态切换
 - 支持错误恢复：节点可从 Active 退回到 Inactive → 清理 → 重新配置 → 再次激活
 - 在多节点系统中，确保传感器节点在"Active"之前已完成硬件初始化和参数配置
@@ -193,7 +201,7 @@ Commands:
 **对比总结**：
 
 | 对比维度 | ROS1 | ROS2 | 改进意义 |
-|---------|------|------|---------|
+|---|---|---|---|
 | 通信架构 | TCPROS + Master | DDS（RTPS） | 去中心化，无单点故障 |
 | 编译系统 | catkin | colcon | 混合语言支持，增量编译 |
 | 节点发现 | Master 注册/查询 | DDS 自动发现 | 即插即用，动态拓扑 |
@@ -208,12 +216,15 @@ Commands:
 **知识点讲解**：
 
 **是什么**：
+
 `demo_nodes_cpp` 是 ROS2 自带的 C++ 示例包，包含 talker（发布者）和 listener（订阅者）两个标准演示节点。talker 节点创建一个 Publisher（发布者），向名为 `/chatter` 的话题（Topic）周期性发布 `std_msgs/msg/String` 类型的消息。
 
 **为什么从这里开始**：
+
 这是 ROS2 世界的 "Hello World" —— 它验证了整个通信栈的正确性：DDS 发现 → 节点创建 → Publisher 注册 → 定时器驱动消息发布。如果 talker/listener 能正常通信，说明 ROS2 底层 DDS 工作正常。
 
 **怎么用**：
+
 `ros2 run` 的语法为 `ros2 run <package_name> <executable_name>`，`run` 命令会自动查找已安装包中的可执行文件并启动进程。
 
 **操作**：
@@ -225,14 +236,13 @@ ros2 run demo_nodes_cpp talker
 
 **预期输出**：
 
-```
+```text
 [INFO] [1660000000.123456789] [talker]: Publishing: 'Hello World: 1'
 [INFO] [1660000001.234567890] [talker]: Publishing: 'Hello World: 2'
 [INFO] [1660000002.345678901] [talker]: Publishing: 'Hello World: 3'
 ...
-```
-
 保持此终端运行，不要关闭。
+```
 
 ---
 
@@ -241,9 +251,11 @@ ros2 run demo_nodes_cpp talker
 **知识点讲解**：
 
 **是什么**：
+
 listener 节点创建一个 Subscriber（订阅者），订阅 `/chatter` 话题。每当 talker 通过该话题发布新消息，listener 的回调函数被触发，打印接收到的消息内容。
 
 **为什么能自动发现**：
+
 你不需要告诉 listener "talker 在哪里"——DDS 的自动发现机制通过多播在局域网内广播节点信息，listener 自动发现 `/chatter` 话题的 Publisher 并建立连接。这是 DDS 的核心优势：零配置的 P2P 通信。
 
 **操作**：
@@ -255,18 +267,18 @@ ros2 run demo_nodes_cpp listener
 
 **预期输出**：
 
-```
+```text
+
 [INFO] [1660000001.345678901] [listener]: I heard: [Hello World: 1]
 [INFO] [1660000002.456789012] [listener]: I heard: [Hello World: 2]
 [INFO] [1660000003.567890123] [listener]: I heard: [Hello World: 3]
 ...
-```
-
 注意观察：
-- listener 打印的序列号与 talker 发布的序列号完全同步
-- 如果不小心先启动了 listener 而 talker 尚未启动，listener 不会报错，而是在等待 —— DDS 发现是持续的
-- 尝试 `Ctrl+C` 终止 talker，观察 listener 的输出变化（停止接收新消息）
-- 重新启动 talker，观察 listener 是否自动恢复接收（应该能）
+listener 打印的序列号与 talker 发布的序列号完全同步
+如果不小心先启动了 listener 而 talker 尚未启动，listener 不会报错，而是在等待 —— DDS 发现是持续的
+尝试 Ctrl+C 终止 talker，观察 listener 的输出变化（停止接收新消息）
+重新启动 talker，观察 listener 是否自动恢复接收（应该能）
+```
 
 ---
 
@@ -275,9 +287,11 @@ ros2 run demo_nodes_cpp listener
 **知识点讲解**：
 
 **是什么**：
+
 ROS2 的 CLI 工具可以像"诊断探头"一样插入正在运行的系统中，动态查看节点列表、话题拓扑、消息内容，而无需修改任何代码或重启任何节点。
 
 **为什么需要这些命令**：
+
 在实际开发中，你用这些命令来回答"这个节点到底有没有在发消息？""传感器数据的实际频率是多少？""某个话题有哪些节点在通信？"等问题，是日常调试的必备工具集。
 
 **操作**：
@@ -334,7 +348,7 @@ ros2 topic hz /chatter
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 环境 | 每次打开新终端，需要先执行 `source /opt/ros/humble/setup.bash`，否则 `ros2` 命令不可用 |
 | ⚠️ 安全 | 本实验为纯软件操作，不涉及高电压、机械运动等物理风险 |
 | ⚠️ 网络 | DDS 自动发现依赖多播功能，若在虚拟机中运行，确保网络适配器为"桥接模式"或"NAT + 允许多播" |
@@ -347,6 +361,7 @@ ros2 topic hz /chatter
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 用 `ros2 --help` 列出所有可用的命令子组
 - ✅ 独立启动 talker 和 listener 两个节点并观察其 P2P 通信
 - ✅ 使用 `ros2 node list` / `ros2 topic list` / `ros2 topic echo` 监控系统运行状态
@@ -355,7 +370,7 @@ ros2 topic hz /chatter
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | ROS2 环境管理 | 理解 setup.bash 的作用，掌握环境变量的加载与验证 |
 | 命令行操作 | 熟练使用 ros2 run/node/topic 三类基础 CLI 命令 |
 | 架构理解 | 能对比 ROS1/ROS2 在通信、编译、生命周期三方面的差异 |
@@ -364,7 +379,7 @@ ros2 topic hz /chatter
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `ros2: command not found` | 未 source 环境脚本 | 执行 `source /opt/ros/humble/setup.bash` |
 | `package 'demo_nodes_cpp' not found` | 示例包未安装 | `sudo apt install ros-humble-demo-nodes-cpp` |
 | talker 运行但 listener 无输出 | 网络多播被防火墙拦截 | 检查防火墙规则，或尝试 `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` |
@@ -385,31 +400,31 @@ ros2 topic hz /chatter
 #### 9.2 思考题
 
 **思考题 1**：
+
 假设你运行 talker 后立即 `Ctrl+C` 终止它，再启动 listener。listener 能否接收到 talker 之前已发布但未被订阅的历史消息？为什么？如果你是系统设计者，如何在 ROS2 中实现"历史消息回放"功能？（提示：查阅 QoS 中的 Durability 策略）
 
 **思考题 2**：
+
 在步骤 5 中，你用 `ros2 topic echo /chatter` 在不修改 talker/listener 代码的情况下获取了消息内容。请思考：这种"第三方窥探"机制在实际项目中有哪些应用场景？它又可能带来什么安全隐患？ROS2 如何应对这些安全问题？（提示：查阅 DDS-Security 与 SROS2）
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否按要求完成 talker/listener 启动与 CLI 工具验证 |
 | 截图与记录 | 15% | 截图是否清晰、完整，标注是否准确 |
 | 原理分析 | 25% | 对 DDS 架构的理解深度，需覆盖三个维度 |
 | 思考题 1 | 15% | 对 Durability QoS 策略的理解与表达 |
 | 思考题 2 | 15% | 对安全机制的独立思考能力 |
 
----
-
-## 实验2: ROS2常用命令工具
+## 实验2：ROS2常用命令工具
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 1.2.1 | ros2 CLI六大子命令组结构 | 概念 | 第1章 ROS2基础与环境搭建 → 1.2 ROS2命令行工具 |
 | 1.2.2 | ros2 node/topic/service 三大核心操作流程 | 流程 | 第1章 ROS2基础与环境搭建 → 1.2 ROS2命令行工具 |
 | 1.2.3 | ros2 param/interface/bag 进阶操作流程 | 流程 | 第1章 ROS2基础与环境搭建 → 1.2 ROS2命令行工具 |
@@ -418,15 +433,15 @@ ros2 topic hz /chatter
 
 通过本实验的学习，学生能够：
 
-1. **原理理解**：阐述 ros2 CLI 统一命令行工具集的设计理念——为什么 ROS2 将 node/topic/service/param/action/bag/interface/launch/run/pkg 十个子命令整合到一个入口
-2. **流程掌握**：熟练使用 `ros2 node list/info` 查看节点信息、`ros2 topic list/echo/info/hz/pub` 操作话题数据、`ros2 service list/type/call` 调用服务
-3. **独立完成**：独立使用 `ros2 param` 管理参数、`ros2 interface` 查看消息定义、`ros2 bag` 录制回放数据
+1. **原理理解**：阐述 ros2 CLI 统一命令行工具集的设计理念——为什么 ROS2 将 **node/topic/service/param/action/bag/interface/launch/run/pkg **十个子命令整合到一个入口
+2. **流程掌握**：熟练使用 `ros2 node list/info`查看节点信息、`ros2 topic list/echo/info/hz/pub` 操作话题数据、`ros2 service list/type/call` 调用服务
+3. **独立完成**：独立使用 `ros2 param`管理参数、`ros2 interface `查看消息定义、`ros2 bag `录制回放数据
 4. **迁移应用**：能够在后续实验中，当需要"查看某个节点的信息""确认话题是否在发布数据""调用某项服务"时，主动使用对应的 CLI 工具进行调试
 
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
+|---|---|
 | 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
@@ -438,16 +453,18 @@ ros2 topic hz /chatter
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐（容易） |
 | 实验类型 | 验证性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握 `ros2 node/topic/service/param` 四大最常用命令组
 - 理解话题的 Type（消息类型）与消息结构之间的关系
 
 **难点**：
+
 - 区分 `ros2 topic pub`（一次性发布）与 `ros2 topic echo`（持续监听）的使用场景
 - 理解 `ros2 bag record` 录制数据的格式与回放机制
 
@@ -470,7 +487,7 @@ ros2 topic hz /chatter
 #### 5.2 预期输出对照表
 
 | 命令 | 预期关键输出 |
-|------|-------------|
+|---|---|
 | `ros2 node list` | `/talker` 和 `/listener` |
 | `ros2 node info /talker` | Publishers: `/chatter`、Subscribers: (无)、Services: (无) |
 | `ros2 topic list` | `/chatter`、`/parameter_events`、`/rosout` |
@@ -488,7 +505,7 @@ ros2 topic hz /chatter
 
 #### 整体流程
 
-```
+```text
 [1. 启动示例节点作为被测对象]
               │
 [2. node 命令组] ──► [3. topic 命令组] ──► [4. service 命令组]
@@ -501,6 +518,7 @@ ros2 topic hz /chatter
 #### 步骤 1：启动示例节点作为被测对象（3 分钟）
 
 **知识点讲解**：
+
 ros2 CLI 工具是"观察者"——它需要运行中的 ROS2 系统作为观测对象。本实验沿用实验1中的 talker/listener 示例节点作为被测目标。
 
 **操作**：
@@ -511,9 +529,8 @@ ros2 run demo_nodes_cpp talker
 
 # 终端 B：启动 listener
 ros2 run demo_nodes_cpp listener
-```
-
 保持两个终端运行，后续所有命令在终端 C 中执行。
+```
 
 ---
 
@@ -522,12 +539,15 @@ ros2 run demo_nodes_cpp listener
 **知识点讲解**：
 
 **是什么**：
+
 `ros2 node` 命令组提供对 ROS2 图中**节点（Node）**的查询能力。节点是 ROS2 图（Graph）中参与通信的基本单元，每个节点有一个全局唯一名称。
 
 **为什么需要这些命令**：
+
 当系统中有数十个节点同时运行时，你需要回答"哪些节点正在运行""某个节点发布了哪些话题""某个节点提供了哪些服务"等问题。node 命令组就是回答这些问题的入口。
 
 **怎么用**：
+
 - `list` 列出图中所有节点的名称
 - `info` 查询指定节点的发布者、订阅者、服务、动作等完整拓扑关系
 
@@ -540,19 +560,16 @@ ros2 node list
 
 **预期输出**：
 
-```
+```text
 /talker
 /listener
-```
-
-```bash
 # 查看 /talker 节点的完整信息
 ros2 node info /talker
 ```
 
 **预期输出**：
 
-```
+```text
 /talker
   Publishers:
     /chatter: std_msgs/msg/String
@@ -565,16 +582,13 @@ ros2 node info /talker
     /talker/get_parameters: rcl_interfaces/srv/GetParameters
     ...
   Action Servers:
-```
-
-```bash
 # 同样查看 /listener 节点的信息
 ros2 node info /listener
 ```
 
 **预期输出**：
 
-```
+```text
 /listener
   Publishers:
     /parameter_events: rcl_interfaces/msg/ParameterEvent
@@ -585,6 +599,7 @@ ros2 node info /listener
 ```
 
 **对比分析**：
+
 - `/talker` 的 Publishers 中有 `/chatter`，Subscribers 为空 —— 它在"说"
 - `/listener` 的 Subscribers 中有 `/chatter`，Publishers 中没有 `/chatter` —— 它在"听"
 - 两个节点都有 `/parameter_events`（每个节点自动拥有）和 `/rosout`（日志输出）
@@ -596,9 +611,11 @@ ros2 node info /listener
 **知识点讲解**：
 
 **是什么**：
+
 话题（Topic）是 ROS2 中最基本的数据通道。发布者（Publisher）向话题写入消息，订阅者（Subscriber）从话题读取消息。Topic 命令组让你可以在系统运行时**观察和控制**这些数据流。
 
 **为什么这是最常用的调试命令**：
+
 话题是 ROS2 系统的"血管"——传感器数据、控制指令、状态反馈都通过话题流转。topic 命令组让你可以在不修改代码的情况下"抽血化验"（echo）、"测量流速"（hz）、"手动注射"（pub）。
 
 **操作**：
@@ -634,17 +651,14 @@ ros2 topic hz /chatter
 
 # 3.6 手动向 /chatter 话题发布一条消息
 ros2 topic pub /chatter std_msgs/msg/String "data: 'Hello from CLI'" --once
-```
-
-执行 3.6 后，观察终端 B 的 listener 输出 —— 它应该打印 `I heard: [Hello from CLI]`。这说明你的命令行消息成功注入了 talker/listener 之间的通信链路。
-
-```bash
+执行 3.6 后，观察终端 B 的 listener 输出 —— 它应该打印 I heard: [Hello from CLI]。这说明你的命令行消息成功注入了 talker/listener 之间的通信链路。
 # 3.7 以 2Hz 频率周期性发布消息（观察 listener 终端的响应）
 ros2 topic pub /chatter std_msgs/msg/String "data: 'Periodic msg'" --rate 2
 # 观察几秒后 Ctrl+C 停止
 ```
 
 **知识点延伸**：
+
 `ros2 topic pub` 是理解话题通信本质的最佳方式——它证明了你不需要运行"talker 源码"，只要知道话题名称（`/chatter`）和消息类型（`std_msgs/msg/String`），就可以向系统注入数据。这正是 ROS2 松耦合设计的体现。
 
 ---
@@ -654,9 +668,11 @@ ros2 topic pub /chatter std_msgs/msg/String "data: 'Periodic msg'" --rate 2
 **知识点讲解**：
 
 **是什么**：
+
 服务（Service）是 ROS2 中**同步的请求-响应**通信模型。客户端发送请求，服务端处理后返回响应。与话题（单向数据流）不同，服务有明确的"一问一答"语义。
 
 **为什么话题和服务需要共存**：
+
 话题适合持续数据流（如传感器数据每秒 30 次），服务适合离散操作（如"抓取物体""保存地图""重置里程计"）。`ros2 service` 命令组让你可以在命令行直接调用这些离散操作。
 
 **操作**：
@@ -683,13 +699,14 @@ ros2 service call /talker/get_parameters rcl_interfaces/srv/GetParameters "{name
 
 **预期输出**：
 
-```
+```text
 values:
 - bool_value: false
   type: 1
 ```
 
 **知识点延伸**：
+
 服务接口定义中，`---` 上面的部分是请求（Request），下面的是响应（Response）。调用服务和使用函数调用在逻辑上是等价的——传入参数，等待返回结果。与话题的"fire and forget"不同，服务调用会**阻塞等待**直到服务端响应（或超时）。
 
 ---
@@ -699,9 +716,11 @@ values:
 **知识点讲解**：
 
 **param 命令组 —— 是什么**：
+
 参数（Parameter）是节点的"运行时配置"。与话题（通信数据）和服务（操作）不同，参数是节点的**内部状态**——如 `use_sim_time`（是否使用仿真时间）、`max_velocity`（最大速度）、`camera_frame_rate`（相机帧率）。参数服务器使得这些配置可以在不重启节点的情况下读写。
 
 **interface 命令组 —— 是什么**：
+
 接口（Interface）定义了 ROS2 中消息的结构。`.msg` 文件定义话题消息、`.srv` 定义服务、`.action` 定义动作。`ros2 interface` 命令组让你可以查看系统中所有已注册的消息类型定义，无需翻阅源码。
 
 **操作**：
@@ -757,6 +776,7 @@ ros2 interface show example_interfaces/srv/AddTwoInts
 ```
 
 **知识点延伸**：
+
 `ros2 param dump` 生成的 YAML 文件可以用于 Launch 文件中的参数注入，实现"配置文件化"部署。`ros2 interface show` 在日常开发中非常重要——当你需要知道某个话题的消息包含哪些字段时，用它查看消息定义即可，无需翻文档。
 
 ---
@@ -766,9 +786,11 @@ ros2 interface show example_interfaces/srv/AddTwoInts
 **知识点讲解**：
 
 **是什么**：
+
 ros2 bag 是 ROS2 的"黑匣子"——它可以录制系统中所有（或指定）话题的消息，保存为 `.db3` 文件（SQLite3 格式），并在之后回放这些数据。
 
 **为什么重要**：
+
 1. **离线调试**：你可以在实验室录一次数据，回家后在笔记本上反复回放调试算法
 2. **Bug 复现**：当你遇到难以复现的"偶发"bug 时，录制 bag 可以捕获当时的完整数据
 3. **性能分析**：bag 记录了每条消息的时间戳，可用于分析系统的端到端延迟
@@ -807,6 +829,7 @@ ros2 bag info exp02_chatter_only
 ```
 
 **知识点延伸**：
+
 `ros2 bag play` 回放时，消息的时间戳保持原样——如果你在回放的同时启动 listener，它会收到和当初录制时完全一样的数据。你可以通过 `--rate` 参数加速/减速回放（如 `--rate 2.0` 以 2 倍速回放）。
 
 ---
@@ -817,12 +840,10 @@ ros2 bag info exp02_chatter_only
 2. 执行 `ros2 node list` 确认无残留节点
 3. 清理录制的 bag 文件（`rm -rf exp02_test*`）
 
----
-
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 环境 | 每次打开新终端都需 `source /opt/ros/humble/setup.bash`，否则 ros2 命令不可用 |
 | ⚠️ 终端管理 | 本实验需要 3 个终端（talker + listener + 命令终端），建议使用 `Ctrl+Shift+T` 分屏或 tmux |
 | ⚠️ 节点依赖 | `ros2 node info` 等命令依赖目标节点正在运行——若对方已退出，会报 "Node not found" |
@@ -836,6 +857,7 @@ ros2 bag info exp02_chatter_only
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 使用 `ros2 node list/info` 查看运行中的节点及其拓扑关系
 - ✅ 使用 `ros2 topic list/echo/info/hz/pub` 观察和操作话题数据流
 - ✅ 使用 `ros2 service list/type/call` 查看和调用系统服务
@@ -846,7 +868,7 @@ ros2 bag info exp02_chatter_only
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 调试定位 | 掌握 ROS2 系统运行时状态的标准检查流程：node → topic → service → param |
 | 消息注入 | 能通过 `ros2 topic pub` 向运行中的系统注入测试数据 |
 | 数据采录 | 能使用 ros2 bag 录制传感器数据用于离线分析与算法对比测试 |
@@ -856,7 +878,7 @@ ros2 bag info exp02_chatter_only
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `ros2 topic list` 为空 | 没有节点在发布话题 | 先启动 talker 节点 |
 | `ros2 topic echo /chatter` 无输出 | 订阅建立需要时间，或话题名称错误 | 等待 1-2 秒，或用 `ros2 topic list` 确认话题存在 |
 | `ros2 topic pub` 报 "Wrong number of arguments" | data 参数格式不正确 | 检查 YAML 格式，字符串加引号，如 `"data: 'hello'"` |
@@ -878,31 +900,31 @@ ros2 bag info exp02_chatter_only
 #### 9.2 思考题
 
 **思考题 1**：
+
 在步骤 3.6 中，你用 `ros2 topic pub --once` 发布了一条消息，listener 立刻收到了它。但如果你先执行 `ros2 topic pub --once` 再启动 listener，listener 还能收到这条消息吗？为什么？如果你希望后来的订阅者能收到历史消息，应该如何配置？（提示：查阅 QoS 中 Durability 策略的 Transient Local 配置）
 
 **思考题 2**：
+
 假设你正在开发一个机器人导航系统，有一个 `/scan` 话题（LaserScan 类型）由激光雷达节点发布，频率约 10Hz。你需要离线调试路径规划算法，但无法每次都实际运行机器人。请设计一个基于 ros2 bag 的工作流程，使得你可以"在办公桌上"复现机器人在实验室中遇到的导航问题。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否按要求完成 node/topic/service/param/interface/bag 六大命令组的操作 |
 | 截图与记录 | 15% | 截图是否清晰、完整（≥8 张），标注是否准确 |
 | 原理分析 | 25% | 对四个 topic 命令关系的理解深度，需说明各自回答的问题 |
 | 思考题 1 | 15% | 对 Durability QoS 的理解，需解释 Transient Local 的含义 |
 | 思考题 2 | 15% | bag 工作流程设计的合理性与完整性 |
 
----
-
-## 实验3：ROS2工作空间（2h）
+## 实验3：ROS2工作空间
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 1.3.1 | 工作空间四层目录结构（src/build/install/log） | 概念 | 第1章 ROS2基础与环境搭建 → 1.3 ROS2工作空间 |
 | 1.3.2 | Underlay与Overlay层级叠加机制 | 原理 | 第1章 ROS2基础与环境搭建 → 1.3 ROS2工作空间 |
 | 1.3.3 | colcon build编译与source环境加载流程 | 流程 | 第1章 ROS2基础与环境搭建 → 1.3 ROS2工作空间 |
@@ -919,7 +941,7 @@ ros2 bag info exp02_chatter_only
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
+|---|---|
 | 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
@@ -932,16 +954,18 @@ ros2 bag info exp02_chatter_only
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐（容易） |
 | 实验类型 | 验证性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握 `mkdir -p ~/ros2_ws/src` 创建工作空间的完整目录结构
 - 理解 `colcon build` 编译流程的四步过程（CMake 配置 → 编译 → 安装 → 环境生成）
 
 **难点**：
+
 - 区分 Underlay 与 Overlay 的概念：为什么 `source /opt/ros/humble/setup.bash` 必须在 `source install/setup.bash` 之前执行
 - 理解 `install/setup.bash` 中的环境变量如何实现"覆盖"效果——Overlay 中的同名包优先于 Underlay
 
@@ -960,12 +984,12 @@ ros2 bag info exp02_chatter_only
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `mkdir -p ~/ros2_ws/src` | 创建用户工作空间目录，`ls ~/ros2_ws` 可见 `src/` |
 | `colcon build`（在工作空间根目录） | 终端输出各包编译进度，最后 `Summary: N packages finished` |
 | `ls ~/ros2_ws/`（编译后） | 可见 `build/`、`install/`、`log/`、`src/` 四个目录 |
 | `source install/setup.bash` | 终端无输出（静默加载），但 `echo $COLCON_PREFIX_PATH` 可验证 |
-| `ros2 pkg list \| grep <包名>` | 列出刚编译的功能包名称 |
+| `ros2 pkg list | grep <包名>` | 列出刚编译的功能包名称 |
 
 ---
 
@@ -973,7 +997,7 @@ ros2 bag info exp02_chatter_only
 
 #### 整体流程
 
-```
+```text
 [1. 检查编译工具] ──► [2. 创建工作空间目录结构] ──► [3. 放入示例功能包到 src]
                                                             │
 [6. 清理与总结] ◄── [5. 理解 Underlay/Overlay 层级] ◄── [4. colcon build 编译]
@@ -986,6 +1010,7 @@ ros2 bag info exp02_chatter_only
 **知识点讲解**：
 
 **ROS2 编译工具链 —— colcon**
+
 - **是什么**：colcon（**col**lective **con**struction）是 ROS2 的统一编译命令行工具，它是对 CMake 和 Python setuptools 的封装层。colcon 不是一个"编译器"——它本身不编译代码，而是调用每个功能包声明的构建系统（ament_cmake 或 ament_python）去执行实际的编译动作。
 - **为什么需要统一的编译工具**：ROS2 功能包可以用 C++（ament_cmake）或 Python（ament_python）编写，也可能混合存在。如果每个包都需要手动 `cmake .. && make` 或 `python setup.py install`，管理工作量将随包数量线性增长。colcon 自动识别每个包的构建类型，批量执行编译并管理包间依赖顺序。
 - **怎么用**：在工作空间根目录下执行 `colcon build`。colcon 遍历 `src/` 下的所有功能包，按照拓扑排序（先编译被依赖的包，再编译依赖它们的包）依次构建。
@@ -1009,37 +1034,39 @@ sudo apt install python3-colcon-common-extensions -y
 **知识点讲解**：
 
 **ROS2 工作空间四层目录结构（知识点 1.3.1）**
+
 - **是什么**：一个标准的 ROS2 工作空间由四个目录组成：
-  - `src/`（source）：存放功能包的**源代码**。这是开发者唯一手动创建和编辑的目录。每个功能包是一个子目录（如 `src/my_package/`），包含 `package.xml` + 构建配置文件 + 源码文件。
-  - `build/`（build）：存放编译过程的**中间产物**（如 CMake 缓存、`.o` 目标文件、Python 的 `.egg-info`）。此目录由 `colcon build` 自动生成，开发者不应手动修改。
-  - `install/`（install）：存放编译后的**部署产物**（可执行文件、共享库、Python 包、环境脚本 `setup.bash`）。此目录是 ROS2 运行时实际使用的路径。`source install/setup.bash` 就是将此目录加入环境变量。
-  - `log/`（log）：存放每次编译的**日志文件**，便于排查编译错误。每次 `colcon build` 都会生成新的日志。
+- `src/`（source）：存放功能包的**源代码**。这是开发者唯一手动创建和编辑的目录。每个功能包是一个子目录（如 `src/my_package/`），包含 `package.xml` + 构建配置文件 + 源码文件。
+- `build/`（build）：存放编译过程的**中间产物**（如 CMake 缓存、`.o` 目标文件、Python 的 `.egg-info`）。此目录由 `colcon build` 自动生成，开发者不应手动修改。
+- `install/`（install）：存放编译后的**部署产物**（可执行文件、共享库、Python 包、环境脚本 `setup.bash`）。此目录是 ROS2 运行时实际使用的路径。`source install/setup.bash` 就是将此目录加入环境变量。
+- `log/`（log）：存放每次编译的**日志文件**，便于排查编译错误。每次 `colcon build` 都会生成新的日志。
 - **为什么设计成四层分离**：这种分离来自 CMake 的"out-of-source build"设计哲学——源码、编译中间件、部署产物三者隔离，使得你可以随时删除 `build/` 和 `install/` 来"清空"编译结果而不丢失源码。在 CI/CD 流水线中，这种分离也便于缓存 `build/` 实现增量编译。
 
 **操作**：
 
 ```bash
 # 在用户主目录下创建工作空间
-mkdir -p ~/ros2_ws/src
+mkdir -p ~/ros2_basic/src
 
 # 查看工作空间结构
-tree -L 2 ~/ros2_ws
+tree -L 2 ~/ros2_basic
 ```
 
 **预期输出**：
 
-```
+```text
 /home/user/ros2_ws/
 └── src
 ```
 
 ---
 
-#### 步骤 3：放入示例功能包到 src 目录（10 分钟）
+#### 步骤 3：放入示例功能包到 src 目录
 
 **知识点讲解**：
 
 **功能包 = 最小组织单元**
+
 - **是什么**：在 ROS2 中，代码不是随意放置的——它必须以"功能包"（Package）的形式组织。每个功能包是一个包含 `package.xml`（元信息清单）的独立目录。`colcon build` 只会编译 `src/` 下包含有效 `package.xml` 的子目录。
 - **为什么必须遵循此约束**：这保证了 ROS2 的生态系统具有统一的元信息检索机制。`ros2 pkg list`、`ros2 pkg xml` 等命令都依赖 `package.xml` 文件和 `ament_index` 来发现已安装的功能包。
 
@@ -1048,16 +1075,12 @@ tree -L 2 ~/ros2_ws
 **操作**：
 
 ```bash
-# 方式一：使用已有的示例功能包（如果课程资源中提供了）
-# 假设有一个 topic_python_pubsub 功能包可供复制
-# cp -r /path/to/topic_python_pubsub ~/ros2_ws/src/
-
-# 方式二：使用 ros2 pkg create 快速生成一个测试包（实验4将详细讲解）
-cd ~/ros2_ws
+# 方式一：使用 ros2 pkg create 快速生成一个测试包（实验4将详细讲解）
+cd ~/ros2_basic
 ros2 pkg create --build-type ament_python --node-name hello_node my_test_pkg
 
 # 查看 src 目录下的功能包
-ls ~/ros2_ws/src/
+ls ~/ros2_basic/src/
 # 预期: my_test_pkg/
 
 # 确认功能包包含 package.xml
@@ -1066,24 +1089,25 @@ cat ~/ros2_ws/src/my_test_pkg/package.xml | head -5
 
 ---
 
-#### 步骤 4：使用 colcon build 编译工作空间（25 分钟）
+#### 步骤 4：使用 colcon build 编译工作空间
 
 **知识点讲解**：
 
 **colcon build 编译流程（知识点 1.3.3）**
+
 - **是什么**：`colcon build` 在工作空间根目录下执行，它完成以下四个阶段：
-  1. **扫描（Discovery）**：遍历 `src/` 下所有包含 `package.xml` 的子目录，读取构建类型（`<build_type>ament_python</build_type>` 或 `<build_type>ament_cmake</build_type>`）。
-  2. **拓扑排序（Topological Order）**：分析各包的 `<build_depend>` 依赖关系，确定编译顺序——被依赖的包先编译。
-  3. **构建（Build）**：对每个包调用其对应的构建工具——ament_cmake 包执行 CMake 配置+编译，ament_python 包执行 `setup.py install`。
-  4. **安装（Install）**：将编译产物部署到 `install/` 目录，并生成 `install/setup.bash` 等环境脚本。
-- **为什么不是 `make` 或 `catkin_make`**：ROS1 的 `catkin_make` 实际上是在工作空间内统一调用一次 CMake，它要求所有包使用同一个 CMake 上下文。colcon 与之不同——它为每个包启动**独立的构建进程**，这意味着各包之间真正隔离、可独立增量编译。
+1. **扫描（Discovery）**：遍历 `src/` 下所有包含 `package.xml` 的子目录，读取构建类型（`<build_type>ament_python</build_type>` 或 `<build_type>ament_cmake</build_type>`）。
+2. **拓扑排序（Topological Order）**：分析各包的 `<build_depend>` 依赖关系，确定编译顺序——被依赖的包先编译。
+3. **构建（Build）**：对每个包调用其对应的构建工具——ament_cmake 包执行 CMake 配置+编译，ament_python 包执行 `setup.py install`。
+4. **安装（Install）**：将编译产物部署到 `install/` 目录，并生成 `install/setup.bash` 等环境脚本。
+- ****为什么不是 `make` 或 `catkin_make`****：ROS1 的 `catkin_make` 实际上是在工作空间内统一调用一次 CMake，它要求所有包使用同一个 CMake 上下文。colcon 与之不同——它为每个包启动**独立的构建进程**，这意味着各包之间真正隔离、可独立增量编译。
 - **怎么用**：常用选项包括 `--packages-select <包名>`（仅编译指定包，适合增量开发）、`--symlink-install`（Python 包使用符号链接安装，修改源码无需重新编译）、`--event-handlers console_direct+`（实时输出编译日志）。
 
 **操作**：
 
 ```bash
 # 进入工作空间根目录
-cd ~/ros2_ws
+cd ~/ros2_basic
 
 # 执行完整编译
 colcon build
@@ -1095,29 +1119,37 @@ colcon build --packages-select my_test_pkg
 colcon build --symlink-install
 ```
 
-**预期输出**（关键片段）：
+**预期输出（关键片段）**：
 
-```
 Starting >>> my_test_pkg
+
 Finished <<< my_test_pkg [2.15s]
 
 Summary: 1 package finished [2.34s]
-```
 
 **编译后目录结构验证**：
 
 ```bash
 # 查看完整的四层目录
+
 tree -L 1 ~/ros2_ws
+
 # 预期:
+
 # ~/ros2_ws/
+
 # ├── build/
+
 # ├── install/
+
 # ├── log/
+
 # └── src/
 
 # 查看 install 目录中的环境脚本
-ls ~/ros2_ws/install/
+
+ls ~/ros2_basic/install/
+
 # 预期: 包含 local_setup.bash, setup.bash, setup.sh, setup.zsh 等
 ```
 
@@ -1128,9 +1160,10 @@ ls ~/ros2_ws/install/
 **知识点讲解**：
 
 **Underlay 与 Overlay 层级叠加机制（知识点 1.3.2）**
+
 - **是什么**：ROS2 使用层叠式工作空间模型——多个工作空间的环境可以"叠加"在同一终端会话中。底部的工作空间称为 **Underlay**，上层的称为 **Overlay**。
-  - **Underlay**（底层）：系统级安装路径 `/opt/ros/humble/`，包含 ROS2 核心包（rclpy、std_msgs 等），通过 `source /opt/ros/humble/setup.bash` 加载。
-  - **Overlay**（上层）：用户自定义工作空间 `~/ros2_ws/install/`，可以包含自定义功能包，甚至可以覆盖 Underlay 中的同名包。通过 `source ~/ros2_ws/install/setup.bash` 加载。
+- **Underlay**（底层）：系统级安装路径 `/opt/ros/humble/`，包含 ROS2 核心包（rclpy、std_msgs 等），通过 `source /opt/ros/humble/setup.bash `加载。
+- **Overlay**（上层）：用户自定义工作空间` ~/ros2_basic/install/`，可以包含自定义功能包，甚至可以覆盖 Underlay 中的同名包。通过 `source ~/ros2_ws/install/setup.bash `加载。
 - **为什么需要层级设计**：这解决了"如何在系统核心库不变的情况下开发和测试自定义代码"的问题。Overlay 中的环境变量会"追加"而非"替换" Underlay 的路径，确保你既能使用系统提供的 ROS2 核心功能，又能开发和测试自己的功能包。当你在 Overlay 中开发一个与 Underlay 同名的包时，Overlay 版本优先被 ROS2 发现。
 - **加载顺序为什么重要**：必须先 source Underlay 再 source Overlay。如果顺序反了——先 source Overlay 再 source Underlay——Underlay 的 `PATH` 和 `PYTHONPATH` 会覆盖 Overlay 的对应路径，导致你的自定义包"消失"。
 
@@ -1177,12 +1210,11 @@ ros2 --help
 # 预期：仍然 command not found
 # 原因：Overlay 的 setup.bash 只"追加"路径，不提供系统 ROS2 核心可执行文件
 # 正确做法：必须先 source Underlay，再 source Overlay
-```
-
 **知识点延伸 —— `local_setup.bash` vs `setup.bash`**：
-- `setup.bash`：加载当前工作空间 + **递归加载其依赖的所有工作空间**（即包含 Underlay 的路径）
-- `local_setup.bash`：**仅**加载当前工作空间的环境，不递归加载依赖工作空间
-- 在开发中，你通常使用 `setup.bash`；在 Launch 文件中，ROS2 会自动处理环境的级联
+- `setup.bash`：加载当前工作空间 + 递归加载其依赖的所有工作空间（即包含 Underlay 的路径）
+- `local_setup.bash`：仅加载当前工作空间的环境，不递归加载依赖工作空间
+在开发中，你通常使用 setup.bash；在 Launch 文件中，ROS2 会自动处理环境的级联
+```
 
 ---
 
@@ -1191,18 +1223,22 @@ ros2 --help
 1. 可选：保留 `~/ros2_ws` 供后续实验使用
 2. 可选：清理实验工作空间 `rm -rf ~/ros2_ws/build ~/ros2_ws/install ~/ros2_ws/log`（保留 src）
 
----
-
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 环境加载顺序 | 必须先 `source /opt/ros/humble/setup.bash`（Underlay），再 `source ~/ros2_ws/install/setup.bash`（Overlay）。顺序反了会导致自定义包不可见 |
+
 | ⚠️ 编译位置 | `colcon build` 必须在工作空间**根目录**（`~/ros2_ws/`）执行，不能在 `src/` 内部执行 |
+
 | ⚠️ 磁盘空间 | 每次 `colcon build` 会在 `build/` 和 `install/` 目录下生成大量文件。如果磁盘空间紧张，可以定期清理 `build/` 和 `install/` 目录（不影响 src 源码） |
+
 | ⚠️ 增量编译 | 修改了某个包的源码后，只需 `colcon build --packages-select <包名>` 即可增量编译，无需全量重新编译 |
+
 | ⚠️ Python 包修改 | 如果使用了 `--symlink-install` 编译 Python 包，修改 `.py` 源码后无需重新编译（符号链接直接指向源码）。但修改 `setup.py` 或 `package.xml` 后仍需重新编译 |
+
 | ⚠️ 多个工作空间 | 如果同时 source 了多个 Overlay 工作空间，包名冲突时**最后 source 的工作空间**优先级最高 |
+
 | ⚠️ 安全 | 本实验为纯软件操作，不涉及硬件操作风险 |
 
 ### 八、实验总结
@@ -1210,6 +1246,7 @@ ros2 --help
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 独立创建标准的 ROS2 工作空间目录结构（`mkdir -p ~/ros2_ws/src`）
 - ✅ 使用 `colcon build` 编译整个工作空间或指定功能包
 - ✅ 理解并验证 Underlay（/opt/ros/humble）与 Overlay（~/ros2_ws）的层级叠加机制
@@ -1218,7 +1255,7 @@ ros2 --help
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 工作空间管理 | 掌握 ROS2 工作空间的创建、编译、清理全生命周期操作 |
 | 环境管理 | 理解 setup.bash 的叠加机制，能够正确配置开发环境 |
 | 编译调试 | 能够使用 `--packages-select` 增量编译和 `--symlink-install` 提高开发效率 |
@@ -1227,7 +1264,7 @@ ros2 --help
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `colcon build` 报 "No packages found" | src/ 下没有包含 package.xml 的功能包 | 确认 `~/ros2_ws/src/` 下存在功能包子目录且包含 package.xml |
 | `ros2 pkg list` 找不到自定义包 | 未 source Overlay 的 setup.bash，或 source 顺序错误 | 先 source Underlay，再 source Overlay |
 | `colcon build` 报 CMake 错误 | 缺少编译依赖（如某些 dev 库） | 根据错误提示安装对应的 `ros-humble-*-dev` 包 |
@@ -1248,10 +1285,13 @@ ros2 --help
 #### 9.2 思考题
 
 **思考题 1**：
+
 假设你在 `~/ros2_ws_a` 和 `~/ros2_ws_b` 两个工作空间中分别开发了同名但不同版本的功能包 `my_sensor_driver`。如果你依次执行 `source ~/ros2_ws_a/install/setup.bash` 和 `source ~/ros2_ws_b/install/setup.bash`，当你运行 `ros2 run my_sensor_driver sensor_node` 时，实际使用的是哪个版本的代码？为什么？如何确认？
 
 **思考题 2**：
+
 在团队协作开发中，多名开发者各自有独立的工作空间。请设计一套基于 Overlay 的工作流程，使得：
+
 - 每个开发者可以在自己的 Overlay 中修改和测试代码
 - 底层共享的 Underlay（如 `~/team_common_ws`）包含团队公共库
 - 开发者 A 的修改不会影响开发者 B 的环境
@@ -1259,23 +1299,21 @@ ros2 --help
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否按要求完成工作空间创建、编译、环境加载的全流程 |
 | 截图与记录 | 15% | 截图是否清晰、完整，标注是否准确 |
 | 原理分析 | 25% | 对 Underlay/Overlay 层级关系的理解深度 |
 | 思考题 1 | 15% | 对工作空间加载顺序与优先级的理解 |
 | 思考题 2 | 15% | 多工作空间协作方案的设计合理性 |
 
----
-
-## 实验4：ROS2功能包（2h）
+## 实验4：ROS2功能包
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 1.4.1 | 功能包结构（package.xml + CMakeLists.txt/setup.py） | 概念 | 第1章 ROS2基础与环境搭建 → 1.4 ROS2功能包管理 |
 | 1.4.2 | ros2 pkg create 创建功能包流程 | 流程 | 第1章 ROS2基础与环境搭建 → 1.4 ROS2功能包管理 |
 | 1.4.3 | build_depend 与 exec_depend 依赖声明原理 | 原理 | 第1章 ROS2基础与环境搭建 → 1.4 ROS2功能包管理 |
@@ -1284,15 +1322,15 @@ ros2 --help
 
 通过本实验的学习，学生能够：
 
-1. **原理理解**：阐述 package.xml 中各字段的含义（`<name>`、`<version>`、`<build_depend>`、`<exec_depend>`），以及 build_depend（编译时需要）与 exec_depend（运行时需要）的区别
-2. **流程掌握**：正确执行 `ros2 pkg create --build-type ament_python --node-name <节点名> <包名>` 创建 Python 功能包，并理解自动生成的文件结构
-3. **独立完成**：独立创建一个包含两个节点的 Python 功能包，正确配置 `setup.py`（或 `setup.cfg`）中的 `entry_points` 注册，并成功编译运行
+1. **原理理解**：阐述** package.xml **中各字段的含义（`name`、`version`、build_depend、`exec_depend`），以及 build_depend（编译时需要）与 exec_depend（运行时需要）的区别
+2. **流程掌握**：正确执行 `ros2 pkg create --build-type ament_python --node-name <节点名> <包名>`创建 Python 功能包，并理解自动生成的文件结构
+3. **独立完成**：独立创建一个包含两个节点的 Python 功能包，正确配置 `setup.py`中的` entry_points `注册，并成功编译运行
 4. **迁移应用**：在后续开发中，能够根据实际需求正确选择构建类型（ament_python vs ament_cmake），并正确声明依赖关系
 
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
+|---|---|
 | 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
@@ -1305,16 +1343,18 @@ ros2 --help
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐（容易） |
 | 实验类型 | 验证性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握 `ros2 pkg create` 命令的构建类型选择（`ament_python` vs `ament_cmake`）
 - 理解 package.xml 中 `<build_depend>` 与 `<exec_depend>` 的区别
 
 **难点**：
+
 - 正确配置 setup.py 中的 `entry_points` 注册可执行节点
 - 理解 `build_depend`（仅编译时需要，如 message_generation）与 `exec_depend`（运行时需要，如依赖的运行时库）在不同场景下的使用
 
@@ -1332,7 +1372,7 @@ ros2 --help
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `ros2 pkg create --build-type ament_python --node-name hello_node my_hello` | Creating package... 成功生成目录结构 |
 | `tree ~/ros2_ws/src/my_hello/` | 显示 package.xml、setup.py、setup.cfg、my_hello/\_\_init\_\_.py、my_hello/hello_node.py |
 | `colcon build --packages-select my_hello` | Summary: 1 package finished |
@@ -1345,7 +1385,7 @@ ros2 --help
 
 #### 整体流程
 
-```
+```text
 [1. 使用 ros2 pkg create 创建功能包] ──► [2. 分析 package.xml 字段含义]
               │                                              │
               ▼                                              ▼
@@ -1357,17 +1397,20 @@ ros2 --help
 
 ---
 
-#### 步骤 1：使用 ros2 pkg create 创建功能包（15 分钟）
+#### 步骤 1：使用 ros2 pkg create 创建功能包
 
-**知识点讲解**：
+**知识点讲**
 
 **ros2 pkg create —— 功能包脚手架工具（知识点 1.4.2）**
+
 - **是什么**：`ros2 pkg create` 是 ROS2 提供的功能包**脚手架生成工具**。它不仅仅是创建一个目录——它按照 ROS2 的规范，自动生成功能包必需的配置文件（package.xml、setup.py/setup.cfg 或 CMakeLists.txt）和源码骨架，确保你创建的功能包从一开始就是"合规范"的。
 - **为什么需要脚手架**：手动创建功能包很容易"缺文件"——忘记 package.xml 中的某个必填字段、setup.py 配置不正确导致节点无法注册、文件权限错误导致无法执行。脚手架工具确保每一次创建都是标准化、零错误的，降低了新手的学习曲线。
-- **怎么用**：
-  - `--build-type`：指定构建类型。`ament_python` 用于纯 Python 包，`ament_cmake` 用于 C++ 包（或 Python+C++ 混合包）。
-  - `--node-name`：自动生成一个带有基本 ROS2 Node 代码的 `.py` 文件。
-  - `--dependencies`：自动在 package.xml 中添加初始依赖项。
+
+**- 怎么用**：
+
+- `--build-type`：指定构建类型。`ament_python` 用于纯 Python 包，`ament_cmake` 用于 C++ 包（或 Python+C++ 混合包）。
+- `--node-name`：自动生成一个带有基本 ROS2 Node 代码的 `.py` 文件。
+- `--dependencies`：自动在 package.xml 中添加初始依赖项。
 
 **操作**：
 
@@ -1387,17 +1430,23 @@ tree ~/ros2_ws/src/my_hello/
 
 **预期目录结构**：
 
-```
 my_hello/
+
 ├── package.xml          # 功能包元信息清单（必填）
+
 ├── setup.cfg            # Python 安装配置
+
 ├── setup.py             # Python 构建与安装脚本
+
 ├── my_hello/            # Python 包目录（与功能包同名）
+
 │   ├── __init__.py      # Python 包标识文件
+
 │   └── hello_node.py    # 自动生成的节点源文件
+
 └── resource/            # 资源文件目录（如 package 标识文件）
+
     └── my_hello
-```
 
 ---
 
@@ -1406,19 +1455,21 @@ my_hello/
 **知识点讲解**：
 
 **package.xml —— 功能包的"身份证"（知识点 1.4.1）**
+
 - **是什么**：`package.xml` 是一个遵循 REP-149 规范的 XML 格式文件，描述功能包的**元信息**。它是 colcon 发现功能包、ROS2 索引系统（ament_index）注册包的依据，也是依赖解析的入口。
 - **为什么每个包都需要它**：没有 `package.xml`，colcon 不会识别该目录为功能包，`ros2 pkg list` 也找不到它。它相当于 Python 的 `setup.py` + `requirements.txt` 的合体——既描述包的身份信息，又声明编译和运行时的依赖关系。
-- **关键字段解析**：
-  - `<name>`：功能包名称，全局唯一，建议用小写字母和下划线
-  - `<version>`：版本号，遵循 SemVer（主.次.修订）
-  - `<description>`：功能包的简短描述
-  - `<maintainer>`：维护者信息（姓名+邮箱）
-  - `<license>`：开源许可证声明
-  - `<build_depend>`：**编译依赖**——编译过程中需要的包（如 message_generation 用于生成自定义消息代码）
-  - `<exec_depend>`：**运行依赖**——运行时需要的包（如 rclpy，因为节点运行时需要 import rclpy）
-  - `<test_depend>`：测试依赖——仅运行测试时需要的包
 
-**build_depend vs exec_depend 的区别（知识点 1.4.3）**：
+**- 关键字段解析**：
+
+- `<name>`：功能包名称，全局唯一，建议用小写字母和下划线
+- `<version>`：版本号，遵循 SemVer（主.次.修订）
+- `<description>`：功能包的简短描述
+- `<maintainer>`：维护者信息（姓名+邮箱）
+- `<license>`：开源许可证声明
+- - <build_depend>：**编译依赖**——编译过程中需要的包（如 message_generation 用于生成自定义消息代码）
+- <exec_depend>：**运行依赖**——运行时需要的包（如 rclpy，因为节点运行时需要 import rclpy）
+- `<test_depend>`：测试依赖——仅运行测试时需要的包
+- **build_depend vs exec_depend 的区别（知识点 1.4.3）**：
 - **build_depend**（编译时依赖）：仅在 `colcon build` 编译阶段需要。例如，当你使用自定义消息（.msg）或服务（.srv）时，需要 `rosidl_default_generators` 在编译时生成对应的 Python/C++ 消息类代码。编译完成后，生成的代码已包含在 `install/` 目录中。
 - **exec_depend**（运行时依赖）：程序运行时需要。例如，你的节点 `import rclpy`，则 rclpy 必须作为 exec_depend 声明。`exec_depend` 通常是 `build_depend` 加上运行时额外需要的库。
 - **经验法则**：如果一个包既在编译时被需要，又在运行时被需要，需要在 package.xml 中**同时声明** `<build_depend>` 和 `<exec_depend>`。例如 rclpy——编译时 colcon 需要知道 rclpy 的存在来解析 Python import，运行时节点代码也需要 import rclpy。
@@ -1434,31 +1485,49 @@ cat ~/ros2_ws/src/my_hello/package.xml
 
 ```xml
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" 
+
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd"
+```
+
   schematypens="http://www.w3.org/2001/XMLSchema"?>
+
+```xml
 <package format="3">
+
   <name>my_hello</name>
+
   <version>0.0.0</version>
+
   <description>功能包描述</description>
+
   <maintainer email="user@example.com">user</maintainer>
+
   <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
 
   <build_depend>rclpy</build_depend>
+
   <build_depend>std_msgs</build_depend>
 
   <exec_depend>rclpy</exec_depend>
+
   <exec_depend>std_msgs</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
+
   <test_depend>ament_flake8</test_depend>
+
   <test_depend>ament_pep257</test_depend>
+
   <test_depend>python3-pytest</test_depend>
 
   <export>
+
     <build_type>ament_python</build_type>
+
   </export>
+
 </package>
 ```
 
@@ -1466,6 +1535,7 @@ cat ~/ros2_ws/src/my_hello/package.xml
 
 ```xml
 <description>一个简单的 ROS2 功能包示例，包含 hello_node 节点</description>
+
 <maintainer email="student@example.com">你的姓名</maintainer>
 ```
 
@@ -1476,12 +1546,13 @@ cat ~/ros2_ws/src/my_hello/package.xml
 **知识点讲解**：
 
 **setup.py 中的 entry_points —— 节点的"注册表"**
+
 - **是什么**：`setup.py` 是 Python 的构建配置文件（遵循 setuptools 规范）。在 ROS2 ament_python 包中，它的关键作用是 `entry_points` 字段——将 Python 函数"注册"为 ROS2 可执行的节点。
 - **为什么需要 entry_points**：当你执行 `ros2 run my_hello hello_node` 时，ROS2 不是直接运行 `python hello_node.py`，而是通过查询 `install/` 目录下的注册信息找到 `hello_node` 对应的入口函数（如 `my_hello.hello_node:main`），然后调用它。entry_points 就是这个注册信息的来源。
 - **注册格式**：`'<节点名> = <Python包>.<模块>:<函数名>'`
-  - `<节点名>`：终端用户使用 `ros2 run` 时的可执行名称
-  - `<Python包>.<模块>`：Python 模块的路径（不含 `.py` 后缀）
-  - `<函数名>`：模块中被调用的入口函数（通常叫 `main`）
+- `<节点名>`：终端用户使用 `ros2 run` 时的可执行名称
+- `<Python包>.<模块>`：Python 模块的路径（不含 `.py` 后缀）
+- `<函数名>`：模块中被调用的入口函数（通常叫 `main`）
 
 **操作**：
 
@@ -1492,47 +1563,66 @@ cat ~/ros2_ws/src/my_hello/setup.py
 
 **预期内容**：
 
-```python
 from setuptools import setup
 
 package_name = 'my_hello'
 
-setup(
-    name=package_name,
+setup(name=package_name,
+
     version='0.0.0',
+    
     packages=[package_name],
+    
     data_files=[
+    
         ('share/ament_index/resource_index/packages',
+    
             ['resource/' + package_name]),
+    
         ('share/' + package_name, ['package.xml']),
+    
     ],
+    
     install_requires=['setuptools'],
+    
     zip_safe=True,
+    
     maintainer='user',
+    
     maintainer_email='user@example.com',
+    
     description='功能包描述',
+    
     license='Apache License 2.0',
+    
     tests_require=['pytest'],
+    
     entry_points={
+    
         'console_scripts': [
+    
             'hello_node = my_hello.hello_node:main',
+    
         ],
+    
     },
+
 )
-```
 
 **关键字段说明**：
+
 - `packages=[package_name]`：声明需要安装的 Python 包目录
 - `data_files`：将资源文件安装到 ROS2 的 ament_index 索引目录
-- `entry_points.console_scripts`：**最重要的字段**——注册可执行节点。`'hello_node = my_hello.hello_node:main'` 表示：创建一个名为 `hello_node` 的可执行命令，它实际调用 `my_hello.hello_node` 模块中的 `main()` 函数
+- - `entry_points.console_scripts`：**最重要的字段**——注册可执行节点。`'hello_node = my_hello.hello_node:main'` 表示：创建一个名为 `hello_node` 的可执行命令，它实际调用 `my_hello.hello_node` 模块中的 `main()` 函数
 
 ---
 
-#### 步骤 4：编译并验证功能包（15 分钟）
+#### 步骤 4：编译并验证功能包
 
 **知识点讲解**：
 
 **从源码到可运行的节点 —— 完整的编译链路**
+
 - 创建功能包（`ros2 pkg create`）→ 编写源码（`.py` 文件）→ 配置 entry_points（`setup.py`）→ 编译（`colcon build`）→ 加载环境（`source install/setup.bash`）→ 运行节点（`ros2 run`）。整个链路中的每一步都有其不可替代的作用，跳过任何一步都会导致"节点找不到"或"包不可见"。
 
 **操作**：
@@ -1558,33 +1648,42 @@ ros2 pkg xml my_hello
 ros2 run my_hello hello_node
 ```
 
-**预期输出**（hello_node 启动）：
+**预期输出（hello_node 启动）**：
 
-```
 [INFO] [......] [hello_node]: Hello from ROS2!
-```
 
 观察 `hello_node.py` 的源码来理解这段日志的来源：
 
-```python
+```bash
 # ~/ros2_ws/src/my_hello/my_hello/hello_node.py
+```
+
 import rclpy
+
 from rclpy.node import Node
 
 class HelloNode(Node):
+
     def __init__(self):
+    
         super().__init__('hello_node')
+    
         self.get_logger().info('Hello from ROS2!')
 
 def main(args=None):
+
     rclpy.init(args=args)
+    
     node = HelloNode()
+    
     rclpy.spin(node)
+    
     node.destroy_node()
+    
     rclpy.shutdown()
-```
 
 **关键代码解读**：
+
 - `class HelloNode(Node)`：继承 `rclpy.node.Node`，创建自定义节点类
 - `super().__init__('hello_node')`：调用父类构造函数，传入节点名称
 - `rclpy.spin(node)`：进入事件循环，保持节点运行
@@ -1597,6 +1696,7 @@ def main(args=None):
 **知识点讲解**：
 
 **一个功能包可以包含多个节点**
+
 - **是什么**：一个功能包内可以注册多个可执行节点——只需在 `setup.py` 的 `entry_points` 中添加多条声明。
 - **为什么需要多节点功能包**：在 ROS2 开发中，发布者（Publisher）和订阅者（Subscriber）通常成对出现，放在同一个功能包里更便于管理和发布。例如，`topic_python_pubsub` 同时包含 publisher 和 subscriber 两个节点。
 
@@ -1632,20 +1732,13 @@ EOF
 # 编辑 setup.py，添加第二个节点的 entry_point
 # 在 'console_scripts' 列表中追加一行：
 # 'goodbye_node = my_hello.goodbye_node:main',
-```
-
-修改 `setup.py` 中的 `entry_points` 部分：
-
-```python
+修改 setup.py 中的 entry_points 部分：
 entry_points={
     'console_scripts': [
         'hello_node = my_hello.hello_node:main',
         'goodbye_node = my_hello.goodbye_node:main',  # 新增
     ],
 },
-```
-
-```bash
 # 回到工作空间根目录，重新编译
 cd ~/ros2_ws
 colcon build --packages-select my_hello
@@ -1663,12 +1756,10 @@ ros2 run my_hello goodbye_node
 1. 保留 `~/ros2_ws/src/my_hello/` 功能包供后续实验参考
 2. 可选：使用 `ros2 pkg list` 查看系统中所有已安装的功能包，观察命名规律
 
----
-
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 包名规范 | 功能包名称应使用小写字母+下划线，不能包含大写字母或连字符。包名在 ROS2 生态中应尽量全局唯一 |
 | ⚠️ 构建类型 | Python 包使用 `ament_python`，C++ 包使用 `ament_cmake`。`ament_cmake` 也可用于 Python 包，但 `ament_python` 更简洁——选择时需明确 |
 | ⚠️ 依赖声明 | 代码中 `import` 了某个库，就必须在 package.xml 中声明对应的 `<exec_depend>`，否则运行时可能找不到模块 |
@@ -1682,6 +1773,7 @@ ros2 run my_hello goodbye_node
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 使用 `ros2 pkg create` 创建标准的 Python 功能包骨架
 - ✅ 解释 package.xml 中各字段的含义和 build_depend / exec_depend 的区别
 - ✅ 在 setup.py 的 entry_points 中正确注册节点入口
@@ -1690,7 +1782,7 @@ ros2 run my_hello goodbye_node
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 包管理 | 掌握功能包从创建到编译运行的全流程 |
 | 依赖理解 | 区分编译依赖（build_depend）与运行依赖（exec_depend）并正确声明 |
 | 节点注册 | 理解 entry_points 机制，能够将 Python 模块注册为 ROS2 可执行节点 |
@@ -1699,7 +1791,7 @@ ros2 run my_hello goodbye_node
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `ros2 pkg create` 报 command not found | ros-humble-ros-base 未完整安装 | `sudo apt install ros-humble-ros-base` |
 | `ros2 run my_hello hello_node` 报 "No executable found" | entry_points 配置错误或未重新编译 | 检查 setup.py 中 `console_scripts` 的格式，重新执行 `colcon build` 并 source 环境 |
 | `colcon build` 报 "package.xml not found" | 在非功能包目录中执行了 colcon build | 确认 `~/ros2_ws/src/` 下的每个子目录都是合法的功能包 |
@@ -1714,81 +1806,78 @@ ros2 run my_hello goodbye_node
 
 1. **实验基本信息**：实验名称、实验日期、实验者姓名、实验平台信息
 2. **实验过程记录**：截取步骤 1（tree 目录结构）、步骤 2（package.xml 内容）、步骤 4（运行节点输出）的关键截图
-3. **原理分析**（不少于 200 字）：用自己的语言解释以下问题：① package.xml 中 `<build_depend>` 与 `<exec_depend>` 的区别，并各举一个实际例子；② `entry_points` 机制如何让 `ros2 run` 找到正确的 Python 函数
+3. **原理分析**（不少于 200 字）：用自己的语言解释以下问题：① package.xml 中 <build_depend>`与 `<exec_depend>` 的区别，并各举一个实际例子；② `entry_points` 机制如何让 `ros2 run` 找到正确的 Python 函数
 4. **思考题**（见下方）
 
 #### 9.2 思考题
 
 **思考题 1**：
+
 假设你开发了一个名为 `sensor_driver` 的功能包，它使用了自定义消息接口（`.msg` 文件定义在 `custom_interfaces` 包中）。请问在 `sensor_driver` 的 `package.xml` 中，应该如何声明对 `custom_interfaces` 的依赖？是 `<build_depend>`、`<exec_depend>`，还是两者都需要？请说明理由。
 
 **思考题 2**：
+
 如果 `setup.py` 中的 `entry_points` 配置正确，但 `ros2 run my_hello hello_node` 仍然提示 "No executable found"。请列出至少 3 种可能导致该问题的原因及其排查方法。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否完成功能包创建、配置修改、编译、运行的全流程 |
 | 截图与记录 | 15% | 截图清晰完整，标注准确 |
 | 原理分析 | 25% | 对依赖类型和 entry_points 机制的理解深度 |
 | 思考题 1 | 15% | 对 build_depend/exec_depend 的区分能力 |
 | 思考题 2 | 15% | 对 ROS2 运行机制的综合排查能力 |
 
----
-
-## 实验5：ROS2节点（2h）
+## 实验5：ROS2节点
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 2.1.1 | ROS2 节点概念（独立进程 + 通信单元） | 概念 | 第2章 ROS2核心通信机制 → 2.1 ROS2节点编程 |
 | 2.1.2 | 节点生命周期（构造-配置-激活-停用-清理） | 原理 | 第2章 ROS2核心通信机制 → 2.1 ROS2节点编程 |
-| 2.1.3 | 继承 rclpy.node.Node 创建自定义节点流程 | 流程 | 第2章 ROS2核心通信机制 → 2.1 ROS2节点编程 |
+| 2.1.3 | 继承 rclpy.node.Node 创建传感器节点流程 | 流程 | 第2章 ROS2核心通信机制 → 2.1 ROS2节点编程 |
 
 ### 二、实验目标
 
 通过本实验的学习，学生能够：
 
-1. **原理理解**：阐述 ROS2 节点的四阶段生命周期——构造函数(节点配置name+参数声明) → spin(进入事件循环等待回调) → destroy_node(释放定时器/发布器/订阅器等资源) → shutdown(进程退出)——并说明每个阶段的核心操作与不可颠倒的调用顺序
-2. **流程掌握**：正确编写继承 `rclpy.node.Node` 的 HelloWorld 发布者节点(`create_publisher` → `create_timer` → 回调中 `publish` 消息编号递增)和订阅者节点(`create_subscription` → 回调中打印接收到的消息内容)，并使用 `rclpy.init()→spin()→destroy_node()→shutdown()` 标准四段式骨架
-3. **独立完成**：独立创建包含发布者和订阅者两个节点的功能包，配置 `entry_points` 注册，编译并同时在两个终端运行，观察消息从 Publisher 到 Subscriber 的完整流转
-4. **迁移应用**：能够对比发布者(主动推送)与订阅者(被动回调)的代码结构差异，理解单进程多节点与 Executor 调度机制，为后续话题通信和服务通信实验打下基础
+1. **原理理解**：阐述 ROS2 节点的本质——作为一个独立进程，通过继承 `rclpy.node.Node` 获得与 ROS2 图（Graph）通信的能力，并说明节点生命周期状态转换（Constructor → Spin → Destroy）的作用和顺序
+2. **流程掌握**：正确编写继承 `Node` 的自定义节点类，在构造函数中初始化传感器硬件（模拟）、创建 Publisher/Subscriber/Service、设置定时器，并通过 `rclpy.spin()` 驱动事件循环
+3. **独立完成**：独立创建一个 `GasSensorNode` 类（模拟 MQ5 气体传感器），包含 ADC 采样（模拟）、数据发布和定时回调的完整功能
+4. **迁移应用**：能够将同样的节点封装模式应用于其他传感器（MFRC522 读卡器、指纹模块），实现传感器 → ROS2 Node 的统一抽象
 
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
+|---|---|
 | 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
 | 核心依赖 | `ros-humble-ros-base`、`python3-colcon-common-extensions`、`rclpy` |
 | 开发语言 | Python 3.10 |
-| 编辑器 | VS Code / Vim / Nano（任选） |
-| 参考源码 | `source-codes/exp02/`（节点生命周期与参数服务示例，有资源可复用） |
-
-> 说明：本实验为 ROS2 节点编程入门实验，以 HelloWorld 发布者/订阅者为核心案例，聚焦节点生命周期和编程骨架。传感器节点封装的实际案例将在实验6~8（话题/服务/动作通信）中深入学习。`source-codes/exp02/` 目录包含 `node_lifecycle` 包和 `param_demo` 包，可作为本实验的扩展参考。
+| 传感器 | MQ5 气体传感器（ADC 模拟量采集） |
 
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
-- 掌握 `rclpy.init()→spin()→destroy_node()→shutdown()` 标准四段式编程骨架及其调用顺序
-- 掌握发布者节点的三步骤：`create_publisher` → `create_timer` → 回调中 `publish`
-- 掌握订阅者节点的两步骤：`create_subscription` → 回调中处理消息
+
+- 掌握 `class MyNode(rclpy.node.Node)` 继承模式，理解构造函数中三步骤：初始化硬件 → 创建通信接口 → 设置定时回调
+- 理解 `rclpy.spin()` 的事件循环机制——为什么节点需要 spin
 
 **难点**：
-- 理解发布者(主动推送/驱动型)与订阅者(被动回调/事件驱动)在代码结构上的本质差异
-- 理解 `rclpy.spin()` 的事件循环机制——为什么没有 spin 定时器和订阅回调永远不会被触发
-- 理解单进程多节点与 MultiThreadedExecutor 的调度模型
+
+- 正确管理节点生命周期：构造函数中申请的资源（串口、SPI、文件句柄）必须在 `destroy_node()` 或析构函数中释放
+- 理解"一个硬件传感器 = 一个 ROS2 Node"的设计原则及其工程意义
 
 ### 五、实验现象
 
@@ -1796,23 +1885,22 @@ ros2 run my_hello goodbye_node
 
 完成本实验后，你应能观察到以下现象：
 
-1. 启动 `hello_publisher` 节点后，终端每隔 0.5 秒输出 `[INFO] [...] 发布: Hello ROS2 #1`、`Hello ROS2 #2`...消息编号递增
-2. 在另一终端启动 `hello_subscriber` 节点后，终端同步输出 `[INFO] [...] 收到: Hello ROS2 #N`，消息编号与发布者完全一致
-3. `ros2 node list` 同时显示 `/hello_publisher` 和 `/hello_subscriber` 两个节点
-4. `ros2 topic info /hello_topic` 显示 Type: `std_msgs/msg/String`，Publisher count: 1，Subscription count: 1
-5. `ros2 topic echo /hello_topic` 作为第三方观察者同样能收到 `Hello ROS2 #N`，体现话题一对多特性
-6. 按 `Ctrl+C` 终止 Publisher，Subscriber 终端停止输出（静默等待，不会报错）；重新启动 Publisher，Subscriber 自动恢复接收
+1. 启动 `GasSensorNode` 后，`ros2 node list` 能够看到 `/gas_sensor_node` 节点
+2. `ros2 topic list` 出现 `/gas_sensor` 话题，类型为 `std_msgs/msg/Float32`
+3. `ros2 topic echo /gas_sensor` 持续输出模拟的气体浓度值（ppm），数据周期性更新（如每秒 1 次）
+4. `ros2 node info /gas_sensor_node` 显示该节点的 Publisher、Subscriber、Service 等拓扑信息
+5. 按 `Ctrl+C` 终止节点后，观察 `destroy_node()` 中的清理日志输出
 
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
-| `ros2 run hello_pubsub hello_publisher` | 每0.5秒输出 `[hello_publisher]: 发布: Hello ROS2 #1`、`#2`... |
-| `ros2 run hello_pubsub hello_subscriber`（另一终端） | 每0.5秒输出 `[hello_subscriber]: 收到: Hello ROS2 #1`、`#2`... |
-| `ros2 node list` | `/hello_publisher`、`/hello_subscriber` |
-| `ros2 topic info /hello_topic` | Type: `std_msgs/msg/String`, Publishers: 1, Subscribers: 1 |
-| `ros2 topic echo /hello_topic`（第三方） | `data: 'Hello ROS2 #15'`...（一对多验证） |
-| `Ctrl+C` 终止 Publisher | Subscriber 终端静默等待；重启 Publisher 后自动恢复 |
+|---|---|
+| `ros2 run sensor_nodes gas_sensor` | 节点启动，日志显示 "GasSensorNode 已启动，MQ5 初始化完成" |
+| `ros2 node list`（另一终端） | `/gas_sensor_node` |
+| `ros2 topic list` | `/gas_sensor`、`/parameter_events`、`/rosout` |
+| `ros2 topic info /gas_sensor` | Type: `std_msgs/msg/Float32`，Publisher count: 1 |
+| `ros2 topic echo /gas_sensor` | `data: 235.7`、`data: 241.2`、...（模拟浓度值不断变化） |
+| `Ctrl+C` 终止节点 | 日志输出 "GasSensorNode 已安全关闭，资源已释放" |
 
 ---
 
@@ -1820,22 +1908,23 @@ ros2 run my_hello goodbye_node
 
 #### 整体流程
 
-```
-[1. 创建功能包] ──► [2. 四段式骨架与生命周期] ──► [3. 编写HelloWorld发布者]
-                                                         │
-[6. 对比分析] ◄── [5. 编译运行验证] ◄── [4. 编写HelloWorld订阅者]
-      │
-      ▼
-[7. 单进程多节点与Executor（进阶）]
+```mermaid
+graph LR
+    A[步骤1：创建功能包] --> B[步骤2：编写节点基础骨架]
+    B --> C[步骤3：添加模拟传感器逻辑]
+    C --> D[步骤4：添加定时器与数据发布]
+    D --> E[步骤5：生命周期管理]
+    E --> F[步骤6：多传感器节点对比]
+    F --> G[步骤7：编译运行验证]
 ```
 
 ---
 
-#### 步骤 1：创建 hello_pubsub 功能包（5 分钟）
+#### 步骤 1：创建 sensor_nodes 功能包（5 分钟）
 
 **知识点讲解**：
 
-**功能包命名**：本实验创建一个名为 `hello_pubsub` 的功能包，包含一对发布者/订阅者节点。发布者和订阅者通常成对放在同一功能包内，便于统一管理和编译。
+**功能包命名策略**：在本实验中，我们创建一个名为 `sensor_nodes` 的功能包，它将包含三种传感器的节点实现（MQ5 气体传感器、MFRC522 读卡器、指纹传感器）。将相关节点放在同一功能包内，便于共享工具函数和统一维护。
 
 **操作**：
 
@@ -1843,520 +1932,620 @@ ros2 run my_hello goodbye_node
 # 进入工作空间的 src 目录
 cd ~/ros2_ws/src
 
-# 创建 hello_pubsub 功能包
+# 创建 sensor_nodes 功能包
 ros2 pkg create --build-type ament_python \
     --dependencies rclpy std_msgs \
-    hello_pubsub
+    sensor_nodes
 
 # 查看生成的目录结构
-tree ~/ros2_ws/src/hello_pubsub/
+tree ~/ros2_ws/src/sensor_nodes/
 ```
 
 ---
 
-#### 步骤 2：理解节点四段式骨架与生命周期（15 分钟）
+#### 步骤 2：编写 ROS2 Node 基础骨架（15 分钟）
 
 **知识点讲解**：
 
-**ROS2 节点编程的四段式标准骨架（知识点 2.1.2）**
+**继承 rclpy.node.Node —— 节点的"入场券"（知识点 2.1.1）**
 
-- **是什么**：每个 ROS2 Python 节点的 `main()` 函数都遵循一个固定的四段式编程骨架：
+- **是什么**：`rclpy.node.Node` 是 ROS2 Python 客户端库提供的基类。任何一个 Python 类要成为 ROS2 节点，必须直接或间接继承自 `Node`。`Node` 基类在构造时会向 ROS2 底层（rcl + rmw）注册节点信息，使该节点出现在 ROS2 图中。
+- **为什么必须继承**：不是所有 Python 程序都能被 `ros2 node list` 看到——只有继承了 `Node` 并调用了 `rclpy.init()` 和 `rclpy.spin()` 的进程，才被 ROS2 图视为"参与者"。这就是 ROS2 的"入场券"机制——你没有继承 Node，就不在图（Graph）中。
+- **怎么用**：`class MyNode(Node)`，在构造函数中调用 `super().__init__('node_name')`，节点名称全局唯一（ROS2 会自动重命名冲突节点，如 `node_name_1`）。
 
-  ```
-  rclpy.init(args=args)         ← 阶段1: 初始化 ROS2 客户端库
-  node = MyNode()               ← 阶段2: 构造节点实例（注册到ROS2图）
-  rclpy.spin(node)              ← 阶段3: 进入事件循环（等待回调触发）
-  node.destroy_node()           ← 阶段4: 销毁节点（释放通信资源）
-  rclpy.shutdown()              ← 阶段4: 关闭ROS2客户端库
-  ```
+**操作**：
 
-- **为什么必须是这个顺序**：
-  1. `init` 必须先于一切——初始化 rclpy 全局上下文，解析命令行参数，加载 DDS 中间件
-  2. 构造函数中调用 `super().__init__('node_name')` 向 ROS2 图注册节点名称，之后才能创建 Publisher/Subscriber/Timer
-  3. `spin()` 阻塞当前线程，循环处理 DDS 消息队列——没有 spin，所有回调（timer/subscriber）都不会被执行
-  4. `destroy_node()` 通知 ROS2 底层清理该节点的注册信息、释放通信资源（Publisher/Subscriber/Service/Timer）
-  5. `shutdown()` 销毁 rclpy 全局上下文，释放 DDS 资源
-
-- **四阶段与资源管理**：
-  - 构造函数(节点配置name+参数声明)：创建通信接口（Publisher/Subscriber）、声明参数、初始化定时器
-  - spin(进入事件循环等待回调)：DDS 消息到达 → 触发 subscriber 回调；定时器到期 → 触发 timer 回调
-  - destroy_node(释放定时器/发布器/订阅器等资源)：关闭所有通信接口，清理注册信息
-  - shutdown(进程退出)：全局清理，确保进程干净退出
-
-**操作**——创建节点基础骨架文件：
-
-在 `~/ros2_ws/src/hello_pubsub/hello_pubsub/` 目录下创建 `hello_publisher.py`（当前仅含骨架）：
-
-```python
+```bash
+在 ~/ros2_ws/src/sensor_nodes/sensor_nodes/ 目录下创建 gas_sensor_node.py：
 # -*- coding: utf-8 -*-
 """
-实验5：ROS2 节点 —— HelloWorld 发布者
-平台：B2 实验箱 / C1 小车
-运行：ros2 run hello_pubsub hello_publisher
+实验5：ROS2 节点 —— MQ5 气体传感器节点
+平台：B2 实验箱
+运行：ros2 run sensor_nodes gas_sensor
 """
 import rclpy
 from rclpy.node import Node
-
-
-class HelloPublisher(Node):
-    """HelloWorld 发布者节点"""
+class GasSensorNode(Node):
+    """MQ5 气体传感器 ROS2 节点"""
 
     def __init__(self):
-        # ★ 阶段1：调用父类构造函数，注册节点到 ROS2 图
-        super().__init__('hello_publisher')
-        self.get_logger().info('HelloPublisher 节点已启动')
+        # ⭐ 步骤1：调用父类构造函数，注册节点到 ROS2 图
+        super().__init__('gas_sensor_node')
+        self.get_logger().info('GasSensorNode 已启动')
 
-    def destroy_node(self):
-        """★ 阶段3：销毁节点前释放资源"""
-        self.get_logger().info('HelloPublisher 节点正在销毁，释放资源...')
-        super().destroy_node()
-
+    # ⭐ 生命周期终点：析构时清理
+    def __del__(self):
+        self.get_logger().info('GasSensorNode 已销毁')
 
 def main(args=None):
-    """节点入口函数 —— ROS2 标准四段式骨架"""
-    # 阶段1: init
-    rclpy.init(args=args)
-
-    # 阶段2: 构造节点
-    node = HelloPublisher()
-
-    # 阶段3: spin（进入事件循环）
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-
-    # 阶段4: destroy + shutdown
-    node.destroy_node()
-    rclpy.shutdown()
-
-    print('HelloPublisher 进程已退出')  # shutdown 后不能再使用 get_logger()
-
+    """节点入口函数"""
+    rclpy.init(args=args)           # 初始化 ROS2 客户端库
+    node = GasSensorNode()          # 创建节点实例
+    rclpy.spin(node)                # 进入事件循环，保持节点运行
+    node.destroy_node()             # 销毁节点，释放资源
+    rclpy.shutdown()                # 关闭 ROS2 客户端库
 
 if __name__ == '__main__':
     main()
 ```
 
 **代码逐行解读**：
-1. `super().__init__('hello_publisher')`：向 ROS2 底层注册节点名称为 `hello_publisher`。此时 ROS2 图中就能发现这个节点。
-2. `rclpy.init(args=args)`：初始化 rclpy 库（解析命令行参数、加载 DDS 上下文）。
-3. `rclpy.spin(node)`：阻塞当前线程，循环处理 DDS 消息队列。没有这行，节点的定时器和订阅回调永远不会被触发。
-4. `destroy_node()`：通知 ROS2 底层该节点即将退出，释放 Publisher/Subscriber/Service/Timer 等通信资源。
-5. `rclpy.shutdown()`：销毁 rclpy 全局上下文并释放 DDS 中间件资源。
-6. 注意：`shutdown()` 之后 `get_logger()` 不可用，改用 `print()` 输出进程退出信息。
+
+1. `super().__init__('gas_sensor_node')`：向 ROS2 底层注册，节点名称为 `gas_sensor_node`。此时 ROS2 图就能"看到"这个节点了。
+2. `rclpy.init(args=args)`：初始化 rclpy 库（解析命令行参数、加载上下文）。
+3. `rclpy.spin(node)`：阻塞当前线程，循环处理 ROS2 消息队列中的回调（timer 回调、subscriber 回调等）。没有 spin，节点的定时器和订阅者永远不会被触发。
+4. `node.destroy_node()`：通知 ROS2 底层该节点即将退出，清理注册信息和通信资源。
+5. `rclpy.shutdown()`：销毁 rclpy 全局上下文。
 
 ---
 
-#### 步骤 3：编写 HelloWorld 发布者节点（20 分钟）
+#### 步骤 3：添加模拟传感器逻辑（15 分钟）
 
 **知识点讲解**：
 
-**发布者节点 —— 主动推送模型**
-- **是什么**：发布者（Publisher）是 ROS2 中数据"生产者"的抽象。发布者节点通过定时器周期性地构造消息并调用 `publish()` 主动推送到话题上，不关心是否有订阅者在线——这就是"异步解耦"。
-- **编程三步骤**：
-  1. `create_publisher(String, '/hello_topic', 10)` —— 在话题 `/hello_topic` 上创建 String 类型发布器，QoS 队列深度 10
-  2. `create_timer(0.5, timer_callback)` —— 创建 0.5 秒周期的定时器，驱动周期性发布
-  3. 回调中 `publish(msg)` —— 构造消息、填充数据、发布
-- **与订阅者的本质区别**：发布者是"主动的"——它拥有定时器(timer)来驱动数据发送节奏；订阅者是"被动的"——它不控制数据何时到达，只能在回调中响应到达的数据。
+**传感器封装为 Node 的设计模式（知识点 2.1.3）**
 
-**操作**——完善 `hello_publisher.py`，添加发布者逻辑：
+- **是什么**：将硬件传感器封装为独立的 ROS2 Node，是 ROS2 开发中的标准设计模式。每个传感器对应一个独立的进程（Node），它负责：① 初始化硬件接口（ADC/SPI/UART 等）；② 周期性地采集传感器原始数据；③ 将处理后的数据通过 Topic 发布给其他节点。
+- **为什么这样做**：如果你的机器人有 10 个传感器，每种传感器都是一个独立的 Node，你可以：
+- 独立启动/停止某个传感器（`ros2 run` 或 Launch 文件控制）
+- 用 `ros2 topic echo` 单独调试某个传感器的数据流
+- 在仿真环境中用模拟数据替换真实传感器 Node（接口不变，实现替换）
+- 清晰的责任边界——"激光雷达出问题了"就知道去查激光雷达 Node 的日志
+- - **怎么用**：构造函数中顺序执行——硬件初始化 → 创建 Publisher → 创建定时器 → 设置参数。
 
-```python
-# -*- coding: utf-8 -*-
-"""
-实验5：ROS2 节点 —— HelloWorld 发布者
-运行：ros2 run hello_pubsub hello_publisher
-"""
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import String  # 标准字符串消息类型
+**操作**——扩展 `gas_sensor_node.py`，添加模拟 MQ5 传感器逻辑：
 
+import random  # 仅用于模拟数据，实际应使用 ADC 读取
 
-class HelloPublisher(Node):
-    """HelloWorld 发布者节点 —— 周期发布递增编号的问候消息"""
+class GasSensorNode(Node):
 
+    """MQ5 气体传感器 ROS2 节点"""
+    
     def __init__(self):
-        super().__init__('hello_publisher')
+    
+        super().__init__('gas_sensor_node')
 
-        # === 步骤1：创建发布器 ===
-        # 参数：(消息类型, 话题名称, QoS队列深度)
-        self.publisher = self.create_publisher(
-            String,             # std_msgs/msg/String，包含 string data 字段
-            '/hello_topic',     # 话题名称（建议以 / 开头，表示全局命名空间）
-            10                  # QoS: 缓存最近 10 条消息
-        )
-        self.get_logger().info('Publisher 已创建 → 话题: /hello_topic, 类型: String')
-
-        # === 步骤2：创建定时器（驱动周期性发布） ===
-        self.count = 0  # 消息编号计数器
-        timer_period = 0.5  # 0.5 秒发布一次
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.get_logger().info('定时器已创建 → 周期: %.1fs' % timer_period)
-
-    def timer_callback(self):
-        """定时器回调：构造消息 → 发布消息 → 日志记录"""
-        self.count += 1
-
-        # === 步骤3：构造消息并发布 ===
-        msg = String()
-        msg.data = 'Hello ROS2 #%d' % self.count  # 消息编号递增
-        self.publisher.publish(msg)
-
-        self.get_logger().info('发布: "%s"' % msg.data)
-
-    def destroy_node(self):
-        """销毁节点前输出统计信息"""
-        self.get_logger().info(
-            'HelloPublisher 已关闭，共发布 %d 条消息' % self.count
-        )
-        super().destroy_node()
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = HelloPublisher()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    node.destroy_node()
-    rclpy.shutdown()
-
-
-if __name__ == '__main__':
-    main()
+```bash
+        # === 阶段1：初始化传感器硬件 ===
 ```
 
-**代码解读 —— 发布者的"主动推送"模式**：
-- **Timer 是发布者的心脏**：发布者必须有一个 Timer（或外部循环）驱动数据的生成和发送。Timer 决定了数据的发布频率（此处为 0.5s = 2Hz）。
-- **publish() 是异步的**：调用 `publish(msg)` 后，消息被放入 DDS 的内部队列，函数立即返回——不等待订阅者确认收到。
-- **消息编号递增**：`self.count += 1` 让每条消息有唯一编号，便于在 Subscriber 端验证是否丢包或乱序。
+        self.declare_parameter('adc_channel', 0)        # ADC 通道号
+    
+        self.declare_parameter('vref', 3.3)              # 参考电压
+    
+        self.declare_parameter('rl', 10.0)               # 负载电阻（kΩ）
+    
+        adc_channel = self.get_parameter('adc_channel').value
+    
+        self.get_logger().info(
+    
+            'MQ5 初始化完成：ADC 通道=%d, Vref=3.3V' % adc_channel
+    
+        )
+
+```bash
+        # 实际硬件中，此处应为：
+
+        # import adc_driver
+
+        # self.adc = adc_driver.ADC(channel=adc_channel)
+
+        # === 阶段2：创建 Publisher 发布气体浓度数据 ===
+```
+
+        from std_msgs.msg import Float32
+    
+        self.publisher = self.create_publisher(
+    
+            Float32,          # 消息类型：标准浮点数消息
+    
+            'gas_sensor',     # 话题名称
+    
+            10                # QoS 队列深度（历史缓存 10 条消息）
+    
+        )
+    
+        self.get_logger().info('Publisher 已创建：话题=/gas_sensor, 类型=Float32')
+
+```bash
+        # === 阶段3：创建定时器，周期性采样 ===
+```
+
+        sample_period = 1.0   # 采样周期 1 秒
+    
+        self.timer = self.create_timer(
+    
+            sample_period,
+    
+            self.timer_callback  # 定时回调函数
+    
+        )
+    
+        self.get_logger().info('定时器已创建：采样周期=%.1fs' % sample_period)
+    
+    def timer_callback(self):
+    
+        """定时器回调：采集传感器数据并发布"""
+
+```bash
+        # ===== 模拟 MQ5 气体传感器 ADC 读取与浓度换算 =====
+
+        # 实际硬件中的操作流程：
+
+        # 1. 读取 ADC 原始值（0~4095 for 12-bit ADC）
+
+        # 2. 换算为电压值: V_out = (ADC_value / 4095) * Vref
+
+        # 3. 计算传感器电阻: Rs = (Vref - V_out) / V_out * RL
+
+        # 4. 根据灵敏特性曲线计算 ppm 浓度
+
+        # 模拟：生成随机电压值（实际替换为 adc.read()）
+```
+
+        adc_raw = random.uniform(500, 2000)            # 模拟 ADC 原始值
+    
+        voltage = adc_raw / 4095.0 * 3.3               # 换算电压
+    
+        ppm = random.uniform(200.0, 500.0)             # 简化：随机 ppm（实际需特性曲线计算）
+
+```bash
+        # 构造 Float32 消息并发布
+```
+
+        msg = Float32()
+    
+        msg.data = float(ppm)
+    
+        self.publisher.publish(msg)
+    
+        self.get_logger().info(
+    
+            'MQ5 采样：ADC=%.0f, V=%.2fV, 浓度=%.1f ppm' % (adc_raw, voltage, ppm)
+    
+        )
+    
+    def __del__(self):
+
+```bash
+        # ===== 生命周期终点：释放硬件资源 =====
+
+        # 实际硬件中，此处应关闭 ADC 设备文件或释放 GPIO
+```
+
+        self.get_logger().info('GasSensorNode 已安全关闭，资源已释放')
+
+**MQ5 传感器原理补充**：
+
+- MQ5 气体传感器是一种半导体气体传感器，对液化气、天然气、煤气等可燃气体敏感
+- 工作原理：可燃气体浓度变化 → 传感器内部半导体电阻 Rs 变化 → 分压电路输出电压变化 → ADC 采集电压 → 根据 Rs/R0 比值查灵敏特性曲线 → 换算 ppm 浓度值
+- B2 实验箱上 MQ5 通过 ADC 接口连接到 STM32F407 下位机 → 上位机通过串口读取
 
 ---
 
-#### 步骤 4：编写 HelloWorld 订阅者节点（15 分钟）
+#### 步骤 4：理解节点生命周期（20 分钟）
 
 **知识点讲解**：
 
-**订阅者节点 —— 被动回调模型**
-- **是什么**：订阅者（Subscriber）是 ROS2 中数据"消费者"的抽象。订阅者通过 `create_subscription` 注册一个回调函数，每当 DDS 中间件收到该话题的消息时，自动调用回调函数处理——订阅者"被动等待"数据到达。
-- **编程两步骤**：
-  1. `create_subscription(String, '/hello_topic', callback, 10)` —— 订阅 `/hello_topic` 话题的 String 消息，绑定回调函数
-  2. 回调中处理消息 —— 解析消息内容并执行后续逻辑
-- **不需要 Timer**：订阅者不需要定时器——它的回调触发时机由"消息到达"这个外部事件决定，而非内部时钟。
+**ROS2 节点生命周期（知识点 2.1.2）**
 
-**操作**——创建 `hello_subscriber.py`：
+- **是什么**：ROS2 节点经历一条从"创建"到"销毁"的生命路径：
 
-```python
-# -*- coding: utf-8 -*-
-"""
-实验5：ROS2 节点 —— HelloWorld 订阅者
-运行：ros2 run hello_pubsub hello_subscriber
-"""
+构造函数 __init__()    →  运行期 spin()  →  销毁期 destroy_node()
+
+(初始化硬件/通信接口)      (事件循环)        (释放资源/清理)
+
+在 ROS2 的 Managed Node（生命周期节点）中，这个过程被标准化为四个状态：Unconfigured → Inactive → Active → Finalized。本实验使用的是基础 Node（自动处于 Active 状态），Managed Node 将在高级课程中学习。
+
+**- 为什么生命周期很重要**：
+
+1. **资源安全性**：传感器驱动必须在构造函数中初始化（打开设备文件），在析构时释放（关闭设备文件）。如果在析构时忘记关闭串口，下次启动节点会因"端口被占用"而失败。
+2. **调试便利性**：通过日志输出各阶段的状态信息，可以快速定位问题是出在硬件初始化阶段还是数据采集阶段。
+3. **错误恢复**：Managed Node 可以在运行时进行状态回退——从 Active 退到 Inactive（暂停传感器采集），再回到 Active（恢复），而无需重启节点。
+
+**操作——观察生命周期日志**：
+
+启动节点后，观察日志输出的三个阶段：
+
+[INFO] [...] [gas_sensor_node]: MQ5 初始化完成：ADC 通道=0, Vref=3.3V     ← 构造阶段
+
+[INFO] [...] [gas_sensor_node]: Publisher 已创建：话题=/gas_sensor           ← 构造阶段
+
+[INFO] [...] [gas_sensor_node]: 定时器已创建：采样周期=1.0s                  ← 构造阶段
+
+[INFO] [...] [gas_sensor_node]: MQ5 采样：ADC=1234, V=0.99V, 浓度=312.5 ppm ← 运行阶段
+
+...
+
+（按 Ctrl+C）
+
+[INFO] [...] [gas_sensor_node]: GasSensorNode 已安全关闭，资源已释放        ← 销毁阶段
+
+---
+
+#### 步骤 5：多传感器节点对比 —— 扩展设计（15 分钟）
+
+**知识点讲解**：
+
+**三种传感器 → 三种 Node 的统一封装模式**：
+
+| 传感器 | 硬件接口 | 数据获取方式 | 通信模式 | ROS2 通信接口 |
+|---|---|---|---|---|
+| MQ5 气体传感器 | ADC 模拟量 | 周期性采样 | 单向数据流 | `create_publisher()` → Topic |
+| MFRC522 读卡器 | SPI 数字接口 | 中断/轮询 | 离散事件 | `create_publisher()` → Topic |
+| 指纹传感器 | UART 串口 | 命令-响应 | 同步请求 | `create_service()` → Service |
+
+尽管接口不同、通信模式不同，但它们封装为 ROS2 Node 的**代码骨架完全相同**：
+
+1. 构造函数：初始化硬件 → 创建通信接口 → 设置数据采集机制
+2. 运行期：spin() 驱动事件循环
+3. 销毁期：释放硬件资源
+4. **创建 rfid_node.py（MFRC522 读卡器节点骨架）**：
+
+```bash
+# 文件: ~/ros2_ws/src/sensor_nodes/sensor_nodes/rfid_node.py
+```
+
 import rclpy
+
 from rclpy.node import Node
+
 from std_msgs.msg import String
 
+class RfidNode(Node):
 
-class HelloSubscriber(Node):
-    """HelloWorld 订阅者节点 —— 接收并打印问候消息"""
-
+    """MFRC522 射频读卡器 ROS2 节点"""
+    
     def __init__(self):
-        super().__init__('hello_subscriber')
+    
+        super().__init__('rfid_node')
 
-        # === 步骤1：创建订阅器 ===
-        # 参数：(消息类型, 话题名称, 回调函数, QoS队列深度)
-        self.subscription = self.create_subscription(
-            String,             # 消息类型（必须与 Publisher 一致）
-            '/hello_topic',     # 话题名称（必须与 Publisher 一致）
-            self.listener_callback,  # 收到消息时的回调函数
-            10                  # QoS: 缓存最近 10 条消息
-        )
-        # ★ 关键：prevent_unused_variable_warning
-        # create_subscription 返回的 subscription 对象必须保持引用，
-        # 否则 Python 垃圾回收可能销毁它，导致回调失效
-        self.subscription
-
-        self.get_logger().info('Subscriber 已创建 → 话题: /hello_topic, 类型: String')
-        self.get_logger().info('等待消息... (按 Ctrl+C 退出)')
-
-    def listener_callback(self, msg):
-        """订阅回调：收到消息时自动被 ROS2 调用"""
-        # msg.data 即为 Publisher 中 msg.data 的内容
-        self.get_logger().info('收到: "%s"' % msg.data)
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = HelloSubscriber()
-    try:
-        rclpy.spin(node)  # ★ 必须有 spin，否则回调永远不会触发
-    except KeyboardInterrupt:
-        pass
-    node.destroy_node()
-    rclpy.shutdown()
-
-
-if __name__ == '__main__':
-    main()
+```bash
+        # 声明参数
 ```
 
-**代码解读 —— 订阅者的"被动回调"模式**：
-- **没有 Timer、没有循环**：订阅者不需要任何"主动"的数据获取逻辑。它的代码中没有定时器、没有 `while` 循环——只需要定义一个回调函数，然后 `spin()` 等待。当 DDS 底层收到消息时，自动调用回调。
-- **话题名称和消息类型必须一致**：Publisher 和 Subscriber 通过 **话题名称** 和 **消息类型** 建立连接。如果话题名或消息类型不匹配，DDS 发现机制不会将它们配对。
-- **spin() 同样不可或缺**：订阅者也需要 `rclpy.spin()`——它阻塞主线程，让 ROS2 底层有时间处理 DDS 消息队列并调用回调函数。没有 spin，即使有消息到达，回调也永远不会被调用。
+        self.declare_parameter('spi_bus', 0)
+    
+        self.declare_parameter('spi_device', 0)
+    
+        self.declare_parameter('poll_interval', 0.5)  # 轮询间隔（秒）
+
+```bash
+        # 初始化 SPI 硬件（模拟）
+```
+
+        spi_bus = self.get_parameter('spi_bus').value
+    
+        self.get_logger().info('MFRC522 SPI 初始化完成：bus=%d' % spi_bus)
+
+```bash
+        # 实际硬件：
+
+        # import spidev
+
+        # self.spi = spidev.SpiDev()
+
+        # self.spi.open(spi_bus, spi_device)
+
+        # 创建 Publisher
+```
+
+        self.publisher = self.create_publisher(
+    
+            String,          # 消息类型：字符串（暂用 String 代替自定义消息）
+    
+            'rfid_card',     # 话题名称
+    
+            10              # QoS 队列深度
+    
+        )
+
+```bash
+        # 创建定时器轮询读卡器
+```
+
+        poll_interval = self.get_parameter('poll_interval').value
+    
+        self.timer = self.create_timer(poll_interval, self.poll_callback)
+    
+        self.get_logger().info('MFRC522 轮询定时器已启动：间隔=%.1fs' % poll_interval)
+    
+    def poll_callback(self):
+    
+        """轮询读卡器，检测是否有卡片"""
+
+```bash
+        # 模拟 MFRC522 读卡流程（实际需要通过 SPI 发送命令读取 UID）
+```
+
+        import random
+    
+        card_detected = random.random() < 0.1  # 10% 概率模拟检测到卡片
+    
+        if card_detected:
+    
+            card_uid = 'A1B2C3D4'  # 模拟 4 字节 UID
+    
+            msg = String()
+    
+            msg.data = card_uid
+    
+            self.publisher.publish(msg)
+    
+            self.get_logger().info('检测到卡片：UID=%s' % card_uid)
+    
+        else:
+    
+            self.get_logger().debug('未检测到卡片')  # DEBUG 级别日志
+    
+    def __del__(self):
+
+```bash
+        # 释放 SPI 资源
+
+        # self.spi.close()
+```
+
+        self.get_logger().info('RfidNode 已安全关闭')
+
+def main(args=None):
+
+    rclpy.init(args=args)
+    
+    node = RfidNode()
+    
+    rclpy.spin(node)
+    
+    node.destroy_node()
+    
+    rclpy.shutdown()
+
+**创建 fingerprint_node.py（指纹传感器节点骨架）**：
+
+```bash
+# 文件: ~/ros2_ws/src/sensor_nodes/sensor_nodes/fingerprint_node.py
+```
+
+import rclpy
+
+from rclpy.node import Node
+
+from std_srvs.srv import Trigger  # 标准 Trigger 服务：无请求参数，返回 success+message
+
+class FingerprintNode(Node):
+
+    """指纹传感器 ROS2 节点"""
+    
+    def __init__(self):
+    
+        super().__init__('fingerprint_node')
+
+```bash
+        # 声明参数
+```
+
+        self.declare_parameter('uart_port', '/dev/ttyUSB0')
+    
+        self.declare_parameter('baudrate', 57600)
+
+```bash
+        # 初始化 UART 串口（模拟）
+```
+
+        uart_port = self.get_parameter('uart_port').value
+    
+        baudrate = self.get_parameter('baudrate').value
+    
+        self.get_logger().info(
+    
+            '指纹传感器串口初始化完成：%s @ %d bps' % (uart_port, baudrate)
+    
+        )
+
+```bash
+        # 实际硬件：
+
+        # import serial
+
+        # self.ser = serial.Serial(uart_port, baudrate, timeout=1.0)
+
+        # 创建 Service：指纹录入
+```
+
+        self.enroll_service = self.create_service(
+    
+            Trigger,                     # 服务类型（标准 Trigger）
+    
+            'fingerprint_enroll',        # 服务名称
+    
+            self.enroll_callback         # 回调函数
+    
+        )
+
+```bash
+        # 创建 Service：指纹验证
+```
+
+        self.verify_service = self.create_service(
+    
+            Trigger,                     # 服务类型
+    
+            'fingerprint_verify',        # 服务名称
+    
+            self.verify_callback         # 回调函数
+    
+        )
+    
+        self.get_logger().info('指纹服务已注册：enroll + verify')
+    
+    def enroll_callback(self, request, response):
+    
+        """指纹录入回调——同步 RPC"""
+
+```bash
+        # 实际流程：通过 UART 发送录入指令 → 等待用户按压 → 采集特征 → 存储
+```
+
+        self.get_logger().info('开始指纹录入...')
+
+```bash
+        # ===== 模拟 UART 通信 =====
+
+        # self.ser.write(b'\xEF\x01...')  # 发送录入指令
+
+        # ack = self.ser.read(12)          # 读取确认包
+
+        # ===== 模拟录入结果 =====
+```
+
+        response.success = True
+    
+        response.message = '指纹录入成功，模板 ID=1'
+    
+        self.get_logger().info('指纹录入完成')
+    
+        return response
+    
+    def verify_callback(self, request, response):
+    
+        """指纹验证回调——同步 RPC"""
+
+```bash
+        # 实际流程：发送验证指令 → 采集指纹 → 与模板库比对 → 返回匹配结果
+```
+
+        self.get_logger().info('开始指纹验证...')
+
+```bash
+        # ===== 模拟比对结果 =====
+```
+
+        response.success = True
+    
+        response.message = '指纹匹配成功，用户 ID=1'
+    
+        self.get_logger().info('指纹验证通过')
+    
+        return response
+    
+    def __del__(self):
+
+```bash
+        # 释放串口资源
+
+        # self.ser.close()
+```
+
+        self.get_logger().info('FingerprintNode 已安全关闭')
+
+def main(args=None):
+
+    rclpy.init(args=args)
+    
+    node = FingerprintNode()
+    
+    rclpy.spin(node)
+    
+    node.destroy_node()
+    
+    rclpy.shutdown()
 
 ---
 
-#### 步骤 5：配置 entry_points 并编译运行（10 分钟）
+#### 步骤 6：配置 entry_points 并编译运行（10 分钟）
 
 **操作**：
 
-编辑 `~/ros2_ws/src/hello_pubsub/setup.py`，注册两个节点：
-
-```python
+```bash
+编辑 ~/ros2_ws/src/sensor_nodes/setup.py，注册三个节点：
 entry_points={
     'console_scripts': [
-        'hello_publisher = hello_pubsub.hello_publisher:main',
-        'hello_subscriber = hello_pubsub.hello_subscriber:main',
+        'gas_sensor = sensor_nodes.gas_sensor_node:main',
+        'rfid_node = sensor_nodes.rfid_node:main',
+        'fingerprint_node = sensor_nodes.fingerprint_node:main',
     ],
 },
-```
-
-```bash
 # 编译功能包
 cd ~/ros2_ws
-colcon build --packages-select hello_pubsub --symlink-install
+colcon build --packages-select sensor_nodes --symlink-install
 source install/setup.bash
 
-# === 终端1：启动发布者 ===
-ros2 run hello_pubsub hello_publisher
-# 预期输出：
-# [INFO] [...] [hello_publisher]: Publisher 已创建 → 话题: /hello_topic, 类型: String
-# [INFO] [...] [hello_publisher]: 定时器已创建 → 周期: 0.5s
-# [INFO] [...] [hello_publisher]: 发布: "Hello ROS2 #1"
-# [INFO] [...] [hello_publisher]: 发布: "Hello ROS2 #2"
-# ...
+# 运行 MQ5 气体传感器节点
+ros2 run sensor_nodes gas_sensor
 
-# === 终端2：启动订阅者（在另一个终端中执行） ===
-source /opt/ros/humble/setup.bash
-source ~/ros2_ws/install/setup.bash
-ros2 run hello_pubsub hello_subscriber
-# 预期输出：
-# [INFO] [...] [hello_subscriber]: Subscriber 已创建 → 话题: /hello_topic, 类型: String
-# [INFO] [...] [hello_subscriber]: 等待消息...
-# [INFO] [...] [hello_subscriber]: 收到: "Hello ROS2 #15"
-# [INFO] [...] [hello_subscriber]: 收到: "Hello ROS2 #16"
-# ...
-
-# === 终端3：验证系统状态 ===
-ros2 node list
-# 预期: /hello_publisher, /hello_subscriber
-ros2 topic list
-# 预期: /hello_topic, /parameter_events, /rosout
-ros2 topic info /hello_topic
-# 预期: Type: std_msgs/msg/String, Publishers: 1, Subscribers: 1
-ros2 topic echo /hello_topic
-# 预期: data: 'Hello ROS2 #20'...（第三方观察者也能收到消息！）
-```
-
-**实验观察**：
-1. 先启动 Publisher，后启动 Subscriber → Subscriber 从中间编号开始接收（之前的消息已"丢失"——这体现了 QoS 默认 Durability=VOLATILE 的语义）
-2. `Ctrl+C` 终止 Publisher → Subscriber 停止输出（不会报错，只是没有新消息到达）
-3. 重新启动 Publisher → Subscriber 自动恢复接收（DDS 自动重新发现和连接）
-4. 在终端3用 `ros2 topic echo` 也能收到消息 → 验证话题通信的一对多特性
-
----
-
-#### 步骤 6：对比发布者与订阅者的代码结构（10 分钟）
-
-**知识点讲解**：
-
-**发布者(主动推送) vs 订阅者(被动回调) —— 代码结构对比**
-
-| 对比维度 | 发布者 (Publisher) | 订阅者 (Subscriber) |
-|---------|-------------------|-------------------|
-| **驱动方式** | `create_timer(0.5, callback)` 定时器主动驱动 | `create_subscription(...)` 消息到达被动触发 |
-| **核心 API** | `create_publisher()` + `create_timer()` | `create_subscription()` |
-| **数据流向** | 构造消息 → `publish()` 主动推入 DDS | `callback(msg)` 被动从 DDS 拉取 |
-| **自身定时器** | ✅ 必须有（决定发布频率） | ❌ 不需要（回调由消息到达事件驱动） |
-| **运行时特征** | 有数据就发，无订阅者也不报错 | 有消息就收，无消息就静默等待 |
-| **spin() 作用** | 驱动 Timer 回调 | 驱动 Subscription 回调 |
-| **消息编号** | 自身维护计数器递增 | 被动接收，不关心编号（除非在回调中解析） |
-
-**工程启示**：
-- **传感器类节点**天然适合 Publisher 模式——定时采样数据、周期发布
-- **监控/日志类节点**天然适合 Subscriber 模式——被动监听数据流，检测异常
-- **一个节点可以同时是 Publisher 和 Subscriber**——例如：接收原始传感器数据（Subscriber），处理后发布处理结果（Publisher）。这是 ROS2 模块化设计的核心优势。
-
-**操作**——动手验证对比：
-
-```bash
-# 实验A: 先启动订阅者，后启动发布者
-# 终端1: ros2 run hello_pubsub hello_subscriber
-# 终端2: ros2 run hello_pubsub hello_publisher
-# 观察：订阅者从 #1 开始接收，一条都不丢
-
-# 实验B: 先启动发布者，后启动订阅者
-# 终端1: ros2 run hello_pubsub hello_publisher
-# (等待几秒，让计数器到 #10)
-# 终端2: ros2 run hello_pubsub hello_subscriber
-# 观察：订阅者从 #11 左右开始接收，前面 #1~#10 的消息丢失了
-# 原因：默认 QoS Durability=VOLATILE，新订阅者不获取历史消息
-
-# 实验C: 三个终端同时 echo
-# 终端1: ros2 run hello_pubsub hello_publisher
-# 终端2: ros2 topic echo /hello_topic
-# 终端3: ros2 topic echo /hello_topic
-# 观察：两个 echo 同时收到相同数据 → 验证一对多广播特性
+# 在另一终端观察：
+ros2 node list         # 预期：/gas_sensor_node
+ros2 topic list        # 预期：/gas_sensor
+ros2 topic echo /gas_sensor  # 预期：周期性输出 data: 312.5 等
 ```
 
 ---
 
-#### 步骤 7：理解单进程多节点与 Executor 调度机制（10 分钟，进阶）
+#### 步骤 7：实验收尾与总结
 
-**知识点讲解**：
-
-**单进程多节点 vs 多进程单节点**
-
-- **是什么**：
-  - **多进程单节点**（本实验采用的模式）：每个 `ros2 run` 启动一个独立进程，进程内只有一个 Node。这是 ROS2 的默认和推荐模式——每个 Node 是一个独立的操作系统进程。
-  - **单进程多节点**：一个进程中通过 `MultiThreadedExecutor` 同时运行多个 Node 实例。所有 Node 共享同一个进程空间和 DDS 上下文。
-
-- **为什么需要 Executor**：
-  - Executor（执行器）负责**调度** Node 的回调任务——哪些回调（Timer回调、Subscriber回调、Service回调）何时被调用
-  - `rclpy.spin(node)` 本质上等价于：创建一个 `SingleThreadedExecutor` → 将 node 加入执行器 → 调用 `executor.spin()`
-  - `SingleThreadedExecutor`：所有回调在一个线程中**串行**执行——一个回调执行完才会执行下一个
-  - `MultiThreadedExecutor`：多个回调可以**并行**执行（在不同的线程中）
-
-- **怎么用**——单进程多节点示例：
-
-```python
-# 文件: ~/ros2_ws/src/hello_pubsub/hello_pubsub/hello_both.py
-"""
-单进程多节点示例 —— 一个进程中同时运行 Publisher 和 Subscriber
-运行: ros2 run hello_pubsub hello_both
-"""
-import rclpy
-from rclpy.node import Node
-from rclpy.executors import MultiThreadedExecutor
-from std_msgs.msg import String
-
-
-def main(args=None):
-    rclpy.init(args=args)
-
-    # 创建两个节点（在同一进程中）
-    from hello_pubsub.hello_publisher import HelloPublisher
-    from hello_pubsub.hello_subscriber import HelloSubscriber
-
-    pub_node = HelloPublisher()
-    sub_node = HelloSubscriber()
-
-    # 使用多线程执行器同时调度两个节点
-    executor = MultiThreadedExecutor(num_threads=2)
-    executor.add_node(pub_node)
-    executor.add_node(sub_node)
-
-    try:
-        # 在一个线程中 spin executor（内部多线程调度回调）
-        executor.spin()
-    except KeyboardInterrupt:
-        pass
-
-    # 清理
-    executor.remove_node(pub_node)
-    executor.remove_node(sub_node)
-    pub_node.destroy_node()
-    sub_node.destroy_node()
-    rclpy.shutdown()
-
-
-if __name__ == '__main__':
-    main()
-```
-
-在 `setup.py` 中注册第三个入口：
-
-```python
-entry_points={
-    'console_scripts': [
-        'hello_publisher = hello_pubsub.hello_publisher:main',
-        'hello_subscriber = hello_pubsub.hello_subscriber:main',
-        'hello_both = hello_pubsub.hello_both:main',  # 新增
-    ],
-},
-```
-
-```bash
-# 编译并运行
-cd ~/ros2_ws
-colcon build --packages-select hello_pubsub --symlink-install
-source install/setup.bash
-
-# 一个终端同时运行两个节点
-ros2 run hello_pubsub hello_both
-
-# 另一终端验证
-ros2 node list
-# 预期: /hello_publisher, /hello_subscriber（同一个进程中有两个节点！）
-```
-
-**多进程 vs 单进程多节点的选择原则**：
-| 场景 | 推荐模式 | 原因 |
-|------|---------|------|
-| 生产环境部署 | 多进程单节点 | 进程隔离：一个传感器挂了不影响其他 |
-| 仿真/测试 | 单进程多节点 | 快速启动，方便调试 |
-| 节点间有大量共享数据 | 单进程多节点 | 避免进程间序列化/反序列化开销 |
-| 节点各自管理独立硬件 | 多进程单节点 | 硬件故障隔离，便于独立重启 |
-| Launch 文件一键启动 | 多进程单节点 | Launch 自动管理多进程生命周期 |
-
----
+1. `Ctrl+C` 终止所有运行的节点
+2. 使用 `ros2 node list` 确认无残留节点
 
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
-| ⚠️ 四段式顺序 | 必须是 `init() → 构造节点 → spin() → destroy_node() → shutdown()`。`spin()` 在 `destroy_node()` 之前，`shutdown()` 在最后——顺序不可颠倒 |
-| ⚠️ spin() 不可或缺 | 没有 `rclpy.spin()`，节点的 Timer 回调和 Subscriber 回调**永远不会被触发**。spin 是事件循环的唯一入口 |
-| ⚠️ Subscription 引用 | `create_subscription()` 的返回值必须保持引用（赋值给 `self.subscription`），否则 Python 垃圾回收可能销毁对象导致回调失效 |
-| ⚠️ 话题名称一致 | Publisher 和 Subscriber 的话题名称必须**完全一致**（包括大小写和 `/` 前缀）。如果使用 `--ros-args -r __ns:=/xxx` 重映射命名空间，需要同步修改两端 |
-| ⚠️ 消息类型一致 | Publisher 和 Subscriber 必须使用相同的消息类型。类型不匹配时 DDS 不会建立连接，`ros2 topic info` 将不显示对应的订阅者 |
-| ⚠️ shutdown 后限制 | `rclpy.shutdown()` 之后不能再使用 `get_logger()`，应改用 `print()` 输出最后的退出信息 |
-| ⚠️ 进程隔离 | 每个 `ros2 run` 启动一个独立进程。步骤7 展示了如何在单进程中运行多个节点——但当节点数量多且需要独立生命周期管理时，推荐使用 Launch 文件管理多进程 |
-| ⚠️ 安全 | 本实验为纯软件操作，不涉及硬件操作风险 |
+|---|---|
+| ⚠️ 节点名称唯一性 | ROS2 图中不允许两个同名节点。如果同名节点启动，第二个节点会被自动重命名（如 `gas_sensor_node_1`）。使用 `ros2 node list` 确认实际名称 |
+| ⚠️ 构造函数顺序 | 必须是：`super().__init__()` 在最前面。如果在此之后再调用 `create_publisher` 等方法，节点已在图中注册但通信接口未创建——期间的订阅者会收不到数据 |
+| ⚠️ 硬件资源管理 | 构造函数中打开串口/SPI/ADC → `__del__` 或 `destroy_node()` 中关闭。如果忘记关闭，下次启动会报"设备忙" |
+| ⚠️ 定时器精度 | `create_timer(period, callback)` 的周期是"尽力而为"的，实际执行间隔受系统负载影响。在 6TOPS NPU 的 RK3576 上，1ms 定时器精度通常足够 |
+| ⚠️ 安全 | 本实验中传感器数据为模拟生成。如果在实验箱上连接了真实传感器，注意接线正确性（ADC 通道、SPI 片选、UART 波特率） |
+| ⚠️ 进程隔离 | 每个 `ros2 run` 启动一个独立进程。如果你想在一个进程中运行多个节点，可以使用 MultiThreadedExecutor（本节不涉及） |
 
 ### 八、实验总结
 
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
-- ✅ 编写 `rclpy.init()→spin()→destroy_node()→shutdown()` 标准四段式节点编程骨架
-- ✅ 独立编写 HelloWorld 发布者节点：`create_publisher` + `create_timer` + `publish`
-- ✅ 独立编写 HelloWorld 订阅者节点：`create_subscription` + 回调处理
-- ✅ 对比发布者(主动推送/Timer驱动)与订阅者(被动回调/消息事件驱动)的代码结构差异
-- ✅ 理解 Executor 的调度机制，能够在单进程中运行多个节点
+
+- ✅ 编写继承 `rclpy.node.Node` 的自定义节点类，并在构造函数中创建 Publisher 和 Timer
+- ✅ 理解节点生命周期的三个阶段（初始化 → 事件循环 → 销毁）以及每阶段应执行的操作
+- ✅ 将 MQ5 气体传感器、MFRC522 读卡器、指纹传感器分别封装为独立的 ROS2 Node
+- ✅ 使用 `ros2 topic echo` 和 `ros2 node info` 验证节点通信
 
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
-| Node 编程 | 掌握 `class MyNode(Node)` 的标准编程模式，包括继承、构造函数、四段式骨架 |
-| 生命周期管理 | 理解 init → spin → destroy_node → shutdown 四个阶段的职责和不可颠倒的调用顺序 |
-| 发布者模式 | 掌握 Timer 驱动的周期性发布模式（主动推送） |
-| 订阅者模式 | 掌握消息到达事件驱动的回调模式（被动响应） |
-| Executor 调度 | 理解 SingleThreadedExecutor 与 MultiThreadedExecutor 的区别和适用场景 |
+|---|---|
+| Node 编程 | 掌握 `class MyNode(Node)` 的标准编程模式，包括继承、构造函数、spin |
+| 传感器封装 | 理解"一个传感器 = 一个 Node"的设计原则，能够将任意传感器抽象为 ROS2 节点 |
+| 生命周期管理 | 正确管理节点在构造和析构阶段的资源申请与释放 |
+| 参数化配置 | 使用 `declare_parameter` 和 `get_parameter` 实现传感器参数的可配置化 |
 
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
-| `ros2 run hello_pubsub hello_publisher` 报 "No executable found" | entry_points 未注册或未重新编译 | 检查 setup.py 中的 console_scripts，重新 `colcon build` 并 source |
-| 发布者节点启动但 `ros2 topic echo` 无输出 | 话题名拼写不一致 | 检查 `create_publisher` 中的话题名和 `echo` 的话题名是否完全一致 |
-| 订阅者启动但不接收消息 | 话题名或消息类型不匹配 | 对比两边的 `create_publisher` 和 `create_subscription` 参数 |
-| 先启动 Subscriber 再启动 Publisher，Subscriber 从 #1 开头接收；反之从中间接收 | QoS `Durability=VOLATILE`，新订阅者拿不到历史消息 | 这是正常行为。如需历史消息，配置 QoS `Durability=TRANSIENT_LOCAL` |
-| 运行时报 "ImportError: No module named 'hello_pubsub'" | 未 source 当前工作空间环境 | 执行 `source ~/ros2_ws/install/setup.bash` |
-| 多节点单进程中某些回调不执行 | 使用了 `SingleThreadedExecutor`，一个回调长时间阻塞导致其他回调饿死 | 改用 `MultiThreadedExecutor` 或将耗时操作放入独立线程 |
+|---|---|---|
+| `ros2 run sensor_nodes gas_sensor` 报 "No executable found" | entry_points 未注册或未重新编译 | 检查 setup.py 中的 console_scripts，重新 colcon build 并 source |
+| 节点启动了但 publisher 没有发布数据 | Timer 未创建或回调函数有异常 | 检查 Timer 的 period 参数是否 >0，在回调函数中加 try/except 捕获异常 |
+| `ros2 topic echo` 无输出 | Publisher 话题名称与 echo 的话题不一致 | 检查 create_publisher 中的话题名称，与 ros2 topic list 输出的名称对比 |
+| 运行时报 "ImportError: cannot import name 'Node'" | 未正确 source Underlay 环境 | 先执行 `source /opt/ros/humble/setup.bash` |
+| 多个节点同时运行时输出混乱 | ROS2 日志系统默认输出到 stdout，多节点日志交错 | 使用 `--ros-args --log-level debug` 按节点过滤日志级别 |
 
 ### 九、实验报告要求
 
@@ -2365,45 +2554,41 @@ ros2 node list
 完成实验后，提交一份实验报告，包含以下内容：
 
 1. **实验基本信息**：实验名称、实验日期、实验者姓名、实验平台信息
-2. **实验过程记录**：截取步骤 5 中三终端（Publisher/Subscriber/echo）的输出截图，标注每个终端的角色和数据流关系
-3. **原理分析**（不少于 300 字）：用自己的语言解释：① 发布者与订阅者在代码结构上的本质区别是什么？② `rclpy.spin()` 在两者中分别扮演什么角色？如果去掉 spin，各自会发生什么？
+2. **实验过程记录**：截取启动 GasSensorNode 的终端输出、`ros2 node list` 和 `ros2 topic echo /gas_sensor` 的终端截图
+3. **原理分析**（不少于 300 字）：解释以下问题：① 为什么 ROS2 要将传感器封装为独立的 Node？这种设计的优缺点是什么？② `rclpy.spin(node)` 到底在做什么？如果没有 spin，Timed Callback 是否还会被触发？
 4. **思考题**（见下方）
 
 #### 9.2 思考题
 
 **思考题 1**：
-在步骤 6 的实验 B 中，你先启动了 Publisher（让它从 #1 发到 #10），然后才启动 Subscriber。Subscriber 从 #11 左右开始接收，#1~#10 的消息丢失了。请问：
-- 这是 ROS2 的 Bug 还是设计行为？为什么这样设计？
-- 如果你希望后来启动的 Subscriber 也能收到历史消息，应该如何配置？（提示：查阅 QoS Durability 策略中的 Transient Local）
+
+在步骤 5 中，你创建了三个不同传感器的 Node（MQ5/MFRC522/指纹）。它们的代码结构高度相似。请设计一个 Python 基类 `SensorNode(Node)`，将共性逻辑（参数声明、定时器管理、日志输出）提取到基类中，让 MQ5、MFRC522、指纹节点只需关注各自的传感器特定逻辑。给出基类的关键代码。
 
 **思考题 2**：
-假设你正在开发一个机器人系统，包含以下 3 个节点：
-- `/camera_node`：USB 摄像头驱动，10Hz 发布 `Image` 消息到 `/camera/image`
-- `/detector_node`：订阅 `/camera/image`，进行目标检测，发布 `DetectionResult` 到 `/detections`
-- `/controller_node`：订阅 `/detections`，计算控制指令，发布 `Twist` 到 `/cmd_vel`
 
-请画出这三个节点的数据流图（节点→话题→节点）。你认为 `detector_node` 同时是 Publisher 还是 Subscriber？这种"一个节点既是 Publisher 又是 Subscriber"的设计有什么工程优势？
+在当前设计中，每个传感器是一个独立的进程。如果 B2 实验箱上有 5 个传感器，就需要启动 5 个进程。思考以下问题：
+
+- 5 个独立进程 vs 1 个包含 5 个节点的进程（使用 MultiThreadedExecutor），各自的优缺点是什么？
+- 在什么场景下应该使用独立进程？在什么场景下应该使用多节点单进程？
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
-| 实验操作完整性 | 30% | 是否成功创建、编译、运行 Publisher 和 Subscriber 两个节点并验证消息流转 |
-| 代码质量 | 20% | 代码是否包含完整四段式骨架、注释是否清晰规范 |
-| 原理分析 | 25% | 对发布者/订阅者差异和 spin() 机制的理解深度 |
-| 思考题 1 | 15% | 对 QoS Durability 策略的理解和 Transient Local 的应用 |
-| 思考题 2 | 10% | 对 ROS2 节点拓扑关系和分析能力 |
+|---|---|---|
+| 实验操作完整性 | 30% | 是否成功创建、编译、运行至少一个传感器 Node |
+| 代码质量 | 20% | 代码结构（继承、构造函数、回调）是否规范，注释是否清晰 |
+| 原理分析 | 25% | 对 Node 概念、生命周期和 spin 机制的理解深度 |
+| 思考题 1 | 15% | 基类设计的合理性与可扩展性 |
+| 思考题 2 | 10% | 对进程模型与线程模型的理解 |
 
----
-
-## 实验6：ROS2话题通讯（MQ5气体传感器）（4h）
+## 实验6：ROS2话题通讯（MQ5气体传感器）
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 2.2.1 | 话题通信异步发布/订阅一对多模型 | 概念 | 第2章 ROS2核心通信机制 → 2.2 话题通信 |
 | 2.2.2 | DDS 全局数据空间与 QoS 传输策略原理 | 原理 | 第2章 ROS2核心通信机制 → 2.2 话题通信 |
 | 2.2.3 | create_publisher/create_subscription 编程流程 | 流程 | 第2章 ROS2核心通信机制 → 2.2 话题通信 |
@@ -2421,8 +2606,8 @@ ros2 node list
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1（集成 MQ5 可燃气体传感器） |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2  |
 | 操作系统 | Ubuntu 22.04 + ROS2 Humble |
 | 核心依赖 | `rclpy`、`std_msgs` |
 | 开发语言 | Python 3.10 |
@@ -2434,17 +2619,19 @@ ros2 node list
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 4 学时（180 分钟） |
 
 **重点**：
+
 - 掌握 Publisher/Subscriber 的标准编程流程：`create_publisher` → 构造消息 → `publish`；`create_subscription` → 注册回调 → 处理数据
 - 理解 `Float32` 标准消息类型与 QoS `Reliable + KeepLast(10)` 的配置方法
 - 掌握 MQ5 传感器从 ADC 原始值到电压、再到 ppm 浓度的对数换算原理
 
 **难点**：
+
 - MQ5 灵敏特性曲线（对数坐标）下 `voltage_to_ppm` 的换算推导
 - QoS 三种核心策略（Reliability、Durability、History Depth）对通信行为的实际影响
 
@@ -2465,7 +2652,7 @@ ros2 node list
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `ros2 run ros_sensor gas_sensor_node` | 每秒输出 `raw=1234 voltage=1.20V ppm=312.45` |
 | `ros2 run ros_sensor gas_monitor`（另一终端） | 每秒输出 `浓度正常: 312.45 ppm` |
 | `ros2 topic info /gas_sensor` | Type: `std_msgs/msg/Float32`, Publishers: 1, Subscribers: 2（含 echo） |
@@ -2490,11 +2677,12 @@ graph LR
 
 ---
 
-#### 步骤 1：编译 `ros_sensor` 包（10 分钟）
+#### 步骤 1：编译ros_sensor包（10 分钟）
 
 **知识点讲解**：
 
 **功能包与工作空间（知识点 1.3.3、1.4.2）**
+
 - **是什么**：`ros_sensor` 是一个 ament_python 功能包，把所有传感器驱动节点（MQ5/指纹/RFID/DHT11/MAX30102/继电器/光电）打包在一起，通过 `setup.py` 的 `entry_points` 注册为 `ros2 run` 可执行程序。它依赖自定义接口包 `ros_sensor_interfaces`。
 - **为什么**：把节点统一放入一个包，可以一次性 `colcon build` 编译、`ros2 launch` 批量启动，避免每个传感器一个独立包导致的编译与依赖管理碎片化。
 - **怎么用**：先在工作空间根目录编译，再 source 环境。
@@ -2513,6 +2701,7 @@ source install/setup.bash
 ```
 
 **易错点**：
+
 - ⚠️ 编译后忘记 `source install/setup.bash`，导致 `ros2 run ros_sensor ...` 报 `package not found` → **解决**：每次新开终端都要重新 source。
 
 ---
@@ -2522,23 +2711,23 @@ source install/setup.bash
 **知识点讲解**：
 
 **MQ5 电阻-浓度对数曲线换算（知识点 2.2.4）**
+
 - **是什么**：MQ5 是半导体气敏元件，其内阻随可燃气体浓度升高而下降。本实验通过分压电路把「电阻变化」转为「ADC 电压」，再通过 MQ5 的灵敏特性曲线（对数坐标下近似直线）反推 ppm 浓度。
 - **为什么**：气敏元件的 `Rs/R0`（当前电阻/标定电阻）与浓度之间呈幂律关系，直接线性读取电压无法得到正确浓度，必须在对数域做线性插值。
 - **怎么用**：`common.py` 中 `voltage_to_ppm()` 完成换算，公式如下（源码对应 `common.py` L25-33）：
 
-```text
 rs    = RL * (V_REF - v) / v         # 分压电阻反推 Rs
+
 ratio = rs / R0                       # 与标定电阻的比值
+
 ppm   = 10 ** ((log10(ratio) - CURVE_B) / CURVE_M)
-```
 
 其中常量（源码 `common.py` L13-17）：`V_REF = 5.0`、`RL = 1.0`（负载电阻 kΩ）、`R0 = 10.0`（标定电阻 kΩ）、`CURVE_B = 0.186`、`CURVE_M = -0.362`（特性曲线截距与斜率）。
 
 **操作步骤**：
 
-打开 `common.py`，重点阅读 `read_mq5_once()` 与 `voltage_to_ppm()` 两个函数（`common.py` L25-47），理解「ADC 原始值 → 电压 → 电阻比值 → ppm」的四步链路。
-
-```python
+```bash
+打开 common.py，重点阅读 read_mq5_once() 与 voltage_to_ppm() 两个函数（common.py L25-47），理解「ADC 原始值 → 电压 → 电阻比值 → ppm」的四步链路。
 # 来源：ros_sensor/common.py L36-47（read_mq5_once）
 def read_mq5_once():
     try:
@@ -2551,25 +2740,26 @@ def read_mq5_once():
 ```
 
 **易错点**：
+
 - ⚠️ 误以为 ADC 原始值就是电压 → **解决**：必须先乘 `in_voltage_scale` 再除以 1000 才是伏特。
 - ⚠️ 电压接近 0 或满量程时 `voltage_to_ppm` 返回 0.0（除零保护）→ **解决**：检查 `v <= 0 or v >= V_REF` 分支。
 
 ---
 
-#### 步骤 3：分析 `gas_sensor_node` 发布节点（30 分钟）
+#### 步骤 3：分析`gas_sensor_node` 发布节点（30 分钟）
 
 **知识点讲解**：
 
 **Publisher 节点编程模型（知识点 2.2.1、2.2.3）**
+
 - **是什么**：`gas_sensor_node` 是数据的「生产者」，继承 `rclpy.node.Node`，通过 `create_publisher` 声明「在 `/gas_sensor` 话题上发布 `Float32` 类型消息」，再用 `create_timer` 周期触发回调完成采样与发布。
 - **为什么异步**：`publish()` 只把消息放入 DDS 内部队列即返回，不等待订阅者处理——因此即使没有订阅者在线也能正常运行，订阅者处理慢也不会阻塞发布者，实现生产/消费速率解耦。
 - **怎么用**：`create_publisher(msg_type, topic, qos)` → 构造消息并赋值 → `publish(msg)`。QoS 使用 `Reliable + KeepLast(10)`，保证可靠传输并缓存最近 10 条历史消息（源码 `gas_sensor_node.py` L21-26）。
 
 **操作步骤**：
 
-打开 `gas_sensor_node.py`，完整阅读 `GasSensorNode` 类（L16-44），重点理解参数声明、QoS 配置与定时器回调三个环节。
-
-```python
+```bash
+打开 gas_sensor_node.py，完整阅读 GasSensorNode 类（L16-44），重点理解参数声明、QoS 配置与定时器回调三个环节。
 # 来源：ros_sensor/gas_sensor_node.py L16-44（节选）
 class GasSensorNode(Node):
     def __init__(self):
@@ -2597,25 +2787,26 @@ class GasSensorNode(Node):
 ```
 
 **易错点**：
+
 - ⚠️ 忘记 `declare_parameter` 就 `get_parameter`，运行时报参数未声明错误 → **解决**：声明在前、读取在后。
 - ⚠️ `Float32` 消息只有 `data` 一个字段，误用 `msg.value` → **解决**：确认 `std_msgs/msg/Float32` 的字段名是 `data`。
 
 ---
 
-#### 步骤 4：分析 `gas_monitor` 订阅节点（30 分钟）
+#### 步骤 4：分析`gas_monitor` 订阅节点（30 分钟）
 
 **知识点讲解**：
 
 **Subscriber 节点编程模型（知识点 2.2.3）**
+
 - **是什么**：`gas_monitor` 是数据的「消费者」，通过 `create_subscription` 注册「监听 `/gas_sensor` 话题的 `Float32` 消息」，当有新消息到达时由 DDS 回调 `callback()`。
 - **为什么用回调**：订阅者不主动轮询，而是被动等待——消息到达后由 ROS2 的 Executor 调度回调函数执行，这是事件驱动模型的体现，避免空转浪费 CPU。
 - **怎么用**：`create_subscription(msg_type, topic, callback, qos)`，在回调内完成业务逻辑。本节点在回调中把 `msg.data` 与 `alarm_threshold` 比较，超阈值时用 `log_warn` 报警（源码 `gas_monitor.py` L29-36）。
 
 **操作步骤**：
 
-打开 `gas_monitor.py`，完整阅读 `GasMonitor` 类（L13-36）。
-
-```python
+```bash
+打开 gas_monitor.py，完整阅读 GasMonitor 类（L13-36）。
 # 来源：ros_sensor/gas_monitor.py L13-36（节选）
 class GasMonitor(Node):
     def __init__(self):
@@ -2639,15 +2830,17 @@ class GasMonitor(Node):
 ```
 
 **易错点**：
+
 - ⚠️ 订阅端 QoS 与发布端不兼容（如一端 RELIABLE、一端 BEST_EFFORT）导致收不到消息 → **解决**：两端 QoS 保持 `Reliable + KeepLast(10)` 一致。
 
 ---
 
-#### 步骤 5：运行节点与 CLI 观察（40 分钟）
+#### 步骤 5：运行节点与 CLI 观察
 
 **知识点讲解**：
 
 **话题运行态自省（知识点 1.2.2）**
+
 - **是什么**：ROS2 提供 `ros2 topic` 命令族对运行中的话题做「自省」——`list` 列出话题、`info` 查看类型与收发端数量、`echo` 打印消息内容、`hz` 统计发布频率。
 - **为什么重要**：这些命令不需要改动代码即可验证「谁在发、谁在收、发的什么、多快」，是排查话题通信问题的第一工具。
 - **怎么用**：先在两个终端分别启动发布与订阅节点，再用第三个终端执行 `ros2 topic` 命令观察。
@@ -2666,9 +2859,14 @@ ros2 topic list                      # 应包含 /gas_sensor
 ros2 topic info /gas_sensor          # Type: std_msgs/msg/Float32
 ros2 topic echo /gas_sensor          # 实时打印 data: 312.45
 ros2 topic hz /gas_sensor            # average rate: 1.000 Hz
+发布节点现象
+
+订阅节点现象
+
 ```
 
 **易错点**：
+
 - ⚠️ `ros2 topic hz` 打印 `no messages received` → **解决**：确认发布节点已启动且无报错，检查 `ROS_DOMAIN_ID` 是否一致。
 
 ---
@@ -2678,6 +2876,7 @@ ros2 topic hz /gas_sensor            # average rate: 1.000 Hz
 **知识点讲解**：
 
 **参数化设计与一对多特性（知识点 2.2.1、2.5.3）**
+
 - **是什么**：把发布周期、报警阈值等做成 `declare_parameter` 参数，运行时用 `--ros-args -p 参数名:=值` 覆盖默认值，无需改代码。
 - **为什么**：话题通信天然支持一对多——一个 Publisher 可同时服务多个 Subscriber，这是它与服务（一对一）的本质区别，也是选择话题承载持续数据流的根本原因。
 - **怎么用**：`ros2 run ros_sensor gas_sensor_node --ros-args -p publish_period:=0.5` 调整发布频率；`ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=100.0` 降低报警阈值；同时打开 `ros2 topic echo` 观察多订阅者同时接收。
@@ -2690,19 +2889,22 @@ ros2 run ros_sensor gas_sensor_node --ros-args -p publish_period:=0.5
 
 # 降低报警阈值到 100ppm，观察 log_warn 报警
 ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=100.0
+预期现象：ros2 topic hz /gas_sensor 变为约 2Hz；使用打火机放气对准可燃气体传感器（千万不要点火），可燃气体浓度可以在订阅端观察浓度变化。
+
 ```
 
-预期现象：`ros2 topic hz /gas_sensor` 变为约 2Hz；`gas_monitor` 终端由「浓度正常」切换为「[报警] 气体浓度超标」。
+![image-20260821183128226](assets/image-20260821183128226.png)
+
+![image-20260821182700575](assets/image-20260821182700575.png)
 
 **易错点**：
-- ⚠️ 参数写错（如 `publish_period=0.5` 用等号）导致参数未被识别 → **解决**：ROS2 覆盖参数必须用 `:=`，即 `-p publish_period:=0.5`。
 
----
+- ⚠️ 参数写错（如 `publish_period=0.5` 用等号）导致参数未被识别 → **解决**：ROS2 覆盖参数必须用 `:=`，即 `-p publish_period:=0.5`。
 
 ### 七、注意事项
 
 | ⚠️ 注意项 | 说明 |
-|-----------|------|
+|---|---|
 | QoS 一致性 | 发布端与订阅端须同为 `Reliable + KeepLast(10)`，否则可能收不到消息 |
 | 环境加载 | 每次新开终端都要 `source install/setup.bash`，否则 `ros2 run` 找不到 `ros_sensor` 包 |
 | 话题命名 | 话题名以 `/` 开头表示全局命名空间，本实验统一使用 `/gas_sensor` |
@@ -2713,6 +2915,7 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=100.0
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 编译并运行 `ros_sensor` 包中的 `gas_sensor_node` / `gas_monitor` 两个节点
 - ✅ 理解 MQ5 传感器「ADC 原始值 → 电压 → 电阻比值 → ppm」的对数换算全链路
 - ✅ 使用 `ros2 topic echo/hz/info` 观察话题的类型、频率与多订阅者收发
@@ -2722,7 +2925,7 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=100.0
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 话题编程 | 掌握 Publisher/Subscriber 的标准代码模式（声明参数、QoS 配置、消息收发回调） |
 | 传感器数据处理 | 理解 ADC 采集 → 物理量换算的完整信号处理链路 |
 | QoS 配置 | 能根据场景选择可靠性/持久性/历史策略 |
@@ -2732,7 +2935,7 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=100.0
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | 订阅节点无输出 | ① 话题名不匹配 ② QoS 不兼容 ③ ROS_DOMAIN_ID 不一致 | 用 `ros2 topic info` 确认话题信息，检查 `echo $ROS_DOMAIN_ID` |
 | 浓度值始终为 0 | 电压接近 0 或满量程触发除零保护 | 检查 ADC 硬件连接与 `in_voltage_scale` 读数 |
 | 浓度值跳跃很大 | 真实传感器的噪声 | 在回调中添加滑动平均滤波（移动窗口均值） |
@@ -2748,39 +2951,39 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=100.0
 1. **实验基本信息**：实验名称、实验日期、实验者姓名、实验平台信息
 2. **实验过程记录**：截取发布节点终端输出、订阅节点终端输出、`ros2 topic info` 和 `ros2 topic hz` 的终端截图
 3. **原理分析**（不少于 400 字）：用自己的语言解释以下三个问题：
-   - ① 为什么 Publisher 和 Subscriber 通过话题名称和消息类型即可通信，而无需知道对方 IP 或进程 ID？DDS 在其中做了什么？
-   - ② MQ5 从 ADC 原始值到 ppm 浓度经历了哪些换算步骤？每一步的物理意义是什么？
-   - ③ 若收到的浓度数据存在大量噪声毛刺，你会如何处理？
+- ① 为什么 Publisher 和 Subscriber 通过话题名称和消息类型即可通信，而无需知道对方 IP 或进程 ID？DDS 在其中做了什么？
+- ② MQ5 从 ADC 原始值到 ppm 浓度经历了哪些换算步骤？每一步的物理意义是什么？
+- ③ 若收到的浓度数据存在大量噪声毛刺，你会如何处理？
 4. **思考题**（见下方）
 
 #### 9.2 思考题
 
 **思考题 1**：
+
 `voltage_to_ppm()` 中 `CURVE_M = -0.362` 为负值，说明 ppm 与 `Rs/R0` 的比值是什么单调关系？请结合 MQ5 气敏元件的物理特性解释「为什么可燃气体浓度越高、传感器内阻越低」。
 
 **思考题 2**：
+
 MQ5 对甲烷、液化气、酒精蒸气等多种可燃气体都敏感但无法区分种类。假设你在设计智能厨房安全监控系统，需要区分「炒菜的酒精蒸气」与「燃气泄漏的天然气」，请设计一种多传感器 + ROS2 话题通信的方案，简述架构。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 25% | 是否成功运行 gas_sensor_node + gas_monitor + CLI 验证 |
 | 代码理解 | 20% | 能否准确指出 common.py/gas_sensor_node.py/gas_monitor.py 关键代码位置 |
 | 原理分析 | 25% | 对话题通信机制、浓度换算原理、QoS 的理解深度 |
 | 思考题 1 | 15% | 对 MQ5 对数特性曲线与物理机制的阐释 |
 | 思考题 2 | 15% | 多传感器融合方案的创新性与可行性 |
 
----
-
-## 实验7：ROS2服务通讯（指纹传感器）（4h）
+## 实验7：ROS2服务通讯（指纹传感器）
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 2.3.1 | 服务通信同步 RPC 一对一请求/响应模型 | 概念 | 第2章 ROS2核心通信机制 → 2.3 服务通信 |
 | 2.3.2 | 服务端注册服务名与回调、客户端同步 call 的交互原理 | 原理 | 第2章 ROS2核心通信机制 → 2.3 服务通信 |
 | 2.3.3 | create_service 注册服务 → UART 控制指纹模块 → 采集/比对 → 返回结果 | 流程 | 第2章 ROS2核心通信机制 → 2.3 服务通信 |
@@ -2797,8 +3000,8 @@ MQ5 对甲烷、液化气、酒精蒸气等多种可燃气体都敏感但无法�
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1（集成指纹识别模组） |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2  |
 | 操作系统 | Ubuntu 22.04 + ROS2 Humble |
 | 核心依赖 | `rclpy`、`ros_sensor_interfaces`（自定义 srv）、`pyserial` |
 | 开发语言 | Python 3.10 |
@@ -2810,17 +3013,19 @@ MQ5 对甲烷、液化气、酒精蒸气等多种可燃气体都敏感但无法�
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 4 学时（180 分钟） |
 
 **重点**：
+
 - 掌握 Service 服务端/客户端的标准编程流程：`create_service` 注册回调 → `create_client` 创建客户端 → `call_async` 异步请求 → `spin_until_future_complete` 等待响应
 - 理解 `.srv` 自定义服务接口「请求（空）/响应（success, user_id, message）」的定义与使用
 - 掌握指纹验证「采集图像 → 生成特征 → 搜索指纹库」三步流程及每步的确认码含义
 
 **难点**：
+
 - 同步 RPC 与异步话题、动作在调用模型上的区别与选型
 - 指纹模组 `PS_*` 串口协议的确认码（0x00 成功、0x02 无手指等）在重试循环中的应用
 
@@ -2840,7 +3045,7 @@ MQ5 对甲烷、液化气、酒精蒸气等多种可燃气体都敏感但无法�
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `ros2 run ros_sensor fingerprint_server` | `指纹服务已启动: port=/dev/ttyS10 baud=57600` |
 | `ros2 run ros_sensor fingerprint_client`（另一终端） | `验证成功 user_id=1 匹配成功 score=123`（已录入手指） |
 | `ros2 service list` | 列表包含 `/verify_fingerprint` |
@@ -2869,6 +3074,7 @@ graph LR
 **知识点讲解**：
 
 **指纹录入与验证分离（知识点 2.3.3）**
+
 - **是什么**：指纹「录入」和「验证」是两个独立环节——录入把手指特征模板写入模组内部 Flash（持久保存），验证则是把现场采集的特征与库中模板比对。本实验中录入用 `fingerprint_enroll.py` 这个独立的串口脚本完成，ROS 节点只负责「验证」。
 - **为什么分离**：录入是一次性、低频、需要人工按两次手指确认的操作，不需要 ROS 参与；而验证是高频、程序化的请求，用 ROS 服务封装便于被其它节点（如门禁、考勤逻辑）复用。
 - **怎么用**：运行 `fingerprint_enroll.py enroll -i 1` 把指纹保存到位置 1，然后才能用服务端验证。
@@ -2876,35 +3082,43 @@ graph LR
 **操作步骤**：
 
 ```bash
-cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor
+cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
 
 # 录入指纹到位置 1（按提示放两次同一手指）
 python3 fingerprint_enroll.py enroll -i 1
 
 # 查看当前指纹库模板数量
 python3 fingerprint_enroll.py list
+
+#根据终端的提示录入指纹
+
 ```
 
+![image-20260821183258468](assets/image-20260821183258468.png)
+
+![image-20260821183429592](assets/image-20260821183429592.png)
+
 **易错点**：
+
 - ⚠️ 两次按压不是同一根手指导致 `合并模板失败` → **解决**：重新录入，两次都用同一根手指并保持角度一致。
 - ⚠️ 串口占用冲突（服务端正在运行又跑录入脚本）→ **解决**：先停止 `fingerprint_server`，录入完成后再启动。
 
 ---
 
-#### 步骤 2：阅读 UART 协议层（25 分钟）
+#### 步骤 2：阅读 UART 协议层
 
 **知识点讲解**：
 
-**PS_* 串口协议与确认码（知识点 2.3.3）**
-- **是什么**：指纹模组通过 UART 收发 8 位帧（包头 `0xEF01` + 地址 + 包标识 + 长度 + 指令码 + 参数 + 校验和）。核心指令码见 `fingerprint_enroll.py` L20-28：`CMD_GET_IMAGE=0x01`（采集图像）、`CMD_GEN_CHAR=0x02`（生成特征）、`CMD_REG_MODEL=0x05`（合并特征成模板）、`CMD_STORE_CHAR=0x06`（储存模板）、`CMD_SEARCH=0x04`（搜索指纹库）。
-- **为什么**：模组是「一问一答」的主从协议，主机发指令、模组回确认码。确认码约定（`fingerprint_enroll.py` L31-33）：`0x00` 成功、`0x01` 收包有错、`0x02` 无手指——服务端正是靠 `0x02` 判断「手指未按下」来做轮询等待。
-- **怎么用**：`Fingerprint` 类（`fingerprint_enroll.py` L45-124）封装了 `get_image()`、`gen_char()`、`reg_model()`、`store_char()`、`search()` 等方法，ROS 服务端直接复用这些方法，无需自己拼帧。
+**PS_ 串口协议与确认码（知识点 2.3.3）****
+
+- **是什么**：指纹模组通过 UART 收发 8 位帧（**包头 0xEF01 + 地址 + 包标识 + 长度 + 指令码 + 参数 + 校验和**）。核心指令码见 `fingerprint_enroll.py` L20-28：`CMD_GET_IMAGE=0x01（采集图像）`、`CMD_GEN_CHAR=0x02`（生成特征）、`CMD_REG_MODEL=0x05（`合并特征成模板）、`CMD_STORE_CHAR=0x06`（储存模板）、`CMD_SEARCH=0x04`（搜索指纹库）。
+- **为什么**：模组是「一问一答」的主从协议，主机发指令、模组回确认码。确认码约定（`fingerprint_enroll.py` L31-33）：`0x00 成功`、`0x01收包有错、0x02 无手指`——服务端正是靠` 0x02 `判断「手指未按下」来做轮询等待。
+- **怎么用**：`Fingerprint 类（fingerprint_enroll.py L45-124）`封装了` get_image()`、`gen_char()`、`reg_model()`、`store_char()、search() `等方法，ROS 服务端直接复用这些方法，无需自己拼帧。
 
 **操作步骤**：
 
-打开 `fingerprint_enroll.py`，阅读 `_build_packet()`（L36-42，帧封装）与 `Fingerprint._send()`（L56-73，收发与校验），理解 8 字节包头 + 确认码 + 参数 + 2 字节校验和的应答结构。
-
-```python
+```bash
+打开 fingerprint_enroll.py，阅读 _build_packet()（L36-42，帧封装）与 Fingerprint._send()（L56-73，收发与校验），理解 8 字节包头 + 确认码 + 参数 + 2 字节校验和的应答结构。
 # 来源：fingerprint_enroll.py L19-28（指令码定义）
 CMD_GET_IMAGE   = 0x01   # PS_GetImage   采集图像
 CMD_GEN_CHAR    = 0x02   # PS_GenChar    生成特征
@@ -2914,24 +3128,25 @@ CMD_SEARCH      = 0x04   # PS_Search     搜索指纹
 ```
 
 **易错点**：
+
 - ⚠️ 误把确认码当成「错误码」，以为非零即失败 → **解决**：`0x02` 是「无手指」的正常状态，不是错误。
 
 ---
 
-#### 步骤 3：分析 `fingerprint_server` 服务端（35 分钟）
+#### 步骤 3：分析fingerprint_server服务端（35 分钟）
 
 **知识点讲解**：
 
 **服务端编程模型（知识点 2.3.1、2.3.2）**
-- **是什么**：`fingerprint_server` 通过 `create_service` 把「`VerifyFingerprint` 类型的回调 `handle_request`」注册到服务名 `verify_fingerprint` 上（源码 `fingerprint_server.py` L24-26）。当客户端发起请求，ROS2 会调用 `handle_request(request, response)`，函数返回的 `response` 即回传给客户端。
+
+- **是什么**：`fingerprint_server` 通过` create_service`把「`VerifyFingerprint `类型的回调 `handle_reques`t注册到服务名 `verify_fingerprint `上（源码 `fingerprint_server.py` L24-26）。当客户端发起请求，ROS2 会调用 `handle_request(request, response)`，函数返回的 `response` 即回传给客户端。
 - **为什么同步**：服务回调是「收到一次请求、处理、返回一次结果」的单次 RPC，处理期间该调用处于等待状态，适合指纹验证这种「一问一答、结果确定」的场景。
-- **怎么用**：`handle_request` 内完成三步（源码 L46-87）：① 循环调用 `get_image()` 等待手指按下（`0x02` 无手指则 `sleep(0.2)` 重试，共 `retries=50` 次）；② `gen_char(1)` 生成特征；③ `search()` 搜索指纹库，成功则返回 `user_id=页码`、`message=f'匹配成功 score={score}'`。
+- **怎么用**：`handle_request `内完成三步（源码 L46-87）：① 循环调用 `get_image()` 等待手指按下（`0x02` 无手指则 `sleep(0.2)` 重试，共 `retries=50` 次）；②` gen_char(1)`生成特征；③ search(搜索指纹库，成功则返回 `user_id=页码`、`message=f`匹配成功` score={score}`。
 
 **操作步骤**：
 
-打开 `fingerprint_server.py`，完整阅读 `FingerprintServer` 类（L17-87），重点理解参数声明与回调三步流程。
-
-```python
+```bash
+打开 fingerprint_server.py，完整阅读 FingerprintServer 类（L17-87），重点理解参数声明与回调三步流程。
 # 来源：fingerprint_server.py L19-26（节点初始化，节选）
 super().__init__('fingerprint_server')
 self.declare_parameter('port', os.environ.get('FP_PORT', '/dev/ttyS10'))
@@ -2940,9 +3155,6 @@ self.declare_parameter('retries', 50)
 self.srv = self.create_service(
     VerifyFingerprint, 'verify_fingerprint', self.handle_request
 )
-```
-
-```python
 # 来源：fingerprint_server.py L46-64（采图轮询，节选）
 for _ in range(retries):
     code = fp.get_image()
@@ -2957,25 +3169,26 @@ for _ in range(retries):
 ```
 
 **易错点**：
+
 - ⚠️ 忘记 `declare_parameter` 就 `get_parameter` → **解决**：三个参数 `port/baud/retries` 都必须先声明（L20-22）。
 - ⚠️ 服务回调未 `finally: fp.close()` 导致串口泄漏 → **解决**：源码 L84-85 用 `try/finally` 保证串口总是被关闭。
 
 ---
 
-#### 步骤 4：分析 `fingerprint_client` 客户端（35 分钟）
+#### 步骤 4：分析`fingerprint_client` 客户端（35 分钟）
 
 **知识点讲解**：
 
 **客户端编程模型（知识点 2.3.2）**
+
 - **是什么**：`fingerprint_client` 通过 `create_client` 创建客户端，`wait_for_service` 等待服务上线，`call_async` 发送请求，`spin_until_future_complete` 阻塞等待响应。
-- **为什么用 `spin_until_future_complete`**：`call_async` 是异步的（立即返回一个 Future），需要让 Executor 转动来处理服务端回包，直到 Future 完成。这是 ROS2 客户端「异步发送、同步等待」的标准写法。
+- ****为什么用 `spin_until_future_complete`****：`call_async` 是异步的（立即返回一个 Future），需要让 Executor 转动来处理服务端回包，直到 Future 完成。这是 ROS2 客户端「异步发送、同步等待」的标准写法。
 - **怎么用**：构造 `VerifyFingerprint.Request()`（本 srv 请求为空），`call_async(req)` 拿到 Future，`spin_until_future_complete(self, future)` 等待，`future.result()` 取到 `response` 后按 `success` 分支打印（源码 `fingerprint_client.py` L23-40）。
 
 **操作步骤**：
 
-打开 `fingerprint_client.py`，完整阅读 `FingerprintClient` 类（L15-40）。
-
-```python
+```bash
+打开 fingerprint_client.py，完整阅读 FingerprintClient 类（L15-40）。
 # 来源：fingerprint_client.py L16-31（创建客户端与发送请求，节选）
 super().__init__('fingerprint_client')
 self.cli = self.create_client(VerifyFingerprint, 'verify_fingerprint')
@@ -2991,17 +3204,19 @@ if resp.success:
 ```
 
 **易错点**：
+
 - ⚠️ 客户端先于服务端启动时 `call_async` 报错 → **解决**：`wait_for_service` 循环会阻塞等待服务上线，务必先启动服务端再启动客户端。
 - ⚠️ 忘记检查 `future.result()` 是否为 `None`（服务调用失败）→ **解决**：源码 L28-30 对 `None` 做了防御性判断。
 
 ---
 
-#### 步骤 5：运行与 `ros2 service` 调试（40 分钟）
+#### 步骤 5：运行与ros2 service调试（40 分钟）
 
 **知识点讲解**：
 
 **服务运行态自省（知识点 2.1.2）**
-- **是什么**：`ros2 service` 命令族用于自省运行中的服务——`list` 列出服务、`type` 查看类型、`call` 直接发起一次调用。
+
+- **是什么**：`ros2 service `命令族用于自省运行中的服务——`list列出服务`、`type 查看类型`、`call直接发起一次调用`。
 - **为什么重要**：无需编写客户端即可验证服务端逻辑，是调试服务通信最快捷的手段；`call` 的参数用 YAML 字符串给出，本 srv 请求为空，故传 `"{}"`。
 - **怎么用**：先启动服务端，再在另一终端 `ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprint "{}"`。
 
@@ -3018,9 +3233,14 @@ ros2 run ros_sensor fingerprint_client
 ros2 service list
 ros2 service type /verify_fingerprint
 ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprint "{}"
+#根据客户端提示验证已经录入指纹的手指
+
 ```
 
+![image-20260821183542587](assets/image-20260821183542587.png)
+
 **易错点**：
+
 - ⚠️ `ros2 service call` 的请求参数写错（如 `"{data: 1}"`）→ **解决**：`VerifyFingerprint` 请求为空，必须传 `"{}"`。
 - ⚠️ 未放手指时调用会等待到超时 → **解决**：调用前先把手指放到传感器上，或观察服务端 50 次轮询（约 10s）后的「超时，未检测到手指」响应。
 
@@ -3031,14 +3251,18 @@ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprin
 **知识点讲解**：
 
 **通信机制选型（知识点 2.2.1、2.3.1）**
+
 - **是什么**：话题是「一对多、持续、异步」的数据流；服务是「一对一、单次、同步」的请求响应。二者在调用语义上互补。
 - **为什么指纹验证选服务**：验证是一次性的「请求→结果」交互，天然符合 RPC 语义；若用话题，则要额外定义「请求话题+响应话题」并处理配对，复杂且易错。
 - **怎么用**：下表给出三类通信机制的选型对照，是本章（实验6/7/8）的核心结论。
 
 **操作步骤**：
 
+```bash
+```
+
 | 维度 | 话题（实验6） | 服务（实验7） | 动作（实验8） |
-|------|-------------|-------------|-------------|
+|---|---|---|---|
 | 调用语义 | 持续数据流，一对多 | 单次请求/响应，一对一 | 长耗时目标+反馈+结果 |
 | 异步/同步 | 异步 | 同步（客户端阻塞等待） | 异步 |
 | 是否可取消 | 否 | 否 | 是 |
@@ -3046,14 +3270,13 @@ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprin
 | 典型场景 | MQ5 浓度持续发布 | 指纹验证、继电器控制 | 刷卡检测（等待刷卡） |
 
 **易错点**：
-- ⚠️ 用话题实现「单次查询」导致配对复杂 → **解决**：一次性请求-响应用服务，持续数据流用话题，长耗时可反馈可取消用动作。
 
----
+- ⚠️ 用话题实现「单次查询」导致配对复杂 → **解决**：一次性请求-响应用服务，持续数据流用话题，长耗时可反馈可取消用动作。
 
 ### 七、注意事项
 
 | ⚠️ 注意项 | 说明 |
-|-----------|------|
+|---|---|
 | 串口独占 | 录入脚本与服务端不能同时占用同一串口，录入前先停止服务端 |
 | 服务就绪 | 客户端依赖服务端在线，先启动服务端再启动客户端 |
 | 服务名一致 | 服务端与客户端均使用 `verify_fingerprint`（绝对名 `/verify_fingerprint`），须一致 |
@@ -3065,6 +3288,7 @@ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprin
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 使用 `fingerprint_enroll.py` 完成指纹的录入、查询、删除与清空
 - ✅ 编译并运行 `fingerprint_server` / `fingerprint_client` 完成指纹验证
 - ✅ 理解指纹「采图 → 生成特征 → 搜索比对」三步流程及 `PS_*` 协议确认码含义
@@ -3074,7 +3298,7 @@ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprin
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 服务编程 | 掌握 Service 服务端/客户端标准代码模式（create_service/create_client/call_async） |
 | 串口传感器集成 | 理解 UART 主从协议与确认码驱动的轮询交互 |
 | 自定义接口使用 | 使用 `ros_sensor_interfaces/srv/VerifyFingerprint` 自定义服务 |
@@ -3084,7 +3308,7 @@ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprin
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | 客户端一直「等待指纹服务」 | 服务端未启动或服务名不一致 | 先启动 `fingerprint_server`，确认 `ros2 service list` 含 `/verify_fingerprint` |
 | 验证总是失败 user_id=-1 | 手指未录入，或按压位置偏移 | 先 `enroll` 录入，验证时保持相同角度力度 |
 | 采图报「无手指」后超时 | 传感器未检测到手指 | 检查手指是否完全覆盖采集窗口，必要时清洁窗口 |
@@ -3100,39 +3324,39 @@ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprin
 1. **实验基本信息**：实验名称、实验日期、实验者姓名、实验平台信息
 2. **实验过程记录**：截取服务端启动、客户端验证成功、`ros2 service list/type/call` 的终端截图
 3. **原理分析**（不少于 400 字）：用自己的语言解释以下三个问题：
-   - ① 为什么服务通信是「同步」的？`call_async` 名字里有 async，但客户端却要 `spin_until_future_complete` 阻塞等待，这两者是否矛盾？请说明 Future 与 Executor 的关系。
-   - ② 指纹验证为什么用服务而非话题？如果改用话题实现，需要额外设计哪些机制？
-   - ③ 服务端 `handle_request` 中为什么用循环 + `sleep(0.2)` 轮询「无手指」而不是阻塞读取？这样设计有何优劣？
+- ① 为什么服务通信是「同步」的？`call_async` 名字里有 async，但客户端却要 `spin_until_future_complete` 阻塞等待，这两者是否矛盾？请说明 Future 与 Executor 的关系。
+- ② 指纹验证为什么用服务而非话题？如果改用话题实现，需要额外设计哪些机制？
+- ③ 服务端 `handle_request` 中为什么用循环 + `sleep(0.2)` 轮询「无手指」而不是阻塞读取？这样设计有何优劣？
 4. **思考题**（见下方）
 
 #### 9.2 思考题
 
 **思考题 1**：
+
 指纹模组的 `PS_GetImage`（0x01）在「无手指」时返回确认码 `0x02`。如果服务端把 `0x02` 当作错误立即返回失败，会导致什么问题？结合源码 `fingerprint_server.py` L49-54 说明「区分状态码与错误码」对鲁棒性的意义。
 
 **思考题 2**：
+
 `verify_fingerprint` 服务的请求字段为空，客户端无法指定「要验证到哪个用户」。假设你要设计一个「门禁 + 考勤」系统，需要区分「验证通过即可开门」与「验证通过并确认身份记录考勤」，请问你会如何扩展 `.srv` 接口？请给出扩展后的 srv 定义与使用流程。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 25% | 是否成功完成录入 + 服务端/客户端验证 + CLI 调用 |
 | 代码理解 | 20% | 能否准确指出 fingerprint_enroll.py / fingerprint_server.py / fingerprint_client.py 关键代码位置 |
 | 原理分析 | 25% | 对同步 RPC 模型、串口协议、选型的理解深度 |
 | 思考题 1 | 15% | 对状态码/错误码区分与鲁棒性的阐释 |
 | 思考题 2 | 15% | 对 srv 接口扩展设计的合理性与完整性 |
 
----
-
-## 实验8：ROS2动作通讯（MFRC522读卡器）（4h）
+## 实验8：ROS2动作通讯（MFRC522读卡器）
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 2.4.1 | 动作是异步长耗时任务的 Goal→Feedback→Result 三通道机制 | 概念 | 第2章 ROS2核心通信机制 → 2.4 动作通信 |
 | 2.4.2 | 客户端发 Goal、服务端异步执行并通过 Feedback 周期反馈的交互原理 | 原理 | 第2章 ROS2核心通信机制 → 2.4 动作通信 |
 | 2.4.3 | ActionServer 实现 goal/feedback/result 回调 → SPI 读取 MFRC522 → 返回 card_uid | 流程 | 第2章 ROS2核心通信机制 → 2.4 动作通信 |
@@ -3149,8 +3373,8 @@ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprin
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1（集成 MFRC522 射频读卡模组） |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2  |
 | 操作系统 | Ubuntu 22.04 + ROS2 Humble |
 | 核心依赖 | `rclpy`、`ros_sensor_interfaces`（自定义 action）、`python-periphery` |
 | 开发语言 | Python 3.10 |
@@ -3162,17 +3386,19 @@ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprin
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐⭐（较高） |
 | 实验类型 | 设计性 |
 | 建议时长 | 4 学时（180 分钟） |
 
 **重点**：
+
 - 掌握 Action 动作服务端/客户端的标准编程流程：`ActionServer`（execute/goal/cancel 三个回调）、`ActionClient` + `send_goal_async`、`publish_feedback` 周期反馈、`goal_handle.succeed()/abort()/canceled()` 三种结局
 - 理解 MFRC522 的寻卡（REQA）→ 防冲突（AntiCollision）→ 读取 UID 三步流程
 - 掌握 `.action` 自定义动作接口（Goal/Result/Feedback 三段）的定义与使用
 
 **难点**：
+
 - 动作「异步执行 + 中间反馈 + 可取消」与服务「同步单次调用」的语义差异
 - 服务端 `execute_cb` 异步回调中检查 `is_cancel_requested` 与状态机流转的实现
 
@@ -3193,7 +3419,7 @@ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprin
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `ros2 run ros_sensor rfid_action_server` | `RFID Action 服务端已启动 (action: /rfid_scan)` |
 | `ros2 run ros_sensor rfid_action_client 30`（另一终端） | `结果: success=True uid=7E1A3B02 type=MIFARE Classic msg=读卡成功` |
 | `ros2 action list` | 列表包含 `/rfid_scan` |
@@ -3217,14 +3443,15 @@ graph LR
 
 ---
 
-#### 步骤 1：编译与独立驱动测试（15 分钟）
+#### 步骤 1：编译与独立驱动测试
 
 **知识点讲解**：
 
 **驱动独立测试（知识点 2.4.3）**
-- **是什么**：`rc522_reader.py` 既是一个可导入的驱动类 `MFRC522`，也是一个带 `--test`/`--dump` 选项的命令行工具，可脱离 ROS 单独验证硬件与接线是否正确。
+
+- **是什么**：`rc522_reader.py `既是一个可导入的驱动类 `MFRC522`，也是一个带 `--test/--dump `选项的命令行工具，可脱离 ROS 单独验证硬件与接线是否正确。
 - **为什么先独立测**：SPI 接线、GPIO 引脚、供电问题都会在硬件层暴露，先用驱动自测可把「硬件故障」与「ROS 逻辑故障」分开，避免在 ROS 层盲目排查。
-- **怎么用**：先 `colcon build` 编译接口包与节点包，再运行 `python3 rc522_reader.py --test` 做自检（验证版本寄存器与读写回）。
+- **怎么用**：先 `colcon build` 编译接口包与节点包，再运行 `python3 rc522_reader.py --test `做自检（验证版本寄存器与读写回）。
 
 **操作步骤**：
 
@@ -3235,30 +3462,34 @@ colcon build --symlink-install --packages-select ros_sensor ros_sensor_interface
 source install/setup.bash
 
 # 脱离 ROS 先自检驱动（验证接线与供电）
-cd src/xflz_eai_car1/driver/ros_sensor/ros_sensor
-python3 rc522_reader.py --test
+cd src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
+sudo python3 rc522_reader.py --test
+
 ```
 
+![image-20260821183615295](assets/image-20260821183615295.png)
+
 **易错点**：
-- ⚠️ 自检 `VersionReg=0x00/0xFF` 表示无响应 → **解决**：检查 SPI 接线（CS=114、RST=116）、3.3V 供电与 `python-periphery` 是否安装。
-- ⚠️ 编译后未 source 导致 `ros2 run` 找不到包 → **解决**：`source install/setup.bash`。
+
+- ⚠️ 自检` VersionReg=0x00/0xFF `表示无响应 → **解决**：检查 SPI 接线（CS=114、RST=116）、3.3V 供电与 `python-periphery`是否安装。
+- ⚠️ 编译后未 source 导致` ros2 run `找不到包 → **解决**：`source install/setup.bash`。
 
 ---
 
-#### 步骤 2：阅读 `rc522_reader.py` SPI 驱动（25 分钟）
+#### 步骤 2：阅读rc522_reader.pySPI 驱动（25 分钟）
 
 **知识点讲解**：
 
 **MFRC522 寄存器寻卡流程（知识点 2.4.3）**
-- **是什么**：MFRC522 是寄存器驱动的 13.56MHz 读卡芯片，主控通过 SPI 读写其寄存器（`REG_COMMAND=0x01`、`REG_FIFO_DATA=0x09`、`REG_VERSION=0x37` 等，见 `rc522_reader.py` L26-49）。寻卡流程封装为：`open()` 打开 SPI/GPIO → `hw_reset()` 硬件复位 → `self_test()` 自检 → `init()` 初始化 → `request_a()` 寻卡（REQA）→ `anticoll()` 防冲突读 UID。
-- **为什么防冲突**：ISO14443A 协议下多张卡同时在场会冲突，`anticoll()` 用 `0x93 0x20` 命令帧读取 4 字节 UID 并做异或校验（`rc522_reader.py` L283-294），保证读到唯一卡号。
-- **怎么用**：`read_uid()`（L296-305）把「寻卡 + 防冲突」串成一步，返回 `(success, uid_hex_str, uid_bytes)`，动作服务端直接复用。
+
+- **是什么**：MFRC522 是寄存器驱动的 13.56MHz 读卡芯片，主控通过 SPI 读写其寄存器（`REG_COMMAND=0x01`、`REG_FIFO_DATA=0x09`、`REG_VERSION=0x37 `等，见 `rc522_reader.py` L26-49）。寻卡流程封装为：`open() `打开 `SPI/GPIO → hw_reset()` 硬件复位 → `self_test() `自检 → `init()初始化 `→ `request_a()寻卡（REQA）`→ `anticoll()防冲突读 UID。`
+- **为什么防冲突**：ISO14443A 协议下多张卡同时在场会冲突，`anticoll()` 用 `0x93 0x20` 命令帧读取 4 字节 UID 并做异或校验（`rc522_reader.py L283-294`），保证读到唯一卡号。
+- **怎么用**：`read_uid()`（L296-305）把「寻卡 + 防冲突」串成一步，返回 `(`success, uid_hex_str`, `uid_bytes)`，动作服务端直接复用。
 
 **操作步骤**：
 
-打开 `rc522_reader.py`，阅读 `MFRC522` 类的 `request_a()`（L270-281）、`anticoll()`（L283-294）、`read_uid()`（L296-305）三个方法。
-
-```python
+```bash
+打开 rc522_reader.py，阅读 MFRC522 类的 request_a()（L270-281）、anticoll()（L283-294）、read_uid()（L296-305）三个方法。
 # 来源：rc522_reader.py L296-305（完整读卡流程）
 def read_uid(self) -> tuple:
     ok, atqa = self.request_a()          # REQA 寻卡，返回 ATQA
@@ -3272,24 +3503,25 @@ def read_uid(self) -> tuple:
 ```
 
 **易错点**：
+
 - ⚠️ 混淆 `request_a()`（返回 ATQA）与 `anticoll()`（返回 UID）→ **解决**：寻卡先拿 ATQA 判断卡是否在场，防冲突再拿 UID，二者顺序不可颠倒。
 
 ---
 
-#### 步骤 3：分析 `rfid_action_server` 服务端（40 分钟）
+#### 步骤 3：分析rfid_action_server服务端
 
 **知识点讲解**：
 
 **ActionServer 三回调模型（知识点 2.4.1、2.4.2）**
-- **是什么**：`ActionServer` 需要三个回调（源码 `rfid_action_server.py` L41-48）：`execute_callback`（执行任务主体，异步）、`goal_callback`（收到新 Goal 时决定是否接受）、`cancel_callback`（收到取消请求时决定是否同意）。`execute_cb` 是 `async` 协程，执行期间可多次 `publish_feedback`。
+
+- **是什么**：`ActionServer`需要三个回调（源码 `rfid_action_server.py `L41-48）：`execute_callback`（执行任务主体，异步）、`goal_callback`（收到新 Goal 时决定是否接受）、`cancel_callback`（收到取消请求时决定是否同意）。`execute_cb` 是 `async `协程，执行期间可多次` publish_feedback`。
 - **为什么三回调**：动作要处理「接受目标 → 执行 + 反馈 → 完成/中止/取消」三种生命周期，比服务的单回调复杂，因此拆分为三个入口。
-- **怎么用**：`execute_cb`（L61-149）先读 Goal 的 `timeout_sec`（≤0 则默认 30），初始化 MFRC522（open→hw_reset→self_test→init），然后在 `deadline` 前循环：检查 `is_cancel_requested`、发布 `SCANNING` 反馈、`request_a()` 寻卡、发布 `CARD_FOUND`、`anticoll()` 读 UID、发布 `READING_UID`、`classify_card` 判型、发布 `VERIFYING`，最后 `goal_handle.succeed()` 返回结果。
+- **怎么用**：`execute_cb`（L61-149）先读 Goal 的` timeout_sec`（≤0 则默认 30），初始化 MFRC522（`open→hw_reset→self_test→init`），然后在` deadline` 前循环：检查 `is_cancel_requested`、发布 `SCANNING 反馈`、`request_a() `寻卡、发布 `CARD_FOUND`、`anticoll() `读 UID、发布` READING_UID`、`classify_card` 判型、发布 `VERIFYING`，最后 `goal_handle.succeed()` 返回结果。
 
 **操作步骤**：
 
-打开 `rfid_action_server.py`，阅读 `RfidActionServer` 类的 `execute_cb`（L61-149），重点理解反馈状态流转与三种结局。
-
-```python
+```bash
+打开 rfid_action_server.py，阅读 RfidActionServer 类的 execute_cb（L61-149），重点理解反馈状态流转与三种结局。
 # 来源：rfid_action_server.py L19-29（卡类型判定，节选）
 def classify_card(atqa, uid):
     if atqa == 0x0044 and len(uid) == 7:
@@ -3301,9 +3533,6 @@ def classify_card(atqa, uid):
     if atqa in (0x0002, 0x0003, 0x0004):
         return 'MIFARE Classic'
     return 'Unknown'
-```
-
-```python
 # 来源：rfid_action_server.py L100-141（读卡循环，节选）
 while time.time() < deadline:
     if goal_handle.is_cancel_requested:      # 检查取消
@@ -3326,25 +3555,26 @@ while time.time() < deadline:
 ```
 
 **易错点**：
+
 - ⚠️ 忘记检查 `is_cancel_requested` 导致无法取消 → **解决**：循环体内必须周期检查，否则取消请求无法生效。
 - ⚠️ `execute_cb` 未声明 `async` 却调用异步语义 → **解决**：动作执行回调必须是 `async def`（源码 L61）。
 
 ---
 
-#### 步骤 4：分析 `rfid_action_client` 客户端（35 分钟）
+#### 步骤 4：分析`rfid_action_client` 客户端（35 分钟）
 
 **知识点讲解**：
 
 **ActionClient 异步发送模型（知识点 2.4.2）**
+
 - **是什么**：`rfid_action_client` 用 `ActionClient` 发 Goal，通过回调链 `goal_response_cb`（处理接受/拒绝）→ `result_cb`（处理最终结果）与 `feedback_cb`（处理中间反馈）异步处理各阶段，而非阻塞等待。
 - **为什么异步回调**：动作耗时未知（等刷卡可能几十秒），客户端不能阻塞主线程，故用 `send_goal_async` + 回调，再用 `spin_once` 让 Executor 处理回调（源码 `rfid_action_client.py` L64-65）。
 - **怎么用**：`send(timeout)`（L51-66）先 `wait_for_server`，构造 `RfidScan.Goal()` 并赋值 `timeout_sec`，`send_goal_async(goal, feedback_callback=...)` 发送，随后 `spin_once` 轮转直到完成标志 `_done` 置位。
 
 **操作步骤**：
 
-打开 `rfid_action_client.py`，阅读 `RfidActionClient` 类（L17-66），重点理解三个回调的职责。
-
-```python
+```bash
+打开 rfid_action_client.py，阅读 RfidActionClient 类（L17-66），重点理解三个回调的职责。
 # 来源：rfid_action_client.py L51-66（发送 Goal，节选）
 def send(self, timeout=30):
     if not self._client.wait_for_server(timeout_sec=3.0):
@@ -3362,36 +3592,54 @@ def send(self, timeout=30):
 ```
 
 **易错点**：
+
 - ⚠️ 忘记 `spin_once` 导致回调永不执行、程序卡住 → **解决**：发送 Goal 后必须驱动 Executor（`spin_once` 或 `spin_until_future_complete`）。
 - ⚠️ 结果状态不是 `STATUS_SUCCEEDED` 时误报成功 → **解决**：源码 L39-49 通过 `GoalStatus.STATUS_SUCCEEDED` 判断，超时/取消对应其它状态码。
 
 ---
 
-#### 步骤 5：运行与 `ros2 action` 调试（40 分钟）
+#### 步骤 5：运行与ros2 action
 
 **知识点讲解**：
 
 **动作运行态自省（知识点 2.1.2）**
-- **是什么**：`ros2 action` 命令族用于自省动作——`list` 列出动作、`info` 查看类型与客户端数、`send_goal` 发送一个目标（可加 `--feedback` 实时打印反馈）。
+
+- **是什么**：`ros2 action`命令族用于自省动作——list 列出动作、info查看类型与客户端数、`send_goal `发送一个目标（可加 `--feedback` 实时打印反馈）。
 - **为什么重要**：`--feedback` 能直观展示动作的中间反馈流，是理解「动作 vs 服务」区别最直观的入口——服务没有中间反馈，动作有。
 - **怎么用**：`ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 30}" --feedback`，其中 Goal 的 YAML 用 `{timeout_sec: 30}` 表示。
 
 **操作步骤**：
 
 ```bash
-# 终端 A：启动动作服务端
+# 终端 A —— 启动服务端
+cd ~/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
 ros2 run ros_sensor rfid_action_server
 
-# 终端 B：启动动作客户端（30s 超时）
+# 终端 B —— 放卡 + 触发读卡
+cd ~/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
 ros2 run ros_sensor rfid_action_client 30
 
-# 终端 C：自省与命令行发 Goal（带 --feedback 实时反馈）
+# 终端 C —— 自省（可选，随时可跑，不需要读卡）
+cd ~/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
 ros2 action list
-ros2 action info /rfid_scan
-ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 30}" --feedback
 ```
 
+将ID白卡放在RFID模块上
+
+在服务端可以看到在客户端读取到的卡片
+
+![image-20260821183649865](assets/image-20260821183649865.png)
+
+![image-20260821183719195](assets/image-20260821183719195.png)
+
 **易错点**：
+
 - ⚠️ Goal YAML 字段名写错（如 `timeout` 而非 `timeout_sec`）→ **解决**：字段名必须与 `.action` 定义一致，即 `timeout_sec`。
 - ⚠️ 终端 C 与 B 同时发 Goal 可能抢卡 → **解决**：一次只让一个客户端发 Goal，避免多个 Goal 同时执行。
 
@@ -3402,14 +3650,18 @@ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout
 **知识点讲解**：
 
 **动作三种结局与选型（知识点 2.4.1、2.3.1、2.2.1）**
+
 - **是什么**：一个 Goal 有四种终态：`succeed()`（成功）、`abort()`（执行失败）、`canceled()`（被取消）、超时后 `abort()`。服务端用 `is_cancel_requested` 响应取消，用 `deadline` 响应超时。
 - **为什么动作可取消**：读卡是「等待外部事件（刷卡）」的长耗时任务，用户可能在等待期间取消；这是服务（一次性、不可取消）无法胜任的，也是动作存在的意义。
 - **怎么用**：下表综合本章三个实验的选型结论。
 
 **操作步骤**：
 
+```bash
+```
+
 | 维度 | 话题（实验6） | 服务（实验7） | 动作（实验8） |
-|------|-------------|-------------|-------------|
+|---|---|---|---|
 | 调用语义 | 持续数据流，一对多 | 单次请求/响应，一对一 | 长耗时目标+反馈+结果 |
 | 异步/同步 | 异步 | 同步 | 异步 |
 | 中间反馈 | 无（有值即发） | 无 | 有（Feedback 状态机） |
@@ -3417,14 +3669,13 @@ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout
 | 典型场景 | MQ5 浓度发布 | 指纹验证 | 刷卡检测（等卡） |
 
 **易错点**：
-- ⚠️ 用服务实现「等刷卡」导致请求长时间阻塞且无法取消 → **解决**：长耗时、可取消、需反馈的任务用动作。
 
----
+- ⚠️ 用服务实现「等刷卡」导致请求长时间阻塞且无法取消 → **解决**：长耗时、可取消、需反馈的任务用动作。
 
 ### 七、注意事项
 
 | ⚠️ 注意项 | 说明 |
-|-----------|------|
+|---|---|
 | SPI 接线 | CS=114、SCK=112、MOSI=113、MISO=115、RST=116，接错会导致自检失败 |
 | 驱动依赖 | MFRC522 依赖 `python-periphery`，先 `pip install python-periphery` |
 | 取消检查 | `execute_cb` 循环内必须周期检查 `is_cancel_requested`，否则无法取消 |
@@ -3436,6 +3687,7 @@ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 使用 `rc522_reader.py --test` 独立自检 MFRC522 硬件与接线
 - ✅ 编译并运行 `rfid_action_server` / `rfid_action_client` 完成刷卡检测
 - ✅ 理解寻卡（REQA）→ 防冲突（AntiCollision）→ 读 UID 的三步流程
@@ -3445,7 +3697,7 @@ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 动作编程 | 掌握 ActionServer/ActionClient 标准代码模式（三回调、send_goal_async、publish_feedback） |
 | SPI 外设集成 | 理解寄存器驱动的 MFRC522 读卡芯片寻卡/防冲突协议 |
 | 自定义 action | 使用 `ros_sensor_interfaces/action/RfidScan`（Goal/Result/Feedback 三段） |
@@ -3455,7 +3707,7 @@ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | 自检 VersionReg=0x00/0xFF | SPI 接线错误或供电不足 | 检查 CS/RST/SCK/MOSI/MISO 接线与 3.3V 供电 |
 | 客户端「RFID Action 服务不可用」 | 服务端未启动或动作名不一致 | 先启动服务端，`ros2 action list` 确认 `/rfid_scan` |
 | 反馈一直 SCANNING | 卡未靠近天线或卡类型不匹配 | 把 MIFARE 卡贴近天线，检查是否 13.56MHz 卡 |
@@ -3471,39 +3723,39 @@ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout
 1. **实验基本信息**：实验名称、实验日期、实验者姓名、实验平台信息
 2. **实验过程记录**：截取服务端启动、客户端读卡成功、`ros2 action send_goal --feedback` 的反馈流终端截图
 3. **原理分析**（不少于 400 字）：用自己的语言解释以下三个问题：
-   - ① 动作与服务都是「客户端发起、服务端响应」，为什么动作需要 Goal/Feedback/Result 三个独立通道？三通道分别由谁发起、流向如何？
-   - ② `execute_cb` 是 `async` 协程，但读卡循环里用 `time.sleep(0.1)` 做轮询等待。请说明 `is_cancel_requested` 检查为什么必须放在循环内，如果放在循环外会怎样？
-   - ③ MFRC522 的 `anticoll()` 如何保证多卡场景下读到唯一 UID？防冲突失败的典型表现是什么？
+- ① 动作与服务都是「客户端发起、服务端响应」，为什么动作需要 Goal/Feedback/Result 三个独立通道？三通道分别由谁发起、流向如何？
+- ② `execute_cb` 是 `async` 协程，但读卡循环里用 `time.sleep(0.1)` 做轮询等待。请说明 `is_cancel_requested` 检查为什么必须放在循环内，如果放在循环外会怎样？
+- ③ MFRC522 的 `anticoll()` 如何保证多卡场景下读到唯一 UID？防冲突失败的典型表现是什么？
 4. **思考题**（见下方）
 
 #### 9.2 思考题
 
 **思考题 1**：
+
 `classify_card()` 通过 ATQA 与 UID 长度判断卡类型。若读到的 ATQA 为 `0x0004` 且 UID 为 4 字节，应判为哪种卡？如果出现 `Unknown`，可能是什么原因？结合 `rfid_action_server.py` L19-29 说明。
 
 **思考题 2**：
+
 当前的读卡 Action 在「读卡成功」后立即 `succeed()` 结束，无法持续检测「卡是否被移走」。假设你要设计一个「门禁持续监控」系统，需要不断检测卡在/离场并实时上报，你会如何设计？请对比「动作 + 长循环反馈」与「话题持续发布」两种方案的优劣，给出你的选择与理由。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 25% | 是否成功完成驱动自检 + 服务端/客户端读卡 + `ros2 action` 调试 |
 | 代码理解 | 20% | 能否准确指出 rc522_reader.py / rfid_action_server.py / rfid_action_client.py 关键代码位置 |
 | 原理分析 | 25% | 对三通道模型、异步执行、防冲突的理解深度 |
 | 思考题 1 | 15% | 对卡类型判定与 Unknown 成因的分析 |
 | 思考题 2 | 15% | 对持续检测方案的选型分析与论证 |
 
----
-
-## 实验9：ROS2自定义接口消息（传感器接口包）（2h）
+## 实验9：ROS2自定义接口消息（传感器接口包）
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 2.5.1 | 自定义接口（.msg/.srv/.action）定义传感器专用数据结构 | 概念 | 第2章 ROS2核心通信机制 → 2.5 通信接口与参数系统 |
 | 2.5.2 | 创建接口包 → 编写定义 → CMakeLists.txt 配置编译 → 使用自定义消息 | 流程 | 第2章 ROS2核心通信机制 → 2.5 通信接口与参数系统 |
 
@@ -3519,8 +3771,8 @@ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1（无需额外硬件，编译期实验） |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2  |
 | 操作系统 | Ubuntu 22.04 + ROS2 Humble |
 | 核心依赖 | `rosidl_default_generators`、`std_msgs`、`action_msgs`、`builtin_interfaces` |
 | 开发语言 | 接口定义（IDL 风格）+ CMake（编译） |
@@ -3531,17 +3783,19 @@ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握 `.msg`/`.srv`/`.action` 三种接口文件的字段定义语法（分隔符 `---` 的语义）
 - 掌握 `rosidl_generate_interfaces` 的配置方法与 `DEPENDENCIES` 声明
 - 理解 ament_cmake（接口包）与 ament_python（节点包）的职责分工
 
 **难点**：
+
 - `.action` 文件三段结构（Goal/Result/Feedback）与编译后生成的类（`RfidScan.Goal`/`RfidScan.Result`/`RfidScan.Feedback`）的映射关系
 - 接口包与节点包的依赖声明（`package.xml` 的 `<depend>`）如何让节点能 `import` 到自定义消息
 
@@ -3560,8 +3814,8 @@ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
-| `ros2 interface list \| grep ros_sensor_interfaces` | 列出 `msg/HeartRateSpO2`、`msg/PhotoState`、`msg/TemperatureHumidity`、`srv/TriggerRelay`、`srv/VerifyFingerprint`、`action/RfidScan` |
+|---|---|
+| `ros2 interface list | grep ros_sensor_interfaces` | 列出 `msg/HeartRateSpO2`、`msg/PhotoState`、`msg/TemperatureHumidity`、`srv/TriggerRelay`、`srv/VerifyFingerprint`、`action/RfidScan` |
 | `ros2 interface show ros_sensor_interfaces/srv/VerifyFingerprint` | 请求空，响应 `bool success / int32 user_id / string message` |
 | `ros2 interface show ros_sensor_interfaces/action/RfidScan` | 显示 Goal/Result/Feedback 三段定义 |
 | `ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity` | `float32 temperature / float32 humidity` |
@@ -3583,11 +3837,12 @@ graph LR
 
 ---
 
-#### 步骤 1：通览 `ros_sensor_interfaces` 接口包结构（10 分钟）
+#### 步骤 1：通览ros_sensor_interfaces接口包结构（10 分钟）
 
 **知识点讲解**：
 
 **接口包与节点包分离（知识点 2.5.1）**
+
 - **是什么**：`ros_sensor_interfaces` 是一个**纯接口包**（`ament_cmake` 构建类型），只定义数据类型、不包含可执行节点；`ros_sensor` 是**节点包**（`ament_python`），通过 `<depend>` 依赖前者来使用自定义消息。
 - **为什么分离**：把接口独立成包，可以让多个节点包、甚至 C++ 与 Python 混合的节点共享同一套数据类型，避免重复定义导致消息不兼容；接口是「契约」，节点是「实现」，分离后契约稳定、实现可独立演进。
 - **怎么用**：接口包目录含 `msg/`、`srv/`、`action/` 三个子目录存放定义文件，`CMakeLists.txt` 负责把它们编译成消息类。
@@ -3600,15 +3855,17 @@ ls -R msg srv action          # 查看三个目录下的接口定义文件
 ```
 
 **易错点**：
+
 - ⚠️ 把接口定义文件放进节点包而非独立接口包 → **解决**：接口必须独立成包（`ament_cmake`），节点包只做 `<depend>` 依赖。
 
 ---
 
-#### 步骤 2：理解 `.msg` 消息定义（20 分钟）
+#### 步骤 2：理解`.msg` 消息定义（20 分钟）
 
 **知识点讲解**：
 
 **消息字段与传感器一一对应（知识点 2.5.1）**
+
 - **是什么**：`.msg` 是最简单的接口，只含一段字段列表，每行 `类型 字段名`。`ros_sensor_interfaces` 定义了三个传感器专用消息：`TemperatureHumidity`（DHT11 温湿度）、`HeartRateSpO2`（MAX30102 心率血氧）、`PhotoState`（光电传感器）。
 - **为什么自定义而非用标准消息**：标准 `Float32` 只有单值，无法同时表达「温度+湿度」或「心率+血氧+有效性」这类结构化数据；自定义 `.msg` 把多字段打包成一个语义完整的数据结构。
 - **怎么用**：`msg/TemperatureHumidity.msg` 定义 `float32 temperature` 与 `float32 humidity`；`msg/HeartRateSpO2.msg` 定义 `float32 heart_rate`、`float32 spo2` 与 `bool valid`（读数是否有效，用于标记传感器未接触时的无效数据）。
@@ -3619,25 +3876,24 @@ ls -R msg srv action          # 查看三个目录下的接口定义文件
 cat msg/TemperatureHumidity.msg
 cat msg/HeartRateSpO2.msg
 cat msg/PhotoState.msg
-```
-
-```text
 # 来源：msg/TemperatureHumidity.msg（全文）
 float32 temperature   # 温度(摄氏度)
 float32 humidity      # 湿度(%)
 ```
 
 **易错点**：
+
 - ⚠️ 字段类型写成 `int`（C 风格）而非 `int32` → **解决**：ROS2 接口使用定长整型（`int32`/`uint8` 等），不能用 `int`。
 - ⚠️ 忘记 `bool valid` 这类「有效性」字段，导致无效读数也被当作正常数据发布 → **解决**：传感器常有「未接触/超量程」状态，应加有效性标志位。
 
 ---
 
-#### 步骤 3：理解 `.srv` 服务定义（20 分钟）
+#### 步骤 3：理解`.srv` 服务定义（20 分钟）
 
 **知识点讲解**：
 
 **服务请求/响应分隔符（知识点 2.5.1）**
+
 - **是什么**：`.srv` 用一行 `---` 分隔「请求」与「响应」两段。`VerifyFingerprint.srv` 请求为空（只需触发验证）、响应为 `bool success / int32 user_id / string message`；`TriggerRelay.srv` 请求为 `int32 relay_id / float32 duration`（继电器编号与脉冲时长）、响应为 `bool success / string message`。
 - **为什么请求可以为空**：有些服务不需要入参（如「帮我验证当前手指」），空请求用 `---` 直接分隔即可，客户端调用时传 `"{}"`。
 - **怎么用**：编译后生成 `VerifyFingerprint.Request`（空）与 `VerifyFingerprint.Response`（三字段），实验7 的 `fingerprint_server`/`fingerprint_client` 正是 `from ros_sensor_interfaces.srv import VerifyFingerprint` 使用它。
@@ -3647,9 +3903,6 @@ float32 humidity      # 湿度(%)
 ```bash
 cat srv/VerifyFingerprint.srv
 cat srv/TriggerRelay.srv
-```
-
-```text
 # 来源：srv/VerifyFingerprint.srv（全文）
 # 请求：触发一次指纹验证（无参数）
 ---
@@ -3659,16 +3912,18 @@ string message
 ```
 
 **易错点**：
+
 - ⚠️ 请求与响应之间漏写 `---` 分隔符 → **解决**：`.srv` 必须用单独一行 `---` 分隔请求与响应，缺了会被当作单个消息解析失败。
 - ⚠️ 客户端构造请求时写错类名（如 `VerifyFingerprint.Req`）→ **解决**：编译后固定为 `.Request` 与 `.Response` 两个子类。
 
 ---
 
-#### 步骤 4：理解 `.action` 动作定义（20 分钟）
+#### 步骤 4：理解.action动作定义（20 分钟）
 
 **知识点讲解**：
 
 **动作三段结构（知识点 2.5.1、2.4.1）**
+
 - **是什么**：`.action` 用两个 `---` 分隔三段——`Goal`（目标）、`Result`（结果）、`Feedback`（反馈）。`RfidScan.action` 的 Goal 为 `int32 timeout_sec`，Result 为 `bool success / string card_uid / string card_type / string message`，Feedback 为 `string status`。
 - **为什么三段**：动作是异步长耗时任务，客户端发 Goal 启动，服务端执行期间用 Feedback 上报进度，完成后返回 Result——三段各自承载不同的通信方向（Goal 客户端→服务端，Feedback/Result 服务端→客户端）。
 - **怎么用**：编译后生成 `RfidScan.Goal`、`RfidScan.Result`、`RfidScan.Feedback` 三个类，实验8 的 `rfid_action_server`/`rfid_action_client` 分别通过 `RfidScan.Result()`、`RfidScan.Feedback()`、`RfidScan.Goal()` 使用它们。
@@ -3677,9 +3932,6 @@ string message
 
 ```bash
 cat action/RfidScan.action
-```
-
-```text
 # 来源：action/RfidScan.action（全文）
 # 目标：执行一次读卡任务
 int32 timeout_sec
@@ -3695,6 +3947,7 @@ string status
 ```
 
 **易错点**：
+
 - ⚠️ 只用了一个 `---` 分隔（把动作当服务）→ **解决**：`.action` 必须有两个 `---`，分隔出三段。
 - ⚠️ 混淆 `RfidScan.Result` 与 `RfidScan.Goal` 的字段 → **解决**：Goal 只含 `timeout_sec`，Result 含 `success/card_uid/card_type/message`，Feedback 只含 `status`。
 
@@ -3705,15 +3958,15 @@ string status
 **知识点讲解**：
 
 **rosidl_generate_interfaces 编译（知识点 2.5.2）**
+
 - **是什么**：接口包是 `ament_cmake` 构建，核心语句是 `rosidl_generate_interfaces(${PROJECT_NAME} <接口文件列表> DEPENDENCIES <依赖>)`（源码 `CMakeLists.txt` L14-22），它把 `.msg/.srv/.action` 编译成 Python/C++ 双方可用的消息代码。
 - **为什么声明 DEPENDENCIES**：`TemperatureHumidity` 等用到了 `float32` 等基础类型（来自 `std_msgs`），`RfidScan` 的 Goal 用到了 `int32`（来自 `builtin_interfaces`），动作还需要 `action_msgs` 提供 GoalStatus 等基础设施——依赖声明告诉编译器去哪找这些基础类型。
 - **怎么用**：把新增接口文件加进 `rosidl_generate_interfaces` 列表，重新 `colcon build` 即可；`ament_package()` 收尾（L24）。
 
 **操作步骤**：
 
-打开 `CMakeLists.txt`，阅读 `rosidl_generate_interfaces`（L14-22）。
-
-```cmake
+```bash
+打开 CMakeLists.txt，阅读 rosidl_generate_interfaces（L14-22）。
 # 来源：ros_sensor_interfaces/CMakeLists.txt L14-22
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/VerifyFingerprint.srv"
@@ -3727,6 +3980,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 ```
 
 **易错点**：
+
 - ⚠️ 新增 `.msg` 文件但忘记加进 `rosidl_generate_interfaces` → **解决**：每个接口文件都必须显式列入列表才会被编译。
 - ⚠️ 用了 `string` 却未声明 `builtin_interfaces` 依赖 → **解决**：`string`/`int32` 等基础类型需要 `builtin_interfaces`（或对应包）在 DEPENDENCIES 中。
 
@@ -3737,6 +3991,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 **知识点讲解**：
 
 **package.xml 依赖与编译产物（知识点 2.5.2）**
+
 - **是什么**：节点包 `ros_sensor` 在 `package.xml` 中声明 `<depend>ros_sensor_interfaces</depend>`，因此编译时能解析到接口包；节点 Python 代码通过 `from ros_sensor_interfaces.srv import VerifyFingerprint` 导入编译生成的消息类。
 - **为什么 source 后才能导入**：`rosidl_generate_interfaces` 的产物生成在 `install/` 目录，必须 `source install/setup.bash` 把该路径加入 `PYTHONPATH`，节点才能 `import` 到。
 - **怎么用**：`ros2 interface list/show` 可自省已安装接口，`ros2 interface show` 打印定义便于确认编译是否生效。
@@ -3757,15 +4012,14 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 ```
 
 **易错点**：
+
 - ⚠️ `import` 报 `ModuleNotFoundError` → **解决**：先 `colcon build` 再 `source install/setup.bash`，二者缺一不可。
 - ⚠️ 接口文件改动后节点未重新编译仍用旧消息 → **解决**：接口是契约，改动后需重新 `colcon build` 接口包与依赖它的节点包。
-
----
 
 ### 七、注意事项
 
 | ⚠️ 注意项 | 说明 |
-|-----------|------|
+|---|---|
 | 接口包类型 | `ros_sensor_interfaces` 必须用 `ament_cmake` 构建，不能用 ament_python |
 | 分隔符正确 | `.srv` 一个 `---`、`.action` 两个 `---`，缺一即编译失败 |
 | 依赖声明 | 使用基础类型（string/int32）需在 DEPENDENCIES 声明 `builtin_interfaces` |
@@ -3777,6 +4031,7 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 说清 `.msg`/`.srv`/`.action` 三种接口的结构差异与适用场景
 - ✅ 读懂 `ros_sensor_interfaces` 包中全部 6 个接口的字段定义
 - ✅ 理解 `rosidl_generate_interfaces` 的编译配置与 `DEPENDENCIES` 作用
@@ -3786,7 +4041,7 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 接口定义 | 掌握 `.msg`/`.srv`/`.action` 的字段语法与分隔符语义 |
 | 接口编译 | 掌握 `rosidl_generate_interfaces` 与 `ament_cmake` 构建配置 |
 | 包依赖管理 | 理解接口包/节点包分离及 `package.xml` `<depend>` 依赖 |
@@ -3796,7 +4051,7 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `rosidl_generate_interfaces` 编译失败 | 接口文件语法错误或依赖缺失 | 检查分隔符数量、字段类型、DEPENDENCIES |
 | `import ros_sensor_interfaces` 失败 | 未编译或未 source | `colcon build` 后 `source install/setup.bash` |
 | `ros2 interface list` 无自定义接口 | 接口包未编译成功 | 检查 CMakeLists 的 `rosidl_generate_interfaces` 列表 |
@@ -3812,39 +4067,39 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 1. **实验基本信息**：实验名称、实验日期、实验者姓名、实验平台信息
 2. **实验过程记录**：截取 `ros2 interface list/show` 打印的 6 个接口定义、`colcon build` 编译成功的终端截图
 3. **原理分析**（不少于 400 字）：用自己的语言解释以下三个问题：
-   - ① `.msg`、`.srv`、`.action` 三者在文件结构上有何本质区别？各自的 `---` 分隔符把文件分成了哪几段？
-   - ② 为什么 `ros_sensor_interfaces` 要独立成一个包，而不是把接口定义直接写在 `ros_sensor` 节点包里？
-   - ③ `HeartRateSpO2.msg` 为什么要有 `bool valid` 字段？如果去掉它，MAX30102 未接触皮肤时会发生什么？
+- ① `.msg`、`.srv`、`.action` 三者在文件结构上有何本质区别？各自的 `---` 分隔符把文件分成了哪几段？
+- ② 为什么 `ros_sensor_interfaces` 要独立成一个包，而不是把接口定义直接写在 `ros_sensor` 节点包里？
+- ③ `HeartRateSpO2.msg` 为什么要有 `bool valid` 字段？如果去掉它，MAX30102 未接触皮肤时会发生什么？
 4. **思考题**（见下方）
 
 #### 9.2 思考题
 
 **思考题 1**：
+
 `TemperatureHumidity.msg` 用两个 `float32` 表达温湿度。假设 DHT11 还需要上报「传感器在线状态」和「最近一次读数时间戳」，你会如何扩展这个 `.msg`？请给出完整的字段定义，并说明新增字段的类型选择理由。
 
 **思考题 2**：
+
 实验6 的 `gas_sensor_node` 用的是标准消息 `std_msgs/msg/Float32` 发布单个 ppm 值，而其它传感器用了自定义消息。请问：如果将来 MQ5 需要同时发布「ppm 浓度 + 电压 + ADC 原始值」三个量，你会改用标准消息还是自定义消息？请给出你的方案与理由，并与 `ros_sensor_interfaces` 的命名风格保持一致。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 25% | 是否成功编译接口包并用 `ros2 interface list/show` 自省 |
 | 代码理解 | 20% | 能否准确解释 CMakeLists.txt 与各接口文件的定义 |
 | 原理分析 | 25% | 对三种接口结构、接口包/节点包分离、valid 字段的理解深度 |
 | 思考题 1 | 15% | 对 msg 字段扩展的类型选择合理性 |
 | 思考题 2 | 15% | 对标准/自定义接口选型的论证与命名一致性 |
 
----
-
-## 实验10: ROS2参数服务案例
+## 实验10：ROS2参数服务案例
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 2.5.3 | 节点参数声明(declare_parameter)、运行时读写(get/set)与动态回调(add_on_set_parameters_callback)的原理 | 原理 | 第2章 ROS2核心通信机制 → 2.5 通信接口与参数系统 |
 | 2.5.4 | declare_parameter声明→注册set_parameters_callback→CLI设置→节点响应更新的完整流程 | 流程 | 第2章 ROS2核心通信机制 → 2.5 通信接口与参数系统 |
 
@@ -3860,7 +4115,7 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
+|---|---|
 | 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
@@ -3872,17 +4127,19 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握`declare_parameter`的参数声明语法（名称、默认值、描述符）
 - 掌握`add_on_set_parameters_callback`的动态参数回调机制及其返回值规范
 - 使用`ParameterDescriptor`限定参数的数值范围
 
 **难点**：
+
 - 理解`set_parameters_callback`的返回值格式：必须返回`SetParametersResult(successful=True/False, reason="...")`，否则ROS2参数服务会认为设置失败
 - 区分`declare_parameter`（声明参数，通常只执行一次）与`get_parameter`（读取参数，可在任意时刻调用）的使用场景
 
@@ -3899,7 +4156,7 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `python3 param_sensor_node.py` | `[INFO] 节点已启动，采样率: 1.0 Hz, 传感器: True, 报警阈值: 500.0 ppm` |
 | `ros2 param list` | 列出节点的参数名：`sample_rate_hz`、`sensor_enabled`、`alarm_threshold_ppm` |
 | `ros2 param get /param_sensor sample_rate_hz` | `Double value is: 1.0` |
@@ -3927,23 +4184,32 @@ graph LR
 **知识点讲解**：
 
 **参数系统的设计原理（知识点 2.5.3）**：
+
 ROS2参数系统是节点内部状态的"可读写配置层"。与话题（Topic，异步数据流）和服务（Service，同步RPC调用）不同，参数不定义通信通道——它直接读写节点的内存变量。每个节点在启动时通过`declare_parameter`声明自己的参数列表（名称、类型、默认值、约束），ROS2的`parameter_server`将这些声明注册到DDS全局数据空间中，使外部工具（CLI、rqt_reconfigure）可以发现并修改这些参数。
 
 **为什么需要参数系统**：
+
 在实际机器人系统中，有大量的"调优型"变量需要在运行时修改：PID控制器的Kp/Ki/Kd系数、传感器采样频率、速度上限、距离阈值等。如果这些值硬编码在源码中，每次调整都需要修改代码→重新编译→重新部署。参数系统将这些可调整值"拉出"代码，暴露给运行时修改，大幅提升开发和调试效率。
 
 **参数读写的数据流**：
-```
+
 外部CLI/rqt_reconfigure
+
         |
+    
         | ros2 param set /node_name param_name value
+    
         v
+
    参数服务（节点内部）
+
         |
+    
         | 触发 set_parameters_callback
+    
         v
+
    节点业务逻辑（使用新参数值）
-```
 
 **操作步骤**：
 
@@ -3962,18 +4228,20 @@ kill %1
 
 ---
 
-#### 步骤2：编写参数声明与读写的基础节点（25 分钟）
+#### 步骤2：编写参数声明与读写的基础节点
 
 **知识点讲解**：
 
 **参数生命周期**：
+
 1. **声明（declare）**：节点在`__init__`中调用`self.declare_parameter('name', default_value)`，向ROS2参数服务注册该参数的存在
 2. **读取（get）**：在回调函数或业务逻辑中调用`self.get_parameter('name').value`获取当前值
-3. **设置（set）**：外部通过CLI或代码调用`self.set_parameter(rclpy.Parameter('name', value))`修改参数，触发`set_parameters_callback`
+3. **设置（set）**：外部通过CLI或代码调用`self.set_parameter(rclpy.Parameter(name', value))`修改参数，触发`set_parameters_callback`
 
 **操作步骤**：
 
-```python
+```bash
+将下面代码写入param_sensor_node.py
 # -*- coding: utf-8 -*-
 """
 实验10：ROS2参数化传感器节点
@@ -3981,12 +4249,15 @@ kill %1
 运行：python3 param_sensor_node.py
 功能：通过参数动态控制MQ5气体传感器的采样率、使能状态和报警阈值
 """
+import sys
+
 import rclpy
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
-from common import read_mq5_once  # 复用实验6的MQ5真实读取函数
 
+sys.path.insert(0, "/home/iflytek/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor")
+from common import read_mq5_once  # 复用实验6的MQ5真实读取函数
 
 class ParamSensorNode(Node):
     """参数化传感器节点——演示参数的声明、读写、动态更新"""
@@ -4058,7 +4329,6 @@ class ParamSensorNode(Node):
                 f'[{self._counter}] 正常: {ppm:.1f} ppm'
             )
 
-
 def main(args=None):
     rclpy.init(args=args)
     node = ParamSensorNode()
@@ -4070,7 +4340,6 @@ def main(args=None):
         node.destroy_node()
         rclpy.shutdown()
 
-
 if __name__ == '__main__':
     main()
 ```
@@ -4079,28 +4348,42 @@ if __name__ == '__main__':
 
 ```bash
 # 终端A：启动节点
+
 python3 param_sensor_node.py
 
 # 终端B：查看参数
+
 ros2 param list
+
 # 预期: /param_sensor 下列出 sample_rate_hz, sensor_enabled, alarm_threshold_ppm
 
 ros2 param get /param_sensor sample_rate_hz
+
 # 预期: Double value is: 1.0
 
 ros2 param set /param_sensor alarm_threshold_ppm 600.0
+
 # 预期: Set parameter successful
+
 # 观察终端A：报警日志的频率应发生变化
 ```
 
----
+第一步将代码写入并运行
+
+查看当前传感器参数
+
+![image-20260821183801665](assets/image-20260821183801665.png)
+
+![image-20260821183937791](assets/image-20260821183937791.png)
 
 #### 步骤3：实现动态参数回调（20 分钟）
 
 **知识点讲解**：
 
-**`add_on_set_parameters_callback` 的原理**：
+****`add_on_set_parameters_callback` 的原理****：
+
 当外部调用`ros2 param set`修改参数时，ROS2参数服务并非直接修改节点的参数值——它会触发节点注册的`set_parameters_callback`。在这个回调中，开发者可以：
+
 1. **校验参数合法性**：判断新值是否在允许范围内
 2. **应用参数变更**：更新节点内部的变量，调整行为（如重新创建定时器、切换传感器状态）
 3. **返回结果**：返回`SetParametersResult(successful=True/False, reason="...")`告知外部修改是否成功
@@ -4109,9 +4392,8 @@ ros2 param set /param_sensor alarm_threshold_ppm 600.0
 
 **操作步骤**：
 
-在上面的`ParamSensorNode.__init__`中添加参数回调注册：
-
-```python
+```bash
+在上面的ParamSensorNode.__init__中添加参数回调注册：
     def __init__(self):
         # ...（前面的代码保持不变）...
 
@@ -4163,9 +4445,10 @@ ros2 param set /param_sensor alarm_threshold_ppm 600.0
 ```
 
 **易错点**：
-- ⚠️ **`add_on_set_parameters_callback` 注册后仍按原频率运行** → 解决：确保回调中不仅更新了变量的值，还调用了影响行为的后续逻辑（如这里的`_update_timer()`重建定时器）
-- ⚠️ **`SetParametersResult` 返回后CLI显示"成功"但参数实际未应用** → 解决：检查`successful=True`仅在全部校验通过时才应返回；若任一参数校验失败，立即返回`successful=False`
-- ⚠️ **回调函数未从 `rcl_interfaces.msg` 导入 `SetParametersResult`** → 解决：添加 `from rcl_interfaces.msg import SetParametersResult`
+
+- ⚠️ ****`add_on_set_parameters_callback` 注册后仍按原频率运行**** → 解决：确保回调中不仅更新了变量的值，还调用了影响行为的后续逻辑（如这里的`_update_timer()`重建定时器）
+- ⚠️ ****`SetParametersResult` 返回后CLI显示"成功"但参数实际未应用**** → 解决：检查`successful=True`仅在全部校验通过时才应返回；若任一参数校验失败，立即返回`successful=False`
+- ⚠️ ****回调函数未从 `rcl_interfaces.msg` 导入 `SetParametersResult`**** → 解决：添加 `from rcl_interfaces.msg import SetParametersResult`
 
 ---
 
@@ -4174,19 +4457,40 @@ ros2 param set /param_sensor alarm_threshold_ppm 600.0
 **知识点讲解**：
 
 **ParameterDescriptor 的设计目的**：
-`ParameterDescriptor`允许开发者在声明参数时预定义约束条件（数值范围、整数步长、字符串枚举等）。这些约束可以被`rqt_reconfigure`等GUI工具读取并渲染为滑动条/下拉菜单，无需编写额外的UI代码。更重要的是，`ParameterDescriptor`提供的`floating_point_range`、`integer_range`等字段可以向外部工具声明参数的有效范围。
+
+`ParameterDescriptor`允许开发者在声明参数时预定义约束条件（数值范围、整数步长、字符串枚举等）。这些约束可以被`rqt_reconfigure`等GUI工具读取并渲染为滑动条/下拉菜单，无需编写额外的UI代码。更重要的是，`ParameterDescriptor`提供的`floating_point_range`、`integer_range`等字段可以向外部工具声明参数的有效范围
 
 **操作步骤**：
 
-修改`declare_parameter`调用以添加描述符：
+```bash
+修改declare_parameter调用以添加描述符：
+将param_sensor_node.py修改成下面代码
+# -*- coding: utf-8 -*-
+"""
+实验10：ROS2参数化传感器节点
+平台：B2实验箱
+运行：python3 param_sensor_node.py
+功能：通过参数动态控制MQ5气体传感器的采样率、使能状态和报警阈值
+"""
+import rclpy
+from rclpy.node import Node
+from rclpy.parameter import Parameter
+from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
+from common import read_mq5_once  # 复用实验6的MQ5真实读取函数
 
-```python
+class ParamSensorNode(Node):
+    """参数化传感器节点——演示参数的声明、读写、动态更新"""
+
     def __init__(self):
-        # ...（前面的代码保持不变）...
+        super().__init__('param_sensor')
 
-        # ====== 带 ParameterDescriptor 的参数声明 ======
+        # ====== 步骤1：声明参数 ======
+        # declare_parameter 的参数：
+        #   name: 参数名称（ROS2命名规范：snake_case）
+        #   value: 默认值（同时决定了参数类型：float/int/str/bool/list）
+        #   descriptor: 参数描述符（可选，用于约束和文档）
 
-        # 采样率描述符：范围 0.1~50.0 Hz，步长 0.1
+        # 参数1：采样率（Hz）
         sample_rate_desc = ParameterDescriptor(
             description='气体传感器采样频率（Hz）。值越高，数据越密集，CPU占用越大。',
             floating_point_range=[
@@ -4195,13 +4499,13 @@ ros2 param set /param_sensor alarm_threshold_ppm 600.0
         )
         self.declare_parameter('sample_rate_hz', 1.0, sample_rate_desc)
 
-        # 传感器使能描述符
+        # 参数2：传感器使能（bool）
         sensor_enable_desc = ParameterDescriptor(
             description='是否启用气体传感器。关闭后节点停止数据采集以节省CPU。'
         )
         self.declare_parameter('sensor_enabled', True, sensor_enable_desc)
 
-        # 报警阈值描述符
+        # 参数3：报警阈值（ppm）
         alarm_threshold_desc = ParameterDescriptor(
             description='气体浓度报警阈值（ppm）。当采样值超过此阈值时触发报警。',
             floating_point_range=[
@@ -4210,17 +4514,77 @@ ros2 param set /param_sensor alarm_threshold_ppm 600.0
         )
         self.declare_parameter('alarm_threshold_ppm', 500.0, alarm_threshold_desc)
 
-        # ...（后续代码保持不变）...
-```
+        # ====== 步骤2：读取参数的当前值 ======
+        self.sample_rate = self.get_parameter('sample_rate_hz').value
+        self.sensor_enabled = self.get_parameter('sensor_enabled').value
+        self.alarm_threshold = self.get_parameter('alarm_threshold_ppm').value
+        # 打印初始参数配置
+        self.get_logger().info(
+            f'节点已启动，采样率: {self.sample_rate} Hz, '
+            f'传感器: {"开启" if self.sensor_enabled else "关闭"}, '
+            f'报警阈值: {self.alarm_threshold} ppm'
+        )
 
-使用`ros2 param describe`查看描述符效果：
+        # ====== 步骤3：根据参数创建定时器 ======
+        self._update_timer()
+        self._counter = 0
 
-```bash
+    def _update_timer(self):
+        """根据当前采样率参数更新定时器"""
+        # 移除旧定时器（如果存在）
+        if hasattr(self, '_timer') and self._timer is not None:
+            self.destroy_timer(self._timer)
+            self.get_logger().info(f'旧定时器已销毁')
+
+        # 根据采样率创建新定时器
+        period_sec = 1.0 / self.sample_rate if self.sample_rate > 0 else 1.0
+        self._timer = self.create_timer(period_sec, self._timer_callback)
+        self.get_logger().info(f'新定时器已创建: 周期={period_sec:.3f}s (频率={self.sample_rate} Hz)')
+
+    def _timer_callback(self):
+        """定时器回调：读取真实MQ5传感器浓度并检查报警"""
+        if not self.sensor_enabled:
+            return
+
+        self._counter += 1
+        # 读取真实MQ5传感器浓度（复用实验6的common.read_mq5_once）
+        raw, voltage, ppm, err = read_mq5_once()
+        if err:
+            self.get_logger().error(f'读取MQ5传感器失败: {err}')
+            return
+
+        # 报警逻辑
+        if ppm > self.alarm_threshold:
+            self.get_logger().warn(
+                f'[{self._counter}] [报警!] 气体浓度 {ppm:.1f} ppm > '
+                f'阈值 {self.alarm_threshold} ppm'
+            )
+        else:
+            self.get_logger().info(
+                f'[{self._counter}] 正常: {ppm:.1f} ppm'
+            )
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = ParamSensorNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        node.get_logger().info('节点被用户中断')
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+使用ros2 param describe查看描述符效果：
 ros2 param describe /param_sensor sample_rate_hz
 # 预期输出: 显示 Descriptor 中的 description 和 floating_point_range 信息
+
 ```
 
----
+![image-20260821184026834](assets/image-20260821184026834.png)
 
 #### 步骤5：CLI联调验证完整流程（15 分钟）
 
@@ -4272,16 +4636,16 @@ cat param_sensor.yaml
 ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
 ```
 
----
-
 ### 七、注意事项
 
-| 类别 | 注意事项 |
-|------|---------|
 | ⚠️ 参数名称 | 参数名必须符合ROS2命名规范（snake_case，仅限字母/数字/下划线），且在同一节点内**全局唯一**。重复声明同名参数会导致运行时错误 |
+
 | ⚠️ 类型匹配 | `declare_parameter`的默认值决定了参数类型（`1.0`→float, `1`→int, `"hello"`→str, `True`→bool）。后续`set_parameter`时必须使用相同类型，否则设置失败 |
+
 | ⚠️ 回调线程 | `set_parameters_callback`在参数服务线程中被调用，而非主线程。若回调中涉及共享状态修改，需加锁保护（`threading.Lock`） |
+
 | ⚠️ 参数持久化 | 节点的参数值仅存在于运行时内存中。节点重启后，所有参数恢复为`declare_parameter`中的默认值。若需持久化，使用`ros2 param dump`导出并在Launch文件中加载 |
+
 | ⚠️ 性能 | 参数读写是轻量级操作（内存访问），不存在网络通信开销。但`set_parameters_callback`中若执行重计算（如模型加载），可能导致参数服务超时 |
 
 ### 八、实验总结
@@ -4289,6 +4653,7 @@ ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 在ROS2节点中使用`declare_parameter`声明参数及其默认值
 - ✅ 使用`get_parameter`和`set_parameter`读写运行时的参数值
 - ✅ 使用`add_on_set_parameters_callback`注册参数动态更新回调，实现运行时调参
@@ -4298,7 +4663,7 @@ ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 参数化编程 | 掌握将硬编码常量"拉出"为可配置参数的编程范式 |
 | 动态调参 | 能设计参数回调逻辑，实现不重启节点即可改变运行行为的动态调整能力 |
 | 约束设计 | 理解ParameterDescriptor的作用，能为参数添加合理的范围约束和描述文档 |
@@ -4308,7 +4673,7 @@ ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `declare_parameter` 报 "already declared" | 多次声明了同名参数 | 使用 `if not self.has_parameter('name'): self.declare_parameter(...)` |
 | `set_parameter` 后节点行为未改变 | 未在回调中应用新参数值 | 检查 `add_on_set_parameters_callback` 中是否正确更新了内部变量并触发了后续逻辑 |
 | `ros2 param set` 报 "Type mismatch" | 设置值的类型与声明时不一致 | 确保类型匹配：声明float用`1.0`而非`1`，声明int用`1`而非`1.0` |
@@ -4329,31 +4694,31 @@ ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
 #### 9.2 思考题
 
 **思考题 1**：
+
 在本实验中，我们在`_on_param_changed`回调中手动校验了采样率的范围（0.1~50.0）。但我们又在`declare_parameter`中通过`ParameterDescriptor`声明了相同的范围约束。这两种范围约束分别在什么层级生效？如果CLI尝试设置一个超出范围的值，哪一个约束会先触发？请设计一个实验验证你的判断。
 
 **思考题 2**：
+
 假设你正在开发一个巡线小车，有PID速度控制器的三个参数（Kp、Ki、Kd），这三个参数相互关联——修改任意一个后，控制器需要重新计算积分累计值以避免"积分突变"。请设计`set_parameters_callback`的处理逻辑，描述当Kp被修改后，应该如何更新内部状态，并说明是否需要同时重置Ki和Kd的累计值。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 25% | 是否完成参数声明、读写、动态回调的完整编码与CLI验证 |
 | 代码质量 | 25% | 参数回调中是否包含校验逻辑、是否正确应用参数变更、是否使用ParameterDescriptor |
 | 原理分析 | 20% | 对参数系统数据流和控制流的理解深度 |
 | 思考题 1 | 15% | 对两种约束机制的理解与实验设计方案 |
 | 思考题 2 | 15% | PID参数联动更新逻辑的设计合理性 |
 
----
-
-## 实验11: ROS2时间相关API
+## 实验11：ROS2时间相关API
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 3.2.1 | ROS2时间类型(builtin_interfaces/Time)以秒+纳秒表示时刻的概念 | 概念 | 第3章 ROS2底层机制与分布式通信 → 3.2 时间系统 |
 | 3.2.2 | get_clock().now()获取当前时间与create_timer创建周期性定时器的流程 | 流程 | 第3章 ROS2底层机制与分布式通信 → 3.2 时间系统 |
 | 3.2.3 | use_sim_time与仿真时间同步机制的原理 | 原理 | 第3章 ROS2底层机制与分布式通信 → 3.2 时间系统 |
@@ -4370,8 +4735,8 @@ ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2  |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
 | 核心依赖 | `rclpy`、`builtin_interfaces`、`std_msgs` |
@@ -4382,17 +4747,19 @@ ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐（容易） |
 | 实验类型 | 验证性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握`rclpy.time.Time`的构造、比较、运算方法
 - 掌握`create_timer`的创建与销毁（`destroy_timer`），理解定时器周期与回调执行时间的关系
 - 理解`Header.stamp`的作用——为每条传感器消息打上采集时刻的时间戳
 
 **难点**：
+
 - 区分`time.time()`（Python系统时间）和`get_clock().now()`（ROS2时间）——两者在仿真模式下可能不同
 - 理解`use_sim_time`参数的工作机制：节点需在初始化前通过参数声明启用，且必须在`rclpy.init()`之后、`spin()`之前设置
 
@@ -4410,7 +4777,7 @@ ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `python3 time_demo_node.py` | `[INFO] [1731500000.500] 采样 #1, 值: xx.xx`（每秒一条） |
 | `ros2 topic echo /sensor_data` | 显示 `header.stamp.sec` 和 `nanosec` 字段 |
 | `ros2 topic delay /sensor_data` | 显示每条消息的端到端延迟（ms） |
@@ -4438,23 +4805,26 @@ graph LR
 **知识点讲解**：
 
 **ROS2 Time类型的设计（知识点 3.2.1）**：
+
 ROS2定义了自己的时间抽象层`builtin_interfaces/msg/Time`，而非直接使用Python的`time.time()`。这样设计的原因是：机器人系统中有两类时钟源——**系统时钟**（Wall Clock，真实世界时间）和**仿真时钟**（Simulation Clock，由Gazebo等仿真器发布的逻辑时间）。ROS2的Clock类在`use_sim_time:=true`时自动切换为从`/clock`话题订阅仿真时间，而在`use_sim_time:=false`（默认）时使用系统时钟。这个切换对上层代码透明——`get_clock().now()`始终返回"当前正确的时间"。
 
 **Time消息结构**：
-```
-builtin_interfaces/Time:
-  int32 sec      # 秒部分（Unix时间戳，从1970-01-01 00:00:00起算）
-  uint32 nanosec # 纳秒部分（0~999,999,999）
-```
 
-**`rclpy.time.Time` vs 消息`builtin_interfaces/msg/Time`**：
+builtin_interfaces/Time:
+
+  int32 sec      # 秒部分（Unix时间戳，从1970-01-01 00:00:00起算）
+
+  uint32 nanosec # 纳秒部分（0~999,999,999）
+
+****`rclpy.time.Time` vs 消息`builtin_interfaces/msg/Time`****：
+
 - `rclpy.time.Time`是Python侧的API类型（可运算、比较）
 - `builtin_interfaces/msg/Time`是消息序列化类型（嵌入Header中传输）
 - 两者可通过`Time.from_msg(msg_time)`和`time_obj.to_msg()`互相转换
 
 **操作步骤**：
 
-```python
+```bash
 # 交互式测试时间API（在Python终端中练习）
 import rclpy
 rclpy.init()
@@ -4485,16 +4855,19 @@ rclpy.shutdown()
 **知识点讲解**：
 
 **create_timer的原理（知识点 3.2.2）**：
+
 `create_timer(period_sec, callback)`在节点的事件循环（`spin`）中注册一个周期性触发源。每次`period_sec`秒过去后，指定的`callback`函数被加入执行队列。定时器是ROS2节点中实现"周期性任务"的标准方式——替代了ROS1中显式的`while + rospy.Rate.sleep()`模式。
 
 **核心规则**：
+
 - 定时器周期是**名义上的**最小间隔——如果回调执行时间超过周期，下一次触发会被推迟
 - 多个定时器可以共存，各自独立计时
 - 高频率定时器（如1000Hz）可能导致CPU过载，回调积压
 
 **操作步骤**：
 
-```python
+```bash
+将下面代码放入time_demo_node.py
 # -*- coding: utf-8 -*-
 """
 实验11：ROS2时间与定时器演示节点
@@ -4503,7 +4876,6 @@ rclpy.shutdown()
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Header
-
 
 class TimeDemoNode(Node):
     """演示ROS2时间API与定时器使用"""
@@ -4541,7 +4913,7 @@ class TimeDemoNode(Node):
 
         # 构造带时间戳的消息
         msg = Header()
-        msg.stamp = now_msg           # ★ 核心：给消息打上当前时间戳
+        msg.stamp = now_msg           # ⭐ 核心：给消息打上当前时间戳
         msg.frame_id = 'sensor_frame' # 传感器所在的坐标系
 
         self._publisher.publish(msg)
@@ -4560,7 +4932,6 @@ class TimeDemoNode(Node):
             f'当前ROS2时间: {self.get_clock().now().nanoseconds} ns'
         )
 
-
 def main(args=None):
     rclpy.init(args=args)
     node = TimeDemoNode()
@@ -4572,7 +4943,6 @@ def main(args=None):
         node.destroy_node()
         rclpy.shutdown()
 
-
 if __name__ == '__main__':
     main()
 ```
@@ -4581,151 +4951,45 @@ if __name__ == '__main__':
 
 ```bash
 # 终端A
+
 python3 time_demo_node.py
 
 # 终端B：使用ros2 topic echo查看消息时间戳
+
 ros2 topic echo /sensor_data
+
 # 预期: 每秒显示一条，stamp字段的sec值接近当前Unix时间
 ```
 
+![image-20260821184101472](assets/image-20260821184101472.png)
+
 **易错点**：
+
 - ⚠️ **定时器不触发** → 解决：确认`rclpy.spin(node)`已调用。没有spin，事件循环不运行，定时器不会被触发
 - ⚠️ **定时器回调执行过慢导致频率不准** → 解决：确保回调中的逻辑（尤其是I/O操作）不会阻塞。IO密集型任务应使用异步或多线程处理
 
 ---
 
-#### 步骤3：Header.stamp时间戳应用（15 分钟）
-
-**知识点讲解**：
-
-**Header.stamp的作用**：
-在ROS2中，几乎所有的传感器消息类型都包含`std_msgs/Header header`作为第一个字段。`Header`中的`stamp`字段记录了消息的**采集时刻**（而非发布时刻或接收时刻）。这个时间戳是后续所有时间相关算法的基石：
-- TF2坐标变换：使用stamp确定坐标在哪个时刻是有效的
-- 传感器融合（如Kalman滤波）：使用stamp对齐来自不同传感器的数据
-- 数据录制（ros2 bag）：使用stamp索引和回放消息
-
-**为什么需要纳秒精度**：
-激光雷达（10-30Hz）的时间戳精度到毫秒即可，但IMU（100-1000Hz）和相机（30-60Hz）的精确同步需要微秒甚至纳秒级精度。ROS2统一使用秒+纳秒的表示方式，以覆盖从低频到高频的所有传感器需求。
-
-**操作步骤**：
-
-```python
-# -*- coding: utf-8 -*-
-"""
-实验11：为真实MQ5传感器数据打上采集时刻时间戳
-运行：python3 gas_timestamp_node.py
-"""
-import rclpy
-from rclpy.node import Node
-from ros_sensor_interfaces.msg import GasData  # 自定义消息，见下方 .msg 定义
-from common import read_mq5_once               # 复用实验6的MQ5真实读取函数
-
-
-class GasTimeStampNode(Node):
-    """定时器回调中读取真实MQ5浓度，并为每条数据打上采集时刻时间戳"""
-
-    def __init__(self):
-        super().__init__('gas_timestamp_node')
-
-        # 发布者：发布带 Header 的 GasData 消息
-        self._publisher = self.create_publisher(GasData, 'gas_data', 10)
-
-        # 定时器：1Hz 周期读取真实 MQ5 浓度
-        self._timer = self.create_timer(1.0, self._timer_callback)
-
-    def _timer_callback(self):
-        # 1. 读取真实MQ5浓度（复用实验6的 common.read_mq5_once）
-        raw, voltage, ppm, err = read_mq5_once()
-        if err:
-            self.get_logger().error(f'读取MQ5传感器失败: {err}')
-            return
-
-        # 2. 构造带时间戳的消息：Header.stamp = 采集时刻（读取瞬间，而非发布时刻）
-        msg = GasData()
-        msg.header.stamp = self.get_clock().now().to_msg()  # ★ 核心：打上采集时刻
-        msg.header.frame_id = 'gas_sensor_link'             # 传感器所在坐标系
-        msg.concentration_ppm = ppm
-        msg.voltage = voltage
-
-        # 3. 发布
-        self._publisher.publish(msg)
-
-        self.get_logger().info(
-            f'采集时刻: {msg.header.stamp.sec}.{msg.header.stamp.nanosec:09d} | '
-            f'浓度: {ppm:.1f} ppm | 电压: {voltage:.3f} V'
-        )
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = GasTimeStampNode()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
-
-
-if __name__ == '__main__':
-    main()
-```
-
-**GasData 消息定义**（加入实验9创建的 `ros_sensor_interfaces` 包，`msg/GasData.msg`）：
-
-```msg
-std_msgs/Header header   # 标准消息头（包含 stamp 和 frame_id）
-float32 concentration_ppm
-float32 voltage
-```
-
-在 `CMakeLists.txt` 的 `rosidl_generate_interfaces` 中加入 `msg/GasData.msg`，重新 `colcon build` 并 `source install/setup.bash` 后即可导入使用。
-
-**运行验证**：
-
-```bash
-# 终端A：启动节点
-python3 gas_timestamp_node.py
-
-# 终端B：查看带采集时刻时间戳的真实浓度数据
-ros2 topic echo /gas_data
-# 预期: header.stamp.sec/nanosec 接近当前Unix时间，concentration_ppm 为真实MQ5浓度
-```
-
----
-
-#### 步骤4：时间运算与端到端延迟测量（15 分钟）
+#### 步骤3：时间运算与端到端延迟测量（15 分钟）
 
 **知识点讲解**：
 
 **端到端延迟（End-to-End Latency）**：
+
 端到端延迟 = 订阅者接收消息的时刻 - 发布者发布消息的时刻。`ros2 topic delay`命令比较消息中的`stamp`与当前时钟的差值，输出每条消息的传输延迟。这个指标反映ROS2通信栈的实时性能——通常小于1ms（局域网有线连接）。
 
-**`rclpy.time.Duration`类**：
+****`rclpy.time.Duration`类****：
+
 Duration用于表示时间间隔，支持与Time的加减运算、比较、以及秒/纳秒转换。
 
 **操作步骤**：
 
 ```bash
 # 保持 time_demo_node 运行
-
-# 终端B：测量 /sensor_data 话题的端到端延迟
-ros2 topic delay /sensor_data
-# 预期输出:
-#   delay:
-#     sec: 0
-#     nanosec: 156000   # 约 0.15ms
-# 每条消息打印一行延迟数据
-
-# 按 Ctrl+C 停止
-
 # 查看话题发布频率
 ros2 topic hz /sensor_data
 # 预期: average rate: ~1.000 Hz
-```
 
-```python
 # 编程方式测量延迟（添加到节点中）
 def measure_latency_demo(self):
     """演示编程式延迟测量"""
@@ -4740,22 +5004,25 @@ def measure_latency_demo(self):
     print(f"时间差: {diff.nanoseconds / 1e9:.3f} 秒")
 
     # 比较时间：now > past? → True
-    print(f"now > past? {now > past}")
+    print(f"now > past? {now > past}"
 ```
 
----
+![image-20260821184140393](assets/image-20260821184140393.png)
 
-#### 步骤5：理解use_sim_time仿真时钟机制（10 分钟）
+#### 步骤4：理解use_sim_time仿真时钟机制（10 分钟）
 
 **知识点讲解**：
 
 **use_sim_time 的工作原理（知识点 3.2.3）**：
+
 当节点启动时带有参数`use_sim_time:=true`，ROS2的Clock类会订阅`/clock`话题（消息类型为`rosgraph_msgs/msg/Clock`），并以该话题上的消息值作为"当前时间"。Gazebo等仿真器在推进仿真步长时自动向`/clock`发布消息。这使得：
+
 - 仿真中的"1秒"可能对应真实的0.1秒（加速仿真）或10秒（减速调试）
 - 所有使用`use_sim_time:=true`的节点共享相同的仿真时间轴
 - 录制bag回放时也可以发布`/clock`，使离线分析的时间戳保持一致
 
 **重要限制**：
+
 `use_sim_time`参数必须在节点初始化（即`rclpy.init()` + 节点构造函数）时确定。节点运行中无法切换时钟模式。
 
 **操作步骤**：
@@ -4771,110 +5038,26 @@ ros2 topic pub /clock rosgraph_msgs/msg/Clock "{clock: {sec: 100, nanosec: 0}}" 
 # 节点现在会以仿真时间运行，stamp字段显示从100秒开始递增
 ```
 
----
-
-#### 步骤6：完整可运行代码（15 分钟）
-
-将以上各步骤整合为完整的时间演示节点，增加更丰富的时间API用法：
-
-```python
-# -*- coding: utf-8 -*-
-"""
-实验11：ROS2时间API完整演示
-平台：B2/C1
-运行：python3 time_demo_full.py
-"""
-import rclpy
-from rclpy.node import Node
-from rclpy.time import Time, Duration
-from std_msgs.msg import Header, String
-
-
-class TimeFullDemo(Node):
-    """ROS2时间API完整演示节点"""
-
-    def __init__(self):
-        super().__init__('time_full_demo')
-
-        # 发布者
-        self._pub_header = self.create_publisher(Header, 'sensor_data', 10)
-        self._pub_latency = self.create_publisher(String, 'latency_report', 10)
-
-        # 定时器：可调节频率
-        self.declare_parameter('publish_rate_hz', 2.0)
-        rate = self.get_parameter('publish_rate_hz').value
-        self._timer = self.create_timer(1.0 / rate, self._publish_callback)
-
-        # 延时测试定时器（每10秒测一次）
-        self._latency_timer = self.create_timer(10.0, self._latency_callback)
-
-        self._count = 0
-        self.get_logger().info(f'时间演示节点启动（{rate} Hz）')
-
-    def _publish_callback(self):
-        """定时发布带时间戳的消息"""
-        self._count += 1
-
-        # 获取当前时间
-        now = self.get_clock().now()
-
-        msg = Header()
-        msg.stamp = now.to_msg()
-        msg.frame_id = 'demo_frame'
-
-        self._pub_header.publish(msg)
-
-        # 打印关键信息
-        self.get_logger().info(
-            f'[#{self._count}] stamp: {now.nanoseconds} ns '
-            f'({now.nanoseconds / 1e9:.3f} s)'
-        )
-
-    def _latency_callback(self):
-        """测量自上次回调以来的延迟"""
-        latency_msg = String()
-        latency_msg.data = (
-            f'累计发布 {self._count} 条消息, '
-            f'当前时间: {self.get_clock().now().nanoseconds / 1e9:.3f} s'
-        )
-        self._pub_latency.publish(latency_msg)
-        self.get_logger().info(latency_msg.data)
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = TimeFullDemo()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        node.get_logger().info('结束')
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
-
-
-if __name__ == '__main__':
-    main()
-```
-
----
-
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 初始化顺序 | `get_clock().now()` 必须在 `rclpy.init()` 之后、节点创建之后调用，否则会抛出 "Clock not initialized" 异常 |
 | ⚠️ use_sim_time | `use_sim_time:=true` 仅在仿真环境下使用。若在真实硬件上启用此参数且无`/clock`发布者，节点将永久阻塞等待 |
 | ⚠️ 定时器精度 | create_timer的精度受Linux调度器影响，实际触发时间可能偏差数毫秒。对于微秒级精度要求，应使用实时内核（PREEMPT_RT） |
-| ⚠️ stamp 含义 | Header.stamp应记录数据的**采集时刻**而非发布时刻。若传感器采集与发布之间存在处理延迟，应在采集代码处记录时间戳 |
-| ⚠️ 纳秒溢出 | `Time.nanoseconds`返回的是从Unix纪元（1970-01-01 00:00:00 UTC）到当前时刻的总纳秒数。Python的int类型无溢出风险，但在C++中需使用`uint64_t` |
-| ⚠️ 多定时器 | 同一节点中多个定时器的回调在同一线程中串行执行。若一个回调耗时过长，会阻塞其他定时器或订阅者的回调 |
+
+⚠️ stamp 含义 Header.stamp应记录数据的**采集时刻**而非发布时刻。若传感器采集与发布之间存在处理延迟，应在采集代码处记录时间戳
+
+⚠️ 纳秒溢出 `Time.nanoseconds`返回的是从Unix纪元（1970-01-01 00:00:00 UTC）到当前时刻的总纳秒数。Python的int类型无溢出风险，但在C++中需使用`uint64_t`
+
+⚠️ 多定时器 同一节点中多个定时器的回调在同一线程中串行执行。若一个回调耗时过长，会阻塞其他定时器或订阅者的回调
 
 ### 八、实验总结
 
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 使用`get_clock().now()`获取当前ROS2时间并转换为消息格式
 - ✅ 使用`create_timer(period, callback)`创建周期性定时器并动态调整频率
 - ✅ 正确设置`Header.stamp`为传感器消息打上采集时刻的时间戳
@@ -4884,7 +5067,7 @@ if __name__ == '__main__':
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 时间API | 掌握`rclpy.time.Time`和`Duration`的构造、转换、运算方法 |
 | 定时器编程 | 能使用`create_timer`实现周期性任务，理解定时器的事件循环机制 |
 | 时间戳规范 | 理解Header.stamp的含义与正确赋值时机 |
@@ -4894,7 +5077,7 @@ if __name__ == '__main__':
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `get_clock().now()` 报 "Clock not initialized" | 未调用 `rclpy.init()` 或节点未创建 | 确保 `rclpy.init(args=args)` 在节点创建之前调用 |
 | 定时器回调未被执行 | 未调用 `rclpy.spin(node)` | 在节点创建后调用 `rclpy.spin(node)` 启动事件循环 |
 | `ros2 topic delay` 显示延迟为负值 | 发送方和接收方系统时钟不同步 | 在多机场景下使用NTP同步时钟；单机场景下检查消息stamp赋值代码 |
@@ -4915,31 +5098,31 @@ if __name__ == '__main__':
 #### 9.2 思考题
 
 **思考题 1**：
+
 假设你有一个IMU传感器节点以200Hz频率发布消息，和一个相机节点以30Hz发布消息。你需要将两者数据融合，但由于硬件延迟，两个传感器数据的时间戳并非严格对齐。请设计一种基于`Header.stamp`的时间对齐策略，说明如何确定"最接近"的IMU测量值来匹配每一帧相机图像。
 
 **思考题 2**：
+
 在`use_sim_time:=true`模式下，节点的时间推进速度完全取决于`/clock`话题的发布频率。如果Gazebo以0.5倍速运行（仿真1秒需要真实2秒），那么`create_timer(1.0, callback)`的回调会以什么频率触发？这对控制算法的行为会产生什么影响？
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否完成定时器发布、时间戳设置、延迟测量的完整验证 |
 | 代码质量 | 20% | 时间戳赋值位置是否正确（采集时而非发布时）、定时器使用是否合理 |
 | 原理分析 | 20% | 对双时钟架构设计意义的理解深度 |
 | 思考题 1 | 15% | 时间对齐策略的合理性与可操作性 |
 | 思考题 2 | 15% | 对仿真时间缩放对定时器行为影响的分析 |
 
----
-
-## 实验12: ROS2 DDS
+## 实验12：ROS2 DDS
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 3.1.1 | RMW(ROS Middleware)中间件抽象层概念与DDS实现(Fast-DDS/CycloneDDS)的可切换机制 | 概念 | 第3章 ROS2底层机制与分布式通信 → 3.1 DDS通信中间件 |
 | 3.1.2 | RTPS协议Participant→Endpoint→Writer/Reader层次结构原理 | 原理 | 第3章 ROS2底层机制与分布式通信 → 3.1 DDS通信中间件 |
 | 3.1.3 | DDS自动发现SPDP(参与者发现)+SEDP(端点发现)两阶段机制的原理 | 原理 | 第3章 ROS2底层机制与分布式通信 → 3.1 DDS通信中间件 |
@@ -4957,8 +5140,8 @@ if __name__ == '__main__':
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2  |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
 | 默认DDS实现 | Fast-DDS (eProsima) |
@@ -4970,16 +5153,18 @@ if __name__ == '__main__':
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 理解ROS2 RMW层的架构设计：`rcl`（ROS Client Library）→ `rmw`（ROS Middleware Wrapper）→ DDS Vendor（Fast-DDS/CycloneDDS）
 - 掌握QoS策略的配置方法与行为差异：Reliability（可靠vs尽力）、Durability（易失vs本地暂存）、History（保留深度）
 
 **难点**：
+
 - 理解RTPS协议中SPDP（Simple Participant Discovery Protocol）和SEDP（Simple Endpoint Discovery Protocol）的两阶段发现过程
 - 理解Durability中VOLATILE、TRANSIENT_LOCAL、TRANSIENT三种模式的语义：它们决定了"后来的订阅者能否收到加入前发布的消息"
 
@@ -4991,14 +5176,14 @@ if __name__ == '__main__':
 
 1. 切换DDS实现（`export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp`）后，同一份节点代码在不修改的情况下正常运行
 2. 使用`RELIABLE` QoS时，订阅者收到发布者发送的**每一条**消息（除非网络中断）
-3. 使用`BEST_EFFORT` QoS时，订阅者可能丢失部分消息（若网络拥塞或订阅者处理速度跟不上发布速度）
-4. 使用`TRANSIENT_LOCAL` Durability时，后来启动的订阅者能够收到启动前发布者已发布的历史消息
-5. 使用`KEEP_LAST(1)`时，订阅者只保留最新1条消息；使用`KEEP_LAST(100)`时保留最近100条
+1. 使用`BEST_EFFORT` QoS时，订阅者可能丢失部分消息（若网络拥塞或订阅者处理速度跟不上发布速度）
+2. 使用`TRANSIENT_LOCAL` Durability时，后来启动的订阅者能够收到启动前发布者已发布的历史消息
+3. 使用`KEEP_LAST(1)`时，订阅者只保留最新1条消息；使用`KEEP_LAST(100)`时保留最近100条
 
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp && python3 qos_demo.py` | 节点正常启动，无代码修改 |
 | 对比RELIABLE vs BEST_EFFORT | RELIABLE: 100%消息到达；BEST_EFFORT: 有丢失（高频+慢订阅者场景） |
 | 对比TRANSIENT_LOCAL vs VOLATILE | TRANSIENT_LOCAL: 后启动的订阅者收到历史消息；VOLATILE: 收不到 |
@@ -5026,34 +5211,38 @@ graph LR
 **知识点讲解**：
 
 **RMW层的设计原理（知识点 3.1.1）**：
+
 ROS2在`rcl`（ROS Client Library，面向开发者的API层）和DDS实现（面向网络传输的底层库）之间插入了一个**RMW抽象层**。RMW定义了统一的C API接口，包含节点创建、Publisher/Subscriber管理、QoS配置、发现触发等标准操作。不同DDS供应商（eProsima Fast-DDS、Eclipse CycloneDDS、RTI Connext等）分别实现这些接口，编译为独立的`rmw_<vendor>`共享库。
 
 **这种设计的工程价值**：
+
 - **可替换性**：通过环境变量`RMW_IMPLEMENTATION`在运行时切换DDS实现，无需重编译
 - **竞争促进**：DDS供应商竞争性能（延迟、吞吐量、CPU占用），ROS2社区受益于"最优实现"
 - **隔离变更**：DDS实现升级或漏洞修复不影响上层ROS2 API
 
 **架构层次**：
-```
+
 rclpy (Python API)
+
   └── rcl (C API)
+
         └── rmw (RMW抽象层 ─── 统一的C接口)
+    
               ├── rmw_fastrtps_cpp (eProsima Fast-DDS，默认)
+    
               ├── rmw_cyclonedds_cpp (Eclipse CycloneDDS)
+    
               └── rmw_connextdds (RTI Connext，商用)
+    
                     └── DDS Wire Protocol (RTPS over UDP/TCP)
-```
 
 **操作步骤**：
 
 ```bash
+
 # 查看当前使用的RMW实现
 echo $RMW_IMPLEMENTATION
 # 若为空，说明使用默认的 Fast-DDS
-
-# 查看已安装的RMW实现
-ros2 doctor --report
-# 查看输出中的 "RMW Implementation" 部分
 
 # 查看Fast-DDS的库文件位置
 find /opt/ros/humble -name "librmw_fastrtps*" 2>/dev/null
@@ -5070,6 +5259,7 @@ ROS2默认使用Fast-DDS（eProsima），但可以通过环境变量无缝切换
 **操作步骤**：
 
 ```bash
+以下操作需要实验箱连接网络
 # 安装 CycloneDDS 的 RMW 实现
 sudo apt update
 sudo apt install ros-humble-rmw-cyclonedds-cpp
@@ -5094,29 +5284,37 @@ kill %1 %2 2>/dev/null
 ```
 
 **易错点**：
-- ⚠️ **设置`RMW_IMPLEMENTATION`后节点启动失败** → 解决：确认对应的`ros-humble-rmw-<vendor>-cpp`包已安装。不同RMW实现的节点不能跨实现通信——同一ROS_DOMAIN_ID下必须使用同一RMW实现
+
+- ⚠️ ****设置`RMW_IMPLEMENTATION`后节点启动失败**** → 解决：确认对应的`ros-humble-rmw-<vendor>-cpp`包已安装。不同RMW实现的节点不能跨实现通信——同一ROS_DOMAIN_ID下必须使用同一RMW实现
 
 ---
 
-#### 步骤3：理解RTPS协议与DDS发现机制（20 分钟）
+#### 步骤3：理解RTPS协议与DDS发现机制
 
 **知识点讲解**：
 
 **RTPS协议的层次结构（知识点 3.1.2）**：
+
 RTPS（Real-Time Publish-Subscribe）是DDS的线级协议，定义了网络上如何序列化、寻址和传输DDS消息。其核心概念按层次排列：
 
-```
 Domain（通信域，由Domain ID隔离）
+
   └── Participant（参与者，对应一个ROS2进程/节点容器）
+
         ├── Publisher（发布端）
+    
         │     └── DataWriter（数据写入器，对应一个ROS2 Publisher）
+    
         │           └── HistoryCache（历史缓存，存储已发布消息）
+    
         └── Subscriber（订阅端）
+    
               └── DataReader（数据读取器，对应一个ROS2 Subscriber）
+    
                     └── HistoryCache（历史缓存，存储已接收消息）
-```
 
 **DDS自动发现的两阶段机制（知识点 3.1.3）**：
+
 1. **SPDP（Simple Participant Discovery Protocol）**：Participant启动后向多播地址（239.255.0.1）周期性发送SPDP消息，宣告自身的GUID（全局唯一标识符）、Domain ID、内置端点。其他Participant收到后，记录该Participant的存在。SPDP使用"Best Effort"模式。
 2. **SEDP（Simple Endpoint Discovery Protocol）**：一旦两个Participant互相发现，它们通过内置端点交换各自的DataWriter/DataReader列表和QoS配置。只有Topic名称和类型都匹配的Writer/Reader才会建立匹配。
 
@@ -5161,22 +5359,19 @@ kill $TALKER_PID $LISTENER_PID 2>/dev/null
 
 **知识点讲解**：
 
-**QoS（Quality of Service）策略的设计目的（知识点 3.1.4）**：
-不同的ROS2应用场景对通信质量有不同的要求。DDS通过QoS策略提供细粒度的通信行为控制。ROS2封装了最常用的几种QoS策略：
-
-| QoS策略 | 可选值 | 语义 | 典型应用 |
-|---------|-------|------|---------|
-| **Reliability** | RELIABLE / BEST_EFFORT | 可靠：保证送达（重传）；尽力：可能丢包 | 控制指令→RELIABLE；激光雷达→BEST_EFFORT |
-| **Durability** | VOLATILE / TRANSIENT_LOCAL | 易失：发送即忘；暂存：后来的订阅者也能收到历史 | 状态数据→TRANSIENT_LOCAL；实时流→VOLATILE |
-| **History** | KEEP_LAST(N) / KEEP_ALL | 只保留最近N条；保留全部 | KEEP_LAST(1)适合状态；KEEP_LAST(1000)适合记录 |
-| **Liveliness** | AUTOMATIC / MANUAL_BY_TOPIC | 自动检测心跳；手动报告存活 | 关键节点监控 |
-| **Deadline** | 最大间隔 | 消息不能超过多久不发 | 传感器健康监测 |
+| **QoS 策略** | **可选值** | **语义说明** | **典型应用场景** |
+|---|---|---|---|
+| **Reliability（可靠性）​** | **RELIABLE<br>BEST_EFFORT** | **RELIABLE：保证送达，丢失会重传<br>BEST_EFFORT：不保证送达，允许丢包** | **控制指令 → RELIABLE<br>激光雷达 / 图像流 → BEST_EFFORT** |
+| **Durability（持久性）​** | **VOLATILE<br>TRANSIENT_LOCAL** | **VOLATILE：发送即忘，后订阅收不到旧消息<br>TRANSIENT_LOCAL：发布者缓存，后订阅者可收历史** | **实时数据流 → VOLATILE<br>机器人状态 / 参数 → TRANSIENT_LOCAL** |
+| **History（历史策略）​** | **KEEP_LAST(n)<br>KEEP_ALL** | **KEEP_LAST(n)：只保留最近 n 条<br>KEEP_ALL：保留所有（直到内存上限）** | **状态量 → KEEP_LAST(1)<br>数据记录 / 回放 → KEEP_LAST(1000)** |
+| **Liveliness（存活检测）​** | **AUTOMATIC<br>MANUAL_BY_TOPIC** | **AUTOMATIC：系统自动发心跳<br>MANUAL_BY_TOPIC：用户代码显式声明存活** | **关键节点存活监控、安全相关节点** |
+| **Deadline（截止时间）​** | **时间长度（如 100ms）** | **相邻消息最大允许间隔，超时认为异常** | **传感器健康监测（如 IMU 停止发数）** |
 
 **操作步骤**：
 
+```bash
 编写QoS对比实验节点：
-
-```python
+将下面代码写入qos_demo.py
 # -*- coding: utf-8 -*-
 """
 实验12：ROS2 QoS策略对比实验
@@ -5188,7 +5383,6 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
 from std_msgs.msg import String
-
 
 class QosDemo(Node):
     """QoS策略对比演示节点"""
@@ -5285,7 +5479,6 @@ class QosDemo(Node):
         if self._count % 5 == 0:
             self.get_logger().info(f'已发布 {self._count} 轮消息')
 
-
 def main(args=None):
     rclpy.init(args=args)
 
@@ -5303,7 +5496,6 @@ def main(args=None):
         node.destroy_node()
         rclpy.shutdown()
 
-
 if __name__ == '__main__':
     main()
 ```
@@ -5312,51 +5504,93 @@ if __name__ == '__main__':
 
 ```bash
 # 终端A：运行QoS演示节点
+
 python3 qos_demo.py
 
 # 终端B：查看四个话题的QoS配置
+
 ros2 topic info /qos_default --verbose
+
 ros2 topic info /qos_sensor --verbose
+
 ros2 topic info /qos_state --verbose
 
 # 对比 /qos_sensor 和 /qos_default 的 Reliability 字段:
+
 # /qos_default → RELIABLE
+
 # /qos_sensor → BEST_EFFORT
 
 # 验证 TRANSIENT_LOCAL 的特性：
+
 # 1. 先运行 qos_demo.py (发布若干消息)
+
 # 2. Ctrl+C 停止 qos_demo.py
+
 # 3. 在另一个终端启动"晚到的订阅者":
+
+
+
+```
+
+![image-20260821184237344](assets/image-20260821184237344.png)
+
+```
 python3 -c "
+
 import rclpy
+
 from rclpy.node import Node
+
 from rclpy.qos import QoSProfile, DurabilityPolicy, HistoryPolicy
+
 from std_msgs.msg import String
 
 rclpy.init()
+
 node = Node('late_subscriber')
+
 qos = QoSProfile(
+
     durability=DurabilityPolicy.TRANSIENT_LOCAL,
+    
     history=HistoryPolicy.KEEP_LAST,
+    
     depth=1
+
 )
+
 def cb(msg):
+
     print(f'Late subscriber 收到: {msg.data}')
+
 node.create_subscription(String, '/qos_state', cb, qos)
+
 rclpy.spin_once(node, timeout_sec=3)
+
 node.destroy_node()
+
 rclpy.shutdown()
+
 "
+```
+
+```bash
 # 观察：如果 TRANSIENT_LOCAL 生效，晚到的订阅者应收到最新一条 /qos_state 消息
 ```
 
+![image-20260821184511260](assets/image-20260821184511260.png)
+
+收到的最后消息
+
 **易错点**：
+
 - ⚠️ **发布者和订阅者的QoS不匹配导致无法通信** → 解决：ROS2采用"兼容性检查"——Reliability和Durability策略必须兼容（订阅者的Reliability不能高于发布者）。检查`ros2 topic info --verbose`的输出
 - ⚠️ **TRANSIENT_LOCAL未生效** → 解决：必须发布者和订阅者**同时**将Durability设为TRANSIENT_LOCAL，且发布者需要在订阅者加入前已发布过消息并仍在运行（或至少DataWriter未销毁）
 
 ---
 
-#### 步骤5：DDS工具观察与验证（10 分钟）
+#### 步骤5：DDS工具观察与验证
 
 **操作步骤**：
 
@@ -5394,54 +5628,23 @@ rclpy.shutdown()
 kill %1 2>/dev/null
 ```
 
----
-
-#### 步骤6：完整可运行代码与DDS架构总结（5 分钟）
-
-本实验的完整代码即步骤4中的`qos_demo.py`，涵盖了四种QoS Profile的创建与对比。
-
-**ROS2 DDS通信全景总结**：
-
-```
-┌──────────────────────────────────────────────┐
-│              用户代码 (rclpy/rclcpp)            │
-│   create_publisher() / publish() / spin()     │
-├──────────────────────────────────────────────┤
-│              rcl (ROS Client Library)          │
-│   统一的 C API：节点/发布者/订阅者/服务/参数     │
-├──────────────────────────────────────────────┤
-│         rmw (ROS Middleware Wrapper)           │
-│   抽象层：隔离 DDS 实现差异                     │
-│   ┌──────────────┬──────────────┐             │
-│   │ Fast-DDS     │ CycloneDDS   │ ...         │
-│   │ (默认)        │              │             │
-│   └──────────────┴──────────────┘             │
-├──────────────────────────────────────────────┤
-│            DDS (RTPS Wire Protocol)            │
-│   发现(SPDP+SEDP) / 序列化 / QoS / 传输        │
-├──────────────────────────────────────────────┤
-│         UDP/IP (多播 + 单播) / TCP/IP          │
-└──────────────────────────────────────────────┘
-```
-
----
-
 ### 七、注意事项
 
-| 类别 | 注意事项 |
-|------|---------|
-| ⚠️ RMW切换 | 不同RMW实现的节点在同一个ROS_DOMAIN_ID下**不能跨实现通信**。确保所有节点使用同一RMW实现（通过`echo $RMW_IMPLEMENTATION`确认） |
-| ⚠️ QoS兼容性 | 发布者和订阅者的QoS Profile必须兼容，否则DDS发现后会标记为"Incompatible"并拒绝建立匹配。使用`ros2 topic info --verbose`检查兼容性 |
-| ⚠️ TRANSIENT_LOCAL | 仅当发布者**仍然存活**时，后来的订阅者才能收到历史消息。发布者退出后，其HistoryCache被销毁，TRANSIENT_LOCAL失效 |
-| ⚠️ BEST_EFFORT | 在局域网有线连接下，BEST_EFFORT几乎不会丢包。如需观察丢包行为，可通过限制网络带宽（`tc`命令）或极高频率（>1000Hz）模拟 |
-| ⚠️ KEEP_LAST深度 | 过大的depth值会增加内存占用（尤其是大消息如点云/图像）。合理选择depth=消息频率 × 期望缓存时长（秒） |
-| ⚠️ DDS端口 | DDS使用多播+单播通信，SPDP/SEDP使用固定多播地址。若在Docker或虚拟机中运行，需确保多播功能已启用 |
+| **⚠️ 类别** | **注意事项说明** |
+|---|---|
+| **RMW 切换​** | **不同 RMW 实现的节点（如 FastDDS ↔ CycloneDDS）在同一个 ROS_DOMAIN_ID 下不能跨实现通信。所有节点必须使用同一 RMW，可通过 echo $RMW_IMPLEMENTATION 确认当前实现。** |
+| **QoS 兼容性​** | **发布者和订阅者的 QoS Profile 必须兼容，否则 DDS 发现后会标记为 Incompatible，无法建立连接。可用 ros2 topic info --verbose 检查是否匹配成功。** |
+| **TRANSIENT_LOCAL​** | **仅当发布者仍然存活时，后加入的订阅者才能收到历史消息；一旦发布者退出，其 History Cache 被销毁，TRANSIENT_LOCAL 立即失效。** |
+| **BEST_EFFORT​** | **在局域网有线环境下，BEST_EFFORT 几乎不会丢包。要观察丢包行为，可用 tc 限带宽，或将发布频率设得极高（>1000 Hz）进行压力测试。** |
+| **KEEP_LAST 深度​** | **depth 过大时会显著增加内存占用，尤其是点云、图像等大消息。建议：<br>depth ≈ 消息频率 × 期望缓存时长（秒）** |
+| **DDS 端口 / 多播​** | **DDS 使用多播（SPDP / SEDP）进行节点发现。在 Docker、虚拟机、云环境中，需确保多播功能已启用，否则节点间可能无法互相发现。** |
 
 ### 八、实验总结
 
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 用自己的语言画出ROS2的RMW架构层次图，解释`rcl → rmw → DDS`三层关系
 - ✅ 通过`RMW_IMPLEMENTATION`环境变量在不同DDS实现之间切换
 - ✅ 解释RTPS协议中Participant→Endpoint→Writer/Reader的层次结构与功能分工
@@ -5450,23 +5653,23 @@ kill %1 2>/dev/null
 
 #### 8.2 技能收获
 
-| 技能 | 说明 |
-|------|------|
-| RMW架构理解 | 掌握ROS2中间件抽象层的设计原理与可替换性机制 |
-| DDS发现机制 | 理解SPDP+SEDP两阶段发现过程，能解释"零配置通信"的底层实现 |
-| QoS配置 | 能根据业务需求（可靠性/延迟/历史数据）选择并配置合理的QoS策略 |
-| 性能诊断 | 能使用`ros2 topic info --verbose`和`ros2 topic delay`诊断QoS配置问题 |
-| 多DDS切换 | 能正确安装并切换DDS实现，理解切换的限制条件 |
+| **技能** | **说明** |
+|---|---|
+| **RMW架构理解** | **掌握ROS2中间件抽象层的设计原理与可替换性机制** |
+| **DDS发现机制** | **理解SPDP+SEDP两阶段发现过程，能解释"零配置通信"的底层实现** |
+| **QoS配置** | **能根据业务需求（可靠性/延迟/历史数据）选择并配置合理的QoS策略** |
+| **性能诊断** | **能使用**`ros2 topic info --verbose`**和**`ros2 topic delay`**诊断QoS配置问题** |
+| **多DDS切换** | **能正确安装并切换DDS实现，理解切换的限制条件** |
 
 #### 8.3 常见问题与解答
 
-| 问题 | 原因 | 解决方法 |
-|------|------|---------|
-| 节点间无法通信 | RMW实现不统一 | 确保所有终端`echo $RMW_IMPLEMENTATION`输出一致 |
-| QoS不兼容导致无消息 | 发布者RELIABLE vs 订阅者BEST_EFFORT | 订阅者的Reliability不能高于发布者；降低订阅者要求或提高发布者保障 |
-| 后启动的订阅者收不到TRANSIENT_LOCAL消息 | 发布者已退出，HistoryCache已销毁 | 发布者需在订阅者加入时仍在运行 |
-| `ros2 topic info --verbose` 报 "Node not found" | 节点未运行或名称错误 | 用`ros2 node list`确认节点名称 |
-| 切换DDS后节点启动失败 | 对应的rmw包未安装 | `sudo apt install ros-humble-rmw-cyclonedds-cpp` 安装所需实现 |
+| **问题** | **原因** | **解决方法** |
+|---|---|---|
+| **节点间无法通信** | **RMW实现不统一** | **确保所有终端**`echo $RMW_IMPLEMENTATION`**输出一致** |
+| **QoS不兼容导致无消息** | **发布者RELIABLE vs 订阅者BEST_EFFORT** | **订阅者的Reliability不能高于发布者；降低订阅者要求或提高发布者保障** |
+| **后启动的订阅者收不到TRANSIENT_LOCAL消息** | **发布者已退出，HistoryCache已销毁** | **发布者需在订阅者加入时仍在运行** |
+| `ros2 topic info --verbose`** 报 "Node not found"** | **节点未运行或名称错误** | **用**`ros2 node list`**确认节点名称** |
+| **切换DDS后节点启动失败** | **对应的rmw包未安装** | `sudo apt install ros-humble-rmw-cyclonedds-cpp`** 安装所需实现** |
 
 ### 九、实验报告要求
 
@@ -5482,52 +5685,31 @@ kill %1 2>/dev/null
 #### 9.2 思考题
 
 **思考题 1**：
+
 在ROS2中，默认的QoS Profile是`RELIABLE + VOLATILE + KEEP_LAST(10)`。假设你要为一个机器人足球赛系统设计通信架构：有8个机器人节点（每台小车一个），每个以100Hz发布自身位姿，同时订阅其他7台小车的位置。请为这个场景设计合理的QoS策略组合，并解释你的选择理由（考虑带宽、延迟、可靠性之间的权衡）。
 
 **思考题 2**：
+
 ROS2支持通过`RMW_IMPLEMENTATION`切换DDS实现，但不允许不同RMW实现的节点跨实现通信。请分析：为什么会出现这个限制？如果在同一个ROS_DOMAIN_ID下强制两种RMW实现的节点通信，需要在哪一层解决什么问题？
 
 #### 9.3 评分标准
 
-| 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
-| 实验操作完整性 | 25% | 是否完成四种QoS Profile的创建、发布、验证，以及TRANSIENT_LOCAL实验 |
-| 代码质量 | 20% | QoS配置代码是否正确，四种Profile的命名和用途是否清晰 |
-| 原理分析 | 25% | 对RMW层设计意图和DDS发现机制的理解深度 |
-| 思考题 1 | 15% | QoS策略组合的合理性，是否考虑了带宽/延迟/可靠性权衡 |
-| 思考题 2 | 15% | 对RMW跨实现通信障碍的分析，是否识别到线协议层面的问题 |
+| **评分项** | **权重** | **评分标准** |
+|---|---|---|
+| **实验操作完整性** | **25%** | **是否完成四种QoS Profile的创建、发布、验证，以及TRANSIENT_LOCAL实验** |
+| **代码质量** | **20%** | **QoS配置代码是否正确，四种Profile的命名和用途是否清晰** |
+| **原理分析** | **25%** | **对RMW层设计意图和DDS发现机制的理解深度** |
+| **思考题 1** | **15%** | **QoS策略组合的合理性，是否考虑了带宽/延迟/可靠性权衡** |
+| **思考题 2** | **15%** | **对RMW跨实现通信障碍的分析，是否识别到线协议层面的问题** |
 
----
-
-## 附录：exp08~exp12 关联实验对照表
-
-| 实验ID | 实验名称 | 学时 | 类型 | 核心知识点 | 技能进阶 |
-|--------|---------|------|------|-----------|---------|
-| exp08 | ROS2动作通讯(MFRC522读卡器) | 4h | 设计性 | 2.4.1, 2.4.2, 2.4.3 | 话题→服务→动作：从同步到异步的通信范式升级 |
-| exp09 | ROS2自定义接口消息(传感器接口包) | 2h | 设计性 | 2.5.1, 2.5.2 | 使用者→设计者：从使用标准接口到定义专属接口 |
-| exp10 | ROS2参数服务案例 | 2h | 设计性 | 2.5.3, 2.5.4 | 静态→动态：从硬编码常量到运行时可调节参数 |
-| exp11 | ROS2时间相关API | 2h | 验证性 | 3.2.1, 3.2.2, 3.2.3 | 无时间→带时间戳：为数据打上精确时间标尺 |
-| exp12 | ROS2 DDS | 2h | 设计性 | 3.1.1, 3.1.2, 3.1.3, 3.1.4 | 应用层→底层：从使用通信到理解通信原理 |
-| **合计** | **12h** | — | — | — | — |
-
-> 说明：exp08~exp12覆盖ROS2通信机制的进阶内容，从Action异步通信（exp08）到自定义接口（exp09）到参数系统（exp10）到时间系统（exp11）到DDS底层（exp12），构成"上层应用→中层接口→底层原理"的完整知识链。
-
----
-
-## 更新日志
-
-| 版本 | 日期 | 更新内容 | 更新人 |
-|------|------|---------|-------|
-| v0.1 | 2026-08-10 | 初始生成实验8~12（Action/DDS/参数/时间/自定义接口） | LabGuideExperimentAgent |
-
-## 实验13：ROS2分布式通讯（2h）
+## 实验13：ROS2分布式通讯
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 3.3.1 | ROS_DOMAIN_ID隔离DDS通信域 | 概念 | 第3章 ROS2底层机制与分布式通信 → 3.3 分布式通信 |
 | 3.3.2 | 多机同网段+同Domain ID跨设备通信流程 | 流程 | 第3章 ROS2底层机制与分布式通信 → 3.3 分布式通信 |
 | 3.3.3 | ROS_DISCOVERY_SERVER中心化发现与DDS-Security加密 | 事实 | 第3章 ROS2底层机制与分布式通信 → 3.3 分布式通信 |
@@ -5544,8 +5726,8 @@ ROS2支持通过`RMW_IMPLEMENTATION`切换DDS实现，但不允许不同RMW实�
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2（RK3576 + STM32F407）或 具身智能机器人小车C1；或使用两台同一局域网内的 B2/C1 设备实现真分布式测试 |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2 |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
 | DDS 实现 | Fast-DDS（默认）或 CycloneDDS（通过 `RMW_IMPLEMENTATION` 切换） |
@@ -5557,16 +5739,18 @@ ROS2支持通过`RMW_IMPLEMENTATION`切换DDS实现，但不允许不同RMW实�
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握 ROS_DOMAIN_ID 的通信域隔离机制及其在多机器人场景中的工程价值
 - 能够配置并验证局域网内跨设备的节点通信链路
 
 **难点**：
+
 - 理解 DDS 自动发现的多播机制与 DISCOVERY_SERVER 单播模式的适用场景差异
 - DDS-Security 的 governance/passwords/permissions 三层策略文件的编写与调试
 
@@ -5584,18 +5768,20 @@ ROS2支持通过`RMW_IMPLEMENTATION`切换DDS实现，但不允许不同RMW实�
 #### 5.2 预期效果描述
 
 | 操作 | 预期现象 |
-|------|---------|
+|---|---|
 | 终端A `export ROS_DOMAIN_ID=5` + talker，终端B `export ROS_DOMAIN_ID=5` + listener | listener 收到 "Hello World: N" 消息 |
 | 终端C `export ROS_DOMAIN_ID=10` + `ros2 topic echo /chatter` | 无任何输出（Domain 隔离成功） |
 | 启动 `fastdds discovery --server-id 0` | 终端输出 Discovery Server 已启动，监听端口 11811 |
 | 设置 `ROS_DISCOVERY_SERVER=127.0.0.1:11811` 后启动 talker/listener | 通信正常，且 discovery server 终端显示客户端连接日志 |
 | `fastdds discovery -i 0`（另一终端） | 列出所有 Participant GUID、Endpoint 类型（Writer/Reader）及话题名称 |
 
+---
+
 ### 六、实验步骤
 
 #### 整体流程
 
-```
+```text
 [1. DOMAIN_ID 隔离验证] ──► [2. 多机通信配置] ──► [3. DISCOVERY_SERVER 部署]
          │                                                    │
          └────────────────────────────────────────────────────┘
@@ -5612,11 +5798,8 @@ ROS2支持通过`RMW_IMPLEMENTATION`切换DDS实现，但不允许不同RMW实�
 **ROS_DOMAIN_ID 通信域隔离机制（知识点 3.3.1）**
 
 - **是什么**：ROS_DOMAIN_ID 是一个范围在 0 至 232 之间的无符号整数，用于在 DDS 层面隔离不同 ROS2 通信域。同一局域网内，只有设置相同 DOMAIN_ID 的节点才能通过 DDS 自动发现机制互相发现和通信。它是 ROS2 替代 ROS1 Master 隔离场景的核心机制——在 ROS1 中，你需要通过 `ROS_MASTER_URI` 变量分别指向不同的 roscore 来实现隔离；在 ROS2 中，只需改变一个整数即可。
-
 - **为什么需要**：在多机器人协作场景中，这是最简洁的通信隔离手段。例如：3 台 B2 实验箱同时在同一教室做实验，如果它们都使用默认 DOMAIN_ID=0，三台机器的节点会通过 DDS 多播互相发现，导致话题数据混乱。为每台实验箱设置独立的 DOMAIN_ID（如 1、2、3），即可实现物理共用网络、逻辑互相隔离，且无需任何路由器或防火墙配置。
-
 - **怎么用**：通过环境变量 `export ROS_DOMAIN_ID=N` 设置，或在终端启动命令前添加 `ROS_DOMAIN_ID=N ros2 run ...`。该变量影响 DDS 的 Participant 创建时的 Domain ID 参数——DDS 标准规定，不同 Domain ID 的 Participant 使用不同的多播地址和端口号计算方式，因此在物理层面就实现了数据隔离。
-
 - **底层原理补充**：Fast-DDS 默认使用 Domain ID 来计算多播地址：`239.255.0.N`，端口号为 `7400 + N * 250`。这意味着不同 DOMAIN_ID 不仅在逻辑上隔离，在传输层也使用了不同的多播组和端口，彻底避免了数据串扰。
 
 **操作步骤**：
@@ -5656,27 +5839,26 @@ ros2 topic echo /chatter
 ```
 
 **验证分析**：
+
 - 步骤 1.2：Domain 0 的 listener 能收到 Domain 0 的 talker 消息——同域通信正常
 - 步骤 1.3：Domain 5 的 `topic echo` 收不到 Domain 0 的 talker——不同域完全隔离
 - 步骤 1.5：Domain 5 的 `topic echo` 能收到 Domain 5 的 talker——新域内通信也正常
-
-通过以上三步，可以清晰观察到 DOMAIN_ID 的隔离与连通逻辑。
+- 通过以上三步，可以清晰观察到 DOMAIN_ID 的隔离与连通逻辑。
 
 **易错点**：
+
 - ⚠️ **DOMAIN_ID 不生效（仍能收到其他域的消息）**：如果发现设置了 `ROS_DOMAIN_ID=5` 仍能收到 Default Domain 的消息，原因通常是 Shell 会话中之前的 `source /opt/ros/humble/setup.bash` 已固化环境变量。解决方法：关闭所有终端后重新打开，或使用 `env ROS_DOMAIN_ID=5 ros2 topic echo /chatter` 确保变量仅在当前命令生效。
 
 ---
 
-#### 步骤 2：多机通信配置与验证（25 分钟）
+#### 步骤 2：多机通信配置与验证
 
 **知识点讲解**：
 
 **ROS2 多机分布式通信前提条件（知识点 3.3.2）**
 
 - **是什么**：ROS2 的多机通信不需要任何中心节点（无 Master），不需要配置文件——只需要满足三个条件：(1) 设备在同一局域网网段，(2) 设备设置相同的 ROS_DOMAIN_ID，(3) 网络多播功能不被路由器/防火墙拦截。这就是 DDS 去中心化设计的直接优势。
-
 - **为什么这样工作**：DDS 的 SPDP（Simple Participant Discovery Protocol）通过多播（multicast）在局域网内广播每个 Participant 的存在信息。同一网段内所有启用 DDS 的节点都会收到这些多播消息，从而自动建立 Participant 之间的通信链路。SEDP（Simple Endpoint Discovery Protocol）随后在已发现的 Participant 之间交换各自的 Writer/Reader 信息，最终建立话题级别的 Publisher-Subscriber 连接。
-
 - **怎么验证**：在两台设备上分别启动不同节点，使用 `ros2 node list` 查看是否能看到对端的节点名称。如果两台设备都在同一 DOMAIN_ID，且网络通畅，`ros2 node list` 会列出所有设备上的节点——就像一个逻辑上的单一系统。
 
 **操作步骤**：
@@ -5727,25 +5909,32 @@ ros2 run demo_nodes_cpp listener
 **关键验证点**：
 
 在设备 A 上执行：
+
 ```bash
 # 查看节点列表——应看到设备 B 上的 /listener
+
 ros2 node list
+
 # 预期: /talker, /listener（两个节点分别在不同设备上！）
 ```
 
 在设备 B 上执行：
+
 ```bash
 # 查看 /talker 节点的详细信息——应包含完整的拓扑信息
+
 ros2 node info /talker
+
 # 预期: 显示 Publishers: /chatter [std_msgs/msg/String]，即使 /talker 运行在另一台设备上
 ```
 
 **易错点**：
+
 - ⚠️ **跨设备 `ros2 node list` 看不到对端节点**：按以下顺序排查：
-  1. 两台设备的 DOMAIN_ID 是否相同 —— `echo $ROS_DOMAIN_ID`
-  2. 两台设备是否能互相 ping 通 —— `ping <对方IP>`
-  3. 防火墙是否拦截了多播 —— `sudo ufw status`，如有必要执行 `sudo ufw disable`（实验环境临时关闭）
-  4. DDS 实现差异 —— 尝试在两台设备上都设置 `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` 使用 CycloneDDS（对多播的兼容性更好）
+  - 两台设备的 DOMAIN_ID 是否相同 —— `echo $ROS_DOMAIN_ID`
+  - 两台设备是否能互相 ping 通 —— `ping <对方IP>`
+  - 防火墙是否拦截了多播 —— `sudo ufw status`，如有必要执行 `sudo ufw disable`（实验环境临时关闭）
+  - DDS 实现差异 —— 尝试在两台设备上都设置 `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` 使用 CycloneDDS（对多播的兼容性更好）
 - ⚠️ **虚拟机中多播不可用**：如果 B2 实验箱运行在虚拟机中，确保网络适配器模式为"桥接模式"（Bridge），NAT 模式下多播通常不可用。
 
 #### 单机模拟多机通信（无两台设备时的替代方案）
@@ -5754,18 +5943,27 @@ ros2 node info /talker
 
 ```bash
 # 终端 A（模拟设备 A，Domain 42）
+
 export ROS_DOMAIN_ID=42
+
 ros2 run demo_nodes_cpp talker
+
 # 保持运行
 
 # 终端 B（模拟设备 B，也设置 Domain 42）
+
 export ROS_DOMAIN_ID=42
+
 ros2 node list        # 应能看到 /talker
+
 ros2 topic echo /chatter  # 应能收到消息
 
 # 终端 C（模拟其他设备，Domain 99——验证隔离）
+
 export ROS_DOMAIN_ID=99
+
 ros2 node list        # 预期: 空（看不到 Domain 42 的节点）
+
 ros2 topic echo /chatter  # 预期: 无输出
 ```
 
@@ -5779,50 +5977,79 @@ ros2 topic echo /chatter  # 预期: 无输出
 
 - **是什么**：ROS_DISCOVERY_SERVER（发现服务器）是 Fast-DDS 提供的中心化节点发现替代方案。默认情况下，DDS 使用多播（每个 Participant 向 `239.255.0.N` 多播地址发送 SPDP 消息）实现自动发现——这在局域网中工作良好，但在云环境、跨子网、或大规模部署（上百个节点）场景中，多播风暴会导致网络拥塞。DISCOVERY_SERVER 将所有节点的发现信息集中到一个（或几个）服务器上，节点通过 TCP/UDP 单播向服务器注册和查询，替代多播发现。
 
-- **为什么需要两种模式**：
+**为什么需要两种模式**：
+
   - **多播模式（默认）**：适合 < 50 个节点的小型局域网部署，配置简单（零配置），但跨子网困难，多播流量随节点数量平方级增长
   - **DISCOVERY_SERVER 模式**：适合大型部署（50-500 节点）、跨子网通信、云原生场景。服务器作为中间人，节点间仍需建立直接的 P2P 连接（与 DDS 架构一致），但发现过程无需多播
   - **选择建议**：B2 实验箱的典型实验场景（单机或双机）使用默认多播即可。当需要演示跨 VLAN 通信或"生产级部署"概念时，切换到 DISCOVERY_SERVER 模式
-
 - **怎么配置**：Fast-DDS 提供 `fastdds discovery` 命令行工具来启动发现服务器。节点通过设置 `ROS_DISCOVERY_SERVER` 环境变量指定服务器地址（格式：`host:port`），取代默认的多播发现。
-
-**操作步骤**：
+- **操作步骤**
 
 ```bash
 # 3.1 启动 DISCOVERY_SERVER（终端 A，作为"中心服务器"）
+```
+
 fastdds discovery --server-id 0 --ip-address 127.0.0.1 --port 11811
+
+```bash
 # 预期输出:
+
 # [Discovery Server] Server started with GUID: ...
+
 # Listening on: 127.0.0.1:11811
+
 # 保持此终端运行
 
 # 3.2 配置客户端环境变量（终端 B 和终端 C 均需执行）
+
 export ROS_DISCOVERY_SERVER=127.0.0.1:11811
+
 # 可同时设置 DOMAIN_ID（DISCOVERY_SERVER 本身也受 DOMAIN_ID 约束）
+
 export ROS_DOMAIN_ID=0
 
 # 3.3 终端 B：启动 talker，指定使用发现服务器
+
 export ROS_DISCOVERY_SERVER=127.0.0.1:11811
+
 export ROS_DOMAIN_ID=0
+
 ros2 run demo_nodes_cpp talker
+
 # 预期: talker 正常启动
+
 # 观察终端 A 的 DISCOVERY_SERVER 输出——应显示新的 Participant 连接日志
+
 # 保持运行
 
 # 3.4 终端 C：启动 listener（同样连接到发现服务器）
+
 export ROS_DISCOVERY_SERVER=127.0.0.1:11811
+
 export ROS_DOMAIN_ID=0
+
 ros2 run demo_nodes_cpp listener
+
 # 预期: listener 正常接收到 "Hello World: N" 消息
+
 # 通信成功——两个节点通过 DISCOVERY_SERVER 发现了彼此
 
 # 3.5 监控 DDS 参与者状态（终端 D，或使用 fastdds 工具）
+```
+
 fastdds discovery -i 0
+
+```bash
 # 预期输出: 列出所有活跃的 Participant GUID 及其 Endpoint
+
 # 示例输出（简化）:
+
 # Participant 01.0f.xx.xx.xx
+
 #   Endpoint 01.0f.xx.xx.xx.xx.xx|0.0.1.4 (Writer, /chatter, std_msgs/msg/String)
+
 #   Endpoint 01.0f.xx.xx.xx.xx.xx|0.0.2.4 (Reader, /chatter, std_msgs/msg/String)
+
 # ...
 ```
 
@@ -5831,9 +6058,10 @@ fastdds discovery -i 0
 在终端 C 上执行 `ros2 node list`，应该能看到 `/talker`，即使没有使用多播。这验证了 DISCOVERY_SERVER 作为替代发现机制的有效性。
 
 **易错点**：
-- ⚠️ **`fastdds discovery` 命令不存在**：确保安装了 Fast-DDS 工具包 —— `sudo apt install ros-humble-rmw-fastrtps-cpp`，该包内包含 `fastdds` CLI 工具
+
+- ⚠️ `fastdds discovery` 命令不存在**：确保安装了 Fast-DDS 工具包 —— `sudo apt install ros-humble-rmw-fastrtps-cpp`，该包内包含 `fastdds` CLI 工具
 - ⚠️ **节点启动后仍然互相不可见**：检查 `ROS_DISCOVERY_SERVER` 变量是否在所有终端中正确设置。可以用 `echo $ROS_DISCOVERY_SERVER` 确认。注意设置后**必须**在同一个终端会话中启动节点，因为环境变量是 per-process 的
-- ⚠️ **单机多终端使用 `127.0.0.1` 可正常工作；跨设备部署需使用服务器设备的实际 IP**
+- ⚠️ **单机多终端使用 `127.0.0.1`** 可正常工作；跨设备部署需使用服务器设备的实际 IP**
 
 ---
 
@@ -5844,12 +6072,10 @@ fastdds discovery -i 0
 **DDS-Security 加密通信机制（知识点 3.3.3 扩展）**
 
 - **是什么**：DDS-Security 是 OMG（Object Management Group）定义的安全规范，为 DDS 通信提供认证（Authentication）、访问控制（Access Control）、加密（Encryption）和数据完整性（Data Integrity）四个维度的安全保障。SROS2（Secure ROS2）是 ROS2 团队在 DDS-Security 基础上的官方安全集成方案。
-
 - **为什么需要**：在默认配置下，同一 DOMAIN_ID 内的任何节点都可以：(1) 发现你的节点，(2) 订阅你的话题并读取消息，(3) 向你的话题发布伪造数据，(4) 调用你的服务。这在以下场景中是严重的安全威胁：
   - 机器人部署在公共网络（如校园 WiFi）
   - 同一网络中有非项目人员运行的 ROS2 程序
   - 敏感传感器数据（如工厂产线视觉检测）不应被第三方窃听
-
 - **怎么启用**：SROS2 通过 `sros2` 命令行工具生成三组密钥文件：(1) governance.xml —— 定义全局安全策略（是否强制加密），(2) permissions.xml —— 定义每个节点的详细权限（允许发布/订阅哪些话题），(3) passwords/ —— 各节点的身份密钥。启用安全的环境变量：`export ROS_SECURITY_ENABLE=true` + `export ROS_SECURITY_STRATEGY=Enforce`。
 
 **操作步骤**：
@@ -5899,6 +6125,7 @@ ros2 topic echo /chatter
 ```
 
 **易错点**：
+
 - ⚠️ **启用 SROS2 后节点无法通信**：最常见的原因是 `ROS_SECURITY_ENCLAVE_OVERRIDE` 值与生成的 keys 不匹配。使用 `ls ~/ros2_security/keystore/enclaves/` 确认生成的 enclave 名称
 - ⚠️ **SROS2 会增加 CPU 开销**：加密/解密操作对性能有影响（尤其是高频率话题），在 B2 实验箱的 RK3576 上，加密开销约为 5-15% CPU。评估是否启用加密需权衡安全需求与性能预算
 
@@ -5913,7 +6140,7 @@ ros2 topic echo /chatter
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 环境 | DOMAIN_ID 和 DISCOVERY_SERVER 等环境变量仅在当前终端会话有效；新开终端需重新 `export` |
 | ⚠️ 网络 | 多机分布式通信依赖局域网多播功能；虚拟机用户需将网络适配器设为"桥接模式" |
 | ⚠️ 安全 | DDS-Security 密钥文件包含私钥，严禁提交到 Git 仓库或分享到公共网络 |
@@ -5926,6 +6153,7 @@ ros2 topic echo /chatter
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 使用 `ROS_DOMAIN_ID` 在单机上实现多组 ROS2 系统的逻辑隔离
 - ✅ 配置两台设备的网络和 DOMAIN_ID 参数，实现局域网内的跨设备节点通信
 - ✅ 部署 `fastdds discovery --server-id` 作为中心化发现服务器，替代默认多播发现
@@ -5934,7 +6162,7 @@ ros2 topic echo /chatter
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 通信域管理 | 理解 ROS_DOMAIN_ID 的 DDS 层隔离机制，能规划多机器人场景的域分配策略 |
 | 分布式部署 | 掌握多机通信的前提条件（同网段+同Domain+多播可用）与故障排查流程 |
 | 发现机制 | 理解多播发现与 DISCOVERY_SERVER 的适用场景差异，能根据部署规模选择合适方案 |
@@ -5943,7 +6171,7 @@ ros2 topic echo /chatter
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | 跨设备 `ros2 node list` 看不到对端节点 | 网络多播被防火墙拦截或 DOMAIN_ID 不一致 | (1) 检查 `echo $ROS_DOMAIN_ID` 确保一致；(2) `sudo ufw disable`；(3) 尝试 CycloneDDS |
 | 设置了 `ROS_DOMAIN_ID=5` 但仍然收到 Domain 0 的消息 | 其他终端未设置 DOMAIN_ID，继承了默认值 0 | 所有终端统一设置 DOMAIN_ID，或在启动命令前加前缀 `ROS_DOMAIN_ID=N ros2 run ...` |
 | `fastdds discovery` 报 "command not found" | Fast-DDS 工具未安装 | `sudo apt install ros-humble-rmw-fastrtps-cpp` |
@@ -5965,31 +6193,31 @@ ros2 topic echo /chatter
 #### 9.2 思考题
 
 **思考题 1**：
+
 在步骤 1 中，你观察到不同 DOMAIN_ID 的节点虽然在同一台设备上运行，却完全无法互相发现。请从 DDS 底层解释为什么会这样——具体来说，DDS 如何利用 DOMAIN_ID 值来确定多播地址和端口号？如果你需要在两个 DOMAIN_ID 之间实现"桥接"（让 Domain 1 的节点能选择性接收 Domain 2 某些话题的数据），你会如何设计？
 
 **思考题 2**：
+
 假设你的机器人需要在两种场景中工作：(1) 实验室调试——与开发笔记本电脑通信，频繁变更 DOMAIN_ID；(2) 真实部署——在一间有 20 台机器人的工厂中，每台需独立运行不受其他机器人干扰，但中央监控节点需要能订阅所有机器人的 `/robot_status` 话题。请为这两种场景分别设计 DOMAIN_ID 分配策略和网络拓扑方案，并说明你选择该方案的理由。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否按要求完成 DOMAIN_ID 隔离、多机/DISCOVERY_SERVER 通信验证 |
 | 截图与网络拓扑图 | 15% | 截图是否清晰（≥6 张），拓扑图是否准确标注设备、IP、Domain 和通信关系 |
 | 原理分析 | 25% | 对 ROS1 Master vs ROS2 DDS 分布式架构的对比分析深度 |
 | 思考题 1 | 15% | 对 DDS 多播地址计算原理的理解，桥接方案的创新性 |
 | 思考题 2 | 15% | 场景化方案设计的合理性与可实现性 |
 
----
-
-## 实验14：ROS2 Rqt工具箱（2h）
+## 实验14：ROS2 Rqt工具箱
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 4.1.1 | Rqt基于Qt的插件化调试工具集概念 | 概念 | 第4章 ROS2工具链与系统部署 → 4.1 Rqt调试工具箱 |
 | 4.1.2 | rqt_graph节点拓扑和rqt_plot数据曲线绘制流程 | 流程 | 第4章 ROS2工具链与系统部署 → 4.1 Rqt调试工具箱 |
 | 4.1.3 | rqt_console日志过滤和rqt_reconfigure动态调参流程 | 流程 | 第4章 ROS2工具链与系统部署 → 4.1 Rqt调试工具箱 |
@@ -6006,28 +6234,30 @@ ros2 topic echo /chatter
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2（RK3576 + STM32F407）或 具身智能机器人小车C1 |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2 |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
 | 核心依赖 | `ros-humble-rqt-graph`、`ros-humble-rqt-plot`、`ros-humble-rqt-console`、`ros-humble-rqt-reconfigure`、`ros-humble-rqt-topic`、`ros-humble-rqt-bag` |
 | 显示要求 | 需连接显示器（Rqt 是 GUI 工具），或通过 SSH X11 Forwarding 远程显示 |
 
-> 说明：本实验为纯工具使用实验，重点在于熟悉每种 rqt 插件的操作界面和适用场景。B2 实验箱默认安装了上述 rqt 插件包。如个别插件缺失，可通过 `sudo apt install ros-humble-rqt-*` 批量安装。
+> 说明：本实验为纯工具使用实验，重点在于熟悉每种 rqt 插件的操作界面和适用场景。需要连接网络通过 `sudo apt install ros-humble-rqt-*` 批量安装。
 
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐（容易） |
 | 实验类型 | 验证性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握 rqt_graph（拓扑可视化）、rqt_plot（数值曲线）、rqt_console（日志过滤）三大最常用插件的操作方法
 - 理解 rqt_reconfigure 的动态参数调整机制对开发阶段快速调参的价值
 
 **难点**：
+
 - 在 rqt_graph 中区分"隐藏话题"（如 /parameter_events、/rosout）和"业务话题"（如 /chatter），理解为何存在大量系统级话题
 - 理解 rqt_reconfigure 只有在节点代码中声明了 `add_on_set_parameters_callback` 后才能生效
 
@@ -6045,7 +6275,7 @@ ros2 topic echo /chatter
 #### 5.2 预期效果描述
 
 | 工具 | 预期界面特征 |
-|------|-------------|
+|---|---|
 | rqt_graph | 显示 `/talker` 椭圆节点 → `/chatter` 矩形话题 → `/listener` 椭圆节点，箭头表示数据流向 |
 | rqt_plot | 坐标轴自动缩放，曲线实时滚动，显示话题字段的数值变化 |
 | rqt_console | 表格形式显示时间戳、节点名、日志级别、消息内容；支持按级别和关键词过滤 |
@@ -6053,11 +6283,13 @@ ros2 topic echo /chatter
 | rqt_topic | 话题列表 + 消息字段监控面板，打勾即可开始监控 |
 | rqt_bag | 加载 .db3 文件后，可选择话题和时间范围进行可视化回放 |
 
+---
+
 ### 六、实验步骤
 
 #### 整体流程
 
-```
+```text
 [1. 启动被测节点] ──► [2. rqt_graph 拓扑分析] ──► [3. rqt_plot 数据曲线]
                                                           │
 [6. rqt_topic + rqt_bag] ◄── [5. rqt_reconfigure] ◄── [4. rqt_console 日志]
@@ -6065,7 +6297,7 @@ ros2 topic echo /chatter
 
 ---
 
-#### 步骤 1：搭建被测系统环境（10 分钟）
+#### 步骤 1：搭建被测系统环境
 
 **知识点讲解**：
 
@@ -6085,22 +6317,19 @@ ros2 run demo_nodes_cpp add_two_ints_server
 
 # 终端 D（可选）：启动参数服务示例节点
 ros2 run demo_nodes_cpp parameter_blackboard
-```
-
 保持所有终端运行，后续操作在 rqt 界面中进行。
+```
 
 ---
 
-#### 步骤 2：rqt_graph — 节点拓扑关系可视化（15 分钟）
+#### 步骤 2：rqt_graph — 节点拓扑关系可视化
 
 **知识点讲解**：
 
 **rqt_graph 节点-话题拓扑可视化（知识点 4.1.2）**
 
 - **是什么**：rqt_graph 是 ROS2 系统中最重要的"架构可视化"工具。它以**有向图**的形式展示当前运行系统中所有节点（椭圆图标）和话题（矩形图标）之间的发布/订阅关系，箭头从 Publisher 指向话题，再从话题指向 Subscriber。与 `ros2 node info` 的文本输出不同，rqt_graph 让你在**一个画面**中看到整个系统的通信拓扑。
-
 - **为什么是最重要的调试入口**：在机器人开发中，最常见的故障模式是"数据断流"——某个节点没有收到预期数据。用 rqt_graph 可以在 3 秒内定位问题：(1) 发布者节点是否存在？(2) 发布于哪个话题名？(3) 订阅者是否正确订阅了该话题名？如果任何一环缺失，图形上立刻显示为"断开的链路"。
-
 - **怎么用**：启动 rqt 后从 Plugins → Introspection → Node Graph 加载。关键操作：(1) 鼠标滚轮缩放，(2) 左键拖拽平移，(3) 右键刷新，(4) 勾选"Hide Debug"隐藏 /parameter_events、/rosout 等系统话题，(5) 勾选"Group"将节点按命名空间分组。
 
 **操作步骤**：
@@ -6109,78 +6338,54 @@ ros2 run demo_nodes_cpp parameter_blackboard
 # 2.1 启动 rqt 主界面
 rqt
 # 预期: 弹出 rqt 主窗口（空白，中央为面板停靠区）
-```
-
 在 rqt 主窗口中操作：
-
-```
 菜单: Plugins → Introspection → Node Graph
 ```
 
-**预期界面**：窗口中显示有向图：
-```
+**预期界面：窗口中显示有向图**：
+
 椭圆 [/talker]  ──箭头──►  矩形 [/chatter]  ──箭头──►  椭圆 [/listener]
-```
 
 **更深层分析**：
 
 ```bash
 # 2.2 观察节点间的隐藏通信
+
 # 在 rqt_graph 中取消勾选 "Hide Debug"（通常在左侧选项栏）
+
 # 预期: 额外显示 /parameter_events（参数事件话题）、/rosout（日志话题）等系统级通信链路
+
 # 这说明每个节点除了业务通信外，还有大量系统管理通信
 ```
 
 **易错点**：
+
 - ⚠️ **rqt_graph 中看不到任何节点**：确认 talker 和 listener 是否仍在运行。rqt_graph 只在加载时（或手动刷新时）查询一次当前节点列表。如果节点在 rqt_graph 加载之后才启动，点击右上角的蓝色刷新按钮。
 - ⚠️ **rqt 无法启动（报错 "Could not connect to display"）**：B2 实验箱没有连接显示器或在纯 SSH 终端中运行。解决方法：(1) 连接显示器直接操作 B2 实验箱；(2) 在 SSH 客户端启用 X11 Forwarding：`ssh -X user@b2-ip`；(3) 使用 `export QT_QPA_PLATFORM=offscreen`（仅用于截图验证，无交互界面）。
 
 ---
 
-#### 步骤 3：rqt_plot — 话题数据实时曲线绘制（15 分钟）
+#### 步骤 3：rqt_plot — 话题数据实时曲线绘制
 
 **知识点讲解**：
 
 **rqt_plot 持续数据时序可视化（知识点 4.1.2）**
 
 - **是什么**：rqt_plot 是用于将 ROS2 话题中的**数值型字段**实时绘制为时间序列曲线的工具。它订阅指定话题，解析消息中的数值字段（如 `std_msgs/msg/Float32` 的 `data` 字段、`sensor_msgs/msg/LaserScan` 的 `ranges[0]` 等），在二维坐标系中以折线图展示数据随时间的变化趋势。
-
 - **为什么话题列表和曲线图互补**：`ros2 topic echo` 能看到"此刻"的值，`ros2 topic hz` 能看到"频率"，但它们都无法回答"过去 30 秒内数据发生了什么变化"。rqt_plot 填补了这个空白——将时间维度展开为 X 轴，数据值展开为 Y 轴，让你能直观发现：传感器噪声的周期性、控制指令的超调振荡、通信延迟的累积等时序问题。
-
 - **怎么用**：在 rqt 中加载 Plugins → Visualization → Plot。在顶部的 Topic 输入框中键入话题路径（如 `/chatter`），rqt_plot 会自动解析消息字段并绘制。支持同时绘制多条曲线（用 `/` 分隔多个话题路径）、支持数学表达式（如 `sum(/topic/field)`）。
-
 - **数学支撑**：曲线图本质上是**离散采样信号的连续可视化**。假设话题发布频率为 f Hz，每条消息的某字段值构成序列 x(t_i)，其中 t_i = t_0 + i / f。rqt_plot 在相邻采样点之间进行线性插值绘制折线——这假设信号在采样间隔内是**分段线性的**。当 f 足够高（> 2 * 信号最高频率，Nyquist 定理）时，可视化结果可靠。
 
 **操作步骤**：
 
-在 rqt 主窗口中：
-
-```
-菜单: Plugins → Visualization → Plot
-```
-
-在 rqt_plot 面板中操作：
-
-```
-# 3.1 在顶部 Topic 输入框中输入：
-/chatter
-# 预期: 左侧图例区域显示 /chatter/data（String 类型的 data 字段）
-# 由于 String 不是数值型，rqt_plot 会将其序列索引作为 Y 轴（1, 2, 3...）
-
-# 3.2 观察更有意义的数值数据（启动一个新的话题发布者）
-```
-
-在终端中新开一个窗口，发布具有数值字段的话题：
-
 ```bash
-# 终端 E：以 5Hz 频率发布周期性正弦波 Float32 数据
-ros2 topic pub /sine_wave std_msgs/msg/Float32 "data: 0.0" --rate 5
-# 这只是一个占位——我们需要实际变化的数值数据
-```
-
+在 rqt 主窗口中：
+菜单: Plugins → Visualization → Plot
+在 rqt_plot 面板中操作：
+# 3.3 在 Topic 输入框中输入（先清空之前的内容）：
+/sine_wave/data
+# 预期: 界面实时绘制出一条正弦波曲线，周期约 3.14 秒（sin(time*2.0)）
 更好的做法是使用 Python 发布有实际数值变化的话题数据：
-
-```python
 # 终端 E：运行一个简单的 Python 脚本发布数值数据
 python3 -c "
 import rclpy
@@ -6197,33 +6402,30 @@ timer = node.create_timer(0.1, lambda: (
 ))
 rclpy.spin(node)
 "
-```
-
-回到 rqt_plot 面板：
+#回到 rqt_plot 面板如下图所示：
 
 ```
-# 3.3 在 Topic 输入框中输入（先清空之前的内容）：
-/sine_wave/data
-# 预期: 界面实时绘制出一条正弦波曲线，周期约 3.14 秒（sin(time*2.0)）
-```
+
+![image-20260821184634628](assets/image-20260821184634628.png)
 
 **易错点**：
+
 - ⚠️ **输入话题路径后无曲线**：检查话题路径格式——rqt_plot 要求完整路径为 `/topic_name/field_name`，例如 `/sine_wave/data` 而非仅 `/sine_wave`。可在 rqt_plot 面板中点击 `+` 按钮通过 GUI 树形菜单选择话题和字段。
 - ⚠️ **曲线始终为 0（没有数值变化）**：String 等非数值类型的字段，rqt_plot 无法直接绘制。请确认话题的消息类型包含数值字段（`float32`、`int32`、`float64` 等）。
 
 ---
 
-#### 步骤 4：rqt_console — 日志级别过滤与分析（15 分钟）
+#### 步骤 4：rqt_console — 日志级别过滤与分析
 
 **知识点讲解**：
 
 **rqt_console 日志管理与故障定位（知识点 4.1.3）**
 
-- **是什么**：rqt_console 是 ROS2 的集中化日志查看器。ROS2 每个节点在运行时会通过 `/rosout` 话题自动发布日志消息（包含时间戳、节点名、日志级别、消息内容），rqt_console 订阅 `/rosout` 并汇总展示。你可以在一个界面中看到**所有节点**的日志输出，按级别（DEBUG/INFO/WARN/ERROR/FATAL）或关键词过滤。
-
+- **是什么**：`rqt_console `是 ROS2 的集中化日志查看器。ROS2 每个节点在运行时会通过 `/rosout` 话题自动发布日志消息（包含时间戳、节点名、日志级别、消息内容），rqt_console 订阅 `/rosout` 并汇总展示。你可以在一个界面中看到**所有节点**的日志输出，按级别（DEBUG/INFO/WARN/ERROR/FATAL）或关键词过滤。
 - **为什么日志汇总如此重要**：在一个包含 10+ 节点的机器人系统中，如果某个节点报错，它的日志可能散布在 10 个终端窗口中。rqt_console 将所有日志汇聚到一个表格视图中——按时间排序，支持实时过滤。例如：设置过滤条件 `Level >= WARN` + `Node contains "camera"`，即可只查看相机节点相关的警告和错误。
 
-- **日志级别设计哲学**：
+**日志级别设计哲学**：
+
   - **DEBUG**：开发者调试信息（如"进入回调函数""变量 x = 5"），生产环境通常关闭
   - **INFO**：正常运行状态信息（如"节点已启动""话题连接成功"）
   - **WARN**：非致命但需关注的情况（如"传感器数据超时 50ms""电池电量低于 20%"）
@@ -6232,15 +6434,10 @@ rclpy.spin(node)
 
 **操作步骤**：
 
+```bash
 在 rqt 主窗口中：
-
-```
 菜单: Plugins → Logging → Console
-```
-
 在 rqt_console 面板中操作：
-
-```
 # 4.1 观察默认视图：所有级别日志都显示
 # 预期: 看到 talker 和 listener 的 INFO 级别日志滚动输出
 
@@ -6254,59 +6451,50 @@ rclpy.spin(node)
 # 预期: 仅显示 node 名包含 "talker" 的日志行
 
 # 4.4 体验日志级别的动态效果（制造 WARN 日志）
-```
+参考下图结果
 
-在终端中：
-
-```bash
+在终端中输入：
 # 临时将 talker 的日志级别调整为 WARN
 ros2 param set /talker log_level WARN
 # 预期: rqt_console 中 /talker 的 INFO 日志停止输出
-
+#会发现在rqt上面的日志会随着级别显示而显示
 # 恢复日志级别
 ros2 param set /talker log_level INFO
 ```
 
+![image-20260821184714874](assets/image-20260821184714874.png)
+
 **易错点**：
+
 - ⚠️ **rqt_console 中看不到任何日志**：检查是否加载了 `/rosout` 订阅——rqt_console 依赖此话题。正常情况下，每个 ROS2 节点都会自动向 `/rosout` 发布日志。如果没有任何输出，确认至少有一个节点在运行（`ros2 node list` 不为空）。
 - ⚠️ **Filter 条件组合后无输出**：多个 Filter 之间默认是"AND"逻辑——必须同时满足所有条件。如果要实现"AND/OR"逻辑，可点击 Filter 名称左侧的复选框来启用/禁用个别 Filter。
 
 ---
 
-#### 步骤 5：rqt_reconfigure — 运行时动态参数调整（15 分钟）
+#### 步骤 5：rqt_reconfigure — 运行时动态参数调整
 
 **知识点讲解**：
 
 **rqt_reconfigure 动态参数调优机制（知识点 4.1.3）**
 
 - **是什么**：rqt_reconfigure 是 ROS2 的"运行时参数调节面板"。它通过 DDS 协议连接到运行中的节点，读取该节点通过 `declare_parameter` 声明的所有参数及其约束（类型、范围、步长），以 GUI 控件（滑块、下拉框、复选框）的形式展示。开发者拖动滑块即可实时修改参数值，无需重启节点。
-
 - **为什么它是效率工具**：在没有动态调参工具的开发流程中，修改参数（如 PID 控制器的 Kp、视觉检测的阈值、激光雷达的过滤半径）需要：停止节点 → 修改代码中的常量 → 重新编译 → 重新启动 → 观察效果 → 重复。这个循环通常需要 2-5 分钟。rqt_reconfigure 将循环压缩为"拖动滑块 → 观察效果"的秒级交互，大幅提升调参效率。
-
 - **怎么用**：在 rqt 中加载 Plugins → Configuration → Dynamic Reconfigure。左侧列表自动扫描当前域中所有支持动态参数的节点，点击节点名后，右侧面板显示该节点的参数列表和编辑控件。
 
 **操作步骤**：
 
+```bash
 在 rqt 主窗口中：
-
-```
 菜单: Plugins → Configuration → Dynamic Reconfigure
-```
-
 在 rqt_reconfigure 面板中操作：
-
-```
 # 5.1 观察节点参数列表
 # 左侧应显示已发现的节点列表（如 /talker、/listener 等）
 # 如果看不到节点，点击刷新按钮
 
 # 5.2 选择 /talker 节点，查看其参数
 # 预期: 右侧显示 talker 的可调参数（如 use_sim_time 等布尔型参数）
-```
 
 运行一个具有更丰富参数的示例节点：
-
-```bash
 # 终端 E：启动一个带多个参数的 Python 节点示例
 python3 -c "
 import rclpy
@@ -6344,11 +6532,7 @@ def main():
 if __name__ == '__main__':
     main()
 "
-```
-
 回到 rqt_reconfigure 面板：
-
-```
 # 5.3 刷新节点列表，选择 /param_demo 节点
 # 预期: 右侧显示三个参数：
 #   - update_rate [滑块 0.1 ~ 10.0, 步长 0.1]
@@ -6362,15 +6546,19 @@ if __name__ == '__main__':
 # 5.5 在 rqt_console 中观察参数的 set_parameters 事件
 # 切换到 rqt_console 面板，添加 Filter: Node Contains "param_demo"
 # 观察参数修改后的日志输出
+
 ```
 
+![image-20260821184746190](assets/image-20260821184746190.png)
+
 **易错点**：
+
 - ⚠️ **rqt_reconfigure 找不到目标节点**：节点必须通过 `declare_parameter` 声明了参数，且需要注册 `add_on_set_parameters_callback`（Python）或实现 `on_set_parameters_callback`（C++）才能响应动态参数修改。如果节点只声明了参数但没有注册回调，`ros2 param set` 可以修改参数值但节点不会响应，rqt_reconfigure 也会显示节点但可能无参数列表。
 - ⚠️ **参数未按预期生效**：修改参数后，检查节点是否在回调中重新读取了参数值。在 Python 中，`get_parameter('name').value` 在回调中调用才能获取最新值。
 
 ---
 
-#### 步骤 6：rqt_topic 和 rqt_bag 补充工具（15 分钟）
+#### 步骤 6：rqt_topic 和 rqt_bag 补充工具
 
 **知识点讲解**：
 
@@ -6380,9 +6568,8 @@ if __name__ == '__main__':
 
 **操作步骤**：
 
+```bash
 在 rqt 主窗口中：
-
-```
 # 6.1 rqt_topic
 菜单: Plugins → Topics → Topic Monitor
 # 在左侧勾选 /chatter 话题
@@ -6396,6 +6583,7 @@ if __name__ == '__main__':
 ```
 
 **易错点**：
+
 - ⚠️ **rqt_bag 加载 .db3 文件后时间轴无数据**：确认 bag 文件中确实包含所选的话题。使用 `ros2 bag info <bag_path>` 确认话题列表。
 - ⚠️ **rqt 面板布局混乱**：每个插件面板都可独立拖拽和停靠。拖动面板标题栏到窗口边缘即可重新停靠；关闭的面板可以通过 Plugins 菜单重新加载；`Perspectives` 菜单可保存当前面板布局供下次恢复。
 
@@ -6410,11 +6598,11 @@ if __name__ == '__main__':
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 显示 | Rqt 是 GUI 应用程序，B2 实验箱必须连接显示器或使用 X11 Forwarding（`ssh -X`） |
 | ⚠️ 性能 | rqt 本身是一个 ROS2 节点（会订阅多个话题），在低频传感器数据场景下对系统影响可忽略；避免在 CPU 密集场景下同时运行多个 rqt 插件 |
 | ⚠️ 布局 | rqt 的面板布局可以保存（Perspectives → Save），建议为常用调试场景（如"日常开发""传感器调试""参数调优"）分别保存布局 |
-| ⚠️ 依赖 | rqt 各插件有独立的功能包，如果某个插件（如 rqt_bag）无法加载，检查 `dpkg -l | grep ros-humble-rqt` 确认是否已安装 |
+| ⚠️ 依赖 | rqt 各插件有独立的功能包，如果某个插件（如 rqt_bag）无法加载，检查 `dpkg -l |
 | ⚠️ 权限 | rqt_plot 读取话题数据不需要特殊权限；rqt_reconfigure 修改参数需要目标节点允许——节点必须在代码中注册了 `add_on_set_parameters_callback` |
 
 ### 八、实验总结
@@ -6422,6 +6610,7 @@ if __name__ == '__main__':
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 使用 rqt_graph 在一张图上查看当前 ROS2 系统的完整通信拓扑
 - ✅ 使用 rqt_plot 实时绘制任意话题数值字段的时间序列曲线
 - ✅ 使用 rqt_console 按日志级别和关键词过滤，快速定位故障节点
@@ -6431,7 +6620,7 @@ if __name__ == '__main__':
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 可视化调试 | 掌握 rqt 作为 ROS2 标准 GUI 调试工作台的使用方法 |
 | 拓扑诊断 | 能通过 rqt_graph 快速定位通信断链故障（Publisher/Subscriber 匹配异常） |
 | 时序分析 | 能通过 rqt_plot 观察传感器数据趋势变化，发现异常波动和数据断流 |
@@ -6440,7 +6629,7 @@ if __name__ == '__main__':
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | rqt 启动报 "Could not connect to display" | 无显示器或 SSH 未启用 X11 Forwarding | 连接显示器，或使用 `ssh -X user@b2-ip` 远程连接 |
 | rqt_graph 中看不到节点 | 被测节点未运行或 Graph 未刷新 | 确认 `ros2 node list` 非空，点击 rqt_graph 右上角刷新按钮 |
 | rqt_plot 输入话题路径后无曲线 | 路径格式错误或话题无数值字段 | 使用 `+` 按钮通过树形菜单选择，确认话题包含 `float32/int32` 等字段 |
@@ -6462,31 +6651,31 @@ if __name__ == '__main__':
 #### 9.2 思考题
 
 **思考题 1**：
+
 在步骤 4 中，你使用 rqt_console 按日志级别过滤了输出。请思考：在一个包含 20 个节点的机器人导航系统中，如果某个传感器节点间歇性报 WARN（"数据超时 200ms"），但该 WARN 被淹没在大量 INFO 日志中——你会如何设计 rqt_console 的过滤规则组合来快速定位这个间歇性问题？请至少设计两个不同的过滤策略。
 
 **思考题 2**：
+
 rqt_plot 可以实时绘制话题数据的数值曲线，但它要求用户手动输入 `topic/field` 路径。假设你有一个 `/robot/odom` 话题（`nav_msgs/msg/Odometry` 类型），包含 `pose.pose.position.x`、`pose.pose.position.y`、`twist.twist.linear.x` 等嵌套字段。请设计一个流程，使用 rqt_plot 同时绘制机器人在 XY 平面上的轨迹（X 轴为 position.x，Y 轴为 position.y），而不只是分别画两条独立曲线。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否按要求操作了 rqt_graph、rqt_plot、rqt_console、rqt_reconfigure、rqt_topic 五个插件 |
 | 截图与记录 | 20% | 截图是否清晰（≥5 张），标注是否准确描述了每个插件的功能和观察要点 |
 | 原理分析 | 25% | 对 rqt 插件化架构设计理念的理解深度 |
 | 思考题 1 | 10% | 日志过滤策略的合理性与实用性 |
 | 思考题 2 | 15% | 多字段联合可视化的创新性方案设计 |
 
----
-
-## 实验15：ROS2 Rviz2使用（2h）
+## 实验15：ROS2 Rviz2使用
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 4.2.1 | Rviz2基于OGRE的3D可视化架构与Display插件体系 | 概念 | 第4章 ROS2工具链与系统部署 → 4.2 Rviz2三维可视化 |
 | 4.2.2 | Rviz2 Fixed Frame配置与多种Display面板加载流程 | 流程 | 第4章 ROS2工具链与系统部署 → 4.2 Rviz2三维可视化 |
 | 4.2.3 | .rviz配置文件保存与加载实现调试环境快速复现 | 事实 | 第4章 ROS2工具链与系统部署 → 4.2 Rviz2三维可视化 |
@@ -6503,28 +6692,30 @@ rqt_plot 可以实时绘制话题数据的数值曲线，但它要求用户手�
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
+|---|---|
 | 硬件平台 | 具身智能实验箱B2（RK3576 + STM32F407）或 具身智能机器人小车C1 |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
 | 核心依赖 | `ros-humble-rviz2`、`ros-humble-rviz-common`、`ros-humble-rviz-default-plugins`、`ros-humble-demo-nodes-cpp`、`ros-humble-tf2-ros`、`ros-humble-robot-state-publisher` |
 | 显示要求 | 需连接显示器（Rviz2 基于 OGRE 3D 引擎渲染，对 GPU 有一定要求；RK3576 集成的 Mali-G52 GPU 可运行轻量级 Rviz2 场景） |
 
-> 说明：本实验需要 GPU 渲染支持。B2 实验箱的 RK3576 内置 Mali-G52 EE GPU，支持 OpenGL ES 3.2，Rviz2 通过 OGRE 的 GLES2 渲染后端运行。若需发布 TF 坐标变换和 LaserScan 等传感器模拟数据，本实验将提供相应的 Python 脚本。
+> 说明：本实验需要 GPU 渲染支持。B2 实验箱内置 Mali-G52 EE GPU，支持 OpenGL ES 3.2，Rviz2 通过 OGRE 的 GLES2 渲染后端运行。
 
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 理解 Fixed Frame 全局参考坐标系的概念与配置方法
 - 掌握 RobotModel、TF、LaserScan、Marker 四种核心 Display 面板的加载与配置
 
 **难点**：
+
 - 区分 TF 坐标变换的父子关系在 Rviz2 中如何映射为可视化连线和箭头
 - 理解 Marker 的多种类型（Arrow、Cube、Sphere、Text、LineStrip）与 action 类型（ADD、DELETE、MODIFY）的语义
 
@@ -6543,7 +6734,7 @@ rqt_plot 可以实时绘制话题数据的数值曲线，但它要求用户手�
 #### 5.2 预期效果描述
 
 | Display 面板 | 配置要点 | 预期 3D 视图效果 |
-|-------------|---------|----------------|
+|---|---|---|
 | Grid | 默认启用 | 彩色正方形网格铺满地面 |
 | TF | 勾选 "Show Names" | 彩色坐标轴+坐标系名称标签 |
 | RobotModel | 设置 Description Topic 为 `/robot_description` | 完整机器人 3D 模型 |
@@ -6553,11 +6744,13 @@ rqt_plot 可以实时绘制话题数据的数值曲线，但它要求用户手�
 | Path | 设置 Topic 为 `/plan`，Color=Blue | 蓝色连续折线轨迹 |
 | Marker | 设置 Topic 为 `/visualization_marker` | 多样的几何标记 |
 
+---
+
 ### 六、实验步骤
 
 #### 整体流程
 
-```
+```text
 [1. Rviz2 启动与基础配置] ──► [2. Grid + TF 坐标系可视化]
                                         │
 [3. RobotModel 模型渲染] ◄───────────────┘
@@ -6569,16 +6762,14 @@ rqt_plot 可以实时绘制话题数据的数值曲线，但它要求用户手�
 
 ---
 
-#### 步骤 1：Rviz2 启动与 Fixed Frame 基础配置（15 分钟）
+#### 步骤 1：Rviz2 启动与 Fixed Frame 基础配置
 
 **知识点讲解**：
 
 **Rviz2 基于 OGRE 的 3D 可视化架构（知识点 4.2.1）**
 
 - **是什么**：Rviz2 是 ROS2 生态中的标准 3D 可视化工具，构建于 OGRE（Object-oriented Graphics Rendering Engine）3D 渲染引擎之上。其核心设计理念是"Fixed Frame + Display 图层"——整个 3D 场景以一个中心参考坐标系（Fixed Frame）为"画布"，各种数据（传感器、模型、轨迹、标记）作为独立"图层"叠加到画布上，每个图层通过 TF2 坐标变换库将自己的数据从源坐标系变换到 Fixed Frame 坐标系中展示。
-
 - **为什么 Fixed Frame 是核心决策**：假设你有一个激光雷达安装在机器人底盘上，其数据坐标系为 `base_laser`，里程计坐标系为 `odom`，世界坐标系为 `map`。如果 Fixed Frame 设置为 `map`，Rviz2 会自动通过 TF2 查找 `base_laser → odom → map` 的变换链，将激光扫描点从激光坐标系变换到世界坐标系——这样你看到的是激光数据在世界中的"真实位置"。如果 Fixed Frame 设置为 `base_laser`，激光数据将始终显示在原点周围（因为坐标系与传感器重合）。Fixed Frame 的选择决定了你观察整个机器人系统的"上帝视角"站在哪里。
-
 - **怎么初始化**：`rviz2` 命令直接启动，首次启动或配置文件缺失时，Fixed Frame 默认为 `map`（即使该坐标系尚未发布，Rviz2 也不会报错，只是部分 Display 因变换失败而显示黄色警告 Status）。在 Global Options → Fixed Frame 中修改引用坐标系。
 
 **操作步骤**：
@@ -6590,11 +6781,7 @@ rviz2
 # 左侧: Displays 面板（用于添加/配置 Display 图层）
 # 中央: 3D 视图区（OGRE 渲染窗口，默认显示 Grid 网格地面）
 # 上方: 工具栏（视角切换、测量工具、导航按钮等）
-```
-
 在 Rviz2 界面中操作：
-
-```
 # 1.2 观察左侧 Displays 面板
 # 默认包含:
 #   - Global Options （全局设置）
@@ -6603,7 +6790,6 @@ rviz2
 #   - Grid（网格参考平面）
 #       - Plane Cell Count: 10x10
 #       - Color: 浅灰色
-
 # 1.3 修改 Fixed Frame（即使该 frame 尚不存在）
 # 在 Displays → Global Options → Fixed Frame 中输入: base_link
 # 预期: 输入框接受该值（不会报错——Rviz2 会持续等待该坐标系出现）
@@ -6613,28 +6799,26 @@ rviz2
 ```
 
 **易错点**：
+
 - ⚠️ **Rviz2 启动后 3D 视图为黑屏**：检查 B2 实验箱的 GPU 驱动是否正常 —— `glxinfo | grep "OpenGL renderer"` 应输出 Mali-G52。如果 GPU 驱动未就绪，Rviz2 会回退到软件渲染（极度缓慢）。解决方法：确保 Mali GPU 驱动已加载（`lsmod | grep mali`）。
 - ⚠️ **Fixed Frame 设置为不存在的坐标系时，所有 Display 显示黄色 Warning**：这是正常现象——Rviz2 等待 TF2 发布该坐标系。一旦 TF Broadcaster 启动并发布相应变换，Warning 自动消失，数据正常渲染。
 
 ---
 
-#### 步骤 2：TF 坐标系可视化与 Grid 网格参考（20 分钟）
+#### 步骤 2：TF 坐标系可视化与 Grid 网格参考
 
 **知识点讲解**：
 
 **TF2 坐标变换在 Rviz2 中的可视化（知识点 4.2.2）**
 
 - **是什么**：TF Display 是 Rviz2 中用于可视化 TF2 坐标变换树的专用面板。它将每个坐标系的位姿（位置+朝向）渲染为红-绿-蓝三色坐标轴（X=红, Y=绿, Z=蓝），用不同颜色的连线（箭头线）表示父子坐标系之间的变换关系。勾选 "Show Names" 后，每个坐标系的名称标签（如 `base_link`、`laser_frame`）会显示在对应的坐标轴旁边。
-
 - **为什么可视化变换树重要**：在机器人系统中，坐标系之间的变换关系通过 URDF 模型定义或 TF Broadcaster 动态发布。如果某条变换链断裂（如 `laser_frame` 的父坐标系 `base_link` 不存在），TF Display 中对应的坐标轴将消失——这是最直观的"变换异常"检测方式。与 `ros2 run tf2_tools view_frames` 的静态 PDF 输出相比，Rviz2 的 TF Display 是**实时动态**的——机器人运动时，你可以在 3D 视图中看到坐标系跟着移动和旋转。
-
 - **怎么配置**：在 Rviz2 中点击左下角 "Add" 按钮 → 在弹出的 Display 类型列表中选择 "TF" → 点击 "OK"。TF Display 不需要额外的话题配置——它通过内部的 `tf2_ros::TransformListener` 自动订阅 `/tf` 和 `/tf_static` 话题。
 
 **操作步骤**：
 
-首先在终端中启动一个 Python 脚本，发布一组模拟的 TF 坐标变换：
-
 ```bash
+首先在终端中启动一个 Python 脚本，发布一组模拟的 TF 坐标变换：
 # 终端 A：发布模拟的 TF 坐标变换
 python3 -c "
 import rclpy
@@ -6698,11 +6882,7 @@ def main():
 if __name__ == '__main__':
     main()
 "
-```
-
 回到 Rviz2 界面：
-
-```
 # 2.1 添加 TF Display
 # 点击左下角 "Add" 按钮
 # 在弹出的列表中选择 "TF" → 点击 "OK"
@@ -6728,31 +6908,39 @@ if __name__ == '__main__':
 # - 中键拖拽（或 Shift+左键）: 平移视角
 # - 滚轮: 缩放
 # - 右键拖拽: 缩放（老式操作）
+点击添加TF树的话题
+
+点击显示名称
+
+在不同视角的切换状态
+
 ```
 
+![image-20260821184813453](assets/image-20260821184813453.png)
+
+![image-20260821184830543](assets/image-20260821184830543.png)
+
 **易错点**：
+
 - ⚠️ **添加了 TF Display 但视图中没有任何坐标轴**：有两种可能：(1) 没有 TF Broadcaster 在发布数据——检查终端 A 的 Python 脚本是否还在运行；(2) Fixed Frame 设置的坐标系不存在于 TF 树中——例如 Fixed Frame 设置为 `world` 但 TF 树只有 `map` → `odom` → `base_link`。将 Fixed Frame 改为 `map` 即可。
 - ⚠️ **TF 坐标轴不随机器人移动而更新**：检查 `TransformStamped.header.stamp` 是否使用了当前时间（`self.get_clock().now().to_msg()`）。如果时间戳是固定的旧值，TF Listener 可能认为变换已过期而忽略它。
 
 ---
 
-#### 步骤 3：RobotModel 面板与 URDF 模型可视化（20 分钟）
+#### 步骤 3：RobotModel 面板与 URDF 模型可视化
 
 **知识点讲解**：
 
 **RobotModel 的 URDF 模型 3D 渲染原理（知识点 4.2.2）**
 
 - **是什么**：RobotModel Display 是 Rviz2 中最常用的面板之一，它通过读取 `/robot_description` 话题上的 URDF（统一机器人描述格式）字符串，解析出所有 link 的几何形状（visual/collision）、joint 的运动约束和父子关系，然后结合 TF2 实时坐标变换，在 3D 视图中渲染出完整机器人的三维模型。当机器人关节运动时，模型也会根据 `/joint_states` 话题数据实时更新。
-
 - **为什么需要 RobotModel + TF 的配合**：URDF 本身只定义了静态结构（谁是谁的子节点、关节轴在哪里）。要让模型"动起来"，需要两个外部输入：(1) `robot_state_publisher` 节点读取 `/joint_states`（关节角度），计算出各 joint 的位姿并发布到 TF 树；(2) Rviz2 的 RobotModel Display 订阅这些 TF 变换，实时更新每个 link 的位置和方向。三者协作：URDF 定义结构 → robot_state_publisher 计算变换 → Rviz2 渲染可视化。
-
 - **怎么加载**：需要一个 URDF 文件和 `robot_state_publisher` 节点。Rviz2 中添加 RobotModel Display 后，默认自动订阅 `/robot_description` 话题和 `/tf` 话题。
 
 **操作步骤**：
 
-创建一个简单的 URDF 模型文件：
-
 ```bash
+创建一个简单的 URDF 模型文件：
 # 终端 B：创建模拟机器人 URDF 模型
 cat > /tmp/simple_robot.urdf << 'URDFEOF'
 <?xml version="1.0"?>
@@ -6825,21 +7013,13 @@ cat > /tmp/simple_robot.urdf << 'URDFEOF'
 URDFEOF
 
 echo "URDF file created at /tmp/simple_robot.urdf"
-```
-
 启动 robot_state_publisher：
-
-```bash
 # 终端 C：启动 robot_state_publisher 加载 URDF
 ros2 run robot_state_publisher robot_state_publisher \
   --ros-args \
   -p robot_description:="$(cat /tmp/simple_robot.urdf)"
 # 预期: robot_state_publisher 启动，等待 /joint_states 话题数据
-```
-
 发布关节状态数据（使轮子旋转）：
-
-```bash
 # 终端 D：发布 /joint_states（模拟轮子转动）
 python3 -c "
 import rclpy
@@ -6869,17 +7049,9 @@ def main():
 if __name__ == '__main__':
     main()
 "
-```
-
 回到 Rviz2 界面：
-
-```
 # 3.1 添加 RobotModel Display
 # 点击 "Add" → 选择 "RobotModel" → "OK"
-# 预期: 3D 视图中出现简单机器人模型:
-#   - 蓝色长方体底盘
-#   - 灰色圆柱体激光雷达（在底盘前方上方）
-#   - 两个黑色圆柱体轮子（在底盘两侧，持续旋转）
 
 # 3.2 调整 RobotModel 的显示属性
 # 在 RobotModel Display 属性中:
@@ -6891,34 +7063,39 @@ if __name__ == '__main__':
 # 3.3 验证 TF 和 RobotModel 的一致性
 # 观察: TF 中显示的 laser_frame 坐标轴位置
 # 应与 RobotModel 中的激光雷达圆柱体位置完全重合
+
+# 预期: 3D 视图中出现简单机器人模型:
+#   - 蓝色长方体底盘
+#   - 灰色圆柱体激光雷达（在底盘前方上方）
+#   - 两个黑色圆柱体轮子（在底盘两侧，持续旋转）
+
 ```
 
+![image-20260821185200617](assets/image-20260821185200617.png)
+
 **易错点**：
+
 - ⚠️ **RobotModel 添加后 3D 视图中不显示模型**：按顺序排查：(1) `/robot_description` 话题是否有数据——`ros2 topic echo /robot_description --once`；(2) `robot_state_publisher` 是否在运行——`ros2 node list | grep robot_state`；(3) `/joint_states` 是否在发布——`ros2 topic echo /joint_states`；(4) Fixed Frame 是否为 TF 树中存在的坐标系（建议设为 `base_link`）
 - ⚠️ **URDF 解析报错（Status: Error）**：检查 URDF XML 语法——`check_urdf /tmp/simple_robot.urdf`。常见错误：link 名称拼写不一致（joint 中的 parent/child 名称必须匹配已定义的 link 名称）、joint 类型不支持（fixed/continuous/revolute/prismatic）、XML 标签未关闭
 - ⚠️ **模型出现但位置错误**：joint 的 `<origin>` 设置可能有误。注意 URDF 中 joint 的 origin 表示 child link 在 parent link 坐标系中的位置
 
 ---
 
-#### 步骤 4：LaserScan 和 PointCloud2 传感器数据可视化（15 分钟）
+#### 步骤 4：LaserScan 和 PointCloud2 传感器数据可视化
 
 **知识点讲解**：
 
 **LaserScan 激光雷达数据可视化（知识点 4.2.2）**
 
 - **是什么**：LaserScan Display 将 `sensor_msgs/msg/LaserScan` 类型的 2D 激光扫描数据渲染为 Rviz2 3D 视图中的扇形点/线。每个激光测量点按角度（`angle_min + i * angle_increment`）和距离（`ranges[i]`）计算在 `frame_id` 坐标系中的三维位置（Z=0），形成弧形点云。通过调整 Size（点的大小）和 Decay Time（点的衰减时间，旧点逐渐消失），可以调节视觉效果。
-
 - **为什么激光雷达数据天然适合在 Rviz2 中展示**：激光雷达数据是极坐标格式（角度+距离），人脑不擅长从数字矩阵中重建空间感知。Rviz2 将每个距离值映射为 3D 空间中的一个点——在 0.1 秒内，你就能看到"正前方 2 米处有一个障碍物"。Color Transformer 可以将距离映射为颜色（近处红色、远处蓝色），进一步增强深度感知。
-
-**PointCloud2 深度相机/3D LiDAR 点云可视化（知识点 4.2.2）**
-
+- **PointCloud2 深度相机/3D LiDAR 点云可视化（知识点 4.2.2）**
 - **是什么**：PointCloud2 Display 将 `sensor_msgs/msg/PointCloud2` 类型的 3D 点云数据渲染为密集的三维点阵。每个点包含 (x, y, z) 坐标和可选的颜色/强度信息。通过 Style 属性可以选择点的形状（Points、Flat Squares、Boxes）、透明度（Alpha）和衰减时间（Decay Time）。
 
 **操作步骤**：
 
-首先发布模拟激光雷达数据：
-
 ```bash
+首先发布模拟激光雷达数据：
 # 终端 E：发布模拟 LaserScan 数据
 python3 -c "
 import rclpy
@@ -6959,11 +7136,7 @@ def main():
 if __name__ == '__main__':
     main()
 "
-```
-
 发布模拟点云数据：
-
-```bash
 # 终端 F：发布模拟 PointCloud2 数据
 python3 -c "
 import rclpy
@@ -7016,11 +7189,7 @@ def main():
 if __name__ == '__main__':
     main()
 "
-```
-
 回到 Rviz2 界面：
-
-```
 # 4.1 添加 LaserScan Display
 # 点击 "Add" → 选择 "LaserScan" → "OK"
 # 在 LaserScan Display 属性中:
@@ -7046,31 +7215,39 @@ if __name__ == '__main__':
 # 预期: LaserScan 弧形以原点为中心（数据在其本地坐标系中没问题）
 # 将 Fixed Frame 切回: map
 # 预期: LaserScan 弧形出现在 robot 前方（通过 TF 变换到 map 坐标系）
+LaserScan Display显示激光雷达的2D显示
+
+激光雷达显示的3D点云
+
 ```
 
+![image-20260821185226315](assets/image-20260821185226315.png)
+
+![image-20260821185244341](assets/image-20260821185244341.png)
+
 **易错点**：
+
 - ⚠️ **LaserScan 数据不显示**：检查 (1) LaserScan 消息的 `frame_id` 是否能在 TF 树中找到从该 frame 到 Fixed Frame 的完整变换链；(2) `ranges` 数组中是否有非 inf/nan 的有效值；(3) `range_min`/`range_max` 的范围是否包含有效数据
 - ⚠️ **PointCloud2 数据不显示或显示为单一颜色**：检查 (1) `fields` 数组定义与实际数据打包格式是否一致（offset 和 datatype 必须匹配）；(2) 如果包含 RGB 字段，确保 RGB 的 datatype 为 `FLOAT32`（ROS2 中 RGB 打包为 float32）
 
 ---
 
-#### 步骤 5：Path 和 Marker 导航轨迹与标注（10 分钟）
+#### 步骤 5：Path 和 Marker 导航轨迹与标注
 
 **知识点讲解**：
 
 **Path 导航路径可视化与 Marker 自定义标注（知识点 4.2.2）**
 
-- **是什么**：
+**是什么**：
+
   - **Path Display**：将 `nav_msgs/msg/Path` 类型的数据渲染为 3D 空间中的连续折线（Line Strip）。每个路径点包含位姿和时间戳，Path Display 按顺序连接相邻路径点，形成轨迹线。常用于可视化机器人全局路径规划（global planner）的输出或实际走过的里程计轨迹。
   - **Marker Display**：ROS2 最灵活的可视化机制，支持 Arrow（箭头）、Cube（立方体）、Sphere（球体）、Cylinder（圆柱）、LineStrip（线段串）、Text（文字标签）、MeshResource（3D 模型文件）等多种图元。通过 Marker 的 `action` 字段控制 ADD（添加）、DELETE（删除）、MODIFY（修改）操作，可实现动态更新。
-
 - **为什么 Marker 是"万能可视化工具"**：你可以用 Marker 在 Rviz2 中标注任何信息——目标抓取位置（球体）、视觉检测框（线框立方体）、机器人期望朝向（箭头）、任务状态文字（Text View Facing）——而无需编写新的 Display 插件或修改 Rviz2 源码。只需发布一个 `visualization_msgs/msg/Marker` 消息即可。
 
 **操作步骤**：
 
-发布模拟路径数据：
-
 ```bash
+发布模拟路径数据：
 # 终端 G：发布 Path 路径数据
 python3 -c "
 import rclpy
@@ -7110,11 +7287,7 @@ def main():
 if __name__ == '__main__':
     main()
 "
-```
-
 发布 Marker 标注：
-
-```bash
 # 终端 H：发布 Marker 标注（目标点 + 文字标签）
 python3 -c "
 import rclpy
@@ -7185,11 +7358,7 @@ def main():
 if __name__ == '__main__':
     main()
 "
-```
-
 回到 Rviz2 界面：
-
-```
 # 5.1 添加 Path Display
 # 点击 "Add" → 选择 "Path" → "OK"
 # 在 Path Display 属性中:
@@ -7207,23 +7376,28 @@ if __name__ == '__main__':
 #   - 半透明红色球体（目标点）
 #   - 蓝色箭头（期望朝向）
 #   - 白色 "GOAL" 文字标签（始终面向视角）
+显示仿真的运动轨迹
+
+显示仿真设置的位置点
+
 ```
 
 ---
 
-#### 步骤 6：Rviz2 配置文件保存与加载（5 分钟）
+![image-20260821185311396](assets/image-20260821185311396.png)
+
+#### 步骤 6：Rviz2 配置文件保存与加载
 
 **知识点讲解**：
 
 .rviz 配置文件保存与加载（知识点 4.2.3）
 
 - **是什么**：Rviz2 的 `.rviz` 配置文件是一个 YAML 格式的文件，完整记录了本次会话中的所有 Display 面板及其属性设置（Fixed Frame、话题名、颜色、透明度、视角等）。加载配置文件后，Rviz2 自动恢复之前的所有面板和属性，实现"一键复现"调试环境。
-
 - **为什么这是团队协作的基础**：每个开发者可以为不同的调试场景保存独立的配置文件（如 `debug_sensors.rviz`、`debug_navigation.rviz`、`demo_presentation.rviz`），切换场景时加载对应配置即可。在团队协作中，将 `.rviz` 文件提交到 Git 仓库，其他人 clone 后执行 `rviz2 -d config/debug_sensors.rviz` 即可获得与你完全相同的可视化设置。
 
 **操作步骤**：
 
-```
+```bash
 # 6.1 保存当前配置
 # Rviz2 菜单: File → Save Config As...
 # 保存为: ~/exp15_rviz_config.rviz
@@ -7252,7 +7426,7 @@ head -50 ~/exp15_rviz_config.rviz
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 显示 | Rviz2 需要 GPU 渲染支持，B2 实验箱的 Mali-G52 GPU 可运行轻量级场景；避免加载过多高分辨率点云或复杂 URDF 模型导致帧率下降 |
 | ⚠️ 坐标系 | Fixed Frame 的选择是最关键的配置——它决定了所有数据的显示参考系。如果数据"位置不对""不显示""显示为原点"，首先要检查 Fixed Frame 是否正确 |
 | ⚠️ 话题名 | 每个 Display 面板都需要指定正确的话题名（Topic）。使用 `ros2 topic list` 确认话题名无误后再配置到 Rviz2 |
@@ -7265,6 +7439,7 @@ head -50 ~/exp15_rviz_config.rviz
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 启动 Rviz2 并正确配置 Fixed Frame 全局参考坐标系
 - ✅ 添加 TF Display 可视化坐标变换树及父子关系
 - ✅ 添加 RobotModel Display 加载 URDF 模型并结合 robot_state_publisher 实现动态渲染
@@ -7275,7 +7450,7 @@ head -50 ~/exp15_rviz_config.rviz
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 3D 可视化 | 掌握 Rviz2 作为 ROS2 标准 3D 可视化平台的 Display 面板配置方法 |
 | 坐标系理解 | 理解 Fixed Frame 在空间数据可视化中的核心作用：如何选择参考系以正确展示数据 |
 | 调试思维 | 能通过 Rviz2 的黄色 Warning 状态快速定位 TF 变换链断裂、话题无数据等常见故障 |
@@ -7284,8 +7459,8 @@ head -50 ~/exp15_rviz_config.rviz
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
-| Rviz2 启动后黑屏 | GPU 驱动未就绪或渲染后端不兼容 | 检查 `glxinfo \| grep "OpenGL renderer"`，确认 Mali-G52 驱动已加载 |
+|---|---|---|
+| Rviz2 启动后黑屏 | GPU 驱动未就绪或渲染后端不兼容 | 检查 `glxinfo | grep "OpenGL renderer"`，确认 Mali-G52 驱动已加载 |
 | 添加 Display 后无数据显示 | 话题名不匹配、Fixed Frame 不正确、话题无发布者 | (1) `ros2 topic list` 确认话题存在；(2) 检查 Fixed Frame 与消息的 frame_id 关系 |
 | RobotModel 不显示 | `/robot_description` 无数据或 URDF 语法错误 | `ros2 topic echo /robot_description --once` 确认话题有数据；`check_urdf` 检查语法 |
 | LaserScan 显示位置错误 | frame_id 在 TF 树中不存在或 TF 变换发布不正确 | `ros2 run tf2_tools view_frames` 查看完整 TF 树结构 |
@@ -7307,15 +7482,17 @@ head -50 ~/exp15_rviz_config.rviz
 #### 9.2 思考题
 
 **思考题 1**：
+
 在步骤 4 中，你添加了 LaserScan Display 并配置了 `Topic: /scan`。假设你的机器人上有**两台**激光雷达：一台朝前（`/scan_front`，frame_id=`laser_front`），一台朝后（`/scan_back`，frame_id=`laser_back`）。你需要在 Rviz2 中同时看到两台雷达的数据，且都相对于 `base_link` 坐标系显示。请写出你的 Rviz2 配置方案，并说明如果 Fixed Frame 设为 `base_link`，两台雷达的数据如何在 3D 视图中正确显示（提示：考虑 TF 坐标变换的作用）。
 
 **思考题 2**：
+
 Marker 的类型非常丰富（Arrow、Cube、Sphere、Cylinder、LineStrip、Points、Text等）。请设计一个"机器人巡逻任务"的可视化方案：用 Marker 在 Rviz2 中标注 (1) 4 个巡逻航点（waypoint），(2) 航点之间的连接线，(3) 机器人当前目标的朝向箭头，(4) 每个航点的编号标签。写出每种标注应使用哪种 Marker 类型以及关键属性的配置思路。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否按要求添加并配置了 TF、RobotModel、LaserScan、PointCloud2、Path、Marker 六种 Display |
 | 截图与记录 | 15% | 截图是否清晰（≥6 张），配置参数标注是否准确 |
 | TF 变换树分析 | 10% | TF 树图是否完整标注了所有坐标系及其父子关系 |
@@ -7323,16 +7500,14 @@ Marker 的类型非常丰富（Arrow、Cube、Sphere、Cylinder、LineStrip、Po
 | 思考题 1 | 10% | 多雷达可视化的方案合理性 |
 | 思考题 2 | 10% | Marker 可视化方案的设计完整性与可实现性 |
 
----
-
-## 实验16：ROS2录制回放工具（2h）
+## 实验16：ROS2录制回放工具
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 4.3.1 | ros2 bag以SQLite3格式序列化存储话题消息 | 概念 | 第4章 ROS2工具链与系统部署 → 4.3 数据录制与回放 |
 | 4.3.2 | ros2 bag record/play/info录制回放与元数据查询流程 | 流程 | 第4章 ROS2工具链与系统部署 → 4.3 数据录制与回放 |
 | 4.3.3 | 回放bag数据+Rviz2同步可视化实现离线场景分析 | 流程 | 第4章 ROS2工具链与系统部署 → 4.3 数据录制与回放 |
@@ -7349,10 +7524,10 @@ Marker 的类型非常丰富（Arrow、Cube、Sphere、Cylinder、LineStrip、Po
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2（RK3576 + STM32F407）或 具身智能机器人小车C1 |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2 |
 | 操作系统 | Ubuntu 22.04 |
-| ROS2 发行版 | Humble Hawksbill |
+| ROS2 发行版 | Humble Hawksbi |
 | 核心依赖 | `ros-humble-rosbag2`、`ros-humble-ros2bag`、`ros-humble-demo-nodes-cpp`、`ros-humble-rviz2`（用于离线可视化回放数据） |
 | 存储要求 | bag 文件写入当前目录，建议 `~/ros2_bags/` 目录下操作，确保磁盘空间 ≥ 500MB |
 
@@ -7361,16 +7536,18 @@ Marker 的类型非常丰富（Arrow、Cube、Sphere、Cylinder、LineStrip、Po
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐（容易） |
 | 实验类型 | 验证性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握 ros2 bag record 的选择性录制（`/topic1 /topic2`）与全量录制（`-a`）
 - 掌握 ros2 bag play 的回放速率控制（`-r`）和时钟发布（`--clock`）
 
 **难点**：
+
 - 理解 `--clock` 参数对回放时 `use_sim_time` 的影响，以及为什么离线分析时需要同步仿真时钟
 - 区分 `ros2 bag record` 的 `--max-bag-size`（单文件大小上限）与 `--max-cache-size`（内存缓存上限）的区别
 
@@ -7389,18 +7566,20 @@ Marker 的类型非常丰富（Arrow、Cube、Sphere、Cylinder、LineStrip、Po
 #### 5.2 预期效果描述
 
 | 操作 | 预期现象 |
-|------|---------|
+|---|---|
 | `ros2 bag record -a -o exp16_demo` | 终端显示正在录制的话题列表（/chatter, /parameter_events, /rosout）；Ctrl+C 停止后输出录制统计 |
 | `ros2 bag info exp16_demo` | 显示话题数量≈3、消息数量、录制时长≈15s、文件大小（KB~MB 级别） |
 | `ros2 bag play exp16_demo` | 终端滚动日志，显示每条消息的回放时间戳；`ros2 topic echo /chatter` 另一终端可看到回放的消息 |
 | `ros2 bag play exp16_demo --clock --rate 0.5` | `/clock` 话题以实际时间的一半速度推进；消息回放间隔加倍 |
 | 回放 + Rviz2（如 exp15 中的 LaserScan） | Rviz2 3D 视图中出现与原始录制时一致的点云/路径数据 |
 
+---
+
 ### 六、实验步骤
 
 #### 整体流程
 
-```
+```text
 [1. 全量录制 (-a)] ──► [2. 查看 bag 信息] ──► [3. 回放与调速]
                                                       │
 [6. 清理与总结] ◄── [5. 离线 Rviz2 分析] ◄── [4. 选择性录制与压缩]
@@ -7408,16 +7587,14 @@ Marker 的类型非常丰富（Arrow、Cube、Sphere、Cylinder、LineStrip、Po
 
 ---
 
-#### 步骤 1：全量录制 — `ros2 bag record -a`（20 分钟）
+#### 步骤 1：全量录制 — ros2 bag record -a
 
 **知识点讲解**：
 
 **ros2 bag 基于 SQLite3 的存储架构（知识点 4.3.1）**
 
 - **是什么**：ros2 bag 是 ROS2 的官方数据录制工具，替代了 ROS1 中的 `rosbag`。它将话题消息以 SQLite3 数据库格式（`.db3` 文件）存储在磁盘上。每个 bag 文件内部包含两张核心表：`topics`（记录话题名称、消息类型、序列化格式）和 `messages`（记录每条消息的时间戳、话题 ID、序列化字节流）。包外还有一个 `metadata.yaml` 文件，提供录制起止时间、总消息数量等人类可读的元数据摘要。
-
 - **为什么选择 SQLite3 而非二进制日志**：(1) SQLite3 支持索引和随机访问——你可以按时间戳快速跳到 bag 文件中的任意位置，而二进制日志文件只能顺序读取；(2) SQLite3 支持事务——录制过程中即使进程崩溃，已写入的数据不会损坏；(3) 跨平台和工具链成熟——任何编程语言都有 SQLite3 库，用户可以直接用 SQL 查询 bag 数据而不依赖 ROS2 工具；(4) 消息使用 CDR（Common Data Representation）序列化，与 DDS 线的传输格式一致，零转换开销。
-
 - **怎么用**：`ros2 bag record -a` 录制所有当前活跃的话题。注意，录制操作只捕获**录制开始后**发布的消息——之前的历史数据不会被记录。如果某个话题在录制中途才开始发布，ros2 bag 会自动发现并开始录制该话题。
 
 **操作步骤**：
@@ -7448,17 +7625,11 @@ ros2 bag record -a -o exp16_full
 # 预期输出:
 # [INFO] [rosbag2_recorder]: Recording stopped
 # [INFO] [rosbag2_recorder]: Recorded N messages
-```
-
-```bash
 # 1.5 查看生成的文件结构
 ls -lh exp16_full/
 # 预期输出类似:
 # exp16_full.db3        (SQLite3 数据库文件)
 # metadata.yaml          (元数据文件)
-```
-
-```bash
 # 1.6 查看 metadata.yaml 内容
 cat exp16_full/metadata.yaml
 # 预期输出:
@@ -7478,23 +7649,23 @@ cat exp16_full/metadata.yaml
 #         type: std_msgs/msg/String
 #         serialization_format: cdr
 #       message_count: ~15
-#     ...
+#     ..
 ```
 
 **易错点**：
+
 - ⚠️ **录制后 `ros2 topic echo` 在录制终端看不到输出**：`ros2 bag record` 运行时本身不显示消息内容，只显示订阅确认和统计信息。这是正常的——它在后台静默录制。要观察消息内容，在另一个终端使用 `ros2 topic echo`。
 - ⚠️ **Ctrl+C 停止录制后文件大小为 0**：如果录制时间太短（< 1-2 秒），可能还没完成 SQLite3 写入就退出了。建议至少录制 10 秒以上。
 
 ---
 
-#### 步骤 2：查看 bag 信息 — `ros2 bag info`（10 分钟）
+#### 步骤 2：查看 bag 信息 — ros2 bag info
 
 **知识点讲解**：
 
 **bag 文件的元数据查询与分析（知识点 4.3.2）**
 
 - **是什么**：`ros2 bag info` 读取 bag 文件的 SQLite3 内部元数据和 `metadata.yaml`，汇总输出：录制时长、话题列表（每个话题的消息类型、消息数量、平均频率）、总消息数、总文件大小。
-
 - **为什么这是数据处理的第一步**：在你继承一个别人的 bag 文件、或录制后几周回头查看时，你需要快速回答以下问题而不必回放整个文件："这个 bag 录了多久？""里面有没有 `/camera/image_raw` 这个话题？""激光雷达数据的频率是多少（可以推断录制时传感器配置）？"`ros2 bag info` 在毫秒级回答这些问题。
 
 **操作步骤**：
@@ -7517,13 +7688,14 @@ ros2 bag info exp16_full
 ```
 
 **信息解读**：
+
 - **Duration**：实际录制时长。如果消息频率是 1Hz，Duration 为 15 秒，则 `/chatter` 的 Count 大致也是 15
 - **Bag size**：文件占用磁盘空间。同一段数据，话题数量越多、消息频率越高、消息体越大，文件越大
 - **Count**：每个话题的消息条数。Count / Duration ≈ 该话题在录制时段的平均频率
 
 ---
 
-#### 步骤 3：回放数据 — `ros2 bag play`（20 分钟）
+#### 步骤 3：回放数据 — ros2 bag play（20 分钟）
 
 **知识点讲解**：
 
@@ -7534,12 +7706,12 @@ ros2 bag info exp16_full
   - `--clock`：回放时发布 `/clock` 话题（`rosgraph_msgs/msg/Clock`），其时间根据回放进度推进。这使你可以设置其他节点的 `use_sim_time=True`，让它们"认为"当前就是 bag 录制时的那个时刻
   - `--loop`：循环回放，到达 bag 末尾后自动跳回开头重新播放
   - `-t <topic>` / `--topics <topic>`：仅回放指定的话题，忽略 bag 中的其他话题
-
 - **为什么 --clock 如此重要**：许多 ROS2 节点依赖 `get_clock().now()` 获取当前时间进行数据融合、超时判定、TF 变换缓存等操作。如果回放 bag 时不发布 `/clock`，节点的 `get_clock().now()` 返回真实的"现在"时间（2026-08-10），而消息中的时间戳是录制时的时间（如 2026-08-09）——两者差了一天，导致 TF Lookup 超时、数据融合等算法判断"数据已过期"而丢弃。启用 `--clock` + 节点设置 `use_sim_time=True` 后，节点的时间感知与回放同步。
 
 **操作步骤**：
 
 ```bash
+
 # 3.1 停止所有数据源节点（终端 A 和 B Ctrl+C）
 # 确认系统空闲
 ros2 node list
@@ -7557,9 +7729,7 @@ ros2 bag play exp16_full
 # I heard: [Hello World: 1]
 # I heard: [Hello World: 2]
 # ...（与录制时完全一致的消息序列）
-```
 
-```bash
 # 3.4 回放速率调整实验
 # 以 2 倍速回放（消息间隔减半）
 ros2 bag play exp16_full -r 2.0
@@ -7585,18 +7755,18 @@ rclpy.spin(node)
 # 终端 C：回放并启用时钟发布
 ros2 bag play exp16_full --clock
 # 观察终端 D 的输出——时间应该随着回放推进而前进
-```
 
-```bash
 # 3.6 仅回放指定话题
 ros2 bag play exp16_full -t /chatter
 # 预期: 仅 /chatter 话题的消息被回放，/parameter_events 和 /rosout 被忽略
+
 ```
 
 **易错点**：
+
 - ⚠️ **回放时 listener 收不到消息**：首先确认 `ros2 topic list` 中是否出现了 `/chatter`（回放创建了新的 Publisher）。如果 `/chatter` 出现但 listener 没反应，检查 listener 的 QoS 设置——ros2 bag play 默认使用 `KEEP_LAST` + `RELIABLE` QoS
 - ⚠️ **回放结束后 listener 立即停止输出**：这是预期行为——bag 文件中的消息播放完毕后，Publisher 销毁。如果需要持续测试，使用 `--loop` 参数循环回放
-- ⚠️ **`--clock` 回放时节点报 "时间跳变" 警告**：回放结束或跳到开头时，`/clock` 时间可能大幅跳变，导致依赖连续时间的节点（如 TF2 Buffer）报 WARN。这是正常现象，可以通过 `--start-offset` 参数从 bag 中间位置开始回放来避免
+- ⚠️ `--clock` 回放时节点报 "时间跳变" 警告**：回放结束或跳到开头时，`/clock` 时间可能大幅跳变，导致依赖连续时间的节点（如 TF2 Buffer）报 WARN。这是正常现象，可以通过 `--start-offset` 参数从 bag 中间位置开始回放来避免
 
 ---
 
@@ -7604,13 +7774,13 @@ ros2 bag play exp16_full -t /chatter
 
 **知识点讲解**：
 
-**选择性录制 `ros2 bag record /topic1 /topic2`（知识点 4.3.2）**
+**选择性录制 **`ros2 bag record /topic1 /topic2`**（知识点 4.3.2）**
 
 - **是什么**：`ros2 bag record /topic1 /topic2 ...` 仅录制命令行中明确列出的话题，忽略系统中其他所有活跃话题。`ros2 bag record -a` 则录制当前时刻**所有**活跃的话题。
-
 - **为什么选择性录制是生产环境中的标准做法**：全量录制 `-a` 在开发中很方便，但在实际机器人场景中有三个严重问题：(1) 相机图像话题（`/camera/image_raw`）可能是 30Hz 的 1920x1080 RGB 图像，每秒产生约 178MB 数据——5 分钟就超过 50GB；(2) 大量系统级话题（`/parameter_events`、`/rosout`、`/tf`、`/tf_static`）会混杂在 bag 中，增加回放时的 CPU 和内存开销；(3) 选择性录制使你可以为每次实验精确定义一个"数据组合"——如调试导航时只录 `/scan` + `/odom` + `/cmd_vel`，调试视觉时只录 `/camera/image_raw` + `/camera/depth`。
 
-- **高级参数**：
+**高级参数**：
+
   - `--max-bag-size <MB>`：当 bag 文件超过指定大小时自动分割（创建新的 .db3 文件），防止单个文件过大
   - `--max-cache-size <MB>`：内存中消息缓存区大小——录制时，消息先写入内存缓存，再异步写入磁盘。缓存过小可能导致消息丢失，缓存过大则增加内存占用
   - `-c` / `--compression-mode`：压缩模式（`message` 或 `file`），减少磁盘占用。`message` 模式压缩每条消息（适合高压缩率数据类型），`file` 模式压缩整个文件（速度更快）
@@ -7644,22 +7814,23 @@ ros2 bag record -a -o exp16_split --max-bag-size 1
 # 录制约 20 秒后 Ctrl+C 停止
 ls -lh exp16_split/
 # 预期: 如果总数据超过 1MB，会看到多个 .db3 文件（exp16_split_0.db3, exp16_split_1.db3, ...）
+
 ```
 
 **易错点**：
+
 - ⚠️ **选择性录制的话题名不存在**：如果指定的某个话题当前没有 Publisher，ros2 bag recorder 仍会订阅该话题（等待未来的 Publisher 出现），不会报错。如果直到录制结束该话题都未出现，bag 中不会有该话题的数据
 - ⚠️ **压缩对 CPU 的额外开销**：`-c message` 在 B2 实验箱的 RK3576 上会增加约 10-20% 的 CPU 占用。对于 10Hz 以下的低频话题影响不大，但对于 30Hz 的图像话题需评估是否影响其他实时任务
 
 ---
 
-#### 步骤 5：回放数据与 Rviz2 联合离线分析（15 分钟）
+#### 步骤 5：回放数据与 Rviz2 联合离线分析
 
 **知识点讲解**：
 
 **bag 回放 + Rviz2 同步可视化实现离线场景复现（知识点 4.3.3）**
 
 - **是什么**：离线分析的核心工作流程为：(1) 在真实场景中录制传感器数据到 bag 文件，(2) 将 bag 文件拷贝到开发机，(3) 使用 `ros2 bag play --clock` 回放数据，(4) 同步启动 Rviz2 并设置 `use_sim_time=true`，(5) 在 Rviz2 中添加相应的 Display 面板，观察回放的传感器数据在 3D 视图中的渲染效果。
-
 - **为什么这个工作流改变了机器人算法开发方式**：传统的机器人算法开发需要"人在机器人旁"——每次修改代码后，必须连接实际硬件才能测试。bag 回放将开发过程"离线化"：(1) 在实验室录制 5 分钟的各种场景数据，(2) 在办公桌上反复回放这些数据来开发和调试算法，(3) 算法在 bag 数据上通过测试后，再到真实机器人上做最终验证。这个流程将硬件依赖的调试时间从 80% 降到 20%，大幅提升开发效率。
 
 **操作步骤**：
@@ -7674,10 +7845,7 @@ rviz2 --ros-args -p use_sim_time:=true
 # 或者先 export 环境变量再启动
 # export ROS_PARAM_OVERRIDES="use_sim_time:=true"
 # rviz2
-```
-
 在 Rviz2 界面中：
-```
 # 5.3 验证仿真时间是否生效
 # 菜单: Panels → Add New Panel → "Time"
 # Time 面板应显示与 bag 回放同步的时间（而非当前系统时间）
@@ -7686,25 +7854,22 @@ rviz2 --ros-args -p use_sim_time:=true
 # 如果 bag 中包含 LaserScan 数据: 添加 LaserScan Display
 # 如果 bag 中包含 TF 数据: 添加 TF Display
 # 如果 bag 中包含 Path 数据: 添加 Path Display
-```
-
-**对于本实验的简单数据（`/chatter` 是 String 类型，非传感器数据），Rviz2 联合验证的展示效果有限。以下提供一个扩展示例，演示如何在有传感器数据的场景中分析 bag：**
-
-```bash
+对于本实验的简单数据（/chatter 是 String 类型，非传感器数据），Rviz2 联合验证的展示效果有限。以下提供一个扩展示例，演示如何在有传感器数据的场景中分析 bag：
 # 扩展示例（如果有 B2 实验箱的深度相机可用）：
 # 步骤 1: 录制深度相机的 RGB 图像话题
 # ros2 bag record /camera/color/image_raw -o exp16_camera_test
-# 
+#
 # 步骤 2: 回放并启动 Rviz2
 # ros2 bag play exp16_camera_test --clock
 # rviz2 --ros-args -p use_sim_time:=true
-# 
+#
 # 步骤 3: 在 Rviz2 中添加 Image Display
 # Topic: /camera/color/image_raw
 # 预期: Rviz2 的 Image 面板中显示录制的相机画面，重现原始场景
 ```
 
 **易错点**：
+
 - ⚠️ **Rviz2 的 Time 面板显示时间为 0 或不动**：确认 (1) bag 回放使用了 `--clock` 参数；(2) Rviz2 启动时设置了 `use_sim_time:=true`
 - ⚠️ **回放速度太快或太慢，Rviz2 渲染卡顿**：调整回放速率 `-r 0.5` 降低数据速率，给 Rviz2 渲染留出时间。也可以在回放时指定 `-t <topic>` 仅回放特定的传感器话题，减少数据处理量
 
@@ -7715,15 +7880,16 @@ rviz2 --ros-args -p use_sim_time:=true
 1. `Ctrl+C` 终止所有回放进程
 2. 终止 Rviz2
 3. 清理测试文件（可选）：
-   ```bash
-   cd ~/ros2_bags
-   rm -rf exp16_full exp16_chatter_only exp16_compressed exp16_split
-   ```
+4. cd ~/ros2_bags
+
+```bash
+rm -rf exp16_full exp16_chatter_only exp16_compressed exp16_spli
+```
 
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 磁盘 | bag 文件可能迅速增长——在 B2 实验箱录制 30Hz 的 640x480 图像话题，约 15 分钟就会填满 2GB 空间。建议录制前用 `df -h` 确认可用空间，并定期清理旧的 bag 文件 |
 | ⚠️ 数据安全 | bag 文件中包含传感器可能拍到的敏感信息（人脸、室内布局等），分享 bag 文件时注意数据隐私 |
 | ⚠️ 时钟同步 | 离线分析时必须同时启用 bag play 的 `--clock` 和 Rviz2/其他节点的 `use_sim_time:=true`，否则 TF 变换和数据显示会出现时间戳不匹配 |
@@ -7736,6 +7902,7 @@ rviz2 --ros-args -p use_sim_time:=true
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 使用 `ros2 bag record -a` 录制全系统话题数据
 - ✅ 使用 `ros2 bag record /topic1 /topic2` 选择性录制指定话题
 - ✅ 使用 `ros2 bag info` 查看 bag 文件的元数据（话题、消息数、时长）
@@ -7745,7 +7912,7 @@ rviz2 --ros-args -p use_sim_time:=true
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 数据采集 | 掌握 ros2 bag record 的全量/选择性录制、压缩、分片等参数配置 |
 | 数据管理 | 理解 bag 文件的 SQLite3 存储结构和 metadata.yaml 元数据规范 |
 | 离线开发 | 掌握 bag 回放 + use_sim_time 的离线算法开发工作流 |
@@ -7754,7 +7921,7 @@ rviz2 --ros-args -p use_sim_time:=true
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `ros2 bag record` 命令不存在 | rosbag2 包未安装 | `sudo apt install ros-humble-rosbag2 ros-humble-ros2bag` |
 | 录制时磁盘空间迅速耗尽 | 录制了高频大体积话题（如图像） | 使用选择性录制（指定话题名），或配置 `--max-bag-size` 限制文件大小 |
 | 回放时无消息输出 | bag 文件损坏或回放的话题无当前订阅者 | `ros2 bag info` 确认 bag 文件中的话题列表；启动对应的订阅者节点 |
@@ -7776,31 +7943,31 @@ rviz2 --ros-args -p use_sim_time:=true
 #### 9.2 思考题
 
 **思考题 1**：
+
 在 ros2 bag 中，每条消息的时间戳有两个来源——消息体中的 `header.stamp`（由传感器或算法节点在生成消息时填入）和 ros2 bag 接收消息时的本地系统时间戳。这两个时间戳可能不一致（尤其是在网络延迟较大的分布式系统中）。请分析这两种时间戳的差异在什么场景下会导致问题，并设计一个方案来检测和量化这种时间偏移。
 
 **思考题 2**：
+
 假设你的机器人上运行着 15 个话题（包括传感器、控制指令、状态反馈），你录制了一段 10 分钟的 bag 文件。两周后，你需要在不同版本的导航算法上各测试一次（共 3 个版本），比较三者在同一段 bag 数据上的表现。请设计一个标准化测试流程，确保：(1) 每个算法版本在完全相同的输入条件下测试，(2) 测试结果可量化对比（如通过率、平均处理时间），(3) 测试过程可自动化执行（减少人工操作）。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否按要求完成了全量录制、信息查看、回放调速、选择性录制四个核心操作 |
 | 截图与记录 | 15% | 截图是否清晰（≥5 张），是否标注了关键参数和输出 |
 | 数据采集方案 | 25% | 方案的话题选择是否合理、命名规范是否清晰、磁盘估算是否准确 |
 | 思考题 1 | 15% | 对时间戳双来源问题的分析深度和检测方案的可行性 |
 | 思考题 2 | 15% | 标准化测试流程的完整性、可自动化和可量化程度 |
 
----
-
-## 实验17：ROS2 Launch启动文件配置（2h）
+## 实验17：ROS2 Launch启动文件配置
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 4.4.1 | Launch文件以Python/XML/YAML声明多节点启动配置 | 概念 | 第4章 ROS2工具链与系统部署 → 4.4 Launch启动管理 |
 | 4.4.2 | Python Launch文件编写：Node声明/参数/remapping→LaunchDescription流程 | 流程 | 第4章 ROS2工具链与系统部署 → 4.4 Launch启动管理 |
 | 4.4.3 | IfCondition条件启动/OnProcessExit事件触发/LaunchArgument参数化复用原理 | 原理 | 第4章 ROS2工具链与系统部署 → 4.4 Launch启动管理 |
@@ -7817,8 +7984,8 @@ rviz2 --ros-args -p use_sim_time:=true
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2（RK3576 + STM32F407）或 具身智能机器人小车C1 |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2 |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
 | 核心依赖 | `ros-humble-ros2launch`、`ros-humble-launch`、`ros-humble-launch-ros`、`ros-humble-demo-nodes-cpp` |
@@ -7829,16 +7996,18 @@ rviz2 --ros-args -p use_sim_time:=true
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握 Python Launch 文件的 `Node` 声明和 `LaunchDescription` 构建
 - 掌握 remap 话题重映射的语法和实际使用场景
 
 **难点**：
+
 - 理解 Launch 的"事件驱动"架构——`LaunchDescription` 不仅是一组 Action 的列表，更是 Action 之间的条件依赖和事件触发关系
 - 掌握 `IfCondition`/`UnlessCondition` 与 `LaunchConfiguration` 的配合，实现"一份 Launch 文件适配多种场景"
 
@@ -7856,18 +8025,20 @@ rviz2 --ros-args -p use_sim_time:=true
 #### 5.2 预期效果描述
 
 | Launch 特性 | 预期现象 |
-|------------|---------|
+|---|---|
 | 基础 Node 启动 | 同时启动 talker 和 listener，listener 收到消息 |
 | remap 重映射 | talker 发布到 `/my_chatter`，原 `/chatter` 无数据 |
 | 参数传递 | `ros2 launch ... param_value:=5` 后，节点使用不同的参数行为 |
 | IfCondition 条件启动 | `enable_debug:=true` 时额外启动调试节点；`false` 时仅启动核心节点 |
 | OnProcessExit 事件 | talker 退出（Ctrl+C 模拟或超时退出）后，自动启动一个"清理"节点 |
 
+---
+
 ### 六、实验步骤
 
 #### 整体流程
 
-```
+```text
 [1. 基础 Launch 文件编写] ──► [2. Node 参数与 remap] ──► [3. LaunchConfiguration 参数化]
                                                                       │
 [6. 整合练习与总结] ◄── [5. 事件触发 OnProcessExit] ◄── [4. IfCondition 条件启动]
@@ -7875,22 +8046,23 @@ rviz2 --ros-args -p use_sim_time:=true
 
 ---
 
-#### 步骤 1：基础 Launch 文件编写与运行（25 分钟）
+#### 步骤 1：基础 Launch 文件编写与运行
 
 **知识点讲解**：
 
 **ROS2 Launch 系统架构演进（知识点 4.4.1）**
 
 - **是什么**：ROS2 Launch 是管理多节点系统启动的官方工具。一个 Launch 文件（后缀 `.launch.py`、`.launch.xml` 或 `.launch.yaml`）声明了：哪些节点要启动、每个节点的参数配置、话题重映射规则、节点之间的启动顺序和依赖关系。`ros2 launch` 命令解析 Launch 文件，按照声明的内容依次执行启动操作。
-
 - **为什么 Python 成为推荐语言**：ROS1 的 `roslaunch` 仅支持 XML，所有逻辑都必须用 XML 标签的嵌套和属性来描述——这导致复杂场景（如"如果参数 A=5 则启动节点 X，否则启动节点 Y""节点 A 退出后，等待 3 秒再启动节点 B"）要么无法表达，要么需要用极其冗长和难以维护的 XML 实现。ROS2 Launch 的 Python API 将启动编排提升为**图灵完备的编程语言**——你可以使用 Python 的所有控制流（if/for/while）、数据结构（dict/list）、和函数模块化，从而实现比 XML 灵活得多的启动逻辑。
 
-- **三种格式的对比与选择**：
+**三种格式的对比与选择**：
+
   - **Python（.launch.py）**：推荐首选。适合需要复杂逻辑的场景，支持条件、循环、事件等高级特性。唯一的缺点是语法稍复杂（需要理解 `LaunchDescription` 和 `Action` 对象）
   - **XML（.launch.xml）**：语法简单，与 ROS1 的 roslaunch XML 语法类似。适合简单场景（只需启动一组固定节点），迁移成本低
   - **YAML（.launch.yaml）**：语法更简洁，但支持的 Launch 特性最少。一般不推荐用于生产
 
-- **核心概念**：
+**核心概念**：
+
   - **LaunchDescription**：Launch 文件的"输出产品"，包含一组 `Action`（操作）的列表。`ros2 launch` 读取 `LaunchDescription`，按顺序执行其中的 Action
   - **Node Action**：最常用的 Action 类型，表示启动一个 ROS2 节点。包含 `package`（包名）、`executable`（可执行文件名）、`name`（节点名）、`parameters`（参数）、`remappings`（话题重映射）等属性
   - **LaunchConfiguration**：运行时变量，用户可以在 `ros2 launch` 命令行中通过 `key:=value` 语法传入，或在 Launch 文件中设置默认值
@@ -7898,63 +8070,7 @@ rviz2 --ros-args -p use_sim_time:=true
 **操作步骤**：
 
 ```bash
-# 1.1 创建工作目录
-mkdir -p ~/ros2_launch_demo
-cd ~/ros2_launch_demo
-```
-
-```python
-# 1.2 创建第一个基础 Launch 文件（同时启动 talker 和 listener）
-cat > basic_launch.py << 'PYEOF'
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-实验17：ROS2 Launch 基础示例
-功能：一键启动 talker + listener 两个节点
-运行：ros2 launch basic_launch.py（需要将文件放入功能包的 launch/ 目录）
-      或通过 ros2 launch 直接指定路径（见下方操作说明）
-"""
-
-from launch import LaunchDescription
-from launch_ros.actions import Node
-
-
-def generate_launch_description():
-    """构建 LaunchDescription，返回需要执行的 Action 列表"""
-    return LaunchDescription([
-        # 启动 talker 节点
-        Node(
-            package='demo_nodes_cpp',       # 功能包名
-            executable='talker',             # 可执行文件名
-            name='my_talker',                # 节点名（可自定义，不写则使用可执行文件名）
-            output='screen',                 # 将节点输出打印到终端
-        ),
-        # 启动 listener 节点
-        Node(
-            package='demo_nodes_cpp',
-            executable='listener',
-            name='my_listener',
-            output='screen',
-        ),
-    ])
-PYEOF
-
-echo "basic_launch.py created"
-```
-
-由于 Launch 文件通常放在功能包的 `launch/` 目录中，对于本实验的独立文件，我们需要使用 `ros2 launch` 的绝对路径模式：
-
-```bash
-# 1.3 方法一：通过完整路径运行 Launch 文件（ROS2 Humble 支持）
-# 注意：某些 ROS2 版本要求 Launch 文件必须在功能包内
-# 以下方法在 Humble 中验证有效
-cd ~/ros2_launch_demo
-ros2 launch basic_launch.py
-```
-
-如果上述命令报错（"Package not found"），使用以下方法创建临时功能包承载 Launch 文件：
-
-```bash
+使用以下方法创建临时功能包承载 Launch 文件：
 # 1.3 替代方法：创建功能包存放 Launch 文件
 mkdir -p ~/launch_demo_pkg/launch
 cp ~/ros2_launch_demo/basic_launch.py ~/launch_demo_pkg/launch/
@@ -8005,11 +8121,17 @@ source install/setup.bash
 
 # 运行 Launch 文件
 ros2 launch launch_demo_pkg basic_launch.py
+由于 Launch 文件通常放在功能包的 launch/ 目录中，对于本实验的独立文件，我们需要使用 ros2 launch 的绝对路径模式：
+# 1.3 方法一：通过完整路径运行 Launch 文件（ROS2 Humble 支持）
+# 注意：某些 ROS2 版本要求 Launch 文件必须在功能包内
+# 以下方法在 Humble 中验证有效
+cd ~/ros2_launch_demo
+ros2 launch basic_launch.py
 ```
 
 **预期输出**：
 
-```
+```text
 [INFO] [launch]: All log files can be found below ...
 [INFO] [launch]: Defaulting event handling to actions.
 [INFO] [my_talker-1]: process started with pid [XXXX]
@@ -8018,38 +8140,84 @@ ros2 launch launch_demo_pkg basic_launch.py
 [my_listener-2] [INFO] [...] [my_listener]: I heard: [Hello World: 1]
 [my_talker-1] [INFO] [...] [my_talker]: Publishing: 'Hello World: 2'
 [my_listener-2] [INFO] [...] [my_listener]: I heard: [Hello World: 2]
+
+按 Ctrl+C 退出——Launch 进程会自动向所有子节点发送 SIGINT 信号，优雅终止。
 ```
 
-按 `Ctrl+C` 退出——Launch 进程会自动向所有子节点发送 SIGINT 信号，优雅终止。
+![image-20260821185415983](assets/image-20260821185415983.png)
 
 **关键观察点**：
+
 - 一次性启动了 2 个节点——无需手动打开 2 个终端
 - 每个节点的日志前缀带有 `[my_talker-1]` 和 `[my_listener-2]` 标识，方便区分
 - `Ctrl+C` 一次即可终止所有节点——Launch 进程负责清理子进程
 
 **易错点**：
-- ⚠️ **`ros2 launch` 报 "No launch file found"**：Launch 文件必须位于功能包的 `share/<pkg>/launch/` 路径下（通过 `install(DIRECTORY launch ...)` 安装）。如果报了此错误，检查：(1) `colcon build` 是否成功，(2) `source install/setup.bash` 是否执行，(3) `ros2 pkg list | grep launch_demo_pkg` 确认包是否已注册
-- ⚠️ **`generate_launch_description` 函数名写错**：Python Launch 文件的入口函数必须**完全一致**地命名为 `generate_launch_description`（注意下划线和小写）。如果函数名有任何偏差，ros2 launch 会报 "module has no attribute 'generate_launch_description'"
+
+- ⚠️ `ros2 launch` 报 "No launch file found"**：Launch 文件必须位于功能包的 `share/<pkg>/launch/` 路径下（通过 `install(DIRECTORY launch ...)` 安装）。如果报了此错误，检查：(1) `colcon build` 是否成功，(2) `source install/setup.bash` 是否执行，(3) `ros2 pkg list | grep launch_demo_pkg` 确认包是否已注册
+- ⚠️ `generate_launch_description` 函数名写错**：Python Launch 文件的入口函数必须**完全一致**地命名为 `generate_launch_description`（注意下划线和小写）。如果函数名有任何偏差，ros2 launch 会报 "module has no attribute 'generate_launch_description'"
 
 ---
 
-#### 步骤 2：Node 参数配置与 remap 话题重映射（20 分钟）
+#### 步骤 2：Node 参数配置与 remap 话题重映射
 
 **知识点讲解**：
 
 **remap 话题重映射的机制与使用场景（知识点 4.4.2）**
 
 - **是什么**：remap（话题重映射，也称 remappings）是 Launch 文件中最强大的功能之一。它可以在不修改节点源码的情况下，将节点内部使用的"逻辑话题名"映射到外部的"物理话题名"。语法为 `remappings=[('内部名', '外部名')]`。例如：`remappings=[('/chatter', '/my_chatter')]` 表示将节点内部所有对 `/chatter` 的发布或订阅操作，重定向到实际的 `/my_chatter` 话题。
-
 - **为什么 remap 是解耦的关键工具**：在 ROS2 的模块化设计中，每个节点使用"约定俗成"的话题名（如激光雷达节点发布到 `/scan`，导航节点订阅 `/scan`）——这使得不同开发者编写的节点可以"即插即用"。但在实际系统中，你可能需要：(1) 运行同一节点的**多个实例**（如两个激光雷达节点分别发布到 `/scan_front` 和 `/scan_rear`），(2) 将第三方节点的"硬编码"话题名适配到你的命名规范，(3) 在不同的命名空间（namespace）中运行节点以隔离通信。remap 让你可以在 Launch 配置文件层面实现这些适配，而不污染节点源码。
 
-- **remap 的两种方向**：
+**remap 的两种方向**：
+
   - **from 内部 → to 外部**：节点内部认为自己在操作 `/chatter`，Launch 帮你重映射到实际的 `/my_chatter`。这是最常见的用法
   - **from 外部 → to 内部**：节点内部的操作不变，但外部的其他节点通过重映射后的名称与其通信。即"/外部话题"的数据被路由到节点的"/内部话题"
 
 **操作步骤**：
 
-```python
+```bash
+mkdir -p ~/launch_demo_pkg/launch
+cp ~/ros2_launch_demo/basic_launch.py ~/launch_demo_pkg/launch/
+
+# 创建最小 package.xml
+cat > ~/launch_demo_pkg/package.xml << 'XMLEOF'
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>launch_demo_pkg</name>
+  <version>0.0.1</version>
+  <description>Launch demo package for EXP17</description>
+  <maintainer email="student@example.com">Student</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>demo_nodes_cpp</exec_depend>
+  <exec_depend>ros2launch</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+XMLEOF
+
+# 创建最小 CMakeLists.txt
+cat > ~/launch_demo_pkg/CMakeLists.txt << 'CMEOF'
+cmake_minimum_required(VERSION 3.8)
+project(launch_demo_pkg)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+find_package(ament_cmake REQUIRED)
+
+# 安装 launch 文件到 share 目录
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+
+ament_package()
+CMEOF
+
 # 2.1 创建带 remap 的 Launch 文件
 cat > ~/launch_demo_pkg/launch/remap_launch.py << 'PYEOF'
 #!/usr/bin/env python3
@@ -8062,7 +8230,6 @@ cat > ~/launch_demo_pkg/launch/remap_launch.py << 'PYEOF'
 
 from launch import LaunchDescription
 from launch_ros.actions import Node
-
 
 def generate_launch_description():
     return LaunchDescription([
@@ -8106,24 +8273,30 @@ ros2 launch launch_demo_pkg remap_launch.py
 
 **预期输出**：
 
-```
+```text
 [listener_default-2]  # 无输出！因为 /chatter 没有发布者
 [talker_remapped-1] [INFO] [...] Publishing: 'Hello World: 1'
 [listener_remapped-3] [INFO] [...] I heard: [Hello World: 1]  # 收到消息！
 [talker_remapped-1] [INFO] [...] Publishing: 'Hello World: 2'
 [listener_remapped-3] [INFO] [...] I heard: [Hello World: 2]
+
 ```
 
-**验证 remap 效果**（在另一个终端中）：
+**验证 remap 效果（在另一个终端中）**：
 
 ```bash
 # 观察话题列表
+
 ros2 topic list
+
 # 预期: 显示 /my_chatter（而不是 /chatter）
+
 #       listener_default 订阅了 /chatter 但无发布者
 
 # 确认 remap 是透明到节点的
+
 ros2 node info /talker_remapped
+
 # 预期: Publishers 中显示 /my_chatter: std_msgs/msg/String（节点内部认为自己在发布 /chatter，但外部看到的是 /my_chatter）
 ```
 
@@ -8131,42 +8304,46 @@ ros2 node info /talker_remapped
 
 remap 之外，还可以通过 `namespace` 参数为节点添加命名空间前缀：
 
-```python
 Node(
+
     package='demo_nodes_cpp',
+    
     executable='talker',
+    
     namespace='robot1',  # 节点名变为 /robot1/talker，话题变为 /robot1/chatter
+    
     output='screen',
+
 ),
-```
 
 命名空间在"同设备运行多个相同机器人模型"时尤其有用——两台机器人的 talker 分别位于 `/robot1/` 和 `/robot2/` 命名空间，它们的话题 `/robot1/chatter` 和 `/robot2/chatter` 互不干扰。
 
 **易错点**：
+
 - ⚠️ **remap 后话题名对不上**：remap 只影响指定的话题名。如果节点还操作其他话题（如 `/parameter_events`），这些话题不受影响。如果 remap 后仍收不到消息，用 `ros2 topic list` 确认实际的话题名
 - ⚠️ **remap 顺序**：`remappings=[(A, B)]` 的语义是"把 A 映射到 B"，其中 A 是节点代码中使用的名称，B 是你希望实际使用的名称。不要把顺序搞反
 
 ---
 
-#### 步骤 3：LaunchConfiguration 参数化启动（20 分钟）
+#### 步骤 3：LaunchConfiguration 参数化启动
 
 **知识点讲解**：
 
 **LaunchConfiguration 运行时参数化（知识点 4.4.2 + 4.4.3）**
 
 - **是什么**：`LaunchConfiguration` 是 Launch 系统的"运行时变量"机制。你可以在 Launch 文件中声明一个 `LaunchConfiguration('param_name')`，然后在运行 Launch 时通过命令行 `param_name:=value` 传入值，或在 Launch 文件内部通过 `DeclareLaunchArgument` 设置默认值。
-
 - **为什么需要参数化**：不同的场景需要不同的节点配置组合。例如：(1) 调试模式需要额外启动 rqt 和日志节点，正常模式只需要核心功能；(2) 仿真模式使用 `use_sim_time:=true`，真机模式使用 `false`；(3) 传感器频率在室内和室外场景中不同。LaunchConfiguration 让你"一份 Launch 文件适配多种场景"，而非为每种场景编写独立的 Launch 文件。
 
-- **怎么用**：
-  1. 在 `generate_launch_description()` 中声明参数：`DeclareLaunchArgument('param_name', default_value='default')`
-  2. 在需要的地方引用：`LaunchConfiguration('param_name')`
-  3. 在 OpaqueFunction 或其他 Substitution 中获取运行时值
-  4. 命令行传入：`ros2 launch pkg file.py param_name:=custom_value`
+**怎么用**：
+
+  - 在 `generate_launch_description()` 中声明参数：`DeclareLaunchArgument('param_name', default_value='default')`
+  - 在需要的地方引用：`LaunchConfiguration('param_name')`
+  - 在 OpaqueFunction 或其他 Substitution 中获取运行时值
+  - 命令行传入：`ros2 launch pkg file.py param_name:=custom_value`
 
 **操作步骤**：
 
-```python
+```bash
 # 3.1 创建参数化的 Launch 文件
 cat > ~/launch_demo_pkg/launch/param_launch.py << 'PYEOF'
 #!/usr/bin/env python3
@@ -8183,7 +8360,6 @@ from launch.actions import DeclareLaunchArgument, LogInfo
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.actions import Node
-
 
 def generate_launch_description():
     # 声明参数及其默认值
@@ -8261,28 +8437,37 @@ ros2 launch launch_demo_pkg param_launch.py enable_debug_node:=true log_level:=d
 
 **预期输出（测试 2）**：
 
-```
 [INFO] [launch]: Starting with log_level=debug, enable_debug=true
-[INFO] [talker_param-1]: process started with pid [XXXX]
-[INFO] [listener_core-2]: process started with pid [XXXX]
-[INFO] [listener_debug-3]: process started with pid [XXXX]  # 额外节点启动！
-[listener_core-2] [INFO] [...] I heard: [Hello World: 1]
-[listener_debug-3] [INFO] [...] I heard: [Hello World: 1]  # 调试监听者也收到消息
-```
 
-**验证条件启动**：
+[INFO] [talker_param-1]: process started with pid [XXXX]
+
+[INFO] [listener_core-2]: process started with pid [XXXX]
+
+[INFO] [listener_debug-3]: process started with pid [XXXX]  # 额外节点启动！
+
+[listener_core-2] [INFO] [...] I heard: [Hello World: 1]
+
+[listener_debug-3] [INFO] [...] I heard: [Hello World: 1]  # 调试监听者也收到消息
+
+**验证条件启动**
 
 ```bash
 # 在运行期间查看节点数
+
 ros2 node list
+
 # 预期（测试 2）:
+
 # /talker_param
+
 # /listener_core
+
 # /listener_debug
 ```
 
 **易错点**：
-- ⚠️ **`IfCondition` 中的表达式比较返回 `False`**：`PythonExpression` 的表达式必须是合法的 Python 表达式字符串。例如 `'"true" == "true"'` 是正确的，但 `'"true" == true'` 会报错（类型不匹配）。可以使用 `EqualsSubstitution` 作为替代方案
+
+- ⚠️ `IfCondition` 中的表达式比较返回 `False**`：`PythonExpression` 的表达式必须是合法的 Python 表达式字符串。例如 `'"true" == "true"'` 是正确的，但 `'"true" == true'` 会报错（类型不匹配）。可以使用 `EqualsSubstitution` 作为替代方案
 - ⚠️ **条件启动的节点名称依然被注册**：即使条件为 `False`（节点未实际启动），`Node` Action 仍然会占用名称——如果两个 `Node` 声明了相同的 `name`，启动时会报冲突。确保每个 `Node` 有唯一名称
 
 ---
@@ -8294,12 +8479,11 @@ ros2 node list
 **条件启动 IfCondition / UnlessCondition 的实现原理（知识点 4.4.3）**
 
 - **是什么**：`IfCondition` 和 `UnlessCondition` 是 Launch 系统中用于控制 Action 是否执行的"条件守卫"。`IfCondition(expr)` 在表达式为 `True` 时执行 Action，`UnlessCondition(expr)` 在表达式为 `False` 时执行 Action。它们可以附着在任何 Action 上（包括 `Node`、`LogInfo`、`ExecuteProcess` 等）。
-
 - **为什么需要条件启动**：在真实机器人系统中，一个 Launch 文件可能需要覆盖多种部署环境——例如：真机测试时需要启动传感器驱动节点，仿真测试时不需要；局域网部署时使用多播发现，云部署时使用 DISCOVERY_SERVER。条件启动让你可以在一个 Launch 文件中编码这些可选逻辑，而非维护多个版本的 Launch 文件。
 
 **操作步骤**：
 
-```python
+```bash
 # 4.1 创建条件启动示例
 cat > ~/launch_demo_pkg/launch/conditional_launch.py << 'PYEOF'
 #!/usr/bin/env python3
@@ -8316,7 +8500,6 @@ from launch.actions import DeclareLaunchArgument, LogInfo
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.actions import Node
-
 
 def generate_launch_description():
     mode_arg = DeclareLaunchArgument(
@@ -8395,14 +8578,12 @@ ros2 launch launch_demo_pkg conditional_launch.py mode:=production
 **OnProcessExit 事件驱动节点编排（知识点 4.4.3）**
 
 - **是什么**：`OnProcessExit` 是 Launch 系统中事件处理机制的核心事件之一。它允许你在某个进程（如节点 A）退出时**自动触发**其他 Action（如启动节点 B、打印日志、执行清理脚本）。类似的还有 `OnProcessStart`（进程启动时触发）、`OnProcessIO`（进程 I/O 输出时触发）等。
-
 - **为什么事件驱动比顺序启动更灵活**：在静态的 LaunchDescription 中，所有 Action 在启动时几乎同时执行——无法表达"先启动 A 节点，等 A 初始化完成后（或等 A 退出后）再启动 B 节点"这种时序依赖。事件处理机制让 Launch 系统具有了**有限状态机**的能力——节点 A 退出 → 触发 Event → 执行 Action X → Action X 完成 → 可能触发新 Event → ...。
-
 - **怎么用**：(1) 为节点 A 的 `Node` Action 注册一个 `EventHandler`；(2) 指定事件类型 `OnProcessExit`；(3) 在 `on_exit` 回调中返回需要触发的 Action 列表；(4) Launch 系统在节点 A 退出时自动执行这些 Action。
 
 **操作步骤**：
 
-```python
+```bash
 # 5.1 创建事件驱动编排示例
 cat > ~/launch_demo_pkg/launch/event_launch.py << 'PYEOF'
 #!/usr/bin/env python3
@@ -8418,7 +8599,6 @@ from launch import LaunchDescription
 from launch.actions import RegisterEventHandler, LogInfo, ExecuteProcess
 from launch.event_handlers import OnProcessExit
 from launch_ros.actions import Node
-
 
 def generate_launch_description():
     # 核心节点：talker
@@ -8470,6 +8650,7 @@ cd ~/launch_demo_pkg
 colcon build --packages-select launch_demo_pkg
 source install/setup.bash
 ros2 launch launch_demo_pkg event_launch.py
+
 ```
 
 **验证事件触发效果**：
@@ -8478,35 +8659,52 @@ ros2 launch launch_demo_pkg event_launch.py
 
 ```bash
 # 5.3 查看运行中的节点
+
 ros2 node list
+
 # 预期: /talker_event, /talker_backup
 
 # 5.4 模拟 talker_event 退出（通过 kill 进程）
+
 # 先找到 talker_event 的进程 PID
+```
+
 ps aux | grep talker_event
+
+```bash
 # 杀掉该进程
+```
+
 kill <PID>
 
+```bash
 # 观察 Launch 终端的输出：
+
 # 预期:
+
 # [INFO] [launch]: [EVENT] talker_event has exited! Starting recovery node...
+
 # [INFO] [listener_recovery-X]: process started with pid [YYYY]
+
 # [INFO] [launch]: [EVENT] Recovery node started successfully.
 
 # 5.5 再次查看节点列表
+
 ros2 node list
+
 # 预期: /talker_backup, /listener_recovery（talker_event 已退出，listener_recovery 已启动）
 ```
 
 **原理深化**：在这个例子中，Launch 系统监听 `talker_event` 的进程退出信号（SIGCHLD），一旦捕获到退出，立即从 `on_exit` 列表中依次执行 Action。这种机制可以用于实现：(1) 故障恢复——传感器驱动崩溃后自动重启；(2) 清理操作——主节点退出后自动保存日志和关闭硬件；(3) 状态机编排——A 完成 → 启动 B → B 完成 → 启动 C。
 
 **易错点**：
+
 - ⚠️ **OnProcessExit 的 target_action 必须是同一个 LaunchDescription 中的 Action**：无法监听其他 Launch 文件启动的进程。如果需要跨 Launch 文件的事件通信，考虑使用 ROS2 话题或服务作为间接通信机制
 - ⚠️ **事件处理器注册后立即生效**：如果 talker 在启动瞬间就崩溃退出（如因依赖缺失），OnProcessExit 会立即触发 recovery 操作——这可能形成"崩溃-恢复-崩溃"的死循环。生产环境中建议在 on_exit 中添加重试计数器和延迟等待
 
 ---
 
-#### 步骤 6：Launch 文件整合练习（15 分钟）
+#### 步骤 6：Launch 文件整合练习
 
 **知识点讲解**：
 
@@ -8514,7 +8712,7 @@ ros2 node list
 
 **操作步骤**：
 
-```python
+```bash
 # 6.1 创建综合 Launch 文件
 cat > ~/launch_demo_pkg/launch/integrated_launch.py << 'PYEOF'
 #!/usr/bin/env python3
@@ -8545,7 +8743,6 @@ from launch.event_handlers import OnProcessExit
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch.conditions import IfCondition
 from launch_ros.actions import Node
-
 
 def generate_launch_description():
     # ===== 参数声明 =====
@@ -8674,16 +8871,25 @@ ros2 launch launch_demo_pkg integrated_launch.py \
 
 ```bash
 # 查看节点列表
+
 ros2 node list
+
 # 预期: /sensor_driver, /data_processor, /debug_monitor（如果启用）
 
 # 查看话题列表
+
 ros2 topic list
+
 # 预期: /sensor_data（或 /test_data），而非默认的 /chatter
 
 # 测试恢复机制：杀掉 sensor_driver
+```
+
 ps aux | grep "sensor_driver"
+
 kill <PID>
+
+```bash
 # 观察 Launch 终端输出: 应自动启动 sensor_driver_recovered
 ```
 
@@ -8698,7 +8904,7 @@ kill <PID>
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 环境 | Launch 文件必须位于功能包的 `launch/` 目录并在编译时通过 `install(DIRECTORY launch ...)` 安装到 `share/` 路径 |
 | ⚠️ 函数名 | Python Launch 文件的入口函数必须精确命名为 `generate_launch_description` |
 | ⚠️ 进程管理 | Launch 进程是父进程，所有子节点在 Launch 退出时会被自动终止。不要在 Launch 运行期间直接 kill Launch 进程（除非紧急情况），用 `Ctrl+C` 优雅退出 |
@@ -8711,6 +8917,7 @@ kill <PID>
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 编写 Python Launch 文件，使用 `Node` 和 `LaunchDescription` 启动多节点系统
 - ✅ 使用 `remappings` 实现话题重映射，无需修改节点源码即可适配不同命名规范
 - ✅ 使用 `LaunchConfiguration` 和 `DeclareLaunchArgument` 实现运行时参数化配置
@@ -8720,7 +8927,7 @@ kill <PID>
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 启动编排 | 掌握 Python Launch 文件的编写方法（Node 声明、remap、参数、条件、事件） |
 | 参数化配置 | 能通过 LaunchConfiguration 实现一份 Launch 文件适配多种部署场景 |
 | 故障恢复 | 能通过 OnProcessExit 事件处理器实现节点崩溃的自动检测与重启 |
@@ -8729,7 +8936,7 @@ kill <PID>
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `ros2 launch` 报 "Package not found" | 功能包未被 colcon build 安装或未 source setup.bash | `colcon build && source install/setup.bash`，用 `ros2 pkg list` 确认 |
 | Launch 启动后节点立即退出 | 可执行文件不存在或参数配置错误 | 检查 `package` 和 `executable` 名称；运行 `ros2 pkg executables <pkg>` 确认可执行文件列表 |
 | remap 不生效 | remappings 格式错误或顺序颠倒 | 格式为 `[('内部名', '外部名')]`；用 `ros2 topic list` 确认实际话题名 |
@@ -8752,37 +8959,37 @@ kill <PID>
 #### 9.2 思考题
 
 **思考题 1**：
+
 在步骤 5 中，你使用 `OnProcessExit` 实现了传感器节点退出后的自动恢复。但如果传感器节点在启动 0.5 秒内就崩溃、被恢复、再崩溃、再恢复……形成了一个快速循环（"抖动"），这会导致系统不稳定。请设计一个改进的恢复策略，限制最大重启次数或引入指数退避（exponential backoff）延迟，并用伪代码描述你的方案如何集成到 Launch 文件中。
 
 **思考题 2**：
+
 假设你负责为 B2 实验箱的 3 个传感器（MQ5 气体传感器、MFRC522 读卡器、指纹传感器）编写统一的 Launch 启动文件。你需要支持以下场景：(1) 全功能模式（3 个传感器同时启动），(2) 仅气体检测模式（只启动 MQ5），(3) 仅身份认证模式（启动 MFRC522 + 指纹传感器），(4) 所有传感器话题通过 remap 统一到 `/b2_sensors/<sensor_name>` 命名空间。请写出你的 Launch 文件设计（可以是完整的 Python 代码或详细的伪代码+设计说明），并解释你的参数化策略。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 基础 Launch 文件正确性 | 20% | basic_launch.py 是否能同时启动 talker 和 listener |
 | remap + 参数化 | 25% | remap_launch.py 和 param_launch.py 的 remap 和条件启动是否正确生效 |
 | 综合 Launch 文件 | 20% | integrated_launch.py 的完整性（覆盖 Node/remap/参数/条件/事件） |
 | 原理分析 | 20% | 对 ROS1 roslaunch vs ROS2 Launch 架构差异的分析深度 |
 | 思考题 1 + 2 | 15% | 故障恢复策略的改进方案 + 多传感器 Launch 文件设计的合理性 |
 
----
-
-## 更新日志
+#### 更新日志
 
 | 版本 | 日期 | 更新内容 | 更新人 |
-|------|------|---------|-------|
+|---|---|---|---|
 | v0.1 | 2026-08-10 | 初始生成实验13~17（共5个实验），基于ROS2 Humble标准API设计，标注为"待源码核实" | LabGuideExperimentAgent |
 
-## 实验18：ROS2元功能包介绍（2h）
+## 实验18：ROS2元功能包介绍
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 1.4.3 | build_depend/exec_depend与元功能包聚合原理 | 原理 | 第1章 ROS2基础与环境搭建 → 1.4 ROS2功能包管理 |
 
 ### 二、实验目标
@@ -8797,8 +9004,8 @@ kill <PID>
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2  |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
 | 编译工具 | colcon（随 ros-humble-ros-base 安装） |
@@ -8810,16 +9017,18 @@ kill <PID>
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐（容易） |
 | 实验类型 | 验证性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握元功能包的 package.xml 特殊格式（`<exec_depend>` 替代代码构建配置）
 - 理解元功能包与普通功能包在 `colcon build` 时的行为差异
 
 **难点**：
+
 - 区分 `<build_depend>`（编译时需要）、`<exec_depend>`（运行时需要）、`<depend>`（编译+运行都需要）三种依赖声明的适用场景
 - 理解元功能包"牵一发而动全身"的依赖传递机制——安装一个元功能包即安装其所有 exec_depend
 
@@ -8838,12 +9047,12 @@ kill <PID>
 #### 5.2 预期输出对照表
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `ros2 pkg create my_robot_meta --build-type ament_cmake` | 生成 package.xml + CMakeLists.txt（不含 src/ 目录） |
 | 修改后 `cat package.xml` | 可见多个 `<exec_depend>` 标签，无 `<build_depend>` |
 | `colcon build --packages-select my_robot_meta` | `Summary: 1 package finished` |
 | `ros2 pkg xml my_robot_meta` | 列出所有 exec_depend 的子包名称 |
-| `apt list --installed | grep ros-humble-navigation2` | 显示 navigation2 及其聚合的子包列表 |
+| `apt list --installed | grep ros-humble-navigation2` |
 
 ---
 
@@ -8851,7 +9060,7 @@ kill <PID>
 
 #### 整体流程
 
-```
+```text
 [1. 理解元功能包概念] ──► [2. 分析 navigation2 元功能包]
                                         │
 [5. 清理与总结] ◄── [4. 验证依赖传递] ◄── [3. 创建自定义元功能包]
@@ -8879,13 +9088,12 @@ kill <PID>
 - `nav2_map_server`（地图服务）
 - `nav2_amcl`（自适应蒙特卡洛定位）
 - ...等 20+ 个子包
-
-如果没有元功能包，用户想安装完整的 Navigation2 系统，需要记住并逐个安装这 20 多个子包。元功能包 `ros-humble-navigation2` 将所有子包聚合为一个逻辑整体——一条安装命令即可完成全部部署。这种"一站式声明"的设计在工程中对应**依赖传递**（transitive dependency）思想。
+- 如果没有元功能包，用户想安装完整的 Navigation2 系统，需要记住并逐个安装这 20 多个子包。元功能包 `ros-humble-navigation2` 将所有子包聚合为一个逻辑整体——一条安装命令即可完成全部部署。这种"一站式声明"的设计在工程中对应**依赖传递**（transitive dependency）思想。
 
 **元功能包与普通功能包集合的区别**
 
 | 对比维度 | 元功能包（Metapackage） | 普通功能包集合 |
-|---------|----------------------|-------------|
+|---|---|---|
 | 包含代码 | 否 | 是 |
 | package.xml | 仅 `<exec_depend>` | 含 `<build_depend>` + `<exec_depend>` + `<depend>` |
 | 构建类型 | 始终 `ament_cmake` | ament_cmake 或 ament_python |
@@ -8902,7 +9110,7 @@ kill <PID>
 
 **知识点讲解**：
 
-Navigation2 是 ROS2 生态中最典型的元功能包案例。它聚合了路径规划、定位、控制、行为树等模块，各模块本身又是独立的功能包。通过分析它的 package.xml，可以直观理解元功能包的依赖组织方式。
+Navigation2 是 ROS2 生态中最典型的元功能包案例。它聚合了路径规划、定位、控制、行为树等模块，各模块本身又是独立的功能包。通过分析它的 package.xml，可以直观理解元功能包的依赖组织方式。需要连接网络
 
 **操作**：
 
@@ -8922,71 +9130,113 @@ ros2 pkg xml navigation2
 
 ```xml
 <?xml version="1.0"?>
+
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
 <package format="3">
+
   <name>navigation2</name>
+
   <version>1.1.7</version>
+
   <description>ROS2 Navigation Stack</description>
+
   <maintainer email="...">...</maintainer>
+
   <license>Apache-2.0</license>
-
-  <!-- 关键：元功能包只声明 exec_depend，不声明 build_depend -->
-  <exec_depend>nav2_amcl</exec_depend>
-  <exec_depend>nav2_behavior_tree</exec_depend>
-  <exec_depend>nav2_bt_navigator</exec_depend>
-  <exec_depend>nav2_controller</exec_depend>
-  <exec_depend>nav2_costmap_2d</exec_depend>
-  <exec_depend>nav2_map_server</exec_depend>
-  <exec_depend>nav2_planner</exec_depend>
-  <exec_depend>nav2_waypoint_follower</exec_depend>
-  <exec_depend>nav2_lifecycle_manager</exec_depend>
-  ...
-
-  <export>
-    <build_type>ament_cmake</build_type>
-  </export>
-</package>
 ```
 
+  <!-- 关键：元功能包只声明 exec_depend，不声明 build_depend -->
+
+```xml
+  <exec_depend>nav2_amcl</exec_depend>
+
+  <exec_depend>nav2_behavior_tree</exec_depend>
+
+  <exec_depend>nav2_bt_navigator</exec_depend>
+
+  <exec_depend>nav2_controller</exec_depend>
+
+  <exec_depend>nav2_costmap_2d</exec_depend>
+
+  <exec_depend>nav2_map_server</exec_depend>
+
+  <exec_depend>nav2_planner</exec_depend>
+
+  <exec_depend>nav2_waypoint_follower</exec_depend>
+
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
+```
+
+  ...
+
 ```bash
+  <export>
+
+    <build_type>ament_cmake</build_type>
+
+  </export>
+
+</package>
+
 # 2.3 查看 navigation2 的 CMakeLists.txt（位于 /opt/ros/humble/share/navigation2/）
+```
+
 cat /opt/ros/humble/share/navigation2/cmake/../../../share/navigation2/package.xml 2>/dev/null || echo "查看 package.xml 即可"
 
+```bash
 # 2.4 列出所有与 navigation2 相关的已安装子包
+
 ros2 pkg list | grep nav2 | sort
 ```
 
-**预期输出**（至少 15-20 个子包）：
+**预期输出（至少 15-20 个子包）**：
 
-```
 nav2_amcl
+
 nav2_behavior_tree
+
 nav2_behaviors
+
 nav2_bt_navigator
+
 nav2_collision_monitor
+
 nav2_common
+
 nav2_constrained_smoother
+
 nav2_controller
+
 nav2_core
+
 nav2_costmap_2d
+
 nav2_map_server
+
 nav2_msgs
+
 nav2_planner
+
 nav2_regulated_pure_pursuit_controller
+
 nav2_smoother
+
 nav2_util
+
 nav2_waypoint_follower
+
 ...
-```
 
 分析要点：
+
 - 注意 `nav2_common`、`nav2_core`、`nav2_msgs` 等是**基础功能包**（提供公共接口和消息定义），它们被其他子包 **build_depend**
 - `nav2_planner`、`nav2_controller` 等是**算法实现包**，依赖基础功能包并提供实际的导航算法
 - 元功能包 `navigation2` 将所有这些以 `exec_depend` 聚合在一起
 
 ---
 
-#### 步骤 3：创建自定义元功能包（30 分钟）
+#### 步骤 3：创建自定义元功能包
 
 **知识点讲解**：
 
@@ -9010,7 +9260,7 @@ tree ~/exp18_ws/src/my_robot_meta/
 
 **预期输出**：
 
-```
+```text
 src/my_robot_meta/
 ├── CMakeLists.txt
 ├── include/
@@ -9023,73 +9273,94 @@ src/my_robot_meta/
 
 ```bash
 # 3.4 将 my_robot_meta 改造为元功能包
+
 # 编辑 package.xml，清除 build_depend，仅保留 exec_depend
 ```
 
-**编辑 `~/exp18_ws/src/my_robot_meta/package.xml`**：
+**编辑 **`~/exp18_ws/src/my_robot_meta/package.xml**`：
 
 ```xml
 <?xml version="1.0"?>
+
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
 <package format="3">
+
   <name>my_robot_meta</name>
+
   <version>0.1.0</version>
+
   <description>自定义元功能包：聚合机器人核心功能</description>
+
   <maintainer email="student@example.com">Student</maintainer>
+
   <license>Apache-2.0</license>
+```
 
   <!-- 元功能包的核心：仅声明 exec_depend -->
+
   <!-- 以下为示例依赖，实际依赖系统中已安装的包 -->
+
+```bash
   <exec_depend>rclpy</exec_depend>
+
   <exec_depend>std_msgs</exec_depend>
+
   <exec_depend>sensor_msgs</exec_depend>
+
   <exec_depend>geometry_msgs</exec_depend>
+
   <exec_depend>tf2_ros</exec_depend>
 
   <export>
-    <build_type>ament_cmake</build_type>
-  </export>
-</package>
-```
 
-```bash
+    <build_type>ament_cmake</build_type>
+
+  </export>
+
+</package>
+
 # 3.5 简化 CMakeLists.txt（元功能包不需要实际的编译指令）
+
 # 编辑 CMakeLists.txt，保留最小内容：
 ```
 
-**编辑 `~/exp18_ws/src/my_robot_meta/CMakeLists.txt`**：
+**编辑 **`~/exp18_ws/src/my_robot_meta/CMakeLists.txt**`：
 
-```cmake
 cmake_minimum_required(VERSION 3.8)
+
 project(my_robot_meta)
 
+```bash
 # 查找 ament_cmake
+```
+
 find_package(ament_cmake REQUIRED)
 
+```bash
 # 元功能包不需要添加任何可执行文件或库
+
 # 仅需调用 ament_package() 完成包的注册
+```
 
 ament_package()
-```
 
 ```bash
 # 3.6 编译元功能包
+
 cd ~/exp18_ws
+
 colcon build --packages-select my_robot_meta
 ```
 
 **预期输出**：
 
-```
+```text
 Starting >>> my_robot_meta
 Finished <<< my_robot_meta [0.50s]
 
 Summary: 1 package finished [0.68s]
-```
-
 关键观察：编译时间极短（< 1 秒），因为元功能包没有实际代码需要编译。
-
-```bash
 # 3.7 加载环境并验证
 source install/setup.bash
 ros2 pkg xml my_robot_meta
@@ -9110,18 +9381,20 @@ ros2 pkg xml my_robot_meta
 ```
 
 **易错点**：
+
 - ⚠️ **构建类型错误**：如果误用 `--build-type ament_python` 创建元功能包，colcon build 会期望找到 setup.py。元功能包应始终使用 `ament_cmake`。
 - ⚠️ **依赖声明混淆**：如果在元功能包的 package.xml 中写了 `<build_depend>` 而非 `<exec_depend>`，虽然编译不会报错，但语义上是不正确的——元功能包不需要编译任何代码，因此不需要 build_depend。
 
 ---
 
-#### 步骤 4：验证依赖传递机制（15 分钟）
+#### 步骤 4：验证依赖传递机制
 
 **知识点讲解**：
 
 **依赖传递（Transitive Dependency）**是指：当包 A 依赖包 B，包 B 依赖包 C，那么安装包 A 时，APT/colcon 会自动拉取包 C。元功能包正是利用了这种传递性——用户只需指定元功能包，其所有子包通过依赖链自动安装。
 
 **在 ROS2 工作空间中，依赖传递的工作方式**：
+
 - `colcon build` 会读取所有包的 package.xml，自动确定编译顺序
 - 如果子包 B 声明了 `<build_depend>my_robot_meta</build_depend>`（虽然不推荐，但技术上可行），colcon 会先编译元功能包再编译子包
 - **推荐做法**：子包应分别声明自己真正需要的依赖（如 `rclpy`、`std_msgs`），而非依赖元功能包；元功能包仅用于"批量安装"的场景
@@ -9147,6 +9420,7 @@ echo "=== 如果创建一个依赖 my_robot_meta 的普通包，其间接依赖�
 ```
 
 **知识点延伸**：
+
 在实际项目中，元功能包的典型命名约定是在最后加上 `_meta` 后缀（如 `my_robot_meta`），或者在 `package.xml` 的 `<export>` 中声明 `<metapackage/>` 标签（ROS2 的 package format 3 中推荐在 `<export>` 中使用）。不过严格来说，package.xml 中只要不含源码文件且有 `<export><build_type>ament_cmake</build_type></export>`，它就是事实上的元功能包。
 
 ---
@@ -9155,16 +9429,16 @@ echo "=== 如果创建一个依赖 my_robot_meta 的普通包，其间接依赖�
 
 ```bash
 # 清理工作空间（可选，保留亦可）
+
 cd ~
+
 # rm -rf ~/exp18_ws  # 如需清理取消注释
 ```
-
----
 
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 构建类型 | 元功能包必须使用 `ament_cmake` 构建类型。使用 `ament_python` 会导致 colcon 期望 setup.py 而编译失败 |
 | ⚠️ 依赖声明 | package.xml 中应只出现 `<exec_depend>`。如果声明了 `<build_depend>`，虽然不影响编译，但语义不正确，代码审查时会被标记 |
 | ⚠️ 子包可用性 | 元功能包声明的 exec_depend 子包必须在系统中确实存在（APT 安装或同工作空间编译），否则 rosdep 检查会报依赖缺失 |
@@ -9177,6 +9451,7 @@ cd ~
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 用自己的话解释元功能包（Metapackage）的设计目的："不含代码，只聚合依赖"
 - ✅ 使用 `ros2 pkg create --build-type ament_cmake` 创建一个元功能包
 - ✅ 编写仅包含 `<exec_depend>` 的 package.xml
@@ -9186,7 +9461,7 @@ cd ~
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | 包组织能力 | 理解 ROS2 的包层次结构：单功能包 → 功能包集合 → 元功能包 → 发行版（Desktop） |
 | 依赖管理 | 掌握 `<exec_depend>` 在元功能包中的核心作用及其与普通功能包中 `<build_depend>` 的区别 |
 | 系统分析 | 能通过 `ros2 pkg xml` 和 `ros2 pkg list` 分析大型 ROS2 项目（如 navigation2）的模块结构 |
@@ -9195,7 +9470,7 @@ cd ~
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `colcon build` 报 "Unknown CMake command 'ament_package'" | 未安装 ament_cmake | `sudo apt install ros-humble-ament-cmake` |
 | `ros2 pkg xml my_robot_meta` 无输出 | 未 source setup.bash | 执行 `source ~/exp18_ws/install/setup.bash` |
 | 元功能包的 exec_depend 子包在系统中不存在 | 声明了未经安装的包 | 用 `apt install ros-humble-<pkg>` 安装缺失的依赖包 |
@@ -9216,31 +9491,31 @@ cd ~
 #### 9.2 思考题
 
 **思考题 1**：
+
 假设你正在开发一个"家庭服务机器人"系统，包含以下功能包：`voice_recognition`（语音识别）、`face_detection`（人脸检测）、`navigation_planner`（路径规划）、`arm_controller`（机械臂控制）、`sensor_fusion`（传感器融合）。请设计一个元功能包 `home_robot_meta`，写出其 package.xml 的完整内容，并说明你选择 exec_depend（而非 build_depend）的理由。
 
 **思考题 2**：
+
 在实际项目中，可能会出现"元功能包 A 依赖元功能包 B"（嵌套元功能包）的情况。请以 ROS2 的发行版为例：`ros-humble-desktop` 元功能包依赖 `ros-humble-ros-base` 元功能包。分析这种"嵌套元功能包"设计的优点和潜在问题（至少各列出 2 点）。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否按要求完成元功能包的创建、编译与验证 |
 | 截图与记录 | 15% | 截图是否清晰、完整（≥5 张），标注是否准确 |
 | 原理分析 | 25% | 对元功能包设计意图的理解深度，需覆盖三个要求要点 |
 | 思考题 1 | 15% | package.xml 编写的正确性与理由阐述的合理性 |
 | 思考题 2 | 15% | 对嵌套元功能包设计的分析是否深入，优缺点是否合理 |
 
----
-
-## 实验19：ROS2 TF2坐标变换（2h）
+## 实验19：ROS2 TF2坐标变换
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 5.1.1 | TF2坐标系树形结构与父子变换概念 | 概念 | 第5章 机器人建模与仿真 → 5.1 TF2坐标变换 |
 | 5.1.2 | tf2_ros发布/tf与Buffer+TransformListener查询原理 | 原理 | 第5章 机器人建模与仿真 → 5.1 TF2坐标变换 |
 | 5.1.3 | StaticTransformBroadcaster与TransformBroadcaster发布与查询流程 | 流程 | 第5章 机器人建模与仿真 → 5.1 TF2坐标变换 |
@@ -9257,8 +9532,8 @@ cd ~
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2  |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
 | 核心依赖 | `ros-humble-tf2-ros`、`ros-humble-tf2-tools`、`ros-humble-tf2-geometry-msgs` |
@@ -9270,16 +9545,18 @@ cd ~
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握 StaticTransformBroadcaster（静态不变变换）与 TransformBroadcaster（动态持续更新变换）的适用场景与代码实现
 - 熟练使用 `tf2_echo` 和 `view_frames` 两个命令行工具调试 TF 树
 
 **难点**：
+
 - 理解 TransformStamped 消息中各字段的含义：`header.frame_id`（父坐标系）、`child_frame_id`（子坐标系）、`transform.translation`（平移向量）、`transform.rotation`（四元数旋转）
 - 区分"发布端（Broadcaster）用四元数表示旋转"与"查询端（lookup_transform）得到的位姿含义"，避免平移和旋转的坐标系混淆
 
@@ -9298,7 +9575,7 @@ cd ~
 #### 5.2 预期输出对照表
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | 启动静态 TF 广播节点后 `ros2 topic echo /tf_static --once` | 显示一条 `geometry_msgs/msg/TransformStamped` 消息 |
 | `ros2 run tf2_ros tf2_echo base_link camera_frame` | 持续输出 `Translation: [0.300, 0.000, 0.500]` 和 `Rotation: in Quaternion [...]` |
 | `ros2 run tf2_tools view_frames` | 生成 `frames.pdf`，包含 base_link → lidar_frame → camera_frame 的父子关系 |
@@ -9310,7 +9587,7 @@ cd ~
 
 #### 整体流程
 
-```
+```text
 [1. 理解TF2变换树概念] ──► [2. 发布静态TF变换] ──► [3. 发布动态TF变换]
                                                               │
 [6. 清理与总结] ◄── [5. 查询任意坐标系相对位姿] ◄── [4. 可视化验证TF树]
@@ -9318,7 +9595,7 @@ cd ~
 
 ---
 
-#### 步骤 1：理解 TF2 变换树的核心概念（15 分钟）
+#### 步骤 1：理解 TF2 变换树的核心概念
 
 **知识点讲解**：
 
@@ -9330,16 +9607,17 @@ TF2（Transform Library version 2）是 ROS2 中管理**多坐标系之间空间
 
 如果坐标系之间形成环路（如 A 的父是 B，B 的父是 C，C 的父是 A），查询 A 到 B 的变换时将无限循环。TF2 在构建树时会检测并拒绝环路——尝试发布一个会形成环路的变换将被静默忽略（并输出警告日志）。这种"无环"设计保证了 `lookup_transform` 查询在有限步内必然终止。
 
-**两条核心话题：`/tf` 与 `/tf_static`**
+**两条核心话题：**`/tf` 与 `/tf_static`
 
 | 话题 | 用途 | 发布频率 | 典型场景 |
-|------|------|---------|---------|
+|---|---|---|---|
 | `/tf` | 动态变换 | 高频（10-100Hz） | 机械臂关节角度、车轮里程计 |
 | `/tf_static` | 静态变换 | 仅发布一次（latch） | 传感器安装偏移、底盘结构尺寸 |
 
 将静态变换和动态变换分开的设计意图：静态变换在系统启动后几乎不变（如摄像头在底盘上的安装位置），每次重发浪费带宽；单独的话题 `/tf_static` 支持 **latch**（新订阅者加入时自动获取历史消息），减少重复发布。
 
 **知识图谱对应**：
+
 - 知识点 5.1.1：TF2 树形结构的定义与父子关系
 - 知识点 5.1.2：`/tf` 与 `/tf_static` 双话题机制、Buffer 缓存与 TransformListener 订阅
 
@@ -9357,189 +9635,263 @@ TF2（Transform Library version 2）是 ROS2 中管理**多坐标系之间空间
 
 TF2 使用**四元数**（x, y, z, w）表示旋转。四元数相比欧拉角（roll/pitch/yaw）有两个关键优势：(1) 避免万向节死锁（Gimbal Lock）——欧拉角在某些姿态下会丢失一个自由度；(2) 球面线性插值（Slerp）平滑且计算高效——在时间戳之间插值旋转时，四元数提供最短路径的旋转插值。
 
-**四元数与欧拉角的转换**（公式）：
+**四元数与欧拉角的转换（公式）**：
 
-```
 四元数 q = (x, y, z, w) 与欧拉角 (roll, pitch, yaw) 的关系：
 
 若绕 Z 轴旋转 yaw 角度（2D 机器人最常见的情况）：
+
   x = 0, y = 0, z = sin(yaw/2), w = cos(yaw/2)
 
 一般形式的转换函数：
+
   from tf2_ros import quaternion_from_euler  # RPY → Quaternion
-```
 
-**操作**：
+将下面代码复制到终端运行
 
-创建 Python 脚本 `~/exp19_ws/src/tf2_demo/tf2_demo/static_tf_broadcaster.py`：
+```bash
+# ===== 一、建目录结构 =====
 
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-实验19：TF2 静态变换发布节点
-发布 base_link → lidar_frame 和 base_link → camera_frame 的固定偏移
-运行：ros2 run tf2_demo static_tf_broadcaster
-"""
+mkdir -p ~/exp19_ws/src/tf2_demo/tf2_demo
 
-import math
-import rclpy
-from rclpy.node import Node
-from geometry_msgs.msg import TransformStamped
-from tf2_ros import StaticTransformBroadcaster
+mkdir -p ~/exp19_ws/src/tf2_demo/resource
 
+# ===== 二、package.xml =====
 
-class StaticTFPublisher(Node):
-    """发布传感器在底盘坐标系中的静态安装偏移"""
+cat > ~/exp19_ws/src/tf2_demo/package.xml << 'EOF'
 
-    def __init__(self):
-        super().__init__('static_tf_publisher')
+<?xml version="1.0"?>
 
-        # 创建静态变换广播器
-        # StaticTransformBroadcaster 内部管理一个发布者，向 /tf_static 话题发送消息
-        self.static_broadcaster = StaticTransformBroadcaster(self)
+<package format="3">
 
-        # 发布两个静态变换：激光雷达偏移 + 相机偏移
-        self.publish_lidar_transform()
-        self.publish_camera_transform()
-        self.get_logger().info('静态 TF 变换已发布到 /tf_static')
+  <name>tf2_demo</name>
 
-    def publish_lidar_transform(self):
-        """发布 base_link → lidar_frame 的固定变换
+  <version>0.1.0</version>
 
-        激光雷达安装在底盘正前方 0.20m、高度 0.15m 处，无旋转偏移
-        """
-        t = TransformStamped()
+  <description>TF2 demo for EXP19</description>
 
-        # 时间戳：当前 ROS 时间
-        t.header.stamp = self.get_clock().now().to_msg()
-        # 父坐标系（参考系）
-        t.header.frame_id = 'base_link'
-        # 子坐标系（被描述的坐标系）
-        t.child_frame_id = 'lidar_frame'
+  <maintainer email="student@example.com">Student</maintainer>
 
-        # 平移：激光雷达在 base_link 前方 0.20m、上方 0.15m
-        t.transform.translation.x = 0.20
-        t.transform.translation.y = 0.0
-        t.transform.translation.z = 0.15
+  <license>Apache-2.0</license>
 
-        # 旋转：无旋转偏移 → 单位四元数 (0, 0, 0, 1)
-        t.transform.rotation.x = 0.0
-        t.transform.rotation.y = 0.0
-        t.transform.rotation.z = 0.0
-        t.transform.rotation.w = 1.0
+  <buildtool_depend>ament_python</buildtool_depend>
 
-        # 发送静态变换
-        self.static_broadcaster.sendTransform(t)
-        self.get_logger().info(
-            f'发布静态变换: {t.header.frame_id} → {t.child_frame_id} '
-            f'平移=({t.transform.translation.x:.2f}, '
-            f'{t.transform.translation.y:.2f}, '
-            f'{t.transform.translation.z:.2f})'
-        )
+  <depend>rclpy</depend>
 
-    def publish_camera_transform(self):
-        """发布 base_link → camera_frame 的固定变换
+  <depend>tf2_ros</depend>
 
-        深度相机安装在底盘顶部中央、前方 0.10m、高度 0.50m 处
-        相机坐标系通常 Z 轴指向前方（ROS 约定），本体绕 Y 轴旋转 -90°
-        但为简化演示，此处保持与 base_link 同向
-        """
-        t = TransformStamped()
+  <depend>geometry_msgs</depend>
 
-        t.header.stamp = self.get_clock().now().to_msg()
-        t.header.frame_id = 'base_link'
-        t.child_frame_id = 'camera_frame'
+  <export>
 
-        # 平移：相机在 base_link 前方 0.10m、上方 0.50m
-        t.transform.translation.x = 0.10
-        t.transform.translation.y = 0.0
-        t.transform.translation.z = 0.50
+    <build_type>ament_python</build_type>
 
-        # 旋转：相机通常需要绕轴旋转以使 Z 轴朝前
-        # 此处为简化，假设相机坐标系与 base_link 平行（仅作演示）
-        t.transform.rotation.x = 0.0
-        t.transform.rotation.y = 0.0
-        t.transform.rotation.z = 0.0
-        t.transform.rotation.w = 1.0
+  </export>
 
-        self.static_broadcaster.sendTransform(t)
-        self.get_logger().info(
-            f'发布静态变换: {t.header.frame_id} → {t.child_frame_id} '
-            f'平移=({t.transform.translation.x:.2f}, '
-            f'{t.transform.translation.y:.2f}, '
-            f'{t.transform.translation.z:.2f})'
-        )
+</package>
 
+EOF
 
-def main(args=None):
-    rclpy.init(args=args)
-    node = StaticTFPublisher()
-    # 静态变换发布后节点即可退出（数据已 latch 到 /tf_static）
-    # 但为了后续步骤查看，保持节点运行 2 秒
-    rclpy.spin_once(node, timeout_sec=2.0)
-    node.destroy_node()
-    rclpy.shutdown()
+# ===== 三、setup.py（只放 Python 安装配置，不含 setup.cfg 内容）=====
 
+cat > ~/exp19_ws/src/tf2_demo/setup.py << 'EOF'
 
-if __name__ == '__main__':
-    main()
-```
-
-**配套 `setup.py`**（`~/exp19_ws/src/tf2_demo/setup.py`）：
-
-```python
-from setuptools import setup
+from setuptools import find_packages, setup
 
 package_name = 'tf2_demo'
 
 setup(
+
     name=package_name,
+
     version='0.1.0',
-    packages=[package_name],
+
+    packages=find_packages(exclude=['test']),
+
     data_files=[
+
         ('share/ament_index/resource_index/packages',
+
             ['resource/' + package_name]),
+
         ('share/' + package_name, ['package.xml']),
+
     ],
+
     install_requires=['setuptools'],
+
     zip_safe=True,
+
+    maintainer='Student',
+
+    maintainer_email='student@example.com',
+
+    description='TF2 demo for EXP19',
+
+    license='Apache-2.0',
+
+    tests_require=['pytest'],
+
     entry_points={
+
         'console_scripts': [
+
             'static_tf_broadcaster = tf2_demo.static_tf_broadcaster:main',
+
         ],
+
     },
+
 )
-```
 
-**执行验证**：
+EOF
 
-```bash
-# 创建工作空间并编译
-mkdir -p ~/exp19_ws/src
-cd ~/exp19_ws/src
-ros2 pkg create tf2_demo --build-type ament_python --dependencies rclpy tf2_ros geometry_msgs
-# 将上述 Python 代码写入对应文件后编译
+# ===== 四、setup.cfg（关键：单独一个文件，重定向可执行文件位置）=====
+
+cat > ~/exp19_ws/src/tf2_demo/setup.cfg << 'EOF'
+
+[develop]
+
+script_dir=$base/lib/tf2_demo
+
+[install]
+
+install_scripts=$base/lib/tf2_demo
+
+EOF
+
+# ===== 五、resource 占位文件 + __init__.py =====
+
+touch ~/exp19_ws/src/tf2_demo/resource/tf2_demo
+
+touch ~/exp19_ws/src/tf2_demo/tf2_demo/__init__.py
+
+# ===== 六、static_tf_broadcaster.py =====
+
+cat > ~/exp19_ws/src/tf2_demo/tf2_demo/static_tf_broadcaster.py << 'EOF'
+
+#!/usr/bin/env python3
+
+import rclpy
+
+from rclpy.node import Node
+
+from geometry_msgs.msg import TransformStamped
+
+from tf2_ros import StaticTransformBroadcaster
+
+class StaticTFPublisher(Node):
+
+    def __init__(self):
+
+        super().__init__('static_tf_publisher')
+
+        self.br = StaticTransformBroadcaster(self)
+
+        self.publish_lidar()
+
+        self.publish_camera()
+
+        self.get_logger().info('静态 TF 变换已发布到 /tf_static')
+
+    def publish_lidar(self):
+
+        t = TransformStamped()
+
+        t.header.stamp = self.get_clock().now().to_msg()
+
+        t.header.frame_id = 'base_link'
+
+        t.child_frame_id = 'lidar_frame'
+
+        t.transform.translation.x = 0.20
+
+        t.transform.translation.z = 0.15
+
+        t.transform.rotation.w = 1.0
+
+        self.br.sendTransform(t)
+
+    def publish_camera(self):
+
+        t = TransformStamped()
+
+        t.header.stamp = self.get_clock().now().to_msg()
+
+        t.header.frame_id = 'base_link'
+
+        t.child_frame_id = 'camera_frame'
+
+        t.transform.translation.x = 0.10
+
+        t.transform.translation.z = 0.50
+
+        t.transform.rotation.w = 1.0
+
+        self.br.sendTransform(t)
+
+def main(args=None):
+
+    rclpy.init(args=args)
+
+    node = StaticTFPublisher()
+
+    try:
+
+        rclpy.spin(node)
+
+    except KeyboardInterrupt:
+
+        pass
+
+    finally:
+
+        node.destroy_node()
+
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+
+    main()
+
+EOF
+
+# ===== 七、编译 & 运行 =====
 
 cd ~/exp19_ws
+
 colcon build --packages-select tf2_demo
+
 source install/setup.bash
 
-# 运行静态 TF 广播节点
 ros2 run tf2_demo static_tf_broadcaster
+```
 
-# 验证 /tf_static 话题（新开终端）
+验证 TF（新终端）
+
+```bash
 source ~/exp19_ws/install/setup.bash
+```
+
+看 /tf_static
+
+```bash
 ros2 topic echo /tf_static --once
 ```
 
+你应该看到：
+
+- `base_link → lidar_frame`
+- `base_link → camera_frame`
+
 **易错点**：
+
 - ⚠️ **四元数归一化**：`rotation.w = 1.0` 是单位四元数（表示无旋转）。如果手动构建四元数但未归一化（`sqrt(x²+y²+z²+w²) != 1`），TF2 查询结果会产生错误的旋转值。建议始终使用 `quaternion_from_euler()` 或 `tf2_geometry_msgs` 中的工具函数构建四元数。
 - ⚠️ **时间戳填 0 的问题**：不要将 `header.stamp` 设为零值。使用 `self.get_clock().now().to_msg()` 获取当前时间。零时间戳会被 TF2 的 Buffer 视为"过期"而拒绝缓存。
 
 ---
 
-#### 步骤 3：发布动态 TF 变换 —— 模拟机器人运动（25 分钟）
+#### 步骤 3：发布动态 TF 变换 —— 模拟机器人运动
 
 **知识点讲解**：
 
@@ -9548,7 +9900,7 @@ ros2 topic echo /tf_static --once
 `TransformBroadcaster` 用于发布**持续变化**的坐标变换，如机械臂关节角度（每秒可能变化数十次）、车轮里程计（机器人移动时 base_link 在 odom 坐标系下的位置不断改变）。它与 `StaticTransformBroadcaster` 的核心区别在于：
 
 | 特性 | TransformBroadcaster | StaticTransformBroadcaster |
-|------|---------------------|--------------------------|
+|---|---|---|
 | 发送话题 | `/tf` | `/tf_static` |
 | 发布频率 | 每次调用 sendTransform 即发布 | 一次性发布，latch |
 | 使用场景 | 运动关节、里程计 | 安装偏移、结构参数 |
@@ -9560,9 +9912,10 @@ TF2 的 `Buffer.lookup_transform()` 支持按**时间戳**查询历史变换。�
 
 **操作**：
 
-创建 Python 脚本 `~/exp19_ws/src/tf2_demo/tf2_demo/dynamic_tf_broadcaster.py`：
-
-```python
+```bash
+1. 创建 dynamic_tf_broadcaster.py
+在终端输入
+cat > ~/exp19_ws/src/tf2_demo/tf2_demo/dynamic_tf_broadcaster.py << 'EOF'
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -9576,7 +9929,6 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformBroadcaster
-
 
 class DynamicTFPublisher(Node):
     """模拟激光雷达绕 Z 轴旋转，动态发布 lidar_frame → laser_scan 变换"""
@@ -9631,7 +9983,6 @@ class DynamicTFPublisher(Node):
                 f'动态 TF: lidar_frame → laser_scan, Z 轴旋转={math.degrees(self.angle):.1f}°'
             )
 
-
 def main(args=None):
     rclpy.init(args=args)
     node = DynamicTFPublisher()
@@ -9643,44 +9994,63 @@ def main(args=None):
         node.destroy_node()
         rclpy.shutdown()
 
-
 if __name__ == '__main__':
     main()
-```
+EOF
+2. 更新 setup.py（覆盖写入，加入两个入口）
+cat > ~/exp19_ws/src/tf2_demo/setup.py << 'EOF'
+from setuptools import find_packages, setup
 
-**更新 `setup.py` 的 `console_scripts`**：
+package_name = 'tf2_demo'
 
-```python
-entry_points={
-    'console_scripts': [
-        'static_tf_broadcaster = tf2_demo.static_tf_broadcaster:main',
-        'dynamic_tf_broadcaster = tf2_demo.dynamic_tf_broadcaster:main',
+setup(
+    name=package_name,
+    version='0.1.0',
+    packages=find_packages(exclude=['test']),
+    data_files=[
+        ('share/ament_index/resource_index/packages',
+            ['resource/' + package_name]),
+        ('share/' + package_name, ['package.xml']),
     ],
-},
-```
-
-**执行验证**：
-
-```bash
-# 终端 A：运行静态变换广播器（保持运行）
+    install_requires=['setuptools'],
+    zip_safe=True,
+    maintainer='Student',
+    maintainer_email='student@example.com',
+    description='TF2 demo for EXP19',
+    license='Apache-2.0',
+    tests_require=['pytest'],
+    entry_points={
+        'console_scripts': [
+            'static_tf_broadcaster = tf2_demo.static_tf_broadcaster:main',
+            'dynamic_tf_broadcaster = tf2_demo.dynamic_tf_broadcaster:main',
+        ],
+    },
+)
+EOF
+3. 编译
+cd  ~/exp19_ws
+colcon build --packages-select tf2_demo
+source install/setup.bash
+4. 执行验证（三个终端）
+# 终端 A：静态变换广播器（保持运行）
+source ~/exp19_ws/install/setup.bash
 ros2 run tf2_demo static_tf_broadcaster
-
-# 终端 B：运行动态变换广播器
+# 终端 B：动态变换广播器
+source ~/exp19_ws/install/setup.bash
 ros2 run tf2_demo dynamic_tf_broadcaster
-
-# 终端 C：查看 /tf 话题（动态变换）
+# 终端 C：查看动态变换话题
 source ~/exp19_ws/install/setup.bash
 ros2 topic echo /tf
-# 预期：每 1/30 秒输出一条 TransformStamped 消息，laser_scan 的四元数 z/w 值持续变化
 ```
 
 **易错点**：
+
 - ⚠️ **timer 频率与 spin 的配合**：`create_timer(1.0/30.0, callback)` 创建定时器后，必须调用 `rclpy.spin(node)` 才会触发回调。如果只调用 `rclpy.spin_once()` 然后立即退出，定时器回调不会执行。
 - ⚠️ **静态变换必须先于动态变换发布**：如果 `lidar_frame` 的静态变换尚未发布到 `/tf_static`，TF2 的 Buffer 将无法解析 `base_link → lidar_frame → laser_scan` 的完整变换链。检查方法：先启动静态广播器，等待 2 秒后确认 `/tf_static` 有数据，再启动动态广播器。
 
 ---
 
-#### 步骤 4：可视化验证 TF 变换树（15 分钟）
+#### 步骤 4：可视化验证 TF 变换树
 
 **知识点讲解**：
 
@@ -9726,18 +10096,25 @@ ros2 run tf2_tools view_frames --dot  # 输出 DOT 格式文本
 
 ```bash
 # 4.6 启动 Rviz2
+```
+
 rviz2
 
+```bash
 # 在 Rviz2 界面中：
+
 # 1. 设置 Fixed Frame 为 base_link
+
 # 2. 点击 Add → 选择 "TF" → OK
+
 # 3. 观察坐标系树：base_link → lidar_frame（绿箭头）和 base_link → camera_frame（绿箭头）
+
 # 4. lidar_frame → laser_scan 的动态旋转也会以彩色坐标轴（RGB=XYZ）展示
 ```
 
----
+![image-20260821185523937](assets/image-20260821185523937.png)
 
-#### 步骤 5：查询任意坐标系之间的相对位姿（编程方式）（15 分钟）
+#### 步骤 5：查询任意坐标系之间的相对位姿（编程方式）
 
 **知识点讲解**：
 
@@ -9751,9 +10128,8 @@ rviz2
 
 **操作**：
 
-创建查询脚本 `~/exp19_ws/src/tf2_demo/tf2_demo/tf_listener.py`：
-
-```python
+```bash
+创建查询脚本 ~/exp19_ws/src/tf2_demo/tf2_demo/tf_listener.py：
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -9765,7 +10141,6 @@ rviz2
 import rclpy
 from rclpy.node import Node
 from tf2_ros import Buffer, TransformListener
-
 
 class TFListener(Node):
     """监听并查询 TF2 变换"""
@@ -9818,7 +10193,6 @@ class TFListener(Node):
         except Exception as e:
             self.get_logger().warn(f'无法查询 base_link → laser_scan: {e}')
 
-
 def main(args=None):
     rclpy.init(args=args)
     node = TFListener()
@@ -9830,18 +10204,15 @@ def main(args=None):
         node.destroy_node()
         rclpy.shutdown()
 
-
 if __name__ == '__main__':
     main()
-```
-
-```bash
 # 运行变换查询节点（需保持静态和动态广播器运行）
 ros2 run tf2_demo tf_listener
 # 预期每秒输出 base_link → camera_frame 和 base_link → laser_scan 的平移/旋转数据
 ```
 
 **易错点**：
+
 - ⚠️ **lookup_transform 参数顺序**：`lookup_transform(target_frame, source_frame, time)` 返回的是 "source 在 target 坐标系中的位姿"，即把 source 坐标系下的点变换到 target 坐标系下。初学者常把 target 和 source 写反。
 - ⚠️ **查询时 Buffer 缓存未就绪**：`TransformListener` 需要至少收到一次 `/tf` 或 `/tf_static` 消息才能缓存变换。如果在启动后立即查询，可能抛出 `LookupException`。解决方法：在查询前 `rclpy.spin_once(node, timeout_sec=1.0)` 等待一帧数据到达，或在 try-except 中捕获异常并重试。
 
@@ -9853,12 +10224,10 @@ ros2 run tf2_demo tf_listener
 2. 执行 `ros2 node list` 确认所有节点已退出
 3. 查看生成的 `frames.pdf`（如果步骤 4 已生成）
 
----
-
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 顺序依赖 | 静态变换必须先于动态变换发布——如果 `lidar_frame` 尚未定义，依赖它的动态变换将无法形成完整树。建议在启动脚本中先启动静态广播器，sleep 2 秒后再启动动态广播器 |
 | ⚠️ 四元数 | 手动构建四元数时必须确保归一化（x²+y²+z²+w²=1），否则 TF2 查询结果会出现错误的旋转。推荐使用 `tf2_ros.quaternion_from_euler()` 辅助函数 |
 | ⚠️ 时间戳 | `TransformStamped.header.stamp` 必须设置为有效时间（`self.get_clock().now().to_msg()`），零时间戳会被 Buffer 视为过期而拒绝缓存 |
@@ -9871,6 +10240,7 @@ ros2 run tf2_demo tf_listener
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 阐述 TF2 变换树的树形结构原理，以及 `/tf` 与 `/tf_static` 双话题的设计意图
 - ✅ 使用 `StaticTransformBroadcaster` 发布传感器安装偏移等固定变换
 - ✅ 使用 `TransformBroadcaster` + Timer 定时发布动态变化（如旋转关节角度）
@@ -9880,7 +10250,7 @@ ros2 run tf2_demo tf_listener
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | TF2 树维护 | 理解有向无环图（DAG）约束下如何组织机器人的多坐标系关系 |
 | 静态/动态发布 | 掌握两种 Broadcaster 的适用场景与代码范式 |
 | TF 调试 | 能使用 `tf2_echo` 实时查看变换值，用 `view_frames` 生成 TF 树的可视化拓扑 |
@@ -9890,7 +10260,7 @@ ros2 run tf2_demo tf_listener
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `tf2_echo` 报 "Waiting for transform..." 无输出 | `/tf_static` 或 `/tf` 没有数据发布 | 先运行静态变换广播器，确认 `ros2 topic echo /tf_static` 有输出 |
 | `lookup_transform` 报 "frame does not exist" | 请求的坐标系尚未发布到 TF 树 | 用 `ros2 run tf2_tools view_frames` 查看当前有哪些 frame；确认广播器已运行 |
 | `view_frames` 报 "command not found" | 未安装 tf2-tools | `sudo apt install ros-humble-tf2-tools` |
@@ -9911,31 +10281,31 @@ ros2 run tf2_demo tf_listener
 #### 9.2 思考题
 
 **思考题 1**：
+
 假设 B2 实验箱上安装有结构光深度相机和激光雷达，相机在底盘正上方 0.55m 处，激光雷达在底盘正前方 0.25m 处。你需要计算"激光雷达扫描到的障碍物在相机坐标系下的位置"。请画出 TF 树的结构（base_link → camera_frame, base_link → lidar_frame），并写出 `lookup_transform` 的调用伪代码，说明如何将 lidar_frame 下的点云坐标变换到 camera_frame 下。
 
 **思考题 2**：
+
 在步骤 4 中，你观察到 `base_link → laser_scan` 的旋转随时间持续变化（6°/步）。如果激光雷达以 10Hz 旋转，而你用 10Hz 的 `TransformBroadcaster` 发布动态变换，每个 TF 样本之间的角度差是 36°。当控制器在两次发布之间（如 t=0.05s）请求变换时，TF2 的线性插值会产生"角度插值"——请分析这种插值的误差来源，并给出降低误差的建议（提示：考虑发布频率与运动频率的 Nyquist 关系）。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否按要求完成静态 TF 发布、动态 TF 发布、可视化验证、编程查询 |
 | 截图与记录 | 15% | 截图是否清晰、完整（≥6 张），标注是否准确 |
 | 原理分析 | 25% | 对 TF2 树形结构、双话题、时间插值三个设计决策的理解深度 |
 | 思考题 1 | 15% | TF 树绘制正确性、lookup_transform 调用与坐标变换逻辑的正确性 |
 | 思考题 2 | 15% | 对 TF2 时间插值误差的分析是否准确，建议是否合理 |
 
----
-
-## 实验20：ROS2 URDF模型（2h）
+## 实验20：ROS2 URDF模型
 
 ### 一、关联知识点
 
 本实验关联以下知识图谱节点：
 
 | 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
+|---|---|---|---|
 | 5.2.1 | URDF机器人描述格式概念与结构 | 概念 | 第5章 机器人建模与仿真 → 5.2 URDF机器人建模 |
 | 5.2.2 | link（visual/collision/inertial）与joint类型定义流程 | 流程 | 第5章 机器人建模与仿真 → 5.2 URDF机器人建模 |
 | 5.2.3 | Xacro宏语言参数化建模流程 | 流程 | 第5章 机器人建模与仿真 → 5.2 URDF机器人建模 |
@@ -9947,13 +10317,13 @@ ros2 run tf2_demo tf_listener
 1. **原理理解**：阐述 URDF（统一机器人描述格式）中 link 的三重属性（visual 渲染、collision 碰撞检测、inertial 动力学计算）各自的作用及其分离设计的工程意义——为什么三者需要独立定义
 2. **流程掌握**：正确编写包含多个 link 和 joint 的 URDF 文件，使用 Xacro 宏语言进行参数化建模，并通过 `xacro` 工具将 `.xacro` 文件展开为标准 URDF
 3. **独立完成**：独立构建一个简化版差分驱动机器人模型（底盘+双轮+万向轮），在 Rviz2 中加载并验证其运动学结构
-4. **迁移应用**：能够在 B2 实验箱或 C1 小车上，为实际机器人编写包含真实尺寸参数的 URDF 模型，并在 Rviz2 中进行可视化验证
+4. **迁移应用**：能够在 B2 实验箱，为实际机器人编写包含真实尺寸参数的 URDF 模型，并在 Rviz2 中进行可视化验证
 
 ### 三、实验环境
 
 | 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
+|---|---|
+| 硬件平台 | 具身智能实验箱B2  |
 | 操作系统 | Ubuntu 22.04 |
 | ROS2 发行版 | Humble Hawksbill |
 | 核心依赖 | `ros-humble-xacro`、`ros-humble-joint-state-publisher-gui`、`ros-humble-robot-state-publisher` |
@@ -9965,16 +10335,18 @@ ros2 run tf2_demo tf_listener
 ### 四、实验难度
 
 | 维度 | 说明 |
-|------|------|
+|---|---|
 | 难度等级 | ⭐⭐（中等） |
 | 实验类型 | 设计性 |
 | 建议时长 | 2 学时（90 分钟） |
 
 **重点**：
+
 - 掌握 link 的三元素（visual/collision/inertial）的 XML 结构与参数含义
 - 掌握 joint 的六种类型（fixed/revolute/continuous/prismatic/floating/planar）及其 `<limit>`、`<axis>` 配置
 
 **难点**：
+
 - 区分 `<origin>` 标签在 link 和 joint 中的不同语义：link 的 `<origin>` 是 visual/collision/inertial 相对 link 原点的偏移；joint 的 `<origin>` 是子 link 坐标系相对父 link 坐标系的初始位置
 - 理解 `inertial` 参数（质量 mass + 惯性矩阵 inertia）对 Gazebo 物理仿真的影响——参数设置不当会导致模型飞走或崩溃
 
@@ -9992,7 +10364,7 @@ ros2 run tf2_demo tf_listener
 #### 5.2 预期输出对照表
 
 | 操作 | 预期输出 |
-|------|---------|
+|---|---|
 | `xacro diff_drive_robot.urdf.xacro` | 终端输出完整的 URDF XML（数百行，无报错） |
 | `check_urdf diff_drive_robot.urdf` | `robot name is: diff_drive_robot` + `Successfully parsed XML` |
 | Launch 启动后在 Rviz2 中选择 RobotModel | 3D 模型显示：矩形底盘 + 两个圆柱形驱动轮 + 一个球形万向轮 |
@@ -10005,7 +10377,7 @@ ros2 run tf2_demo tf_listener
 
 #### 整体流程
 
-```
+```text
 [1. 理解URDF概念与link/joint结构] ──► [2. 编写基础URDF底盘模型]
                                                    │
 [5. Rviz2验证与调试] ◄── [4. Xacro参数化重构] ◄── [3. 添加驱动轮与万向轮]
@@ -10026,23 +10398,23 @@ URDF（Unified Robot Description Format，统一机器人描述格式）是基�
 URDF 中每个 link 可以（且应该）定义三个独立属性：
 
 | 属性 | XML 标签 | 用途 | 使用工具 | 示例参数 |
-|------|---------|------|---------|---------|
+|---|---|---|---|---|
 | `<visual>` | 视觉外观 | 3D 渲染 | Rviz2 | 几何体（box/cylinder/sphere/mesh）、颜色/纹理 |
 | `<collision>` | 碰撞几何 | 物理碰撞检测 | Gazebo | 简化为包围盒（比 visual 更大的处理开销） |
 | `<inertial>` | 惯性参数 | 动力学计算 | Gazebo | 质量(kg)、3×3 惯性矩阵 |
 
 **为什么三者需要独立定义**：
+
 1. **视觉 vs 碰撞的解耦**：视觉网格（mesh）可能有数万三角形，用于渲染精美外观；碰撞几何通常简化为几个盒子或圆柱体，保证物理引擎的实时性能。如果 visual 和 collision 耦合，要么视觉不精美，要么碰撞计算太慢。
 2. **惯性的独立计算**：惯性矩阵由质量分布决定，与视觉外观和碰撞几何无直接关系。例如，一个空心盒子（视觉看是盒子形状）和实心铁块（视觉看也是盒子形状），外观完全相同但惯性矩阵差异巨大。
 3. **工程实践**：在不做物理仿真（仅 Rviz2 可视化）时，可以只定义 visual；在 Gazebo 仿真中则需要三者齐全，否则模型或飞走、或不响应碰撞。
-
-**joint（关节）的六种类型**
+4. **joint（关节）的六种类型**
 
 | 类型 | 自由度 | 描述 | 典型场景 |
-|------|-------|------|---------|
+|---|---|---|---|
 | `fixed` | 0 | 固定连接，不可运动 | 传感器安装座、底盘与外壳 |
-| `revolute` | 1 | 绕轴旋转，有限位 | 机械臂肘关节（-90°～+90°）|
-| `continuous` | 1 | 绕轴无限旋转 | 驱动轮（无限旋转）|
+| `revolute` | 1 | 绕轴旋转，有限位 | 机械臂肘关节（-90°～+90°） |
+| `continuous` | 1 | 绕轴无限旋转 | 驱动轮（无限旋转） |
 | `prismatic` | 1 | 沿轴平移，有限位 | 线性滑轨、升降柱 |
 | `floating` | 6 | 完全自由（不推荐） | 极少使用，一般用 Gazebo 插件替代 |
 | `planar` | 3 | 平面运动（不推荐） | 极少使用 |
@@ -10051,20 +10423,23 @@ URDF 中每个 link 可以（且应该）定义三个独立属性：
 
 ---
 
-#### 步骤 2：编写基础 URDF 底盘模型（25 分钟）
+#### 步骤 2：编写基础 URDF 底盘模型
 
 **知识点讲解**：
 
 **URDF 的 XML 结构**：根元素为 `<robot name="...">`，包含一个或多个 `<link>` 和 `<joint>`。关键约定：
+
 - 每个 link 和 joint 必须有全局唯一的 `name` 属性
 - joint 通过 `<parent link="..."/>` 和 `<child link="..."/>` 定义父子关系
 - `<origin xyz="x y z" rpy="roll pitch yaw"/>` 定义相对位置（米）和姿态（弧度）
 
 **操作**：
 
-创建文件 `~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf`：
-
-```xml
+```bash
+直接咋在终端进行运行，创建文件 ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf：
+# 创建urdf所在的文件目录
+mkdir -p ~/exp20_ws/src/urdf_demo/urdf
+cat > ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf << 'EOF'
 <?xml version="1.0"?>
 <!--
 实验20：差分驱动机器人 URDF 模型
@@ -10089,28 +10464,21 @@ URDF 中每个 link 可以（且应该）定义三个独立属性：
 
   <!-- ========== 连杆 1：底盘 (chassis) ========== -->
   <link name="chassis">
-    <!-- 视觉外观 -->
     <visual>
       <geometry>
-        <!-- 底盘为长方体：长 0.40m × 宽 0.25m × 高 0.08m -->
         <box size="0.40 0.25 0.08"/>
       </geometry>
       <material name="blue"/>
     </visual>
 
-    <!-- 碰撞几何（与外观一致，简化为同一长方体） -->
     <collision>
       <geometry>
         <box size="0.40 0.25 0.08"/>
       </geometry>
     </collision>
 
-    <!-- 惯性参数 -->
     <inertial>
-      <!-- 底盘质量约 3kg -->
       <mass value="3.0"/>
-      <!-- 惯性矩阵：对于长方体，近似计算公式 -->
-      <!-- Ixx = m/12 * (y² + z²) = 3/12 * (0.25² + 0.08²) = 0.017 -->
       <inertia ixx="0.017" ixy="0.0" ixz="0.0"
                iyy="0.042" iyz="0.0"
                izz="0.053"/>
@@ -10121,7 +10489,6 @@ URDF 中每个 link 可以（且应该）定义三个独立属性：
   <link name="left_wheel">
     <visual>
       <geometry>
-        <!-- 轮子为圆柱体：半径 0.05m × 宽度 0.03m -->
         <cylinder radius="0.05" length="0.03"/>
       </geometry>
       <material name="black"/>
@@ -10133,7 +10500,6 @@ URDF 中每个 link 可以（且应该）定义三个独立属性：
     </collision>
     <inertial>
       <mass value="0.2"/>
-      <!-- 圆柱体惯性矩阵（绕轴线对称） -->
       <inertia ixx="0.00017" ixy="0.0" ixz="0.0"
                iyy="0.00017" iyz="0.0"
                izz="0.00025"/>
@@ -10165,7 +10531,6 @@ URDF 中每个 link 可以（且应该）定义三个独立属性：
   <link name="front_caster">
     <visual>
       <geometry>
-        <!-- 万向轮为小球体：半径 0.025m -->
         <sphere radius="0.025"/>
       </geometry>
       <material name="white"/>
@@ -10185,11 +10550,9 @@ URDF 中每个 link 可以（且应该）定义三个独立属性：
 
   <!-- ========== 关节 1：底盘 → 左轮（continuous 连续旋转） ========== -->
   <joint name="left_wheel_joint" type="continuous">
-    <!-- 左轮安装在底盘左侧，Y 轴偏移 -0.15m（向左），Z 轴偏移 -0.03m（向下，接触地面） -->
     <origin xyz="0.0 -0.15 -0.03" rpy="0.0 0.0 0.0"/>
     <parent link="chassis"/>
     <child link="left_wheel"/>
-    <!-- 旋转轴为 Y 轴（轮子绕 Y 轴滚动） -->
     <axis xyz="0 1 0"/>
   </joint>
 
@@ -10209,50 +10572,57 @@ URDF 中每个 link 可以（且应该）定义三个独立属性：
   </joint>
 
 </robot>
+EOF
 ```
 
 **验证 URDF 语法**：
 
 ```bash
 # 创建工作空间
+
 mkdir -p ~/exp20_ws/src/urdf_demo/urdf
+
 # 将上述 URDF 内容写入 ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf
 
 # 安装 urdf-tools 验证语法
+
 sudo apt install ros-humble-urdf-tutorial -y 2>/dev/null || sudo apt install liburdfdom-tools -y
 
 # 使用 check_urdf 验证语法
-check_urdf ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf
 ```
+
+check_urdf ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf
 
 **预期输出**：
 
-```
+```text
 robot name is: diff_drive_robot
 ---------- Successfully Parsed XML ---------------
 root Link: chassis has 3 child(ren)
     child(1):  left_wheel
     child(2):  right_wheel
     child(3):  front_caster
+
 ```
 
 **易错点**：
+
 - ⚠️ **颜色格式**：URDF 中 `<color rgba="r g b a"/>` 的值范围为 [0, 1]，而非 [0, 255]。`rgba="255 0 0 1"` 会报错，应写为 `rgba="1.0 0.0 0.0 1.0"`。
 - ⚠️ **惯性矩阵正定性**：`<inertia>` 矩阵必须是对称正定矩阵（ixx>0, iyy>0, izz>0，且满足三角不等式条件）。非法值会导致 Gazebo 仿真时模型"爆炸"。对于初学者，可先用 `ixx=iyy=izz=1e-3` 占位，再用精确计算替换。
 
 ---
 
-#### 步骤 3：验证 URDF 在 Rviz2 中的加载效果（20 分钟）
+#### 步骤 3：验证 URDF 在 Rviz2 中的加载效果
 
 **知识点讲解**：
 
 **robot_state_publisher 与 joint_state_publisher —— 两个发布者的协作机制**
 
 要让 Rviz2 显示 URDF 模型，需要两个节点的配合：
+
 1. `robot_state_publisher`：读取 URDF 中的 link/joint 定义，从 `/joint_states` 话题获取关节角度，计算各 link 在 base_link 下的 TF 变换，并发布到 `/tf`
 2. `joint_state_publisher_gui`：提供图形化滑块界面，让用户手动设置各 joint 的角度值，发布到 `/joint_states` 话题
-
-数据流：`GUI 滑块` → `/joint_states` → `robot_state_publisher` → `/tf` → `Rviz2 RobotModel Display`
+3. 数据流：`GUI 滑块` → `/joint_states` → `robot_state_publisher` → `/tf` → `Rviz2 RobotModel Display`
 
 **操作**：
 
@@ -10262,76 +10632,89 @@ sudo apt install ros-humble-robot-state-publisher ros-humble-joint-state-publish
 
 # 3.2 使用 ros2 launch 启动完整可视化流程
 # 创建 Launch 文件 ~/exp20_ws/src/urdf_demo/launch/display.launch.py
-```
-
-**创建 Launch 文件** `~/exp20_ws/src/urdf_demo/launch/display.launch.py`：
-
-```python
+以下代码直接在终端输入
+建正确目录结构
+mkdir -p ~/exp20_ws/src/urdf_demo/urdf
+mkdir -p ~/exp20_ws/src/urdf_demo/launch
+mkdir -p ~/exp20_ws/src/urdf_demo/rviz
+创建package.xml文件
+cat > ~/exp20_ws/src/urdf_demo/package.xml << 'EOF'
+<?xml version="1.0"?>
+<package format="3">
+  <name>urdf_demo</name>
+  <version>0.0.0</version>
+  <description>URDF demo</description>
+  <maintainer email="student@example.com">Student</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>joint_state_publisher_gui</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>urdf</exec_depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+EOF
+创建camke.txt文件
+cat > ~/exp20_ws/src/urdf_demo/CMakeLists.txt << 'EOF'
+cmake_minimum_required(VERSION 3.8)
+project(urdf_demo)
+find_package(ament_cmake REQUIRED)
+install(DIRECTORY urdf launch rviz DESTINATION share/${PROJECT_NAME})
+ament_package()
+EOF
+创建简单urdf文件
+cat > ~/exp20_ws/src/urdf_demo/urdf/robot.urdf << 'EOF'
+<?xml version="1.0"?>
+<robot name="simple_box">
+  <link name="base_link">
+    <visual>
+      <geometry><box size="0.5 0.3 0.2"/></geometry>
+      <material name="blue"><color rgba="0 0 1 1"/></material>
+    </visual>
+  </link>
+  <link name="wheel">
+    <visual>
+      <geometry><cylinder length="0.05" radius="0.1"/></geometry>
+      <material name="gray"><color rgba="0.7 0.7 0.7 1"/></material>
+    </visual>
+  </link>
+  <joint name="wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel"/>
+    <axis xyz="0 1 0"/>
+    <origin xyz="0.3 0 0"/>
+  </joint>
+</robot>
+EOF
+创建launch文件
+cat > ~/exp20_ws/src/urdf_demo/launch/display.launch.py << 'EOF'
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-实验20：URDF 模型在 Rviz2 中显示的 Launch 文件
-"""
-
-import os
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-
+from ament_index_python.packages import get_package_share_directory
+import os
 
 def generate_launch_description():
-    # 获取 URDF 文件路径
-    pkg_dir = get_package_share_directory('urdf_demo')
-    urdf_file = os.path.join(pkg_dir, 'urdf', 'diff_drive_robot.urdf')
-
-    with open(urdf_file, 'r') as f:
-        robot_description = f.read()
+    pkg = get_package_share_directory('urdf_demo')
+    urdf = os.path.join(pkg, 'urdf', 'robot.urdf')
+    rviz = os.path.join(pkg, 'rviz', 'display.rviz')
 
     return LaunchDescription([
-        DeclareLaunchArgument(
-            'use_sim_time', default_value='false',
-            description='Use simulation (Gazebo) clock if true'
-        ),
-
-        # 发布 robot_description 参数（robot_state_publisher 读取此参数）
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            parameters=[{
-                'robot_description': robot_description,
-                'use_sim_time': LaunchConfiguration('use_sim_time'),
-            }],
-            output='screen',
-        ),
-
-        # 图形化关节角度控制面板
-        Node(
-            package='joint_state_publisher_gui',
-            executable='joint_state_publisher_gui',
-            name='joint_state_publisher_gui',
-        ),
-
-        # Rviz2 可视化
-        Node(
-            package='rviz2',
-            executable='rviz2',
-            name='rviz2',
-            arguments=['-d', os.path.join(pkg_dir, 'rviz', 'display.rviz')],
-            output='screen',
-        ),
+        Node(package='robot_state_publisher', executable='robot_state_publisher',
+             name='robot_state_publisher', output='screen',
+             parameters=[{'robot_description': open(urdf).read()}]),
+        Node(package='joint_state_publisher_gui', executable='joint_state_publisher_gui',
+             name='joint_state_publisher_gui', output='screen'),
+        Node(package='rviz2', executable='rviz2',
+             name='rviz2', output='screen', arguments=['-d', rviz]),
     ])
-```
-
-```bash
-# 3.3 编译并启动
+EOF
+运行验证
 cd ~/exp20_ws
 colcon build --packages-select urdf_demo
 source install/setup.bash
-
-# 启动（需图形界面）
 ros2 launch urdf_demo display.launch.py
 ```
 
@@ -10339,19 +10722,31 @@ ros2 launch urdf_demo display.launch.py
 
 1. 设置 `Fixed Frame` 为 `chassis`（或 `base_link`，取决于 URDF 中的根 link）
 2. 点击 Add → 选择 `RobotModel` → OK
-3. 观察蓝色矩形底盘、黑色圆柱形车轮、白色球形万向轮
-4. 在 `joint_state_publisher_gui` 窗口中拖动 `left_wheel_joint` 和 `right_wheel_joint` 滑块
-5. 观察 Rviz2 中左右轮同步旋转
+1. 观察蓝色矩形底盘、黑色圆柱形车轮、白色球形万向轮
+1. 在 `joint_state_publisher_gui` 窗口中拖动 `left_wheel_joint` 和 `right_wheel_joint` 滑块
+2. 观察 Rviz2 中左右轮同步旋转
 
 **预期效果**：
+
 - 底盘渲染为蓝色长方体
+
+- ![image-20260821185605592](assets/image-20260821185605592.png)
+
 - 左驱动轮和右驱动轮为黑色圆柱体，分别位于底盘两侧
+
+  ![image-20260821185627155](assets/image-20260821185627155.png)
+
 - 前万向轮为白色小球，位于底盘前方下方
+
+- ![image-20260821185651404](assets/image-20260821185651404.png)
+
 - 拖动关节滑块时，车轮绕 Y 轴旋转
 
----
 
-#### 步骤 4：使用 Xacro 宏语言进行参数化重构（20 分钟）
+
+
+
+#### 步骤 4：使用 Xacro 宏语言进行参数化重构
 
 **知识点讲解**：
 
@@ -10360,15 +10755,13 @@ ros2 launch urdf_demo display.launch.py
 Xacro（XML Macros）是 URDF 的**宏扩展语言**。它解决了原始 URDF 的两个核心痛点：
 
 1. **重复代码**：差分驱动机器人的左右轮除了 X 坐标符号不同，所有参数完全相同。原始 URDF 需要为每个轮子复制粘贴全部 XML 片段。Xacro 通过 `<xacro:macro>` 定义可复用组件，参数化调用来消除重复。
-
 2. **魔法数字**：原始 URDF 中散落着大量硬编码数字（轮半径 0.05、底盘长 0.40...）。修改一个尺寸需要全局搜索替换。Xacro 通过 `<xacro:property>` 将参数集中管理，一个修改全局生效。
-
 3. **数学表达式**：Xacro 支持 `${expression}` 数学表达式，可在 XML 内计算（如惯性矩阵公式 `m/12*(y²+z²)`），无需手动计算每个惯性值。
 
 **Xacro 的核心语法**：
 
 | 语法 | 说明 | 示例 |
-|------|------|------|
+|---|---|---|
 | `<xacro:property name="x" value="y"/>` | 定义全局变量 | `wheel_radius = 0.05` |
 | `<xacro:macro name="m" params="p1 p2">...</xacro:macro>` | 定义可复用宏 | `wheel_macro(parent x_reflect)` |
 | `<xacro:m/>` 或 `<xacro:m p1="val"/>` | 调用宏 | `xacro:wheel_macro parent="chassis" x_reflect="-1"` |
@@ -10377,9 +10770,10 @@ Xacro（XML Macros）是 URDF 的**宏扩展语言**。它解决了原始 URDF �
 
 **操作**：
 
-创建 Xacro 版本 `~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf.xacro`：
-
-```xml
+```bash
+创建 Xacro 版本 ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf.xacro
+在终端直接输入
+cat > ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf.xacro << 'XACROEOF'
 <?xml version="1.0"?>
 <!--
 实验20：差分驱动机器人 URDF 模型（Xacro 参数化版本）
@@ -10508,37 +10902,48 @@ Xacro（XML Macros）是 URDF 的**宏扩展语言**。它解决了原始 URDF �
   <xacro:wheel name="right_wheel" parent="chassis" x_reflect="1"/>
 
 </robot>
+XACROEOF
 ```
 
 **展开 Xacro 为标准 URDF**：
 
 ```bash
 # 安装 xacro 工具
+
 sudo apt install ros-humble-xacro -y
 
 # 将 .xacro 展开为 .urdf（验证语法+生成标准文件）
+```
+
 xacro ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf.xacro > ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 
+```bash
 # 验证展开后的 URDF
+```
+
 check_urdf ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 
+```bash
 # 观察展开后的文件：左右轮的定义已被完整展开为独立的 link 和 joint
-head -80 ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 ```
+
+head -80 ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 
 **关键对比**：Xacro 版本只有约 80 行（含宏定义），展开后的标准 URDF 约 150 行。在 4 轮或 6 轮机器人中，这种压缩比更高（4×→6×）。
 
 **易错点**：
+
 - ⚠️ **Xacro 宏调用时命名冲突**：如果宏内部定义的 link/joint 名称依赖参数拼接（如 `${name}_joint`），必须确保每次调用传入不同的 `name` 参数，否则会生成重复名称导致 URDF 解析失败。
 - ⚠️ **Xacro 属性值计算中的类型问题**：`${chassis_width/2 - 0.02}` 在 Python 3 中是浮点除法（结果为 float），但如果使用 `${int(3/2)}`，注意 Xacro 使用 Python 表达式求值，`3/2` 在 Python 3 中结果是 1.5（float）。
 
 ---
 
-#### 步骤 5：Rviz2 验证与调试（15 分钟）
+#### 步骤 5：Rviz2 验证与调试
 
 **知识点讲解**：
 
 **Rviz2 中 RobotModel Display 的调试技巧**：
+
 - `Visual Enabled` 控制外观是否渲染
 - `Collision Enabled` 控制碰撞边界框是否显示（橙色线框）
 - `Alpha` 透明度可帮助观察内部结构
@@ -10547,7 +10952,7 @@ head -80 ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 **常见 URDF 错误定位方法**：
 
 | 工具 | 作用 | 命令 |
-|------|------|------|
+|---|---|---|
 | `check_urdf` | 语法+结构验证 | `check_urdf model.urdf` |
 | `urdf_to_graphiz` | 生成 link-joint 拓扑图 | `urdf_to_graphiz model.urdf` → PDF |
 | Rviz2 RobotModel | 可视化验证外观 | 观察视觉形状、颜色、位置 |
@@ -10571,9 +10976,12 @@ urdf_to_graphiz ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 # 勾选 Visual Enabled（灰色外观）
 # 勾选 Collision Enabled（橙色线框）
 # 观察两者是否对齐——如不对齐，说明 <visual><origin> 和 <collision><origin> 不一致
+生成的diff_drive_robot.pdf
+
 ```
 
 **调试常见问题**：
+
 - 车轮不随滑块旋转 → joint type 设置错误（应为 continuous 而非 fixed）
 - 车轮位置偏移 → joint `<origin>` 参数不对（注意 URDF 中是先 rpy 旋转再 xyz 平移）
 - Rviz2 报 "No transform from [left_wheel] to [chassis]" → `robot_state_publisher` 未运行或 `/joint_states` 无数据
@@ -10586,12 +10994,10 @@ urdf_to_graphiz ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 2. 按 `Ctrl+C` 终止 launch 进程
 3. 保留 URDF 和 Xacro 文件供后续实验（Gazebo 仿真）使用
 
----
-
 ### 七、注意事项
 
 | 类别 | 注意事项 |
-|------|---------|
+|---|---|
 | ⚠️ 坐标系 | URDF 中 `<origin>` 的顺序是先 RPY 旋转再 XYZ 平移——如果先平移再旋转，视觉效果完全不同。可在 Rviz2 中开启 TF Display 验证坐标系箭头的方向 |
 | ⚠️ 惯性参数 | `<inertia>` 矩阵必须数学上正确（对称正定）。初学者建议先用近似公式计算，如长方体 `Ixx=m/12*(y²+z²)`，或使用 `https://amesweb.info/inertia/mass-moment-of-inertia-calculator.aspx` 在线工具 |
 | ⚠️ joint 类型 | `continuous` 是无限制旋转（轮子），`revolute` 是有限制旋转（肘关节需同时定义 `<limit lower="..." upper="..."/>`）。两者不可混淆——给轮子设 revolute 会限制旋转角度 |
@@ -10604,6 +11010,7 @@ urdf_to_graphiz ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 #### 8.1 完成成果
 
 完成本实验后，你应当能够：
+
 - ✅ 阐述 URDF 中 link 的 visual/collision/inertial 三重属性的独立作用与协同关系
 - ✅ 编写包含底盘、驱动轮、万向轮的完整机器人 URDF 文件
 - ✅ 使用 Xacro 宏语言进行参数化管理，通过数学表达式自动计算惯性矩阵
@@ -10613,7 +11020,7 @@ urdf_to_graphiz ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 #### 8.2 技能收获
 
 | 技能 | 说明 |
-|------|------|
+|---|---|
 | URDF 建模 | 掌握 link（几何/物理/惯性）和 joint（类型/原点/轴/限位）的完整 XML 语法 |
 | Xacro 参数化 | 能用 `xacro:property`、`xacro:macro`、`xacro:include` 构建模块化、可复用的模型库 |
 | Rviz2 验证 | 能通过 RobotModel Display + TF Display 在 3D 视图中验证模型的正确性 |
@@ -10623,7 +11030,7 @@ urdf_to_graphiz ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
-|------|------|---------|
+|---|---|---|
 | `check_urdf` 报 "Error parsing XML" | XML 标签未闭合或拼写错误 | 检查所有 `<link>`/`</link>`、`<joint>`/`</joint>` 是否成对出现 |
 | Rviz2 显示 "No transform from [...] to [chassis]" | `robot_state_publisher` 未运行或参数错误 | 确认 launch 文件启动了 `robot_state_publisher` 节点，且 `robot_description` 参数已设置 |
 | 拖动滑块时轮子不动 | joint_state_publisher_gui 未连接 | 确认 launch 文件启动了 `joint_state_publisher_gui` 节点 |
@@ -10644,991 +11051,26 @@ urdf_to_graphiz ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
 #### 9.2 思考题
 
 **思考题 1**：
+
 你在步骤 2 中为底盘编写了 `<inertial>` 参数。假设底盘的形状不是长方体而是 L 形（由两个长方体拼接而成），其惯性矩阵如何计算？（提示：平行轴定理 I = I_cm + m*d²，其中 d 是部件质心到整体质心的距离。）
 
 **思考题 2**：
+
 在真实工程中，B2 实验箱的机械臂有 6 个旋转关节（6 DOF）。如果使用原始 URDF 为每个关节手动编写 link 和 joint，需要约 300 行代码。请描述如何使用 Xacro 宏语言将 6 关节机械臂的建模压缩到 50 行以内（给出宏设计思路，不需要完整代码）。你的设计应考虑：每个关节的尺寸参数化、关节类型的统一管理和关节限制的集中配置。
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
+|---|---|---|
 | 实验操作完整性 | 30% | 是否按要求完成 URDF 编写、Xacro 重构、Rviz2 验证、check_urdf 检查 |
 | 截图与记录 | 15% | 截图是否清晰、完整（≥5 张），标注是否准确 |
 | 原理分析 | 25% | 对 URDF 三重属性分离设计 + Xacro 可维护性的理解深度 |
 | 思考题 1 | 15% | 平行轴定理应用是否正确，L 形底盘的惯性矩阵计算思路是否合理 |
 | 思考题 2 | 15% | Xacro 宏设计方案的可扩展性与复用性评估 |
 
----
-
-## 实验21：ROS2 Gazebo仿真平台（2h）
-
-### 一、关联知识点
-
-本实验关联以下知识图谱节点：
-
-| 编号 | 知识点名称 | 类型 | 层级路径 |
-|------|-----------|------|---------|
-| 5.3.1 | Gazebo物理仿真引擎概念与ROS2插件架构 | 概念 | 第5章 机器人建模与仿真 → 5.3 Gazebo物理仿真 |
-| 5.3.2 | URDF导入Gazebo与gazebo_ros2_control物理参数配置流程 | 流程 | 第5章 机器人建模与仿真 → 5.3 Gazebo物理仿真 |
-| 5.3.3 | 虚拟传感器插件（激光雷达/深度相机/IMU）数据生成与话题发布流程 | 流程 | 第5章 机器人建模与仿真 → 5.3 Gazebo物理仿真 |
-
-### 二、实验目标
-
-通过本实验的学习，学生能够：
-
-1. **原理理解**：阐述 Gazebo 作为物理仿真引擎的三层架构——物理引擎层（ODE/Bullet/DART）→ 传感器模型层（lidar/camera/IMU）→ ROS2 接口层（gazebo_ros2_control 插件），以及各层之间的数据流向
-2. **流程掌握**：正确编写 Gazebo World 文件（.sdf 或 .world），将 URDF 机器人模型导入仿真环境，配置 RGB 相机和激光雷达传感器插件，并通过 ros2 topic 接收仿真传感器数据
-3. **独立完成**：独立搭建一个包含差分驱动机器人 + 障碍物 + 地面 + 光源的完整 Gazebo 仿真场景，验证激光雷达和相机数据的正确性
-4. **迁移应用**：能够在 B2 实验箱或 C1 小车的实际开发中，先在 Gazebo 仿真环境中验证导航和感知算法，再将验证通过的代码部署到真实硬件上——理解"仿真先行（Simulation-First）"的工程方法
-
-### 三、实验环境
-
-| 类别 | 配置 |
-|------|------|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
-| 操作系统 | Ubuntu 22.04 |
-| ROS2 发行版 | Humble Hawksbill |
-| 核心依赖 | `ros-humble-gazebo-ros2-control`、`ros-humble-gazebo-ros-pkgs`、`ros-humble-gazebo-plugins` |
-| 仿真引擎 | Gazebo Classic 11（Ignition/Gazebo Fortress 为新一代，但本实验以 Classic 为主，API 兼容性更好） |
-| 传感器插件 | `libgazebo_ros_camera.so`（RGB 相机）、`libgazebo_ros_ray_sensor.so`（激光雷达） |
-
-> 说明：Gazebo 为图形化仿真软件，需要 GPU 加速。在 B2 实验箱的 RK3576（Mali-G52 GPU）上建议使用 `LIBGL_ALWAYS_SOFTWARE=1` 软件渲染模式。若性能不足，建议在 PC Ubuntu 上完成仿真调试后再迁移到 B2。
-
-### 四、实验难度
-
-| 维度 | 说明 |
-|------|------|
-| 难度等级 | ⭐⭐⭐（困难） |
-| 实验类型 | 综合性 |
-| 建议时长 | 2 学时（90 分钟） |
-
-**重点**：
-- 掌握 Gazebo World 文件的 SDF 格式结构（`<world>` → `<model>` → `<include>`/`<plugin>` 层次）
-- 配置 `gazebo_ros2_control` 插件实现 ROS2 对 Gazebo 仿真关节的实时控制
-
-**难点**：
-- 理解 Gazebo 中 URDF `<gazebo>` 扩展标签的作用——URDF 原本不支持"传感器插件""摩擦力"等仿真参数，Gazebo 通过在 URDF 中嵌入 `<gazebo>` 标签来扩展这些仿真专属属性
-- 配置 `ros2 control` 的控制器链：`joint_state_broadcaster` → `diff_drive_controller`，理解其 YAML 配置文件的参数含义
-
-### 五、实验现象
-
-#### 5.1 快速验证流程
-
-完成本实验后，你应能观察到以下现象：
-
-1. 启动 Gazebo，加载包含机器人模型和障碍物的仿真世界，画面中显示蓝色底盘 + 黑色车轮 + 白色万向轮的机器人
-2. 在终端执行 `ros2 topic list`，可见 `/scan`（激光雷达）、`/camera/image_raw`（RGB 图像）、`/joint_states`（关节状态）等话题
-3. 执行 `ros2 topic echo /scan --once` 输出激光雷达的 `ranges` 数组，反映机器人前方障碍物的距离信息
-4. 使用 `ros2 topic pub /cmd_vel geometry_msgs/msg/Twist` 发送速度指令，Gazebo 中机器人开始运动——车轮旋转、机体移动
-5. 使用 `rqt_image_view` 或 Rviz2 的 Image Display 查看 `/camera/image_raw` 话题，显示 Gazebo 仿真环境中的虚拟相机画面
-
-#### 5.2 预期输出对照表
-
-| 操作 | 预期输出 |
-|------|---------|
-| `gz sim` 或 `gazebo --verbose empty.world` | Gazebo 窗口打开，显示灰色地面和网格 |
-| 加载机器人模型后 `ros2 topic list` | `/scan`、`/camera/image_raw`、`/camera/camera_info`、`/joint_states`、`/cmd_vel`、`/odom`、`/tf` |
-| `ros2 topic echo /scan --once` | `ranges: [1.5, 1.5, ..., inf, inf, ...]`（前方有障碍物处数值小，空旷处为 inf） |
-| `ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5}}" --once` | Gazebo 中机器人向前移动一小段距离 |
-| `rqt_image_view /camera/image_raw` | 实时显示虚拟相机画面（包括地面、障碍物、机器人本体） |
-
----
-
-### 六、实验步骤
-
-#### 整体流程
-
-```
-[1. Gazebo架构认知] ──► [2. 编写World文件+加载模型] ──► [3. 配置传感器插件]
-                                                                    │
-[6. 清理与总结] ◄── [5. ros2 control控制机器人运动] ◄── [4. 验证传感器数据]
-```
-
----
-
-#### 步骤 1：理解 Gazebo 仿真平台的三层架构（15 分钟）
-
-**知识点讲解**：
-
-**Gazebo —— 是什么**
-
-Gazebo 是一个开源的**三维机器人物理仿真平台**，它集成了物理引擎（刚体动力学、碰撞检测）、传感器模拟（相机、激光雷达、IMU、力/力矩传感器）和图形渲染，让开发者可以在**没有真实硬件**的情况下测试机器人算法。Gazebo Classic 11（随 ROS2 Humble 发布）是目前学界和工业界使用最广泛的版本。
-
-**Gazebo 的三层架构**
-
-```
-┌─────────────────────────────────────────────────┐
-│  ROS2 接口层 (gazebo_ros2_control, ros_gz_bridge) │  ← 将仿真数据通过 ros2 topic 发布
-├─────────────────────────────────────────────────┤
-│  传感器模型层 (Camera, Lidar, IMU, Depth...)      │  ← 虚拟传感器生成仿真数据
-├─────────────────────────────────────────────────┤
-│  物理引擎层 (ODE / Bullet / DART / Simbody)       │  ← 刚体动力学、碰撞检测、重力
-└─────────────────────────────────────────────────┘
-```
-
-- **物理引擎层**：Gazebo 默认使用 ODE（Open Dynamics Engine），负责计算重力加速度（9.8 m/s²）、刚体碰撞响应（弹性/摩擦系数）、关节力矩传递等。每次仿真步进（默认 1ms），物理引擎求解器更新所有物体的位置、速度、加速度。
-- **传感器模型层**：激光雷达通过射线投射（ray casting）计算每条扫描线的交点距离；RGB 相机通过 3D 场景渲染（OpenGL）生成像素图像；IMU 通过物理引擎的加速度/角速度数据叠加噪声模型输出。
-- **ROS2 接口层**：`gazebo_ros2_control` 和各类传感器插件（`libgazebo_ros_camera.so` 等）作为 ROS2 节点运行，将 Gazebo 内部数据转换为 ROS2 标准消息（sensor_msgs/LaserScan、sensor_msgs/Image 等）并发布到对应话题。
-
-**知识图谱对应**：知识点 5.3.1（Gazebo 概念与架构）。
-
----
-
-#### 步骤 2：编写 Gazebo World 文件并加载机器人模型（25 分钟）
-
-**知识点讲解**：
-
-**World 文件（.world / .sdf）—— 是什么**
-
-World 文件是 Gazebo 仿真环境的**场景描述文件**（SDF 格式，Simulation Description Format）。它定义了：
-- **光照**（`<light>`：太阳光/点光源的方向、颜色、强度）
-- **地面**（`<ground_plane>` 或 `<model>` 中的地面模型）
-- **静态模型**（`<include>` 从模型库引入墙壁、桌子、障碍物等）
-- **物理参数**（`<physics>`：重力、时间步长、求解器迭代次数）
-- **插件**（`<plugin>`：Gazebo 系统插件，如 ros2_control）
-
-**World 文件与 URDF 的关系**：
-- URDF 描述**机器人本身**（link-joint 结构）
-- World 文件描述**机器人所处的环境**（场景布局、全局物理参数）
-- 将 URDF 模型 `spawn`（生成）到 World 中，即在仿真环境中创建该机器人的实例
-
-**操作**：
-
-创建 World 文件 `~/exp21_ws/src/gazebo_demo/worlds/robot_world.world`：
-
-```xml
-<?xml version="1.0"?>
-<!--
-实验21：Gazebo 仿真世界文件
-包含：地面、光源、若干障碍物
--->
-<sdf version="1.6">
-  <world name="robot_world">
-
-    <!-- ===== 光照配置 ===== -->
-    <light name="sun" type="directional">
-      <cast_shadows>true</cast_shadows>
-      <pose>0 0 10 0 0 0</pose>
-      <diffuse>0.8 0.8 0.8 1.0</diffuse>
-      <specular>0.2 0.2 0.2 1.0</specular>
-      <direction>-0.5 0.5 -1.0</direction>
-    </light>
-
-    <!-- ===== 地面（灰色平面） ===== -->
-    <model name="ground_plane">
-      <static>true</static>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>20 20</size>
-            </plane>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>20 20</size>
-            </plane>
-          </geometry>
-          <material>
-            <ambient>0.3 0.3 0.3 1.0</ambient>
-            <diffuse>0.5 0.5 0.5 1.0</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <!-- ===== 障碍物1：前方墙壁 ===== -->
-    <model name="front_wall">
-      <static>true</static>
-      <pose>1.5 0 0.5 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <box>
-              <size>0.1 1.0 1.0</size>
-            </box>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <box>
-              <size>0.1 1.0 1.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0.8 0.2 0.2 1.0</ambient>
-            <diffuse>0.8 0.2 0.2 1.0</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <!-- ===== 障碍物2：右侧圆柱 ===== -->
-    <model name="right_pillar">
-      <static>true</static>
-      <pose>0.5 -0.8 0.25 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <cylinder>
-              <radius>0.15</radius>
-              <length>0.5</length>
-            </cylinder>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <cylinder>
-              <radius>0.15</radius>
-              <length>0.5</length>
-            </cylinder>
-          </geometry>
-          <material>
-            <ambient>0.2 0.8 0.2 1.0</ambient>
-            <diffuse>0.2 0.8 0.2 1.0</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <!-- ===== 物理引擎配置 ===== -->
-    <physics name="default_physics" type="ode">
-      <max_step_size>0.001</max_step_size>
-      <real_time_factor>1.0</real_time_factor>
-      <real_time_update_rate>1000</real_time_update_rate>
-      <gravity>0 0 -9.8</gravity>
-    </physics>
-
-  </world>
-</sdf>
-```
-
-**物理参数说明**：
-- `<max_step_size>0.001</max_step_size>`：物理引擎每步计算的时间间隔（1ms）。步长越小精度越高但计算量越大。
-- `<real_time_factor>1.0</real_time_factor>`：仿真时间与真实时间的比率。1.0 = 实时，0.5 = 半速（慢动作），2.0 = 两倍速。
-- `<gravity>0 0 -9.8</gravity>`：重力加速度（m/s²），Z 轴负向。ROS 坐标系中 Z 正向朝上，所以重力沿 Z 负向。
-
-**启动 Gazebo 验证 World 文件**：
-
-```bash
-# 创建工作空间
-mkdir -p ~/exp21_ws/src/gazebo_demo/worlds
-mkdir -p ~/exp21_ws/src/gazebo_demo/launch
-# 将 World 文件写入上述路径
-
-# 直接启动 Gazebo 加载自定义 World
-gazebo --verbose ~/exp21_ws/src/gazebo_demo/worlds/robot_world.world
-```
-
-**预期效果**：
-- Gazebo 窗口出现，显示灰色地面 + 红色墙壁 + 绿色圆柱
-- 鼠标左键拖动旋转视角，滚轮缩放，中键平移
-- 如果 GPU 渲染出现问题，尝试：`LIBGL_ALWAYS_SOFTWARE=1 gazebo --verbose robot_world.world`
-
-**在 Gazebo 中手动加载机器人模型**（快捷方式，用于测试）：
-
-```bash
-# Gazebo 菜单栏 → Insert → 在模型列表中选择任意模型（如 "Construction Cone"）
-# 这是我们测试 Gazebo 是否正确安装的快捷方式
-```
-
-**易错点**：
-- ⚠️ **Gazebo 首次启动等待时间长**：Gazebo Classic 首次启动时会从在线模型库下载模型。如果网络慢，启动可能需要 2-5 分钟。可以设置环境变量禁用在线模型库或使用本地模型缓存：`export GAZEBO_MODEL_PATH=~/exp21_ws/src/gazebo_demo/models:$GAZEBO_MODEL_PATH`
-- ⚠️ **RK3576 GPU 性能**：B2 实验箱的 Mali-G52 GPU 运行 Gazebo 可能较慢（< 10 FPS）。如果卡顿严重，建议在 PC Ubuntu 虚拟机或双系统上完成实验。
-
----
-
-#### 步骤 3：配置传感器插件（激光雷达 + RGB 相机）（25 分钟）
-
-**知识点讲解**：
-
-**Gazebo 传感器插件 —— 是什么与为什么**
-
-Gazebo 的核心价值之一是**多传感器仿真**。传感器插件（以 `.so` 动态库形式存在）是 Gazebo 与 ROS2 之间的"翻译器"——它从 Gazebo 的物理/渲染引擎中读取数据（射线投射结果、渲染帧缓冲、IMU 读数），封装为 ROS2 标准消息类型，发布到对应的话题。
-
-两种插件加载方式：
-1. **URDF `<gazebo>` 扩展标签**：在机器人 URDF 中嵌入传感器定义，插件随机器人加载
-2. **World `<plugin>` 标签**：在 World 文件中声明全局系统插件（如 ros2_control），插件随场景启动
-
-本步骤使用方式 1——在 URDF 中嵌入传感器插件。
-
-**常用传感器插件对照表**：
-
-| 传感器类型 | Gazebo 插件库 | ROS2 消息类型 | 发布话题（约定） |
-|-----------|-------------|-------------|---------------|
-| 2D 激光雷达 | `libgazebo_ros_ray_sensor.so` | `sensor_msgs/LaserScan` | `/scan` |
-| RGB 相机 | `libgazebo_ros_camera.so` | `sensor_msgs/Image` | `/camera/image_raw` |
-| 深度相机 | `libgazebo_ros_depth_camera.so` | `sensor_msgs/Image` + `PointCloud2` | `/depth/image_raw` |
-| IMU | `libgazebo_ros_imu_sensor.so` | `sensor_msgs/Imu` | `/imu` |
-
-**操作**：
-
-在实验20的 URDF/Xacro 模型基础上，添加 Gazebo 仿真所需的扩展标签和传感器插件。
-
-创建文件 `~/exp21_ws/src/gazebo_demo/urdf/diff_drive_robot_gazebo.urdf.xacro`：
-
-```xml
-<?xml version="1.0"?>
-<!--
-实验21：带 Gazebo 传感器插件的差分驱动机器人 Xacro 模型
-基于实验20的 diff_drive_robot.urdf.xacro 扩展
--->
-<robot name="diff_drive_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
-
-  <!-- ========== 参数定义（与实验20相同） ========== -->
-  <xacro:property name="chassis_length" value="0.40"/>
-  <xacro:property name="chassis_width"  value="0.25"/>
-  <xacro:property name="chassis_height" value="0.08"/>
-  <xacro:property name="chassis_mass"   value="3.0"/>
-  <xacro:property name="wheel_radius"   value="0.05"/>
-  <xacro:property name="wheel_length"   value="0.03"/>
-  <xacro:property name="wheel_mass"     value="0.2"/>
-  <xacro:property name="wheel_y_offset" value="${chassis_width/2 - 0.02}"/>
-  <xacro:property name="wheel_z_offset" value="${-chassis_height/2 + wheel_radius}"/>
-  <xacro:property name="caster_radius"  value="0.025"/>
-
-  <!-- ========== 惯性宏定义（与实验20相同，省略） ========== -->
-  <xacro:macro name="box_inertia" params="mass x y z">
-    <inertial>
-      <mass value="${mass}"/>
-      <inertia ixx="${mass/12 * (y*y + z*z)}" ixy="0.0" ixz="0.0"
-               iyy="${mass/12 * (x*x + z*z)}" iyz="0.0"
-               izz="${mass/12 * (x*x + y*y)}"/>
-    </inertial>
-  </xacro:macro>
-
-  <xacro:macro name="cylinder_inertia" params="mass radius length">
-    <inertial>
-      <mass value="${mass}"/>
-      <inertia ixx="${mass/12 * (3*radius*radius + length*length)}" ixy="0.0" ixz="0.0"
-               iyy="${mass/12 * (3*radius*radius + length*length)}" iyz="0.0"
-               izz="${mass/2 * radius*radius}"/>
-    </inertial>
-  </xacro:macro>
-
-  <!-- ========== 宏：可复用的车轮组件（与实验20相同，省略细节） ========== -->
-  <xacro:macro name="wheel" params="name parent x_reflect">
-    <link name="${name}">
-      <visual>
-        <geometry>
-          <cylinder radius="${wheel_radius}" length="${wheel_length}"/>
-        </geometry>
-        <material name="black"/>
-      </visual>
-      <collision>
-        <geometry>
-          <cylinder radius="${wheel_radius}" length="${wheel_length}"/>
-        </geometry>
-        <!-- Gazebo 物理属性：摩擦系数 -->
-        <surface>
-          <friction>
-            <ode>
-              <mu>1.0</mu>
-              <mu2>1.0</mu2>
-            </ode>
-          </friction>
-        </surface>
-      </collision>
-      <xacro:cylinder_inertia mass="${wheel_mass}" radius="${wheel_radius}" length="${wheel_length}"/>
-    </link>
-
-    <joint name="${name}_joint" type="continuous">
-      <origin xyz="0.0 ${x_reflect * wheel_y_offset} ${wheel_z_offset}" rpy="0.0 0.0 0.0"/>
-      <parent link="${parent}"/>
-      <child link="${name}"/>
-      <axis xyz="0 1 0"/>
-    </joint>
-
-    <!-- Gazebo 扩展：车轮的差分驱动配置 -->
-    <gazebo reference="${name}">
-      <material>Gazebo/Black</material>
-      <mu1>1.0</mu1>
-      <mu2>1.0</mu2>
-    </gazebo>
-  </xacro:macro>
-
-  <!-- ========== 材质定义 ========== -->
-  <material name="black"><color rgba="0.2 0.2 0.2 1.0"/></material>
-  <material name="blue"><color rgba="0.2 0.4 0.8 1.0"/></material>
-  <material name="white"><color rgba="0.9 0.9 0.9 1.0"/></material>
-
-  <!-- ========== 底盘 link ========== -->
-  <link name="chassis">
-    <visual>
-      <geometry>
-        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
-      </geometry>
-      <material name="blue"/>
-    </visual>
-    <collision>
-      <geometry>
-        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
-      </geometry>
-    </collision>
-    <xacro:box_inertia mass="${chassis_mass}"
-                       x="${chassis_length}" y="${chassis_width}" z="${chassis_height}"/>
-  </link>
-
-  <!-- ========== 激光雷达 link（新增传感器） ========== -->
-  <link name="laser_frame">
-    <visual>
-      <geometry>
-        <cylinder radius="0.03" length="0.04"/>
-      </geometry>
-      <material name="white"/>
-    </visual>
-    <collision>
-      <geometry>
-        <cylinder radius="0.03" length="0.04"/>
-      </geometry>
-    </collision>
-    <inertial>
-      <mass value="0.1"/>
-      <inertia ixx="0.00001" ixy="0.0" ixz="0.0"
-               iyy="0.00001" iyz="0.0"
-               izz="0.00001"/>
-    </inertial>
-  </link>
-
-  <joint name="laser_joint" type="fixed">
-    <!-- 激光雷达安装在底盘正前方顶部 -->
-    <origin xyz="0.15 0.0 ${chassis_height/2 + 0.02}" rpy="0.0 0.0 0.0"/>
-    <parent link="chassis"/>
-    <child link="laser_frame"/>
-  </joint>
-
-  <!-- Gazebo 激光雷达插件配置 -->
-  <gazebo reference="laser_frame">
-    <sensor type="ray" name="laser_sensor">
-      <pose>0 0 0 0 0 0</pose>
-      <!-- 可视化：在 Gazebo 中显示激光线 -->
-      <visualize>true</visualize>
-      <update_rate>10</update_rate>
-      <plugin name="gazebo_ros_laser_controller" filename="libgazebo_ros_ray_sensor.so">
-        <ros>
-          <!-- ROS2 话题映射 -->
-          <namespace>/</namespace>
-          <remapping>~/out:=scan</remapping>
-        </ros>
-        <!-- 激光雷达参数 -->
-        <output_type>sensor_msgs/LaserScan</output_type>
-        <frame_name>laser_frame</frame_name>
-      </plugin>
-      <ray>
-        <scan>
-          <horizontal>
-            <samples>360</samples>         <!-- 每条扫描线 360 个采样点 -->
-            <resolution>1</resolution>
-            <min_angle>-3.14159</min_angle> <!-- -180° -->
-            <max_angle>3.14159</max_angle>  <!-- +180°（360° 扫描） -->
-          </horizontal>
-        </scan>
-        <range>
-          <min>0.12</min>   <!-- 最小检测距离 0.12m -->
-          <max>10.0</max>   <!-- 最大检测距离 10m -->
-          <resolution>0.01</resolution>
-        </range>
-      </ray>
-    </sensor>
-  </gazebo>
-
-  <!-- ========== RGB 相机 link（新增传感器） ========== -->
-  <link name="camera_frame">
-    <visual>
-      <geometry>
-        <box size="0.03 0.03 0.02"/>
-      </geometry>
-      <material name="black"/>
-    </visual>
-    <inertial>
-      <mass value="0.05"/>
-      <inertia ixx="0.000005" ixy="0.0" ixz="0.0"
-               iyy="0.000005" iyz="0.0"
-               izz="0.000005"/>
-    </inertial>
-  </link>
-
-  <joint name="camera_joint" type="fixed">
-    <!-- 相机安装在底盘顶部前方 -->
-    <origin xyz="${chassis_length/2 - 0.02} 0.0 ${chassis_height/2 + 0.05}" rpy="0.0 0.0 0.0"/>
-    <parent link="chassis"/>
-    <child link="camera_frame"/>
-  </joint>
-
-  <!-- Gazebo RGB 相机插件配置 -->
-  <gazebo reference="camera_frame">
-    <sensor type="camera" name="camera_sensor">
-      <update_rate>30</update_rate>
-      <plugin name="gazebo_ros_camera_controller" filename="libgazebo_ros_camera.so">
-        <ros>
-          <namespace>/camera</namespace>
-        </ros>
-        <frame_name>camera_frame</frame_name>
-        <image_topic_name>image_raw</image_topic_name>
-        <camera_info_topic_name>camera_info</camera_info_topic_name>
-      </plugin>
-      <camera>
-        <horizontal_fov>1.047</horizontal_fov>  <!-- 60° 视场角（弧度） -->
-        <image>
-          <width>640</width>
-          <height>480</height>
-          <format>R8G8B8</format>
-        </image>
-        <clip>
-          <near>0.05</near>
-          <far>50.0</far>
-        </clip>
-      </camera>
-    </sensor>
-  </gazebo>
-
-  <!-- ========== 万向轮 + 左右驱动轮（调用宏，与实验20相同） ========== -->
-  <link name="front_caster">
-    <visual>
-      <geometry>
-        <sphere radius="${caster_radius}"/>
-      </geometry>
-      <material name="white"/>
-    </visual>
-    <collision>
-      <geometry>
-        <sphere radius="${caster_radius}"/>
-      </geometry>
-    </collision>
-    <inertial>
-      <mass value="0.05"/>
-      <inertia ixx="0.00001" ixy="0.0" ixz="0.0"
-               iyy="0.00001" iyz="0.0"
-               izz="0.00001"/>
-    </inertial>
-  </link>
-
-  <joint name="front_caster_joint" type="fixed">
-    <origin xyz="${chassis_length/2 - 0.02} 0.0 ${-chassis_height/2 + caster_radius}" rpy="0.0 0.0 0.0"/>
-    <parent link="chassis"/>
-    <child link="front_caster"/>
-  </joint>
-
-  <xacro:wheel name="left_wheel"  parent="chassis" x_reflect="-1"/>
-  <xacro:wheel name="right_wheel" parent="chassis" x_reflect="1"/>
-
-  <!-- ========== Gazebo 差分驱动插件 ========== -->
-  <!-- 使 /cmd_vel 控制机器人底盘运动 -->
-  <gazebo>
-    <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
-      <!-- 左右关节名称 -->
-      <left_joint>left_wheel_joint</left_joint>
-      <right_joint>right_wheel_joint</right_joint>
-      <!-- 轴距和轮距 -->
-      <wheel_separation>${wheel_y_offset * 2}</wheel_separation>
-      <wheel_diameter>${wheel_radius * 2}</wheel_diameter>
-      <!-- 轮子最大速度和扭矩 -->
-      <max_wheel_torque>20.0</max_wheel_torque>
-      <max_wheel_acceleration>1.0</max_wheel_acceleration>
-      <!-- 里程计话题 -->
-      <odometry_frame>odom</odometry_frame>
-      <robot_base_frame>chassis</robot_base_frame>
-      <publish_odom>true</publish_odom>
-      <publish_tf>true</publish_tf>
-    </plugin>
-  </gazebo>
-
-</robot>
-```
-
-```bash
-# 将 Xacro 展开为标准 URDF
-xacro ~/exp21_ws/src/gazebo_demo/urdf/diff_drive_robot_gazebo.urdf.xacro \
-  > ~/exp21_ws/src/gazebo_demo/urdf/diff_drive_robot_gazebo.urdf
-```
-
-**易错点**：
-- ⚠️ **插件库文件名**：`libgazebo_ros_ray_sensor.so` 在 Ubuntu 中的实际路径是 `/usr/lib/x86_64-linux-gnu/gazebo-11/plugins/`。如果 Gazebo 报 "Failed to load plugin"，用 `find /usr -name "libgazebo_ros_ray_sensor*"` 确认文件存在。
-- ⚠️ **`<gazebo reference="">` 必须匹配 link 名称**：`reference` 属性值必须与 URDF 中 `<link name="...">` 完全一致（区分大小写）。拼写不匹配会导致插件静默跳过，传感器无数据输出。
-
----
-
-#### 步骤 4：使用 Launch 文件启动完整仿真并验证传感器数据（20 分钟）
-
-**知识点讲解**：
-
-**ros2 launch 启动 Gazebo 仿真**的标准流程为：
-1. 启动 `gazebo` 进程，加载 World 文件
-2. 使用 `spawn_entity` 节点将机器人 URDF 模型生成到仿真世界中
-3. 启动 `robot_state_publisher` 发布 /tf（与实验20相同）
-4. Gazebo 传感器插件自动以 ROS2 节点形式运行，发布传感器数据到话题
-
-**操作**：
-
-创建 Launch 文件 `~/exp21_ws/src/gazebo_demo/launch/simulate.launch.py`：
-
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-实验21：Gazebo 仿真 Launch 文件
-加载 World → 生成机器人模型 → 启动 robot_state_publisher → 传感器数据流
-"""
-
-import os
-from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler
-from launch.event_handlers import OnProcessExit
-from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
-
-
-def generate_launch_description():
-    pkg_dir = get_package_share_directory('gazebo_demo')
-
-    # URDF 文件路径
-    urdf_file = os.path.join(pkg_dir, 'urdf', 'diff_drive_robot_gazebo.urdf')
-    with open(urdf_file, 'r') as f:
-        robot_description = f.read()
-
-    # World 文件路径
-    world_file = os.path.join(pkg_dir, 'worlds', 'robot_world.world')
-
-    return LaunchDescription([
-        DeclareLaunchArgument(
-            'use_sim_time', default_value='true',
-            description='Use simulation (Gazebo) clock'
-        ),
-
-        # 1. 启动 Gazebo 并加载 World 文件
-        ExecuteProcess(
-            cmd=['gazebo', '--verbose', world_file, '-s', 'libgazebo_ros_init.so',
-                 '-s', 'libgazebo_ros_factory.so'],
-            output='screen',
-        ),
-
-        # 2. 将机器人模型 spawn 到 Gazebo 中
-        Node(
-            package='gazebo_ros',
-            executable='spawn_entity.py',
-            name='spawn_robot',
-            arguments=[
-                '-entity', 'diff_drive_robot',
-                '-file', urdf_file,
-                '-x', '0.0', '-y', '0.0', '-z', '0.1',
-            ],
-            output='screen',
-        ),
-
-        # 3. robot_state_publisher（发布 /tf）
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            parameters=[{
-                'robot_description': robot_description,
-                'use_sim_time': LaunchConfiguration('use_sim_time'),
-            }],
-            output='screen',
-        ),
-
-        # 4. Rviz2（可选，用于可视化传感器数据）
-        Node(
-            package='rviz2',
-            executable='rviz2',
-            name='rviz2',
-            arguments=['-d', os.path.join(pkg_dir, 'rviz', 'gazebo_view.rviz')],
-            output='screen',
-            # 条件启动：如果不需要 Rviz2，可注释掉此段
-        ),
-    ])
-```
-
-**创建 ROS2 功能包并编译启动**：
-
-```bash
-# 如果是新工作空间，创建功能包
-cd ~/exp21_ws/src
-ros2 pkg create gazebo_demo --build-type ament_python \
-  --dependencies rclpy gazebo_ros robot_state_publisher
-
-# 将上述 Launch 文件放入 ~/exp21_ws/src/gazebo_demo/launch/
-# 将 URDF/Xacro 文件放入 ~/exp21_ws/src/gazebo_demo/urdf/
-# 将 World 文件放入 ~/exp21_ws/src/gazebo_demo/worlds/
-# 创建资源目录
-mkdir -p ~/exp21_ws/src/gazebo_demo/resource
-touch ~/exp21_ws/src/gazebo_demo/resource/gazebo_demo
-
-# 更新 setup.py 添加 data_files
-# data_files=[
-#     ('share/ament_index/resource_index/packages', ['resource/gazebo_demo']),
-#     ('share/gazebo_demo', ['package.xml']),
-#     ('share/gazebo_demo/launch', ['launch/simulate.launch.py']),
-#     ('share/gazebo_demo/urdf', ['urdf/diff_drive_robot_gazebo.urdf']),
-#     ('share/gazebo_demo/worlds', ['worlds/robot_world.world']),
-# ],
-
-# 编译
-cd ~/exp21_ws
-colcon build --packages-select gazebo_demo
-source install/setup.bash
-
-# 启动仿真（需图形界面，GPU 建议）
-ros2 launch gazebo_demo simulate.launch.py
-```
-
-**验证传感器数据**（新终端）：
-
-```bash
-source ~/exp21_ws/install/setup.bash
-
-# 4.1 查看所有话题
-ros2 topic list
-# 预期包含: /scan, /camera/image_raw, /camera/camera_info, /joint_states, /cmd_vel, /odom, /tf, /tf_static
-
-# 4.2 查看激光雷达数据（一次性）
-ros2 topic echo /scan --once
-# 预期: ranges 数组中前方有障碍物处数值小（如 1.5m），空旷处为 inf
-
-# 4.3 查看相机数据（帧ID）
-ros2 topic echo /camera/image_raw --once | head -20
-# 预期: header.frame_id = "camera_frame", 图像数据为二进制数组
-
-# 4.4 如果安装了 rqt_image_view，可以实时查看相机画面
-ros2 run rqt_image_view rqt_image_view /camera/image_raw
-```
-
----
-
-#### 步骤 5：通过 /cmd_vel 控制机器人运动（15 分钟）
-
-**知识点讲解**：
-
-**差分驱动控制（Differential Drive Control）—— 是什么**
-
-差分驱动机器人通过**左右轮的速度差**实现转向：
-- 左右轮同速 → 直线前进
-- 左轮慢于右轮 → 右转（绕某点顺时针旋转）
-- 左右轮反向等速 → 原地旋转
-
-在 ROS2 中，控制指令通过 `geometry_msgs/msg/Twist` 消息发送到 `/cmd_vel` 话题。`Twist` 消息包含三个线速度分量（linear.x/y/z）和三个角速度分量（angular.x/y/z）。对于 2D 差分驱动机器人，仅使用 `linear.x`（前进速度）和 `angular.z`（绕 Z 轴旋转角速度）。
-
-**ros2 control 的控制器架构**：
-
-```
-/cmd_vel (Twist)
-      │
-      ▼
-diff_drive_controller  ← 接收速度指令，解算左右轮目标角速度
-      │
-      ▼
-joint_velocity_controller  ← 对每个 joint 执行 PID 速度控制
-      │
-      ▼
-Gazebo 物理引擎  ← 计算力矩 → 更新 joint 状态
-      │
-      ▼
-joint_state_broadcaster  ← 从 Gazebo 读取 joint 状态 → /joint_states
-```
-
-**操作**：
-
-```bash
-# 5.1 确保 Gazebo 仿真正在运行，机器人模型已加载
-
-# 5.2 发送直线前进指令（0.5 m/s，持续 2 秒）
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.5, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" \
-  --rate 10 &
-PID_PUB=$!
-sleep 2
-kill $PID_PUB
-
-# 观察 Gazebo 中机器人向前移动
-
-# 5.3 发送原地旋转指令（1.0 rad/s，持续 1.5 秒 ≈ 旋转约 86°）
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 1.0}}" \
-  --rate 10 &
-PID_PUB=$!
-sleep 1.5
-kill $PID_PUB
-
-# 观察 Gazebo 中机器人原地旋转
-
-# 5.4 发送停止指令（发送零速度）
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" \
-  --once
-
-# 5.5 查看里程计数据（机器人运动时自动发布）
-ros2 topic echo /odom --once
-# 预期: pose.pose.position.x/y/z 反映机器人当前的全局位置
-```
-
-**Python 编程控制示例**（可选的扩展内容）：
-
-```python
-#!/usr/bin/env python3
-"""使用 Python 编程控制 Gazebo 仿真机器人完成正方形轨迹"""
-import rclpy
-from rclpy.node import Node
-from geometry_msgs.msg import Twist
-import time
-
-
-class SquareDriver(Node):
-    def __init__(self):
-        super().__init__('square_driver')
-        self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.get_logger().info('正方形轨迹驱动器已就绪')
-
-    def drive_square(self, side_length=1.0, speed=0.3):
-        """驱动机器人走一个正方形"""
-        for i in range(4):
-            # 前进 side_length 米
-            self.get_logger().info(f'第{i+1}边：前进 {side_length}m')
-            self._move_forward(speed, side_length / speed)
-            # 原地左转 90°
-            self.get_logger().info(f'第{i+1}角：左转 90°')
-            self._rotate(1.57, 1.57 / 1.0)  # 90° = pi/2 rad
-        self._stop()
-        self.get_logger().info('正方形轨迹完成')
-
-    def _move_forward(self, speed, duration):
-        twist = Twist()
-        twist.linear.x = speed
-        start = time.time()
-        while time.time() - start < duration:
-            self.pub.publish(twist)
-            rclpy.spin_once(self, timeout_sec=0.01)
-
-    def _rotate(self, angle, duration):
-        twist = Twist()
-        twist.angular.z = angle / duration
-        start = time.time()
-        while time.time() - start < duration:
-            self.pub.publish(twist)
-            rclpy.spin_once(self, timeout_sec=0.01)
-
-    def _stop(self):
-        self.pub.publish(Twist())
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    driver = SquareDriver()
-    driver.drive_square(side_length=1.0, speed=0.3)
-    driver.destroy_node()
-    rclpy.shutdown()
-
-
-if __name__ == '__main__':
-    main()
-```
-
-**易错点**：
-- ⚠️ **/cmd_vel 消息持续发送**：`ros2 topic pub --once` 只发送一条消息，机器人仅运动一个仿真步长（< 1cm）。要持续运动，必须使用 `--rate N` 以固定频率发布消息。生产级代码中使用 `create_publisher + 定时器` 持续发布。
-- ⚠️ **里程计坐标系 id**：差分驱动插件发布的 `/odom` 和 `/tf` 使用 `odom` 作为父坐标系。`odom` 坐标系的原点是机器人启动时的位置，它随机器人运动而漂移（整合误差）。`map` 坐标系才是全局固定的（需 SLAM 建立），初次仿真中 `odom` 和 `map` 通常重合。
-
----
-
-#### 步骤 6：实验收尾与总结（5 分钟）
-
-1. 关闭 Gazebo 窗口
-2. 在启动 launch 的终端按 `Ctrl+C` 终止所有进程
-3. 执行 `ros2 node list` 确认所有节点已退出
-
----
-
-### 七、注意事项
-
-| 类别 | 注意事项 |
-|------|---------|
-| ⚠️ GPU 性能 | B2 实验箱（RK3576 Mali-G52）运行 Gazebo 时帧率可能低于 10 FPS。如果画面卡顿，设置 `LIBGL_ALWAYS_SOFTWARE=1` 使用软件渲染；优先建议在 PC Ubuntu 上完成仿真调试后迁移到 B2 |
-| ⚠️ 内存 | 每个 Gazebo 实例占用约 500MB~1GB 内存。RK3576 仅有 4GB RAM，同时运行 Gazebo + Rviz2 可能导致内存不足。建议单独运行 Gazebo，需要可视化传感器数据时再单独启动 Rviz2 |
-| ⚠️ 模型路径 | Gazebo 首次下载在线模型库可能需要较长时间。使用 `export GAZEBO_MODEL_PATH=/usr/share/gazebo-11/models` 指定本地模型路径加速启动 |
-| ⚠️ 插件依赖 | 传感器插件（libgazebo_ros_camera.so 等）需要先安装 `ros-humble-gazebo-plugins`。如果 Gazebo 启动时控制台报 "Failed to load plugin"，检查包是否安装 |
-| ⚠️ Time 同步 | Gazebo 仿真时间必须通过 `use_sim_time:=true` 参数传递。如果节点未设置此参数，会使用系统时钟导致 `/tf` 时间戳不匹配，TF2 查询失败 |
-| ⚠️ 安全 | 本实验为纯软件仿真，无物理风险。但 Gazebo 的 API 调用（如用键盘发送 /cmd_vel）操作的是仿真机器人，在仿真中"撞墙"不会损坏硬件——这正是仿真的优势 |
-
-### 八、实验总结
-
-#### 8.1 完成成果
-
-完成本实验后，你应当能够：
-- ✅ 阐述 Gazebo 三层架构（物理引擎 → 传感器模型 → ROS2 接口）的数据流关系
-- ✅ 编写 World 文件加载自定义仿真场景（地面、光源、障碍物）
-- ✅ 在 URDF 中嵌入 Gazebo 传感器插件（激光雷达 + RGB 相机）并配置参数
-- ✅ 使用 ros2 launch 一键启动完整仿真流程（Gazebo + 模型加载 + robot_state_publisher + Rviz2）
-- ✅ 通过 `/cmd_vel` 话题控制仿真机器人运动，使用 `ros2 topic echo` 验证仿真传感器数据
-
-#### 8.2 技能收获
-
-| 技能 | 说明 |
-|------|------|
-| Gazebo 场景搭建 | 掌握 SDF/World 文件格式，能构建包含障碍物、光照、物理参数的自定义仿真环境 |
-| 传感器仿真 | 能在 URDF 中配置激光雷达（ray）、RGB 相机（camera）、深度相机（depth_camera）三类常用传感器插件 |
-| 差分驱动控制 | 理解 `/cmd_vel` → `diff_drive_controller` → 左右轮速度解算 → Gazebo 物理更新的控制链路 |
-| 仿真数据验证 | 能使用 `ros2 topic echo/list/hz` 验证仿真传感器数据的类型、频率、内容是否与预期一致 |
-| 仿真先行方法论 | 理解"先在 Gazebo 中调通算法 → 再上真实硬件"的工程流程，以及仿真到实机的 Sim-to-Real gap |
-
-#### 8.3 常见问题与解答
-
-| 问题 | 原因 | 解决方法 |
-|------|------|---------|
-| `gazebo: command not found` | 未安装 Gazebo | `sudo apt install ros-humble-gazebo-ros-pkgs` |
-| Gazebo 启动后闪退 | GPU 驱动问题或 OpenGL 不兼容 | `export LIBGL_ALWAYS_SOFTWARE=1` 使用软件渲染；或 `export SVGA_VGPU10=0` 禁用 VM GPU 加速 |
-| 机器人模型在 Gazebo 中"飞走"或"穿透地面" | 碰撞几何缺失或惯性矩阵非法 | 检查每个 link 的 `<collision>` 是否定义，`<inertia>` 矩阵是否正定 |
-| `spawn_entity` 报 "Service call timed out" | Gazebo 尚未完全启动就尝试加载模型 | 在 Launch 文件中为 spawn_entity 添加 `OnProcessStart` 事件依赖，确保 Gazebo 就绪后再 spawn |
-| 激光雷达数据 `ranges` 全为 inf | 障碍物不在扫描范围内，或激光雷达朝向错误 | 检查机器人前方是否有障碍物；检查 `<ray>` 的 `<min_angle>`/`<max_angle>` 配置；在 Gazebo 中按 T 键切换透明模式查看射线 |
-| `/cmd_vel` 发送后机器人不动 | 差分驱动插件未正确加载，或 joint 名称不匹配 | 检查 URDF 中 `<plugin name="diff_drive">` 的 `<left_joint>`/`<right_joint>` 名称是否与 joint 实际名称一致 |
-
-### 九、实验报告要求
-
-#### 9.1 报告内容
-
-完成实验后，提交一份实验报告，包含以下内容：
-
-1. **实验基本信息**：实验名称、实验日期、实验者姓名、实验平台信息（PC 或 B2 实验箱及其 GPU 信息）
-2. **实验过程记录**：截取关键步骤的结果截图（至少 6 张），包括：Gazebo 仿真场景全貌（含机器人+障碍物）、`ros2 topic list` 输出的传感器话题列表、`ros2 topic echo /scan --once` 的激光雷达数据、`/camera/image_raw` 的虚拟相机画面、`/cmd_vel` 发送后机器人移动的 Before/After 对比、机器人完成正方形轨迹后的 Gazebo 俯视图
-3. **原理分析**（不少于 300 字）：用自己的语言解释 Gazebo 仿真中传感器数据的生成链路——以激光雷达为例，从 Gazebo 内部的射线投射（ray casting）→ 传感器插件封装 → `sensor_msgs/LaserScan` 话题发布的完整数据流，以及为什么仿真传感器数据可以用于替代真实传感器的算法测试
-4. **思考题**（见下方）
-
-#### 9.2 思考题
-
-**思考题 1**（Sim-to-Real Gap 分析）：
-你在本实验中通过 Gazebo 仿真验证了激光雷达和相机的数据获取。但在真实机器人上，传感器数据会受到多种噪声影响：激光雷达的测量噪声（高斯分布 ±0.01m）、相机镜头的畸变（径向畸变 + 切向畸变）、IMU 的温漂等。请针对激光雷达，提出至少 3 种 Gazebo 仿真与真实传感器之间的差异（"Sim-to-Real Gap"），并说明如果你要在仿真中"模拟"这些差异，应该如何修改激光雷达的插件配置或添加噪声模型。
-
-**思考题 2**（仿真工程流程设计）：
-假设你正在为 C1 小车开发一个"自动避障"功能，包括激光雷达感知 + 路径规划 + 电机控制。请设计一个完整的"仿真先行（Simulation-First）"开发流程，明确每个阶段在 Gazebo 仿真和真实硬件上分别做什么、验证什么。至少包含：单元测试阶段（Gazebo）、集成测试阶段（Gazebo）、硬件在环测试阶段（HIL）、实车验证阶段。
-
-#### 9.3 评分标准
-
-| 评分项 | 权重 | 评分标准 |
-|-------|------|---------|
-| 实验操作完整性 | 30% | 是否按要求完成 World 创建、模型加载、传感器配置、/cmd_vel 控制验证 |
-| 截图与记录 | 15% | 截图是否清晰、完整（≥6 张），标注是否准确 |
-| 原理分析 | 25% | 对 Gazebo 传感器仿真数据链路的理解深度，需覆盖从射线投射到话题发布的完整流程 |
-| 思考题 1 | 15% | Sim-to-Real Gap 分析是否全面（≥3 点差异），噪声模型修改建议是否可行 |
-| 思考题 2 | 15% | Simulation-First 开发流程设计的完整性与阶段性是否合理 |
-
----
-
 ## 更新日志
 
 | 版本 | 日期 | 更新内容 | 更新人 |
-|------|------|---------|-------|
-| v0.1 | 2026-08-10 | 初始生成实验18~21（exp18元功能包、exp19 TF2坐标变换、exp20 URDF模型、exp21 Gazebo仿真） | LabGuideExperimentAgent |
-
-> [⚠️ 待源码核实] 以上 4 个实验均基于 ROS2 Humble 标准 API / 公开文档生成，无源码落点引用。对应源码到位后需通过 IncrementalUpdateAgent 核实接口与参数，补充源码位置标注。
-
-
-## 更新日志
-
-| 版本 | 日期 | 更新内容 | 更新人 |
-|------|------|---------|-------|
+|---|---|---|---|
 | v0.1 | 2026-08-10 | 初始生成实验1（ROS2简介） | LabGuideExperimentAgent |
 | v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | LabGuideExperimentAgent |
-| v0.3 | 2026-08-13 | 实验6-9（话题/服务/动作/自定义接口）根据course_spec.csv与源码重写，对齐ros_sensor与ros_sensor_interfaces实际接口 | LabGuideExperimentAgent |
