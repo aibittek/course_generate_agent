@@ -136,7 +136,7 @@ bash scripts/stop_eai_factory.sh
 **快速验证流程**（纯文档类实验，以下为快速阅读清单）：
 
 ```bash
-# 在 eai_factory 包目录下
+# 在~/ros2_ws/src/xflz_eai_car1/app/eai_factory包目录下
 ls docs/
 grep -n "R[0-9]" docs/01_需求总览.md          # 快速定位 R1-R10 各条款行号
 grep -n "R8\|R9" docs/05_流程与安全.md          # 定位打断与安全章节
@@ -179,12 +179,10 @@ graph LR
 - 唤醒后识别「开始装货」「开始分拣」「开始码垛」，一律走大模型意图解析，不用关键词匹配
 ```
 
-- **配图说明**（重点）：建议配一张"需求分组图"，把 R1-R10 分成"交互（R1-R3）、任务（R4-R6）、播报打断（R7-R8）、安全（R9-R9.1）、工程（R10）"五组，并标注每组之间的依赖箭头（如 R3 意图 → R4-R6 任务触发；R8/R9 打断作用于任务执行中）。
-
 **操作步骤**：
 
 1. 打开 `docs/01_需求总览.md`，通读全文。
-2. 用表格整理 R1-R10：每条记录「需求编号 / 一句话要点 / 可量化约束 / 涉及节点（可暂填） / 【待定】标记」。
+2. 用表格整理 R1-R10：每条记录「需求编号 / 一句话要点 / 可量化约束 / 涉及节点 」。
 3. 特别关注 R3 的意图枚举（load/sort/palletize）与 R9 的三个量化条件，单独摘抄。
 
 **易错点**：
@@ -205,8 +203,6 @@ graph LR
 - 每次机械臂操作完成后，必须先回到 work 姿态，才能进行下一步/等待下一条语音指令。
 - 适用：装货放置后、分拣放置后、流水线放置后、码垛放置后，以及打断后（见 R8）。
 ```
-
-- **配图说明**（重难点）：配一张"物流链 + 状态机"融合图：`装货区 → 分拣区 → 流水线(定点停靠) → 码垛区`，每个任务下方标注触发语音（「开始装货」等）与"回 work → 播报"的收尾，突出 R4.1 回 work 是连接任务的"安全握手"。
 
 **操作步骤**：
 
@@ -234,8 +230,6 @@ graph LR
 - 触发动作（N3 safety 节点）：释放机械臂全部 6 个舵机力矩 + 发 /eai_factory/safety/danger=true。
 - 危险解除后：恢复舵机力矩 + 调 /arm_controller/go_work 回 work 姿态 + 发 danger=false。
 ```
-
-- **配图说明**（重难点）：配一张"打断分层图"：顶部画两类打断入口（语音唤醒 / 雷达危险），中间画仲裁逻辑（雷达 > 语音，危险期间抑制语音回 work），底部画最终动作（回 work / 释放力矩），并标注 R9.1 的优先级箭头。
 
 **操作步骤**：
 
@@ -415,8 +409,6 @@ N3 eai_factory_safety    ROS节点：雷达自身前方扇区检测→释放舵�
 N-conveyor eai_factory_conveyor ROS节点：流水线电机 + 光电传感器定点停
 ```
 
-- **配图说明**（重难点）：配一张"五节点通信拓扑图"：N1、N2、N-grasp、N-conveyor、N3 五个圆角框，N3 单独挂在雷达 /scan 下；连线标注话题名（/eai_factory/intent、/eai_factory/grasp/set_task、/eai_factory/conveyor/state、/eai_factory/safety/danger）与服务名（/eai_factory/grasp/start、/eai_factory/conveyor/run_until_sensor），用实线=服务、虚线=话题区分。
-
 **操作步骤**：
 
 1. 通读 `docs/02_架构设计.md` 的"架构总览"与"节点职责"两节，记录每个节点的订阅/发布/服务概貌。
@@ -454,8 +446,6 @@ def _conveyor_state_cb(self, msg):
         self._trigger_grasp('palletize')
 ```
 
-- **配图说明**（重难点）：配一张"palletize 时序图"：N2 → conveyor(run_until_sensor 立即返回) → [流水线运转…] → conveyor 发 state=sensor_blocked → N2 触发 grasp → grasp 回 status=palletize|done → N2 发 speak。旁边附"2s 重试分支"：服务未就绪 → 存 _pending_task → 2s 定时器 → 就绪后重放。
-
 **操作步骤**：
 
 1. 通读 `scheduler_node.py` 全文（247 行），按行号标注六个关键方法：`_run_task`、`_start_palletize_sequence`、`_conveyor_state_cb`、`_trigger_grasp`、`_retry_grasp`、`_grasp_status_cb`。
@@ -488,8 +478,6 @@ if not self._call_gripper(False):
     return
 ```
 
-- **配图说明**：配一张"三类执行节点职责对比表图"：N-grasp（输入 set_task/interrupt/danger/vision target；输出 target_pose/set_pick_target/grasp status；调用 arm 服务）、N-conveyor（输入 danger；输出 set_motor/photo/state/emergency；提供 5 服务）、N3（输入 /scan；输出 danger/status/set_state；调用 go_work）。
-
 **操作步骤**：
 
 1. 阅读 `grasp_node.py`，在笔记中整理三类输入（话题订阅）、两类输出（话题发布）、五类服务调用（pick/place/go_work/set_gripper/emergency_stop）与服务提供（start/confirm/abort），记录行号。
@@ -518,8 +506,6 @@ DeclareLaunchArgument('start_radar', default_value='false',
 Node(package='eai_factory', executable='eai_factory_scheduler',
      name='eai_factory_scheduler', output='screen', parameters=[config_path]),
 ```
-
-- **配图说明**：配一张"launch 启动树图"：根节点 launcher → 7 个开关 →（start_base=true 时）car1_bringup/arm_controller/peripherals → eai_factory 五节点（标注 ExecuteProcess vs Node 两种图标），右下角 rqt_image_view 画个虚线框标注"TimerAction 延迟 5s 启动、需要显示器"。
 
 **操作步骤**：
 
@@ -1543,13 +1529,25 @@ msg.pose.position.z = base_pose.pose.position.z + off[2]
 **快速验证流程**：
 
 1. 省内存启动：`ros2 launch eai_factory eai_factory.launch.py start_voice:=false`
+
 2. 分拣取料区放置物料，触发分拣：
    ```bash
    ros2 service call /eai_factory/start_sort std_srvs/srv/Trigger
    ```
+
 3. 观察机械臂序列：提前开爪（set_gripper open OK）→ 带张开夹爪移到抓取点（0.062, -0.116, 0.195）→ 闭爪（set_gripper close OK）→ 抬升 → 移到放置点 → 开爪放置 → 放置后抬升 5cm → go_work 回 work
+
 4. 日志出现 `=== fixed grasp-place sequence done ===`，随后 `grasp: status: sort|done`
+
 5. 语音联动（带语音启动）：说「分拣」→ 扬声器播报"好的，开始分拣"→ 任务完成后播报"分拣完成"
+
+   启动分拣后，在分拣区抓取方块（固定点抓取）
+
+   ![image-20260902144346559](assets/image-20260902144346559.png)
+
+抓取成功后，将红色方块放在流水线上（固定点放置）
+
+![image-20260902144423937](assets/image-20260902144423937.png)
 
 **预期效果描述**：
 
@@ -1588,6 +1586,7 @@ self.declare_parameter('grasp.tasks.sort.vision', False)
 ```
 
 **固定点位抓取（5.1.1）**
+
 - **原理**：`vision=false` 时 grasp 不订阅视觉、不做 TF，observe_pose 就是精确抓取点，序列直接走 `_do_fixed_grasp`（`start_grasp` L273-278 分支）。它不调用 arm_controller 的 pick/place 服务，而是 grasp 自己编排 `set_gripper`（开合夹爪）与 `target_pose`（移动）服务完成整个抓放——这是与视觉抓取（load，走 pick/place 服务）最大的结构差异。好处是少依赖两个服务、时序完全可控。
 - **源码对应**：`grasp_node.py` L273-278（vision=false 分支）；`eai_factory.yaml` L83-86（vision: false）
 
@@ -1836,23 +1835,43 @@ if status == 'done':
    cat /sys/class/gpio/gpio17/value     # 应输出 0 或 1
    ros2 launch eai_factory eai_factory.launch.py start_voice:=false start_vision:=false start_grasp:=true start_viz:=false
    ```
+
+   传送带进入准备姿态![image-20260902144935982](assets/image-20260902144935982.png)
+
 2. 流水线单测（观察 电机运转→光电遮挡→定点停）：
+
    ```bash
    ros2 topic echo /eai_factory/conveyor/state
    ros2 service call /eai_factory/conveyor/run_until_sensor std_srvs/srv/Trigger
    # 把物品放到流水线起始端，随流水线移动
+   
    ```
+
+   传送带开始转动
+
+   ![image-20260902144830780](assets/image-20260902144830780.png)
+
 3. 码垛任务（观察 送料→sensor_blocked→抓取→放置→回 work）：
+
    ```bash
    ros2 topic echo /eai_factory/grasp/status
    ros2 service call /eai_factory/start_palletize std_srvs/srv/Trigger
    ```
+
+   机械臂抓取红色方块
+
+   ![image-20260902145110274](assets/image-20260902145110274.png)
+
+   传送带将红色方块放入到码垛区域![image-20260902145229741](assets/image-20260902145229741.png)
+
 4. 急停测试（观察 急停与恢复）：
+
    ```bash
    ros2 service call /eai_factory/conveyor/emergency_stop std_srvs/srv/Trigger
    ros2 service call /eai_factory/conveyor/run std_srvs/srv/Trigger        # 应被拒绝
    ros2 service call /eai_factory/conveyor/reset_emergency std_srvs/srv/Trigger
    ```
+
 5. 语音联动（说"码垛"，观察完成播报"码垛完成"）。
 
 **预期效果描述**：
@@ -1884,7 +1903,9 @@ graph LR
 **流水线电机复用底盘电机通道（5.2.1）**
 
 - **原理**：智慧工厂流水线不再单独购买电机驱动，而是**复用底盘电机通道 M1（前左轮）**。N-conveyor 通过发布 `/car1_base_driver/set_motor`（`MotorsState`，含 `MotorState{id, rps}`）驱动流水线：STM32 会**保持最后收到的速度持续运转**，因此"停止"只需发布 `rps=0`（立即且可靠）。电机通道号通过 `conveyor.motor_id` 现场配置（本项目为 1），速度 `run_speed=0.1 m/s`。光电传感器接 GPIO0_C1=17，读 `/sys/class/gpio/gpio17/value`，电平约定 **HIGH(1)=无遮挡、LOW(0)=遮挡**；GPIO 必须先导出（sysfs 导出 + 内部上拉，需 root），N-conveyor 启动时检测未导出会自动 `sudo` 调 `setup_conveyor_gpio.sh`（幂等）。
+
 - **源码对应**：`eai_factory/conveyor_node.py` L53-60（conveyor.* 参数声明）、L127-133（`_set_motor` 发布速度）、L135-165（`_ensure_gpio_exported` 自动导出）；`scripts/setup_conveyor_gpio.sh` L13-24（已导出跳过）、L47-49（sysfs 导出 + direction=in）；`config/eai_factory.yaml` L100-108（conveyor 段）
+  
   ```python
   def _set_motor(self, rps):
       msg = MotorsState()
@@ -1894,9 +1915,6 @@ graph LR
       msg.data = [m]
       self.motor_pub.publish(msg)
   ```
-- **公式/配图说明**（重难点）：
-  - 电平约定：`value==sensor_blocked_level(0)` → 遮挡；`value==1` → 无遮挡
-  - 参数表：`motor_id=1`、`run_speed=0.1`、`sensor_timeout=30.0s`、`debounce_reads=3`、`poll_period=0.05s`（`eai_factory.yaml` L100-108）
 
 **操作步骤**：
 
@@ -1939,6 +1957,7 @@ graph LR
 **palletize 编排：先送料后抓取（1.3.2）**
 
 - **原理**：码垛任务不是直接抓取，而是**跨节点编排**：N2 调度器先调用 N-conveyor 的 `run_until_sensor` 让流水线送料（物品随皮带移动直到光电遮挡定点停），**等待** `/eai_factory/conveyor/state` 变为 `sensor_blocked` 后才触发 N-grasp 执行码垛抓取。该等待通过订阅 `_conveyor_state_cb` 实现（`_awaiting_sensor` 标志置位期间收到 `sensor_blocked` 即启动抓取）。N-grasp 的 palletize 任务是**固定点位抓取**（`vision=false`）：`observe_pose=[0.145, 0.0027, 0.185, 3.1381]` 即取料点、`place_pose=[0.0608, 0.1345, 0.2051, 2.6461]` 即放置点，动作序列为**提前开爪→直接到位→闭爪→抬升(lift_height=0.03)→移放置位→开爪投放→再抬升(place_lift=0.05)→回 work**。
+
 - **源码对应**：`eai_factory/scheduler_node.py` L98-110（`_start_palletize_sequence` 送料）、L121-127（`_conveyor_state_cb` 收到 sensor_blocked 触发抓取）、L129-152（`_trigger_grasp` 先 set_task 再 start）、L226-230（`/eai_factory/start_palletize` 服务）；`eai_factory/grasp_node.py` L59-61（palletize 固定点位参数）、L273-278（vision=false 走固定抓取）、L413-485（`_do_fixed_grasp` 八步动作序列）；`config/eai_factory.yaml` L87-90（palletize 段）
   ```python
   def _conveyor_state_cb(self, msg):
@@ -1946,15 +1965,6 @@ graph LR
           self._awaiting_sensor = False
           self.get_logger().info('[SCHEDULER] palletize: item at sensor — starting grasp')
           self._trigger_grasp('palletize')
-  ```
-- **公式/配图说明**（重难点）：
-  ```mermaid
-  graph LR
-      A[调度器 start_palletize] --> B[conveyor run_until_sensor 送料]
-      B --> C[state=sensor_blocked]
-      C --> D[set_task=palletize + grasp/start]
-      D --> E[固定抓取 八步序列]
-      E --> F[grasp/status: palletize|done]
   ```
 
 **操作步骤**：
@@ -2107,6 +2117,7 @@ graph LR
 **完成成果**: 完成流水线电机启停、光电定点停（含防抖/超时）、急停置位/复位、palletize 先送料后抓取编排及语音联动码垛的全流程验证，并按 docs/10 完成测试用例验收。
 
 **技能收获**:
+
 - 掌握复用底盘电机驱动流水线（set_motor 速度发布/置 0 即停）与 GPIO sysfs 导出流程
 - 掌握 run_until_sensor 清沿/挡沿/防抖/超时四段式定点停与状态机转换
 - 掌握 N2 调度器跨节点编排（订阅 conveyor/state 同步后再触发 grasp）与固定点位抓取八步动作序列
@@ -2172,9 +2183,8 @@ graph LR
    ```bash
    source /opt/ros/humble/setup.bash
    source /home/iflytek/ros2_ws/install/setup.bash
-   ros2 launch eai_factory eai_factory.launch.py \
-     start_base:=false start_voice:=false start_vision:=false start_grasp:=false \
-     start_conveyor:=false start_radar:=true
+   sudo bash scripts/setup_conveyor_gpio.sh
+   ros2 launch eai_factory eai_factory.launch.py start_voice:=false start_vision:=false start_grasp:=true start_viz:=false
    ```
 2. 观察接口：
    ```bash
@@ -2187,6 +2197,8 @@ graph LR
 3. 危险触发：在雷达正前方 **20cm 内**放置障碍物并保持 **0.5s 以上** → 观察 `danger=true`、`status=danger`、6 舵机力矩释放（机械臂变软可手推）
 4. 危险解除：移开障碍物 → 观察 `danger=false`、`status=recover`、力矩恢复、机械臂 `go_work` 回 work
 5. 任务中急停联动：执行装货/分拣/码垛任务中触发雷达危险 → 观察 N-grasp/conveyor 立即停止动作。
+
+![image-20260902180313754](assets/image-20260902180313754.png)
 
 **预期效果描述**：
 
@@ -2548,7 +2560,8 @@ graph LR
   DeclareLaunchArgument('start_radar', default_value='false',
       description='Start lidar only (independent of start_base; low-memory testing of safety node)'),
   ```
-- **公式/配图说明**（重难点）：
+- **公式/配图说明**：
+  
   ```mermaid
   graph LR
       A[launch 入口] --> B[start_base=true: bringup + arm_controller + peripherals]
@@ -2599,6 +2612,7 @@ graph LR
 **装货：视觉抓取全链路（6.3.3 + 4.2.3）**
 
 - **原理**：装货是**视觉自适应抓取**（`grasp.tasks.load.vision=true`）：N-vision 检测 AprilTag（tag id=3，tag36h11）发布目标位姿 → N-grasp 观察位 `[0.16, 0.0, 0.27, 2.5307]` 到位 → 视觉目标经 camera→base_link TF 变换 → 带 `pick_offset` 补偿抓取 → 放置位 `[0.05675, -0.13166, 0.20386, 2.93322]` 放下 → 回 work。任务完成后 N-grasp 发布 `load|done`，N2 调度器 `_grasp_status_cb` 映射为"装货完成"并发布到 `/eai_factory/speak` 由 TTS 播报，形成"语音→意图→任务→执行→完成播报"闭环。语音"装货"与服务 `/eai_factory/start_load` 两路等价（同走 `_run_task('load')`）。
+
 - **源码对应**：`eai_factory/scheduler_node.py` L214-218（`/eai_factory/start_load` 服务）、L195-210（`_grasp_status_cb`：`load→装货完成` 播报）；`eai_factory/grasp_node.py` L53-55（load 任务点位参数）、L246-306（`start_grasp` 视觉路径）；`config/eai_factory.yaml` L79-82（load 段点位）、L51（`load_done: "装货完成"`）、L110-113（intents 映射 load→`/eai_factory/start_load`）
   ```python
   def _start_load_cb(self, request, response):
@@ -2607,20 +2621,35 @@ graph LR
       response.message = 'load task triggered'
       return response
   ```
-- **公式/配图说明**（重难点）：视觉抓取链路 `AprilTag 检测 → PnP 位姿(相机系) → TF camera_depth_optical_frame→base_link → pick_offset 补偿 → pick/place`
 
 **操作步骤**：
 
 1. 全功能启动（步骤1 已起；若已停止重新启动）。
+
 2. 在装货区放置贴有 AprilTag(id=3) 的货物，观察 rqt 调试画面中检测框。
+
 3. 触发装货（两路任选其一）：
    ```bash
    # 语音路：小飞小飞 → 装货
    # 服务路：
    ros2 service call /eai_factory/start_load std_srvs/srv/Trigger
    ```
+
 4. 观察完整链路：机械臂移观察位 → 检测到目标 → 抓取（夹爪闭合）→ 抬升 → 移放置位 → 放下 → 回 work → 播报"装货完成"（终端可见 `[SCHEDULER] task load done — announce "装货完成"`）。
+
 5. 记录 grasp status `load|done`。
+
+   服务端启动装货程序后，机械臂会进入寻找姿态，开始识别物块的坐标
+
+   ![image-20260904150046159](assets/image-20260904150046159.png)
+
+找到后坐标后，机械臂会对物块进行视觉抓取
+
+![image-20260904150208510](assets/image-20260904150208510.png)
+
+抓取成果后，将物块放在分拣区
+
+![image-20260904150244048](assets/image-20260904150244048.png)
 
 **易错点**：
 
@@ -2678,21 +2707,13 @@ graph LR
 **码垛：送料+抓取编排（6.3.3 + 1.3.2 + 5.2.2）**
 
 - **原理**：码垛是**跨节点编排**任务：N2 调度器先调 N-conveyor `run_until_sensor` 送料（流水线电机 M1 运转），物品随皮带移动至光电传感器（GPIO17）遮挡定点停（`sensor_blocked`，防抖 3 次确认），调度器收到该状态后再触发 N-grasp 的 palletize 固定点位抓取（`observe_pose=[0.145, 0.0027, 0.185, 3.1381]` 取料、`place_pose=[0.0608, 0.1345, 0.2051, 2.6461]` 放置），完成后播报"码垛完成"。这是本课程**最完整的任务链路**，融合了流水线、光电、固定抓取、跨节点状态同步四大知识点。
+
 - **源码对应**：`eai_factory/scheduler_node.py` L226-230（`/eai_factory/start_palletize` 服务）、L98-110（`_start_palletize_sequence` 先送料）、L121-127（`_conveyor_state_cb` 收到 `sensor_blocked` 触发抓取）、L203-204（`palletize→码垛完成`）；`eai_factory/grasp_node.py` L59-61（palletize 点位）、L273-278（固定抓取路径）；`config/eai_factory.yaml` L87-90（palletize 段）、L35-36（"码垛"等意图提示词）、L53（`palletize_done: "码垛完成"`）
   ```python
   def _start_palletize_sequence(self):
       ...
       self._awaiting_sensor = True
       future = self.conveyor_client.call_async(Trigger.Request())  # run_until_sensor 送料
-  ```
-- **公式/配图说明**（重难点）：
-  ```mermaid
-  graph LR
-      A[语音码垛/服务触发] --> B[run_until_sensor 送料]
-      B --> C[光电遮挡→sensor_blocked]
-      C --> D[grasp palletize 固定抓取]
-      D --> E[palletize|done]
-      E --> F[TTS: 码垛完成]
   ```
 
 **操作步骤**：
