@@ -1,0 +1,294 @@
+course_code: EXP006b
+course_name: 机器人大模型综合应用开发（通用目标追踪）
+category: sheet1
+folder: object_tracking
+prerequisites:
+  - 机器人视觉应用与开发
+  - 机器人自然语言交互应用与开发
+  - Python编程
+  - 边缘计算基础
+total_hours: 48
+theory_hours: 0
+lab_hours: 48
+experiment_count: 9
+tech_stack:
+  - YOLOv8
+  - 多目标追踪DeepTrack(卡尔曼+外观ReID)
+  - 外观重识别ReID
+  - RKNN NPU
+  - 本地大模型RKLLM
+  - LLM FunctionCall工具调用
+  - VLM视觉选目标
+  - 语音唤醒KWS
+  - 流式ASR
+  - 本地TTS
+  - 门控路由fail-closed
+  - MJPEG推流
+hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
+description: |
+  本课程围绕通用目标追踪综合项目展开，从需求分析、架构设计、配置与接口设计出发，分模块完成视觉追踪底座、LLM自然语言指令与门控、VLM描述选目标、语音交互、事件日志与故障降级集成测试，最终进行全功能快速验证，构建自然语言驱动的通用目标追踪系统。
+experiments:
+  - id: exp01
+    experiment_id: 1
+    name: 通用目标追踪--项目需求分析
+    hours: 4
+    difficulty: 1
+    difficulty_stars: "⭐"
+    experiment_type: 验证性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/object_tracking/
+    main_entry: docs/01_需求总览.md;docs/05_流程与安全.md;README.md
+    knowledge_points:
+      - R1-R13全部功能需求
+      - 多源输入(视频/图片/摄像头)
+      - 目标检测与追踪ID
+      - 外观ReID重识别
+      - LLM自然语言指令
+      - VLM描述选目标
+      - 清除/追踪/描述门控
+      - 流式TTS播报
+      - 事件日志(events.jsonl)
+      - YOLOv8 COCO 80类通用检测(车辆仅演示场景)
+    objectives:
+      - 理解多目标车辆追踪综合项目需求(R1-R13)
+      - 掌握检测→追踪→指令→选车→清除全流程
+      - 理解文本调试模式(--text)与音频走同一状态机
+      - 理解通用目标追踪适用任意YOLOv8可识别类别
+    exp_content:
+      - 步骤1:阅读需求总览docs/01_需求总览.md梳理R1-R13全部需求与非目标边界
+      - 步骤2:绘制检测/追踪ID/指令锁定/描述选车/清除/事件日志完整流程图
+      - 步骤3:阅读流程与安全docs/05_流程与安全.md标注门控防呆与fail-closed节点
+      - 步骤4:阅读README.md架构速览理解tracking/tools/apps/speech/llm/vision各层结构
+      - 步骤5:完成需求阅读笔记
+    notes: 源码位于ros2_ws/…;纯文档阅读无硬件操作
+
+  - id: exp02
+    experiment_id: 2
+    name: 通用目标检测与追踪底座--系统架构设计
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/object_tracking/
+    main_entry: docs/02_架构设计.md;tracking/engine.py;tracking/session.py;tools/tool_dispatch.py
+    knowledge_points:
+      - 分层架构(apps/common/tracking/tools/speech/llm/vision/config)
+      - 视觉流水线(YOLO→ReID→DeepTrack→确认框)
+      - 独立线程CommandWorker(不卡帧)
+      - 暂停等待看门狗(pending/pause_timeout)
+      - ID锁定(TrackSession.follow_ids)
+      - 门控分支(_native_gate路由顺序)
+    objectives:
+      - 掌握TrackEngine单状态机主循环与命令队列
+      - 理解LLM推理与主循环解耦(不卡帧)与暂停等待
+      - 掌握描述选车与清除语义路由优先级
+    exp_content:
+      - 步骤1:阅读架构设计docs/02_架构设计.md理解分层结构与tracking→tools→apps依赖方向
+      - 步骤2:阅读apps/track_app.py的CommandWorker理解LLM异步消费+submit_effect入队回填主循环
+      - 步骤3:阅读tracking/engine.py的run单状态机主循环与pending暂停机制
+      - 步骤4:阅读CommandWorker._native_gate理解清除/追踪优先级与VLM回退顺序
+      - 步骤5:绘制视觉与语音双流水线数据流图
+    notes: 源码位于ros2_ws/…;纯阅读无硬件操作
+
+  - id: exp03
+    experiment_id: 3
+    name: 追踪配置与接口设计
+    hours: 4
+    difficulty: 2
+    difficulty_stars: "⭐⭐"
+    experiment_type: 设计性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/object_tracking/
+    main_entry: config/track_config.yaml;config/config_schema.py;docs/04_配置方案.md;docs/10_程序参数详解.md
+    knowledge_points:
+      - track_config.yaml全键(detect/tracker/tracking/session/interaction/speech/server等)
+      - config_schema强制REQUIRED键校验
+      - CLI传参与配置覆盖(CLI>config)
+      - 模型路径/阈值/门口词/串口映射
+      - function_call.native与vlm.fake_result_id开关
+    objectives:
+      - 掌握track_config.yaml各段配置含义与调参方法
+      - 理解config_schema.py校验机制
+      - 掌握CLI参数(--video/--image/--camera/--mjpeg/--text等)覆盖优先级
+    exp_content:
+      - 步骤1:阅读配置方案docs/04_配置方案.md记录各配置段键
+      - 步骤2:阅读config/track_config.yaml对照detect/tracker/tracking/interaction/speech/server各段
+      - 步骤3:故意改错一个键运行config/config_schema.py验证schema拦截
+      - 步骤4:阅读docs/10_程序参数详解.md掌握全部入口CLI参数与覆盖规则
+      - 步骤5:修改detect.class_filter为car观察只检测车
+    notes: 源码位于ros2_ws/…;需板端Python3.10+环境
+
+  - id: exp04
+    experiment_id: 4
+    name: 多目标追踪底座集成测试
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/object_tracking/
+    main_entry: tracking/tracker.py;tracking/kalman.py;tracking/pipeline.py;tracking/session.py;tracking/reid.py;apps/track_demo.py;docs/08_视觉测试用例.md
+    knowledge_points:
+      - DeepSORT结构(卡尔曼预测+IoU/外观级联关联+确认框)
+      - 外观重识别ReID(deepsort.rknn)
+      - 小框剔除(min_box_w/h=32)与超龄剔除(max_stale)
+      - ID稳定性与min_confidence调优
+      - class_filter=[car]
+      - track_demo的--list与--text
+      - COCO 80类通用目标(class_filter可任意指定类别)
+    objectives:
+      - 掌握卡尔曼预测+级联关联的多目标追踪原理
+      - 理解ReID外观重识别消除单帧漏检换ID
+      - 掌握min_box/max_stale过滤与ID稳定性调参
+    exp_content:
+      - 步骤1:运行python3 -m pytest tests/ -v验证纯逻辑测试全绿(x86可跑)
+      - 步骤2:运行printf 追踪 id3 | python3 apps/track_demo.py --video test.mp4 --text --list验证ID底座
+      - 步骤3:观察遮挡丢失后同ID恢复验证ReID
+      - 步骤4:调低tracker.min_confidence观察ID跳变
+      - 步骤5:按docs/08_视觉测试用例.md执行追踪/ReID用例
+    notes: 源码位于ros2_ws/…;纯逻辑pytest x86可跑
+
+  - id: exp05
+    experiment_id: 5
+    name: LLM指令与门控集成测试
+    hours: 4
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/object_tracking/
+    main_entry: apps/track_app.py;tools/tool_dispatch.py;tools/tools.py;tools/native_client.py;tools/native_parser.py;docs/05_流程与安全.md
+    knowledge_points:
+      - LLM FunctionCall工具调用(track_ids/clear_track)
+      - 独立线程CommandWorker不卡帧
+      - 门控fail-closed(追踪/消除/闲聊路由)
+      - rules兜底
+      - CLI>config覆盖
+    objectives:
+      - 掌握CommandWorker门控路由与fail-closed语义
+      - 理解清除语义强制clear_track与闲聊回落
+      - 掌握LLM子进程常驻管理
+    exp_content:
+      - 步骤1:运行python3 -m pytest tests/ -q -k not test_real验证门控用例
+      - 步骤2:文本全链路printf 小飞小飞\n追踪 id3 的车 | python3 apps/track_app.py --video test.mp4 --text
+      - 步骤3:输入 清除 验证强制解除全部锁定
+      - 步骤4:输入 你好 验证闲聊回落干净请求不执行工具
+      - 步骤5:按docs/05_流程与安全.md执行fail-closed用例
+    notes: 文本模式无需语音硬件
+
+  - id: exp06
+    experiment_id: 6
+    name: VLM描述选目标集成测试
+    hours: 4
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/object_tracking/
+    main_entry: tools/vlm_real.py;tools/vlm_fake.py;apps/track_app.py(CommandWorker._vlm_select_locked);apps/test_vlm_select.py;config/track_config.yaml(vlm段);docs/08_视觉测试用例.md
+    knowledge_points:
+      - VLM视觉选目标(网格构图→绝对track id)
+      - desc_words/color_words描述词路由
+      - VLM fail-closed(不确定/99/无匹配回引导)
+      - vlm.fake_result_id调试
+      - cell_cap=16候选上限
+      - VLM泛化与车辆类别边界
+    objectives:
+      - 掌握描述选车VLM的网格构图与选目标原理
+      - 理解VLM fail-closed铁律(绝不锁错目标)
+      - 掌握fake_result_id与真实VLM回退切换
+    exp_content:
+      - 步骤1:运行python3 apps/test_vlm_select.py --image runs/vlm_frames/grid_f200.jpg --json runs/vlm_frames/grid_f200.json --color 红 验证颜色选车
+      - 步骤2:读vlm_real.py理解网格构图返回绝对id
+      - 步骤3:文本模式输入 追踪红色皮卡 观察VLM选车锁定
+      - 步骤4:输入未找到目标描述验证fail-closed回引导不锁
+      - 步骤5:按docs/08_视觉测试用例.md的O7描述选车VLM用例执行
+    notes: VLM模型需板端;无真模型可vlm.fake_result_id调试
+
+  - id: exp07
+    experiment_id: 7
+    name: 语音交互集成测试
+    hours: 6
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/object_tracking/
+    main_entry: speech/voice_loop.py;speech/xfm_wake.py;speech/kws.py;speech/asr.py;speech/tts.py;config/kws_keywords.txt;config/hotwords.txt;docs/07_语音测试用例.md
+    knowledge_points:
+      - XFM六麦硬件唤醒(AIUI串口/先停log_server)
+      - 软件KWS关键词检出
+      - 流式ASR(zipformer_onnx)
+      - 流式TTS按句播报与打断
+      - 唤醒后录音线程启动
+      - 播报互斥playback_event
+      - 热词表(hotwords.txt)
+      - 文本模式(--text)驱动同一状态机
+    objectives:
+      - 掌握语音链路唤醒→ASR→LLM对话/指令→TTS流式播报全流程
+      - 理解录音线程在硬件唤醒后启动原因
+      - 完成语音测试用例验证
+    exp_content:
+      - 步骤1:运行python3 apps/track_app.py --video test.mp4 --text验证文本模式状态机
+      - 步骤2:启动语音全链路--camera--mjpeg
+      - 步骤3:喊 小飞小飞 验证唤醒→录音→聆听
+      - 步骤4:喊 追踪红色皮卡 验证ASR→LLM→TTS
+      - 步骤5:按docs/07_语音测试用例.md执行唤醒/打断/流式TTS用例
+      - 步骤6:调kws.threshold观察误报变化
+    notes: 音频模式需麦克风/喇叭;--text无需
+
+  - id: exp08
+    experiment_id: 8
+    name: 事件日志与故障降级集成测试
+    hours: 6
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/object_tracking/
+    main_entry: tracking/engine.py;common/logger.py;apps/track_app.py;tools/reidpool.py;docs/09_事件与故障测试用例.md;runs/logs/events.jsonl
+    knowledge_points:
+      - 事件日志(lost/unlock_all/command/camera_stall/pause_timeout)
+      - 门控fail-closed
+      - 故障注入降级(断网ReID/相机/aplay/无VLM)
+      - CLI>config覆盖
+    objectives:
+      - 掌握事件日志记录与事后追责
+      - 理解fail-closed降级不崩线程的一致性
+      - 完成故障注入测试
+    exp_content:
+      - 步骤1:触发lost事件检查events.jsonl加lost条目
+      - 步骤2:触发清除验证unlock_all
+      - 步骤3:文本模式验证fail-closed用例(E1-E3)
+      - 步骤4:模拟断网验证规则兜底
+      - 步骤5:按docs/09_事件与故障测试用例.md执行用例
+      - 步骤6:验证events.jsonl完整性
+    notes: 需板端;事件日志在runs/logs/
+
+  - id: exp09
+    experiment_id: 9
+    name: 通用目标追踪全功能验证
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: ros2_ws/src/xflz_eai_car1/app/object_tracking/
+    main_entry: apps/track_app.py;apps/track_demo.py;config/track_config.yaml;README.md(常用命令);docs/03_开发模式与验证.md
+    knowledge_points:
+      - 三模式入口(--video/--image/--camera)
+      - 文本→语音→摄像头三级开发模式
+      - 实时摄像头(需ROS相机节点)
+      - MJPEG推流验证
+      - 全链路故障排查
+      - 事件日志与标注帧完整性
+    objectives:
+      - 掌握track_app三模式启动方法
+      - 完成唤醒→追踪→指令→选车→清除→事件日志全链路验证
+      - 掌握故障排查与资源清理
+    exp_content:
+      - 步骤1:python3 -m pytest tests/ -v确认纯逻辑回归
+      - 步骤2:printf 小飞小飞\n追踪 id3|python3 apps/track_app.py --video test.mp4 --text离线全链路
+      - 步骤3:另终端ros2 launch car1_peripherals depth_camera.launch.py启动相机
+      - 步骤4:python3 apps/track_app.py --camera --mjpeg实时全链路
+      - 步骤5:浏览器http://<IP>:8088/track.mjpg观察推流
+      - 步骤6:按docs/03_开发模式与验证.md五步验证并清理残留进程
+    notes: 实时模式需深度相机HP60C与ROS相机节点
+
+_source:
+  csv_path: input/course_spec_object_tracking.csv
+  csv_sha256: 5fc42d608003d2657215b33eeaa92a0fd338de1e4fcc87691a38c653c03de053
+  parsed_at: 2026-09-07T14:43:24
+  parser: spec-parser-skill

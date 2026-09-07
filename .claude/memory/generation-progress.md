@@ -21,6 +21,7 @@ latest_version: v3.3
 | EXP005 | 机器人机械臂应用与开发 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ 已完成 | v3.0 / 2026-06-21 |
 | EXP006 | 机器人大模型综合应用开发 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ 已完成 | v4.0 / 2026-08-14 重新生成（eai_factory智慧工厂，48h/9实验/42知识点/34题，A级审核通过） |
 | EXP006a | 机器人大模型综合应用开发（老人跌倒监护项目） | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ 已完成 | v1.0 / 2026-08-18 生成（elderly_companion老人跌倒监护，48h/9实验/39知识点/34题，A级审核通过；规格在独立CSV `input/course_spec_elderly_companion.csv`，未并入主CSV） |
+| EXP006b | 机器人大模型综合应用开发（通用目标追踪） | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ 已完成 | v1.0 / 2026-09-07 生成（object_tracking通用目标追踪，48h/9实验/42知识点/34题，内容审核A级/质量审核A级91分；规格在独立CSV `input/course_spec_object_tracking.csv`，未并入主CSV） |
 | EXP007 | 综合实训实践 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ 已完成 | v3.0 / 2026-06-21 |
 
 ## 二、Sheet2: 行业创新应用实验室课程
@@ -78,6 +79,7 @@ latest_version: v3.3
 | v3.3 | 2026-08-04 | EXP002 机器人自然语言交互应用与开发 重新生成（sherpa-onnx+Function Calling+VLM 三栈合一，32h/7实验/51知识点/21题，human_waiver 模式） | Agent |
 | v4.0 | 2026-08-14 | EXP006 机器人大模型综合应用开发 重新生成（eai_factory 具身智能工厂装货/分拣/码垛/安全生产综合项目，48h/9实验/42知识点/34题，human_waiver 模式） | Agent |
 | v1.0a | 2026-08-18 | EXP006a 机器人大模型综合应用开发（老人跌倒监护项目）新增生成（elderly_companion 老人跌倒监护：YOLOv8+姿态估计+六状态机+语音交互+本地大模型，48h/9实验/39知识点/34题，A级审核通过；规格在独立 CSV `input/course_spec_elderly_companion.csv`） | Agent |
+| v1.0b | 2026-09-07 | EXP006b 机器人大模型综合应用开发（通用目标追踪）新增生成（object_tracking 通用目标追踪：YOLOv8+DeepTrack卡尔曼+ReID+LLM FunctionCall+VLM选车+语音交互+事件日志，48h/9实验/42知识点/34题；规格在独立 CSV `input/course_spec_object_tracking.csv`） | Agent |
 
 ### 课程版本记录
 所有课程统一为 v3.0~v3.3。历史版本存档于 `courses_archive/`。
