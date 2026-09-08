@@ -228,8 +228,13 @@ print(len(load_category_map('config/category_map.txt')), '大类映射')"
 3. **单测覆盖范围要核对**：文档描述"单测覆盖 detect 单码/多码"前，读 `tests/*.py` 确认用例真实存在。案例：exp04 的 `test_qr.py` 实际只有单码 roundtrip/缩放/噪声，无多码用例——描述改"detect 为单码用例"。
 4. **x86 环境限制**：rknnlite / 板上模型可能在本地 x86 跑不了（无 rknnlite、无 .rknn）。写"板上执行"命令时明确标注依赖（如"需板上 ros2_venv"）；本地 x86 可跑的命令生成前在 `rknn23` env 实跑确认。
 5. **python -c 骨架禁止**：`python -c` 脚本必须完整可运行（import 后用真数据调用、有 print），不能是只 import 不执行的注释占位（案例：exp06 曾有 `python -c "import cv2 ... # 用 RKNNBackend 推理后调用 decode_outputs"`，运行什么都不做、也不打印，读者跑不出"打印中间量"）。
+6. **校验/管理类脚本可能没有独立主函数**：别假设 `python3 xxx.py` 会输出或校验。反例：object_tracking 的 `config/config_schema.py` 只定义 `REQUIRED` 词典、**无 `if __name__ == "__main__"` 校验逻辑**，直接 `python3 config/config_schema.py` 照常 exit 0、什么都不校验。真正校验在 `common/config.py` 的 `load_config(..., REQUIRED)`，须由实体入口（`apps/track_app.py` 启动/显式调 `load_config`）触发。文档命令必须改走真实入口，或在文档里主动说明"该文件无独立校验主函数，须经 XX 触发"——否则学生跑出"不报错"误以为校验通过。
+7. **区分交互式程序 vs 管道驱动**：交互式程序（靠 stdin 状态机逐行推进，如 `track_app --text`：先喂唤醒词进 DIALOG、再喂指令）**禁止**用 `printf 'A\nB\n' |` 一次性管道喂——ASR/语音链未就绪时首次唤醒即抛异常或竞态失败。须写成"先启动，再逐行输入"的教学步骤。而管道可直连的程序（`track_demo --text`：stdin 直连 engine，无 VoiceLoop）才能用 `printf`。写文档前先判断目标程序是交互式还是管道式，按类型选喂入方式。
+8. **引用文件须给生成/获取步骤**：文档命令引用任何**非预置产物**（网格图 `grid_f*.jpg`、`runs/vlm_frames/`、`runs/out/` 等）时，必须(a) 在实体中确认该文件要么已存在、要么运行时自动生成；若需先手工生成，文档须补「先用 XX 工具生成」步骤 + 用实际命名（如 `--frame-step` 采样后 `ls 实际帧号` 再替换写死的 `grid_f200`）。反例：exp06 引用 `grid_f200.jpg` 但实体不存在 → 须先教 `dump_track_grids.py --video ... --frame-step 60`，再以实际生成帧号替换。
+9. **硬件/前置程序须先启动**：依赖相机/外设的命令（`--camera --mjpeg`）须在文档前置"另开终端启动"：`source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash && ros2 launch car1_peripherals depth_camera.launch.py`。对独占外设（XFM 串口）给出排障：冷启动"串口无响应/暂未就绪"是后台自愈、等 1~2 min 自动接管；持续失败用手动探测脚本（`xf_mic_array.py`）验证固件/串口、停 `log_server` 释放串口。
+10. **收尾清理**：文档步骤末尾须补资源清理（`pkill -f llm_server` / `pkill -9 aplay` / 停 log_server 释放串口），防独占设备/端口影响下次实验；回滚前也需先 pkill。
 
-**落地动作**：写文档命令前执行"源码核对 →（可行时）本地实跑 → 通过后才保留"；发现虚构/失效命令，修正为真实 API 用法并在汇报中列出。
+**落地动作**：写文档命令前执行"源码核对 →（可行时）本地实跑 → 通过后才保留"；发现虚构/失效命令，修正为真实 API 用法并在汇报中列出。**命令类型三查**：①该程序是交互式还是管道驱动；②引用的文件是否需先预生成；③依赖的硬件/前置程序是否已声明启动方式。
 
 ---
 
@@ -259,6 +264,9 @@ print(len(load_category_map('config/category_map.txt')), '大类映射')"
 - [ ] 路径 `~` + `PYTHONPATH:$PYTHONPATH`
 - [ ] 合成命令已实跑、文档预期 = 实跑输出
 - [ ] 配置表值 = `load_config()` 实跑
+- [ ] **命令类型判定**：交互式程序（`track_app --text`）写成"先启动再逐行输入"，未误用 `printf |` 一次性喂；管道驱动（`track_demo --text`）才用 printf
+- [ ] **引用文件可有源**：命令引用的非预置产物（网格图/`runs/out`/`events.jsonl`）要么实体存在、要么已写明"先用 XX 生成"步骤 + 实际命名（非写死 `grid_f200`）
+- [ ] **硬件/前置已声明**：`--camera --mjpeg` 前有 `ros2 launch car1_peripherals depth_camera.launch.py`；独占外设（XFM）有冷启动排障；末尾有资源清理（pkill）
 - [ ] 更新日志追加、旧文件未动
 - [ ] 未改原「原理/源码对应」逐字内容（仅对齐/新增/图/路径/表）
 

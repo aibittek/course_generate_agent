@@ -46,7 +46,10 @@ enhance_context:
 - **公式块前后空行**（`$$` 独立成块，不与文字粘连）；条目间空行
 - 算法知识点给块级公式（$ 配对、逐符号解释、数值示例、源码来源）
 - **流程给 Mermaid 图**（**节点标签禁止 `()` 等特殊字符**，函数名不带括号，如 `pool.put`；**含 `[`/`]`/`(`/`)`/`{`/`}`/`#` 的标签必须双引号包裹**，否则 Parse error——ex: `B["seg_part [N,32] mc"]`；`<br/>` 分行合法）；**横向 LR 链节点 ≤6**，串行管线 >6 节点改竖向 `TD` 或加 `%%{init:{themeVariables:{fontSize}}}%%` 放大字号防字体过小；实拍图留占位符（图号+标题+截图命令+画面要求+建议文件名），建 `assets/` 目录
-- **命令可执行性验证**：每条 CLI 命令/Flag 对照 `src/app.py` argparse 逐一核实存在；本地 x86 可跑的生成前实跑确认输出；**拒绝虚构/失效命令**——如 exp05 的 `--dark` 不存在（实际是 `display.colored_mode` config）、exp04 整图多码实测不可行（`QRCodeDetector` 单目标，多码需逐码分图/WeChat）；单测覆盖描述读 `tests/*.py` 核对（如 exp04 单测实际只有单码，非"多码"）
+- **命令可执行性验证**：每条 CLI 命令/Flag 对照 `src/app.py` argparse 逐一核实存在；本地 x86 可跑的生成前实跑确认输出；**拒绝虚构/失效命令**——如 exp05 的 `--dark` 不存在（实际是 `display.colored_mode` config）、exp04 整图多码实测不可行（`QRCodeDetector` 单目标，多码需逐码分图/WeChat）、`python3 config/config_schema.py` 无 main 直接跑不校验（须经 `load_config` 真实入口触发）；单测覆盖描述读 `tests/*.py` 核对（如 exp04 单测实际只有单码，非"多码"）
+- **命令类型判定**：交互式程序（`track_app --text`：先唤醒词进 DIALOG 再喂指令）**禁止** `printf 'A\nB\n' |` 一次性喂（ASR/语音未就绪会竞态/异常），须写"先启动再逐行输入"；管道可直连（`track_demo --text`）才可 printf。写前判断目标程序是交互式还是管道式。
+- **引用文件须给生成/获取**：命令引用的非预置产物（`grid_f*.jpg` 网格、`runs/out`、`events.jsonl`）须确认实体存在或运行时自动生成；需手工生成的先补「用 XX 工具生成」步骤 + 以实际命名替换写死文件名（如 `dump_track_grids --frame-step` 后 `ls` 实际帧号替换 `grid_f200`）。
+- **硬件/前置程序先声明 + 收尾清理**：`--camera --mjpeg` 前写 `source ... && ros2 launch car1_peripherals depth_camera.launch.py`（另终端）；独占外设（XFM 串口）给冷启动排障；步骤末尾补资源清理（pkill llm_server/aplay/log_server），防独占影响下次实验。
 - 代码引入标注来源行号；伪代码标注"（伪代码）"
 - **依赖 cwd 的 Python 命令用「执行目录注释 + cd + PYTHONPATH」三行模式**：
   ```bash
@@ -65,6 +68,7 @@ enhance_context:
 - 无教学装饰（白话/思考题/emoji）
 - 公式 $ 配对、Mermaid 语法合法（节点无裸 `()`/`[]`，均引号包裹）、占位符含指引
 - 命令可执行性已验证（Flag 对 argparse、本地可跑已实跑、无虚构命令）
+- **命令类型/文件/硬件已判定**：交互式程序写成逐行输入（未用 printf 一次性喂）；引用非预置文件补了生成步骤 + 实际命名；`--camera --mjpeg` 有相机 launch 前置；末尾有资源清理
 - 单测覆盖描述与 tests/ 实际用例一致
 - Mermaid 图可读性（LR≤6 节点；多节点已转 TD 或放大字号）
 - 文档路径统一 `~/ros2_ws`、`python -c` 带 `PYTHONPATH=./src`
@@ -85,7 +89,8 @@ enhance_context:
 2. 路径统一 `cd ~/ros2_ws/...`；`PYTHONPATH=car1_xxx` 保留 `:$PYTHONPATH`
 3. 步骤合成命令：项目函数 + 合成 numpy + print；**`rknn23` env 实跑**通过，文档预期 = 实跑输出
 4. 步骤1「配置参数速查表」：只列 `load_config()` REQUIRED 实际生效键，表值逐键实跑核对；未知键标"不在 REQUIRED"；PC/板端用途区分；关键陷阱（core_mask/stream_name .mjpg/imgsz 一致）进表注
-5. 更新日志追加 v2.1 行，不改旧行
+5. 命令类型判定 + 文件生成 + 硬件前置：交互式程序（`track_app --text`）改逐行输入不误用 printf；引用非预置产物先补「用 XX 生成」步骤并以实际命名替换；`--camera --mjpeg` 前补 `ros2 launch car1_peripherals depth_camera.launch.py`（另终端）；末尾补资源清理（pkill llm_server/aplay/log_server）
+6. 更新日志追加 v2.1 行，不改旧行
 
 自检对照 skill 七.c 清单；汇报：改了哪些步骤、加了哪些图/命令/表、实跑验证结果。
 
