@@ -51,6 +51,22 @@ head -60 README.md                             # 架构速览与关键决策
 - 能画出 `多源输入 → 目标检测 → 追踪ID → LLM指令锁定 → 描述选车(VLM) → 清除 → 事件日志` 的完整时序图，并标注每个状态转换的触发条件与门控 fail-closed 节点。
 - 能说出门控防呆至少三个要点（清除词强制 clear_track、非指令回落闲聊、ID 数值不对齐回引导、VLM 无果不锁车）。
 
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ ls docs/
+01_需求总览.md  03_开发模式与验证.md  05_流程与安全.md  07_语音测试用例.md  09_事件与故障测试用例.md
+02_架构设计.md  04_配置方案.md        06_环境依赖.md    08_视觉测试用例.md  10_程序参数详解.md
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ grep -n "R[0-9]" docs/01_需求总览.md
+3:object_tracking（场景1）综合案例功能需求（R1–R12）。对应实现位置见表末，
+11:| R1 | 多源输入统一 | 本地视频 / 静态图片 / 实时摄像头（ROS 话题）三种输入源，config 或 CLI 切换，业务代码零改动 | `common/source.py` + `apps/track_app.py --video/--image/--camera` |
+12:| R2 | 目标检测 | YOLOv8n（RKNN NPU 推理），COCO 80 类，`class_filter=[car]` 只跟踪车 | `vision/yolo/detector.py`（复用 elderly） |
+13:| R3 | 多目标追踪 | DeepSORT 结构（卡尔曼预测 + IoU/外观关联 + 确认框），生成并维护稳定 track id | `tracking/tracker.py` + `tracking/kalman.py` |
+14:| R4 | 外观重识别（ReID） | `use_reid=true` 时 deepsort.rknn 提取外观特征，消除单帧漏检换 ID（级联外观代价不再全 1e5） | `tracking/pipeline.py` + `tracking/reid.py` + `tracking/reidpool.py` |
+15:| R5 | LLM FunctionCall | 自然语言指令 → LLM 输出结构化 JSON 工具调用 → 执行（追踪/清除/截图）；秒级推理在独立线程，不卡帧 | `apps/track_app.py`（CommandWorker）+ `tools/tool_dispatch.py` |
+16:| R6 | 原生 FunctionCall | 预留/可选 rkllm 原生 function tools（`<tool_call>` 自标签）路径，`llm.function_call.native` 切换 | `tools/native_client.py` + `tools/native_parser.py` |
+.....剩下略
+```
+
 ### 1.6 实验步骤
 
 #### 整体流程图
@@ -69,7 +85,12 @@ graph LR
 
 **1.1.1 R1-R13 功能需求体系**
 
-- **原理**：需求体系回答"系统要做什么、边界是什么"。R1-R3 定义输入层（多源统一、目标检测、多目标追踪），R4 定义外观重识别（ReID），R5-R6 定义 LLM 指令解析（结构化 JSON 工具调用 + 原生 FunctionCall 双路径），R7-R8 定义描述选车（VLM 视觉 + fail-closed 铁律），R9 定义清除语义，R10 定义门口词路由，R11 定义流式 TTS 播报，R12 定义事件日志，R13 定义调试运维（文本模式、MJPEG）。梳理时建议按"输入→检测→追踪→指令→选车→清除→日志→调试"八个维度分组，逐条标注"可量化约束"（如 class_filter=[car]、min_box_w/h=32、max_stale=15、min_confidence=0.3、pause_timeout=30.0、cell_cap=16）。R13 的文本调试模式特别重要——`--text` 与音频模式走同一状态机，是后续所有实验的基础调试路径。
+- **原理**：需求体系回答"系统要做什么、边界是什么"。
+
+  R1-R3 定义输入层（多源统一、目标检测、多目标追踪），R4 定义外观重识别（ReID），R5-R6 定义 LLM 指令解析（结构化 JSON 工具调用 + 原生 FunctionCall 双路径），R7-R8 定义描述选车（VLM 视觉 + fail-closed 铁律），R9 定义清除语义，R10 定义门口词路由，R11 定义流式 TTS 播报，R12 定义事件日志，R13 定义调试运维（文本模式、MJPEG）。
+
+  梳理时建议按"输入→检测→追踪→指令→选车→清除→日志→调试"八个维度分组，逐条标注"可量化约束"（如 class_filter=[car]、min_box_w/h=32、max_stale=15、min_confidence=0.3、pause_timeout=30.0、cell_cap=16）。R13 的文本调试模式特别重要——`--text` 与音频模式走同一状态机，是后续所有实验的基础调试路径。
+
 - **源码对应**：`docs/01_需求总览.md L1-L25（需求清单表格 R1-R13）与 L28（非目标范围边界）`
 
 ```markdown

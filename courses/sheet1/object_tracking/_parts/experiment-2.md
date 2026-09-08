@@ -75,7 +75,10 @@ graph LR
 
 **1.2.1 七层模块架构与依赖方向**
 
-- **原理**：模块分层的核心目标是**依赖单向 + 接口解耦**。架构图把系统分成七层部件，依赖方向严格单向：`common ← (vision/tracking) ← tools ← apps`，而 `speech/llm 独立`（复用 elderly 模块，通过 apps 装配层对接）。所谓"依赖方向"即"谁可以 import 谁"——底层模块（tracking 追踪核心）不 import 上层（tools 工具注册表），上层 tools/apps 依赖下层。这样修改追踪算法不影响工具注册表，改 LLM 客户端不影响追踪引擎。接口对接点集中在 apps 装配层（`track_app.build_engines` 组装引擎 + 注册工具 + 绑定语音）。`README.md` 给出模块映射：apps（入口）、common（输入源/配置）、tracking（自研核心）、tools（工具注册/门控）、speech/llm（复用 elderly）、config（配置）。
+- **原理**：模块分层的核心目标是**依赖单向 + 接口解耦**。
+
+  架构图把系统分成七层部件，依赖方向严格单向：`common ← (vision/tracking) ← tools ← apps`，而 `speech/llm 独立`（复用 elderly 模块，通过 apps 装配层对接）。所谓"依赖方向"即"谁可以 import 谁"——底层模块（tracking 追踪核心）不 import 上层（tools 工具注册表），上层 tools/apps 依赖下层。这样修改追踪算法不影响工具注册表，改 LLM 客户端不影响追踪引擎。接口对接点集中在 apps 装配层（`track_app.build_engines` 组装引擎 + 注册工具 + 绑定语音）。`README.md` 给出模块映射：apps（入口）、common（输入源/配置）、tracking（自研核心）、tools（工具注册/门控）、speech/llm（复用 elderly）、config（配置）。
+
 - **源码对应**：`docs/02_架构设计.md L3-L18（分层结构 ASCII 图 + 依赖方向说明）`
 
 **操作步骤**：
@@ -173,8 +176,11 @@ FrameSource.read → TrackEngine.run（每帧）
 
 - **单状态机主循环**：`TrackEngine.run` 每轮只读一帧，成功后才进入 `pipeline.process`（检测→ReID→tracker.update→过滤）。主循环后半段依次 `_drain_commands()`、`_compute_draw()`（按锁定语义画）、`_publish`（MJPEG/发布）。"读帧—检测—追踪—绘制—消费命令"是有界工作队列驱动的**确定性主动循环**，帧率稳定。
 
-- **卡尔曼预测（时间更新）**：追踪器对每个 track 的状态做匀速运动预测——DeepTrack 采用 8 维状态 $[cx, cy, aspect, height, vx, vy, va, vh]$（`tracking/kalman.py` L29-65），其中 $cx, cy$ 为框中心，$aspect$ 为宽高比，$height$ 为高，$vx, vy, va, vh$ 为对应速度，预测方程为：
+状态机参考流程图
 
+<img src="assets/image-20260907162433491.png" alt="image-20260907162433491" style="zoom: 50%;" />
+
+- **卡尔曼预测（时间更新）**：追踪器对每个 track 的状态做匀速运动预测——DeepTrack 采用 8 维状态 $[cx, cy, aspect, height, vx, vy, va, vh]$（`tracking/kalman.py` L29-65），其中 $cx, cy$ 为框中心，$aspect$ 为宽高比，$height$ 为高，$vx, vy, va, vh$ 为对应速度，预测方程为：
   $$
   \hat{x}_{k|k-1} = F_k\,\hat{x}_{k-1|k-1}
   $$
@@ -182,6 +188,8 @@ FrameSource.read → TrackEngine.run（每帧）
   其中 $\hat{x}_{k|k-1}$ 为第 $k$ 帧先验估计（8×1 向量）、$F_k$ 为状态转移矩阵（匀速模型，把上一帧后验 $\hat{x}_{k-1|k-1}$ 外推一帧）、$k$ 为帧序号。数值示例：若上一帧 $cx=320$、$vx=2$，预测帧 $cx$ 变为 $320+2=322$（同段 `kalman.py`：$F$ 中 $cx$ 行 = $[1,0,0,0,1,0,0,0]$）。
 
 - **门控与距离度量**：CHI2INV95 门控（95% 卡方逆）决定候选关联是否合规，超出门限的检测不进入匹配；级联关联用**马氏距离/余弦距离**混合价格矩阵（DeepSORT 论文定义为 $d^{(1)}$ 马氏运动 + $d^{(2)}$ 外观余弦距离，融合价格 $C = \lambda d^{(1)} + (1-\lambda) d^{(2)}$）。本实验只要求理解语义，不写实现。
+
+  `CHI2INV95` = **自由度为 4，卡方分布 95% 置信区间的临界值**
 
 - **pending 暂停语义**：`engine.pending.set()` 只暂停**读帧**，不暂停命令消费；帧停在最后标注帧，配合 `pause_timeout` 看门狗（默认 30.0s）防 LLM 挂死冻结画面。
 
@@ -207,7 +215,17 @@ FrameSource.read → TrackEngine.run（每帧）
 
 **知识储备补充**（1.3.3 _native_gate 路由优先级）：
 
-- **门控顺序即优先级**：`_native_gate`（`apps/track_app.py` L320-366）是**顺序短路**流水线，命中即返回，未命中才继续下一分支。按位序：①清除词短路 →（忽略一切 tool/描述）；②非指令回落闲聊 → 绝不执行工具；③ `track_id` 存在性/数值对齐校验 → 不对齐回「未找到该 ID 目标」；④ 无 id 带描述 → VLM 选车（fail-closed：不可用/None/99/无匹配 → 引导不锁，绝不空 id 清锁）；⑤ else（save/clear 非 track）→ 放行执行。顺序即优先级——清除 > 闲聊回落 > 存在性 > VLM > 放行。
+- **门控顺序即优先级**：`_native_gate`（`apps/track_app.py` L320-366）是**顺序短路**流水线，命中即返回，未命中才继续下一分支。按位序：
+
+  ①清除词短路 →（忽略一切 tool/描述）；
+
+  ②非指令回落闲聊 → 绝不执行工具；
+
+  ③ `track_id` 存在性/数值对齐校验 → 不对齐回「未找到该 ID 目标」；
+
+  ④ 无 id 带描述 → VLM 选车（fail-closed：不可用/None/99/无匹配 → 引导不锁，绝不空 id 清锁）；
+
+  ⑤ else（save/clear 非 track）→ 放行执行。顺序即优先级——清除 > 闲聊回落 > 存在性 > VLM > 放行。
 
 - **fail-closed 的穷举语义**：VLM 不可用/返 None/返回 99/无匹配 → 引导不锁；绝不空 id 清锁。"编号不存在"与"无编号"都只回引导，不一刀切放行——这是命令安全的关键。
 

@@ -23,7 +23,7 @@
 | OS | Ubuntu 22.04 + ROS 2 Humble |
 | Python | 3.10 |
 | 核心库 | 同前（RKNN/ReID/LLM） |
-| 命令 | `tail -f runs/logs/events.jsonl`、`python3 apps/track_app.py --video test.mp4 --text` |
+| 命令 | `tail -f runs/logs/events.jsonl`、`python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text` |
 | 文档 | docs/09_事件与故障测试用例.md |
 
 ### 8.4 实验难度
@@ -40,7 +40,10 @@
 cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 
 # 文本模式触发 lost / unlock_all / command
-printf '小飞小飞\n追踪 id3 的车\n清除\n' | python3 apps/track_app.py --video /path/test.mp4 --text
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text
+# 先输入：小飞小飞
+# 在输入对话：追踪 id3 的车
+# 再输入：清除
 
 # 观察事件日志追加
 tail -f runs/logs/events.jsonl
@@ -67,6 +70,19 @@ graph LR
 2. `tail -f runs/logs/events.jsonl` 逐条核对 `command`、`lost`。
 3. 理解 lost 由 engine 主循环 `on_event` 触发（`tracking/events.py` append_event_log）。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入：追踪 id3
+# 待目标出画 → 查事件
+tail -f runs/logs/events.jsonl
+```
+
+<img src="assets/image-20260908151129233.png" alt="image-20260908151129233" style="zoom:50%;" />
+
+<img src="assets/image-20260908151136730.png" alt="image-20260908151136730" style="zoom:50%;" />
+
 **易错点**：
 
 - ⚠️ lost 只在 follow 目标从 confirmed 消失时触发；纯视觉 video 若无 follow 则不产生 lost。
@@ -85,14 +101,30 @@ graph LR
 2. 验证 unlock_on_loss=true 时全丢恢复全显示 → `unlock_all`。
 3. 理解 unlock_all 区分：清除语义 clear_track / 丢失解锁 unlock_on_loss 两路径。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text
+# 先输入：小飞小飞
+# 再输入：追踪 id3
+# 运行中输入：清除 → 看 unlock_all
+tail -f runs/logs/events.jsonl
+```
+
 **易错点**：
 
 - ⚠️ unlock_all 事件在"全部解锁"（clear 或 unlock_on_loss）时写；仅部分丢失不写。
 
 **知识储备补充**：
-- **两条解锁路径**：`unlock_all` 由两条不同链路产生——① 用户清除指令：`clear_track` → `submit_effect(None)` → 引擎 `_apply_effect` 清空 follow；② `unlock_on_loss=true`：被追踪目标丢失后 `on_track_lost` 清空 follow（tracking/engine.py L142-144）且 follow 集合为空 → 写 `unlock_all`。两者语义都是"全部解锁"，事件合并记录便于追责"系统为何放弃了锁定"。
+- **两条解锁路径**：`unlock_all` 由两条不同链路产生
+
+  ① 用户清除指令：`clear_track` → `submit_effect(None)` → 引擎 `_apply_effect` 清空 follow；
+
+  ② `unlock_on_loss=true`：被追踪目标丢失后 `on_track_lost` 清空 follow（tracking/engine.py L142-144）且 follow 集合为空 → 写 `unlock_all`。两者语义都是"全部解锁"，事件合并记录便于追责"系统为何放弃了锁定"。
+
 - **部分丢失不写**：仅部分目标丢失（follow 集合仍非空）时只写 `lost`（带 ids），不写 `unlock_all`——事件粒度与"锁状态是否清空"一一对应，不会用 unlock_all 掩盖部分丢失的事实。
+
 - **clear_track 的来源**：`_native_gate`（apps/track_app.py L320-337）先按 clear_words（清除/解除/取消/停/不追/恢复全/不跟）拦截，无论 LLM 吐什么 tool 都强制 `clear_track`——防 0.8B 模型把"清除"误吐成 track_ids 锁错目标。这也是 fail-closed 的语义护栏。
+
 - **参考资源**：DeepTrack/TrackSession 锁定语义文档（docs/05_流程与安全.md）；事件驱动日志设计模式（Event Sourcing 导读）。
 
 **参考模板**（事件时序，sequenceDiagram）：
@@ -124,14 +156,33 @@ sequenceDiagram
 3. E3 `清除` → `清除语义指令，执行 clear_track` → 解锁。
 4. E5 `追踪 id999` → `未找到该 ID 目标`；E6 指令队列满丢弃最旧。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 依次输入：E1 追踪一百号目标 → 未找到该 ID 目标
+# 再输入：E2 追踪蓝色皮卡（无蓝车）→ 引导不锁
+# 再输入：E3 清除 → 清除语义指令，执行 clear_track
+# 再输入：E5 追踪 id999 → 未找到该 ID 目标
+```
+
 **易错点**：
 
 - ⚠️ fail-closed 目的在于不生副作用：任何"不确定锁谁"（id 不对齐/VLM 无果）都不 submit_effect，只回引导/兜底。
 
 **知识储备补充**：
-- **fail-closed 降级原则**：任何"不确定锁谁"的分支都不产副作用——`_native_gate` 三道闸：① 清除语义强制 clear_track（L320-337）；② `track_ids` 无 id→按是否有描述决定 VLM/引导，有 id 但数值不对齐（`expect ∩ got` 为空）→ 只回「未找到该 ID 目标」，**绝不**走 VLM 猜车（L365-375 附近）；③ track_vlm 视觉选车失败/返 None → `_vlm_none()` 引导语，同样不锁。所有 fail 分支的共同点：**不调用 `engine.submit_effect()`**——锁是副作用，副作用只发生在完全确定时。
+- **fail-closed 降级原则**：任何"不确定锁谁"的分支都不产副作用——`_native_gate` 三道闸：
+
+  ① 清除语义强制 clear_track（L320-337）；
+
+  ② `track_ids` 无 id→按是否有描述决定 VLM/引导，有 id 但数值不对齐（`expect ∩ got` 为空）→ 只回「未找到该 ID 目标」，**绝不**走 VLM 猜车（L365-375 附近）；
+
+  ③ track_vlm 视觉选车失败/返 None → `_vlm_none()` 引导语，同样不锁。所有 fail 分支的共同点：**不调用 `engine.submit_effect()`**——锁是副作用，副作用只发生在完全确定时。
+
 - **为什么不空 submit（思考题2的原理）**：若空集合也能 submit，`submit_effect(set())` 会清空当前锁定——用户问"追踪一百号"系统却把已锁定的 id3 解锁，产生"误导误锁"状态翻转；错误 id 则会锁一个与用户意图无关的目标。fail-closed 保证"不确定 → 维持现状 + 引导"，把错误状态转移的概率压到零。
+
 - **E 用例映射到源码分支**：E1（id 不对齐）→ gate ③；E2（描述无果）→ `_vlm_select_locked` 里 `not confirmed`/`built is None`/`chosen` 为空三处都落 `_vlm_none()`；E3（清除）→ clear_words 拦截。E6（队列满丢最旧）：`CommandWorker.q` maxsize=8（apps/track_app.py L220），`push` 用 `put_nowait` 满了丢弃（L247-250）——有界队列 + 丢弃策略保证 LLM 风暴也不撑爆内存。
+
 - **参考资源**：fail-closed vs fail-open 安全设计对比资料；有界队列背压（bounded queue backpressure）并发编程模式。
 
 #### 步骤4：模拟断网验证规则兜底（约1h30m）
@@ -141,6 +192,15 @@ sequenceDiagram
 1. 断网（LLM 不可达）或 `llm.enabled=false`：观察 `chat fallback failed` → `_rule_fallback`。
 2. 验证追踪/清除仍可（parse_instruction 规则兜底）；闲聊不可（无 LLM）。
 3. ReID 故障注入：reid_pool 全 worker 崩 → extract 超时 → features=None 纯 IoU，主循环不挂死。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+pkill -f llm_server        # 断网/停服务模拟
+# 或 config 关 llm.enabled=false 后重跑 track_app
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入：追踪 id3 → 规则兜底仍可追踪/清除
+```
 
 **易错点**：
 
@@ -160,6 +220,18 @@ sequenceDiagram
 1. 执行 E2E 脚本化验收：`小飞小飞` → 唤醒；`追踪红色皮卡` → VLM 锁；`追踪不存在的id` → 未找到；`清除` → 解锁；`你好` → 闲聊流式。
 2. 验证 `runs/logs/events.jsonl` 对应 command/lost/unlock_all 条目齐全（完整性）。
 3. 相机拔线 → `camera_stall` 事件 + 暂停重试；aplay 被杀 → 播放线程重启或降级打印。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入：追踪红色皮卡 → VLM 锁
+# 再输入：追踪不存在的id → 未找到
+# 再输入：清除 → 解锁
+# 再输入：你好 → 闲聊流式
+# 另终端：kill -9 $(pgrep aplay) → 观察播放降级
+tail -f runs/logs/events.jsonl
+```
 
 **易错点**：
 

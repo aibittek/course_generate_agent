@@ -31,7 +31,7 @@
 | 核心库 | numpy（追踪核心纯 numpy，零新增依赖） |
 | 模型 | yolov8n.rknn / deepsort.rknn / coco_classes.json（板端） |
 | 测试 | pytest（纯逻辑 x86 可跑） |
-| 命令 | `python3 -m pytest tests/ -v`、`python3 apps/track_demo.py --video test.mp4 --text --list` |
+| 命令 | `python3 -m pytest tests/ -v`、`python3 apps/track_demo.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --list` |
 
 ### 4.4 实验难度
 
@@ -53,7 +53,7 @@ python3 -m pytest tests/ -v
 #   test_pipeline_tracker.py    小框 min_box 剔除 / stale 超龄剔除
 
 # 2. 纯视觉 ID 底座（无 LLM，stdin 直达 engine）
-printf '追踪 id3\n' | python3 apps/track_demo.py --video /path/test.mp4 --text --list
+printf '追踪 id3\n' | python3 apps/track_demo.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --list --mjpeg
 ```
 
 **预期效果描述**：
@@ -62,6 +62,36 @@ printf '追踪 id3\n' | python3 apps/track_demo.py --video /path/test.mp4 --text
 - track_demo --list 打印当前跟踪目标 ID 列表，验证 ID 底座稳定性（不随帧跳）。
 - 遮挡场景验证 ReID：遮挡后同 ID 恢复（而非新建 ID）。
 - 调低 min_confidence 观察 ID 跳变（噪声进入 tracker）。
+
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ python3 -m pytest tests/ -v
+===================================== test session starts =====================================
+platform linux -- Python 3.10.12, pytest-6.2.5, py-1.10.0, pluggy-0.13.0 -- /home/iflytek/ros2_venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/iflytek/ros2_ws/src/xflz_eai_car1/app/object_tracking
+plugins: ament-xmllint-0.12.15, launch-testing-1.0.14, ament-flake8-0.12.15, ament-pep257-0.12.15, ament-lint-0.12.15, ament-copyright-0.12.15, launch-testing-ros-0.19.13, colcon-core-0.20.1, cov-3.0.0
+collected 97 items                                                                            
+
+tests/test_chat_prompt.py::test_chat_reply_uses_relaxed_prompt PASSED                   [  1%]
+tests/test_chat_prompt.py::test_chat_reply_fallback_on_error PASSED                     [  2%]
+tests/test_chat_reply_clean.py::test_chat_reply_clean_request_only_system_and_user PASSED [  3%]
+tests/test_chat_reply_clean.py::test_chat_reply_strips_tool_markup_and_json_residue PASSED [  4%]
+tests/test_chat_reply_clean.py::test_chat_reply_degrades_tiny_reply PASSED              [  5%]
+tests/test_chat_reply_clean.py::test_fallback_chat_reply_is_topic_sensitive PASSED      [  6%]
+tests/test_chat_reply_clean.py::test_chat_reply_isolated_from_history PASSED            [  7%]
+tests/test_chat_reply_clean.py::test_chat_reply_streams_sentences PASSED                [  8%]
+tests/test_chat_reply_clean.py::test_chat_reply_streams_keeps_strip_and_guard PASSED    [  9%]
+...略
+```
+
+```bash
+[命令] 追踪 id3
+当前目标： （当前无确认目标）
+id3 已消失
+全部跟随目标已消失，恢复全显示
+```
+
+![image-20260907165852007](assets/image-20260907165852007.png)
 
 ### 4.6 实验步骤
 
@@ -86,6 +116,10 @@ graph LR
    - `test_native_wiring.py`：门控路由 id 对齐 / 不对齐回「未找到」/ 清除强制 / 描述走 VLM / 闲聊回落。
    - `test_voice_loop_capture_health.py`：录音低帧自愈判定。
 
+```bash
+python3 -m pytest tests/ -v
+```
+
 **易错点**：
 
 - ⚠️ 勿把 pytest 当"贴代码证明"——它验证的是追踪逻辑正确性（ID 分配/剔除/ReID 恢复），是后续所有实验的基础。
@@ -96,7 +130,13 @@ graph LR
 
 **3.1.1 DeepSORT：卡尔曼预测 + IoU/外观级联关联 + 确认框**
 
-- **原理**：DeepSORT（Deep Association Metric Tracking）在 SORT（仅 IoU 关联）基础上引入**外观特征 + 级联匹配**。目标被建模为 `Track`，生命周期 Tentative→Confirmed（hits≥n_init）→Deleted（`tracking/track.py`）。跟踪器 `Tracker.update()`（`tracking/tracker.py` L72-75）每帧做三步：①卡尔曼预测每个已确认 track；②对 detection 做级联匹配（先按 `time_since_update` 排序，优先级给最近更新的 track，避免被长期遮挡的 track 抢占匹配）；③剩余 detection 与未确认 track 做 IoU 匹配；最后分配新旧确认框。
+- **原理**：DeepSORT（Deep Association Metric Tracking）在 SORT（仅 IoU 关联）基础上引入**外观特征 + 级联匹配**。目标被建模为 `Track`，生命周期 Tentative→Confirmed（hits≥n_init）→Deleted（`tracking/track.py`）。跟踪器 `Tracker.update()`（`tracking/tracker.py` L72-75）每帧做三步：
+
+  ①卡尔曼预测每个已确认 track；
+
+  ②对 detection 做级联匹配（先按 `time_since_update` 排序，优先级给最近更新的 track，避免被长期遮挡的 track 抢占匹配）；
+
+  ③剩余 detection 与未确认 track 做 IoU 匹配；最后分配新旧确认框。
 
 **4 卡尔曼门控**
 
@@ -104,7 +144,11 @@ graph LR
 
 **知识储备补充**：
 
-- **背景与动机**：SORT（Simple Online and Realtime Tracking）只用 IoU 关联相邻帧检测框，速度快但目标被遮挡几帧后 IoU 归零，轨迹即断、换新 ID。DeepSORT 在 SORT 之上补两项：①用卡尔曼常速模型预测"目标下一帧在哪"；②用 ReID 外观特征弥补 IoU 失效。本实验的 `tracker.py` 是 deep_sort 标准结构的纯 numpy 自实现（`tracking/kalman.py`、`tracking/matching.py` 对照 vendor DeepSORT 的 BSD 参考实现），零新增依赖。
+- **背景与动机**：SORT（Simple Online and Realtime Tracking）只用 IoU 关联相邻帧检测框，速度快但目标被遮挡几帧后 IoU 归零，轨迹即断、换新 ID。DeepSORT 在 SORT 之上补两项：
+
+  ①用卡尔曼常速模型预测"目标下一帧在哪"；
+
+  ②用 ReID 外观特征弥补 IoU 失效。本实验的 `tracker.py` 是 deep_sort 标准结构的纯 numpy 自实现（`tracking/kalman.py`、`tracking/matching.py` 对照 vendor DeepSORT 的 BSD 参考实现），零新增依赖。
 
 - **8 维状态向量与常速模型**：状态 $x = [cx, cy, a, h, vx, vy, va, vh]^\mathsf{T}$，前 4 维是观测（中心横/纵坐标、宽高比 aspect、高），后 4 维是它们的速度。常速（constant velocity）预测即一步线性映射：
 
@@ -123,13 +167,12 @@ graph LR
   其中 $\sigma_{pos} = \frac{1}{20}$、$\sigma_{vel} = \frac{1}{160}$（L18-19）为位置/速度噪声权重，h 为当前框高（像素）；aspect 维固定用极小值（1e-2 标准差→1e-4 方差、1e-5→1e-10），因为宽高比几乎不变。数值示例：h=100 像素时位置噪声标准差 $=\frac{1}{20}\times100=5$ 像素，速度噪声标准差 $=\frac{1}{160}\times100=0.625$ 像素/帧。新建 track 时（`initiate` L29-34）不确定性更大：位置标准差 $2\sigma_{pos}h=10$ 像素、速度标准差 $10\sigma_{vel}h=6.25$ 像素/帧——首帧速度完全未知，所以初值协方差放得比稳态预测更大。
 
 - **马氏距离门控（CHI2INV95）**：级联匹配先算马氏距离（观测空间，含缩放），检测 $z$ 与预测投影 $z'=Hx'$ 之间的马氏距离平方为：
-
   $$
   d_M^2(z) = (z - z')^\mathsf{T} S^{-1} (z - z')
   $$
-
+  
   其中 $S=H P H^\mathsf{T} + R$ 是投影协方差加观测噪声、$(z-z')$ 是"检测与预测框的残差"。$d_M^2$ 服从自由度为 2（仅位置 cx,cy）或 4 的卡方分布，`CHI2INV95`（`kalman.py` L13）给出各自 95% 分位阈值：自由度 2→5.9915、4→9.4877。`gate_cost_matrix`（`tracking/matching.py` L45-51）把超过阈值的代价置为 1e5 大值，匈牙利算法就不会选中它——只有落在 95% 置信椭圆内的匹配才被接受，远距误关联被排除。
-
+  
 - **级联匹配顺序**：`Tracker._cascade`（`tracker.py` L107-127）按 `time_since_update` 从 1 到 max_age 逐层分配——刚更新过的 track（time_since_update=1）优先匹配，长期遮挡的 track（time_since_update 大）排后。这是因为一个被遮挡很久的陈旧 track 其预测位置误差已不可信，若与 IoU 全量比，会侵占本该属于新目标的检测。`_appearance_cost`（L129-150）以外观 cosine 距离为代价矩阵，再经 `gate_cost_matrix` 用马氏位置门限把超阈值项置 1e5 大值，最后 `min_cost_matching` 做门限内匈牙利指派。
 
 - **参考资源**：DeepSORT 论文《Simple Online and Realtime Tracking with a Deep Association Metric》（Bewley 等，2017）；`nwojke/deep_sort` 官方实现（`kalman_filter.py`/`tracker.py`）；scikit-learn 的 `linear_sum_assignment` 文档（`tracking/matching.py` L26-31 调用）；马氏距离与卡方门控理论图解（卡方分布自由度与 95% 分位表）。
@@ -169,7 +212,11 @@ stateDiagram-v2
 
 - **背景与动机**：ReID（Re-Identification，行人/目标重识别）解决"外观匹配"问题——IoU 只在目标连续可见时有效；目标被挡几帧后 Kalman 预测框仍存在但无真实检测，等它重新出现时，纯 IoU 无法把"旧目标"与"新检测"对上，只能开新 ID。ReID 用深度网络对每个检测框 crop 提取 128 维外观向量，遮挡前后用向量相似度把同一目标串起来，从而保持 ID 不换。
 
+<img src="assets/image-20260907170203597.png" alt="image-20260907170203597" style="zoom:50%;" />
+
 - **外观特征提取流程**：`tracking/reid.py` 的 `preprocess_crop`（L20-29）做四个步骤：cv2.resize 到 64x128 → /255 归一化到 $[0,1]$ → BGR 转 RGB（`im[..., ::-1]` L27）→ 按 ImageNet 均值/方差标准化（L16-17：$\mu=[0.485,0.456,0.406]$、$\sigma=[0.229,0.224,0.225]$）→ 转 CHW 并加 batch 维成 `[1,3,128,64]`。最后 RKNN 推理输出特征向量（通常 128 维，由模型决定：`reidpool.dim` 以首个成功行长度为准）。64×128 是深度排序官方对"行人框"的约定输入尺寸——它保留细粒度外观，同时把输入统一到固定张量形状。
+
+<img src="assets/image-20260907170308800.png" alt="image-20260907170308800" style="zoom: 50%;" />
 
 - **余弦距离公式**：两个特征向量 $a,b$ 的余弦距离（1 减余弦相似度）为：
 
@@ -197,6 +244,13 @@ $$
 2. 在 track_config.yaml 把 `tracker.min_confidence` 从 0.3 调低（如 0.1），观察 ID 跳变（噪声检测加深追踪）。
 3. 改回 0.3，验证 ID 稳定。
 
+```bash
+cp config/track_config.yaml /tmp/tc.bak
+sed -i 's/min_confidence: 0.3 /min_confidence: 0.1 /' config/track_config.yaml
+python3 apps/track_demo.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --list --mjpeg   # 观察 ID 跳变
+cp /tmp/tc.bak config/track_config.yaml
+```
+
 **知识储备补充**：
 
 - **min_box_w/h 小框剔除**：`pipeline.process`（`tracking/pipeline.py` L53-60）对每个 confirmed track 取预测宽 $w = aspect \times h$（`to_xyah` L45-48），若 $w < min\_box\_w$ 或 $h < min\_box\_h$（默认 32，`track_config.yaml` L52-53）则从可见列表剔除。物理含义：目标远去/缩小时检测框很小，多半是噪点或目标已消失只剩残影，继续画框/参与 VLM 会误导。宽度由高和宽高比算出：$w = a \cdot h$。
@@ -215,10 +269,14 @@ $$
 
 **操作步骤**：
 
-1. `printf '追踪 id3\n' | python3 apps/track_demo.py --video /path/test.mp4 --text --list`
+1. `printf '追踪 id3\n' | python3 apps/track_demo.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --list --mjpeg`
 2. 观察 stdin 直连 engine（无 VoiceLoop/无 LLM），`--list` 每帧打印 scene_summary（当前确认目标）。
 3. 验证：追踪 id3 后，仅绘制该 ID；目标消失 → lost；unlock_on_loss 恢复全显示。
 4. 按 `docs/08_视觉测试用例.md` 执行 O2（多车 ID 稳定）/O3（遮挡 ReID 恢复）/O4（小框剔除）。
+
+```bash
+printf '追踪 id3\n' | python3 apps/track_demo.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --list --mjpeg
+```
 
 **易错点**：
 

@@ -15,7 +15,7 @@
 1. **掌握** CommandWorker 门控路由（_native_gate）与 fail-closed 语义。
 2. **理解**清除语义强制 clear_track 与闲聊回落（不执行工具）的差异。
 3. **掌握** LLM 子进程常驻管理（server_manager，端口 8080）与规则兜底。
-4. **独立完成**文本全链路验证（`printf '小飞小飞\n追踪 id3 的车' | track_app --text`）与门控用例。
+4. **独立完成**文本全链路验证（`track_app --text` 交互式：先输入`小飞小飞`唤醒，再输入`追踪 id3 的车`锁定）与门控用例。
 5. **迁移**：理解大模型 FunctionCall 在机器人指令场景的门控安全设计。
 
 ### 5.3 实验环境
@@ -26,7 +26,7 @@
 | OS | Ubuntu 22.04 + ROS 2 Humble |
 | Python | 3.10 |
 | 核心库 | RKLLM（非 native 用 ask_stream 通过 HTTP 到 RKLLM 服务 8080） |
-| 命令 | `python3 -m pytest tests/ -q -k not test_real`、`printf '小飞小飞\n追踪 id3 的车\n' \| python3 apps/track_app.py --video test.mp4 --text` |
+| 命令 | `python3 -m pytest tests/ -q -k not test_real`、`python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text`（交互式：先`小飞小飞`唤醒，再输入指令/闲聊） |
 
 ### 5.4 实验难度
 
@@ -45,9 +45,17 @@ cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 python3 -m pytest tests/ -q -k "not test_real"      # 覆盖 _native_gate/test_native_wiring/闲聊
 
 # 2. 文本全链路（LLM FunctionCall + 门控）
-printf '小飞小飞\n追踪 id3 的车\n' | python3 apps/track_app.py --video /path/test.mp4 --text
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 在输入对话：追踪id3
 # 3. 清除
-printf '小飞小飞\n清除\n' | python3 apps/track_app.py --video /path/test.mp4 --text
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 在输入对话：清除
+# 4. 手动输入查看结果
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 在输入对话：闲聊
 ```
 
 预期：追踪 id3 的车 → `[cmd] track_ids {3}` → 锁车并播报"好的，只追踪 id3"；`清除` → `[cmd] 清除语义指令，执行 clear_track` → 播报"好的，已解除全部锁定"；闲聊"你好" → LLM 自然回复，无工具执行。
@@ -70,6 +78,10 @@ graph LR
 1. `python3 -m pytest tests/ -q -k "not test_real"` 验证 gate/thread 用例。
 2. 关键文件：`test_native_wiring.py`（门控路由 id 对齐/不对齐/清除/描述/闲聊）、`test_native_client.py`、`test_native_parser.py`、`test_chat_reply_*.py`。
 3. 理解断言：闲聊回落干净请求，无 `<tool_call>` 残留。
+
+```bash
+python3 -m pytest tests/ -q -k "not test_real"
+```
 
 **易错点**：
 
@@ -127,10 +139,18 @@ flowchart TD
 
 **操作步骤**：
 
-1. 文本全链路：`printf '小飞小飞\n追踪 id3 的车\n' | python3 apps/track_app.py --video test.mp4 --text`。
+1. 文本全链路：`python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg`，先输入`小飞小飞`唤醒，再输入`追踪 id3 的车`。
 2. 观察 `[cmd] track_ids {3}` → 播报"好的，只追踪 id3"。
 3. 输入 `清除`：观察 `[cmd] 清除语义指令，执行 clear_track` → 解除锁定。验证 clear_words 命中强制 clear_track（R9）。
 4. 输入 `你好`：观察 `[LLM] <自然回复>`，且 `[cmd] 不存在`——不执行工具（闲聊回落干净请求）。
+
+```bash
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入：追踪 id3 的车
+# 再输入：清除
+# 再输入：你好（闲聊）
+```
 
 **易错点**：
 
@@ -144,11 +164,32 @@ flowchart TD
 2. 阅读 `tools/tools.py` 的 parse_instruction（L45-68）规则兜底（无 LLM 也能追踪/清除）。
 3. 模拟断网/无 LLM：服务不可达 → `_rule_fallback`，追踪/清除仍可，闲聊不可 → 理解 rules 兜底不崩线程。
 
+```bash
+pkill -f llm_server        # 清残留 LLM（断网/停服务模拟）
+# 或 config 关 llm.enabled=false 后重跑 track_app
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text   # 先小飞小飞，再 追踪 id3 → 规则兜底
+```
+
 **知识储备补充**：
 
 - **LLM 子进程生命周期**：`llm/server_manager.py`（复用 elderly_companion/llm）的 `LLMServerManager` 职责：端口预检 → 按需拉起子进程 → 就绪轮询（GET /v1/models）→ 退出清理。`ensure_running`（L55-111）：先探测 `llm.server.port`（默认 8080，0=自动选空闲）是否已监听且响应 /v1/models——已就绪则复用外部服务，否则按 `auto_start=true` 拉起 Flask 子进程并轮询等就绪（超 120s 抛错）。`stop`（L113-117）只终止自己拉起的子进程，复用外部服务不动。同一进程内多个实验共享 8080，`pkill -f llm_server` 是清理残留的标准动作（`track_app.py` main 的 finally 也调 `llm_mgr.stop()`）。
 
-- **规则兜底 parse_instruction**：`tools/tools.py` 的 `parse_instruction`（L46-77）是无 LLM 时的规则解析器，按固定顺序：①颜色词 + 车类词（红/蓝/…/车/卡车/轿车）→ `{"tool":"track_vlm","args":{"color":...}}`（L55-57）；②阿拉伯/中文数字 → track_ids（L58-70，中文数字经 `_zh_to_num` L13-37 转 int，如"六十九"→69）；③清除词 → clear_track（L70-72）。返回 None 表示非指令。核心约束：追踪但 id 无法解析时返回 None（L67），**绝不产空 submit 清当前锁**（评审 P0-2：防误清锁）。
+- **规则兜底 parse_instruction**：`tools/tools.py` 的 `parse_instruction`（L46-77）是无 LLM 时的规则解析器，按固定顺序：
+
+  ①颜色词 + 车类词（红/蓝/…/车/卡车/轿车）→ `{"tool":"track_vlm","args":{"color":...}}`（L55-57）；
+
+  ②阿拉伯/中文数字 → track_ids（L58-70，中文数字经 `_zh_to_num` L13-37 转 int，如"六十九"→69）；
+
+  ③清除词 → clear_track（L70-72）。返回 None 表示非指令。核心约束：追踪但 id 无法解析时返回 None（L67），**绝不产空 submit 清当前锁**（评审 P0-2：防误清锁）。
+
+```json
+interaction:
+  clear_words: [清除, 解除, 取消, 停, 不追, 恢复全, 不跟]
+  track_words: [追踪, 追, 锁定, 识别, 找, 看, 跟, 停]
+  instruct_words: [追踪, 追, 停, 取消, 解除, 不追, 恢复全, 不跟, 清除]
+  color_words: [红, 蓝, 白, 黑, 绿, 黄, 灰, 粉, 紫]
+  desc_words: [红, 黄, 蓝, 白, 黑, 绿, 灰, 粉, 紫, 卡车, 轿车, suv, 大, 小, 新, 旧]
+```
 
 - **中文数字解析公式**：`_zh_to_num`（`tools.py` L13-15）把中文数字串按"低位数字 + 十百千单位"求和：
 

@@ -38,21 +38,51 @@
 
 **快速验证流程**（含板端可运行步骤）：
 
+> **注意**：`config_schema.py` 只定义 `REQUIRED` 白名单（**无独立校验主函数**），直接 `python3 config/config_schema.py` 不会报错。真正的校验在 `common/config.py` 的 `load_config(..., REQUIRED)`（object_tracking 复用 elderly 的 common）。下面用一行 python 显式调用 `load_config` 触发校验。
+
 ```bash
 cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 
-# 故意改错一个键，验证 schema 拦截
-python3 config/config_schema.py          # 正常（REQUIRED 齐全）
-sed -i 's/min_confidence: 0.3/min_confidence: 0.3x/' config/track_config.yaml
-python3 config/config_schema.py          # 应报 config error: 类型不符
-sed -i 's/min_confidence: 0.3x/min_confidence: 0.3/' config/track_config.yaml  # 恢复
+# ① 正常配置 → 校验通过（输出键数）
+python3 -c "import sys; sys.path.insert(0,'.'); \
+from tracking.util import setup_imports; setup_imports(); \
+from common.config import load_config; from config.config_schema import REQUIRED; \
+print('OK, 校验通过, 顶级键数 =', len(load_config('config/track_config.yaml', REQUIRED)))"
+
+# ② 故意改错一个键（浮点→字符串）→ load_config 抛 ConfigError 拦截
+sed -i 's/min_confidence: 0.3 /min_confidence: 0.3x /' config/track_config.yaml
+python3 -c "import sys; sys.path.insert(0,'.'); \
+from tracking.util import setup_imports; setup_imports(); \
+from common.config import load_config; from config.config_schema import REQUIRED; \
+load_config('config/track_config.yaml', REQUIRED)"
+#    预期报错: ConfigError: tracker.min_confidence: expected float, got str
+
+# ③ 恢复
+sed -i 's/min_confidence: 0.3x /min_confidence: 0.3 /' config/track_config.yaml
 ```
 
 **预期效果描述**：
 
 - 能说出 track_config.yaml 各段键名与调参方法（detect/tracker/lm/vlm/interaction/speech/server）。
-- 能在 config_schema 拦截下发现键名拼写错误（config error: 提示缺失/类型不符）。
-- 能说出 CLI 参数覆盖规则（--video 改 source.mode、--mjpeg 开 server、--text 关 KWS）与"不新增键"约束。
+- 能用 python 调用 `load_config` 触发校验，在故意改错键时拦截（ConfigError: missing key / expected float/int）。
+- 能说出 CLI 参数覆盖规则（`--camera` 只改 source.mode、`--mjpeg` 开 server、`--text` 关 KWS）与"不新增键"约束。
+
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ sed -i 's/min_confidence: 0.3 /min_confidence: 0.3x /' config/track_config.yaml
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ python3 -c "import sys; sys.path.insert(0,'.'); \
+from tracking.util import setup_imports; setup_imports(); \
+from common.config import load_config; from config.config_schema import REQUIRED; \
+load_config('config/track_config.yaml', REQUIRED)"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion/common/config.py", line 66, in load_config
+    return _validate(data, REQUIRED, "")
+  File "/home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion/common/config.py", line 37, in _validate
+    out[key] = _validate(node[key], spec, path)
+  File "/home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion/common/config.py", line 49, in _validate
+    raise ConfigError(
+common.config.ConfigError: tracker.min_confidence: expected float, got str
+```
 
 ### 3.6 实验步骤
 
@@ -116,25 +146,43 @@ graph LR
 
 - **参考资源**：`config/track_config.yaml`（默认值清单）；`config/config_schema.py`（REQUIRED 键表）。
 
-#### 步骤3：故意改错一个键，运行 config_schema 验证拦截（约40min）
+#### 步骤3：故意改错一个键，用 python 调用 load_config 验证拦截（约40min）
 
 **操作步骤**：
 
-1. 用 sed 把 `detect.imgsz` 改成 `detect.imgsz: 640x`（字符串），运行 `python3 config/config_schema.py`，观察 `config error: 类型不符`。
-2. 或删掉一个 REQUIRED 键（如 `tracking.pause_wait`）运行，观察 `config error: 缺失`。
+运行下面 python 命令触发校验（不依赖 `track_app` 启动，直接调 `load_config`）：
+
+```bash
+python3 -c "import sys; sys.path.insert(0,'.'); \
+from tracking.util import setup_imports; setup_imports(); \
+from common.config import load_config; from config.config_schema import REQUIRED; \
+load_config('config/track_config.yaml', REQUIRED)"
+```
+
+1. 用 sed 把 `detect.imgsz` 改成 `detect.imgsz: 640x`（字符串），重跑上面命令，观察 `ConfigError: detect.imgsz: expected int, got str`。
+2. 或删掉一个 REQUIRED 键（如 `tracking.pause_wait`）再跑，观察 `ConfigError: missing key: tracking.pause_wait`。
 3. 恢复后用 diff 确认回到原样。
+
+```bash
+# 改错键触发校验（先备份）
+cp config/track_config.yaml /tmp/tc.bak
+sed -i 's/detect.imgsz: 640/detect.imgsz: 640x/' config/track_config.yaml
+python3 -c "import sys;sys.path.insert(0,'.');from tracking.util import setup_imports;setup_imports();from common.config import load_config;from config.config_schema import REQUIRED;load_config('config/track_config.yaml',REQUIRED)"   # 预期: ConfigError: detect.imgsz: expected int, got str
+# 恢复
+cp /tmp/tc.bak config/track_config.yaml
+```
 
 **易错点**：
 
-- ⚠️ schema 校验只在 config_schema 显式调用或启动时执行 → 改键后务必重跑 schema 或 track_app 一次确认配置合法，否则运行时无效配置静默。
+- ⚠️ schema 校验只在 `load_config` 被调用时执行（不能直接 `python3 config/config_schema.py`，该文件无独立校验主函数）→ 改键后务必重跑上面的 python 校验命令一次确认配置合法，否则运行时无效配置静默。
 
 **知识储备补充**（2.1.2 config_schema 校验机制）：
 
-- **REQUIRED 即契约**：`config_schema.py` 用 REQUIRED 白名单声明"合法键全集 + 必填键"——缺失必填键报 `config error: 缺失`，类型不符报 `config error: 类型不符`。这相当于编译期类型检查的配置层版本，把"拼写/类型错误"拦截在启动前而非运行中。
+- **REQUIRED 即契约**：`config_schema.py` 用 REQUIRED 白名单声明"合法键全集 + 必填键"。真正的校验函数 `load_config`/`_validate` 在 `common/config.py`（object_tracking 复用 elderly 的 common），由入口程序或显式 python 调用触发——缺失必填键抛 `ConfigError: missing key: <path>`，类型不符抛 `ConfigError: <path>: expected <type>, got <实际类型>`。这相当于编译期类型检查的配置层版本，把"拼写/类型错误"拦截在启动前而非运行中。
 
-- **YAML 类型映射**：`[car]` 是列表、`0.3` 是浮点、`true` 是布尔、`8088` 是整数。数值示例：把 `min_confidence: 0.3` 改成 `0.3x` → 浮点变字符串 → 类型校验失败；把 `pause_wait: true` 删除 → 缺失校验失败。两者都是 schema 拦截的典型演示。
+- **YAML 类型映射**：`[car]` 是列表、`0.3` 是浮点、`true` 是布尔、`8088` 是整数。数值示例：把 `min_confidence: 0.3` 改成 `0.3x` → 浮点变字符串 → 类型校验失败；把 `pause_wait: true` 删除 → 缺失校验失败。两者都是 schema 拦截的典型演示（用本节 python 命令调 `load_config` 触发）。
 
-- **参考资源**：`config/config_schema.py`（REQUIRED 定义与校验函数）；`docs/04_配置方案.md`（键表与类型说明）；Python `yaml.safe_load` 官方文档。
+- **参考资源**：`config/config_schema.py`（REQUIRED 白名单定义）；`common/config.py`（`load_config`/`_validate` 校验实现，elderly）；`docs/04_配置方案.md`（键表与类型说明）；Python `yaml.safe_load` 官方文档。
 
 #### 步骤4：阅读程序参数详解，掌握全部入口 CLI 参数与覆盖规则（约60min）
 
@@ -161,11 +209,33 @@ graph LR
 **操作步骤**：
 
 1. 确认 `detect.class_filter: [car]`（默认均已调优）。
+
 2. 用文本模式离线视频跑全链路观察只绘制汽车框（R2/R4）：
-   ```bash
-   printf '小飞小飞\n追踪 id3 的车\n' | python3 apps/track_app.py --video /path/test.mp4 --text
-   ```
+```bash
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入对话：追踪 id3 的车
+```
+
 3. 临时改成 `class_filter: []`（全类）观察误检/ID 变化，最后恢复 [car]。
+
+```bash
+cp config/track_config.yaml /tmp/tc.bak
+sed -i 's/class_filter: \[car\]/class_filter: []/' config/track_config.yaml   # 全类观察误检/ID变化
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg   # 先小飞小飞 再追踪 id3
+# 恢复
+cp /tmp/tc.bak config/track_config.yaml
+```
+
+结果会导致一辆车有多个id或者的id数急速增长，原因是一辆车识别成不同类别了，也上了id
+
+[car]
+
+<img src="assets/image-20260907164715550.png" alt="image-20260907164715550" style="zoom: 50%;" />
+
+[空]：coco80全检测追踪
+
+<img src="assets/image-20260907164807340.png" alt="image-20260907164807340" style="zoom:50%;" />
 
 **易错点**：
 

@@ -24,7 +24,7 @@
 | Python | 3.10 |
 | 核心库 | sherpa_onnx（ASR/KWS）、Matcha-TTS（TTS）、RKLLM |
 | 模型 | /home/iflytek/models/{zipformer_kws, zipformer_onnx, tts}（板端） |
-| 命令 | `python3 apps/track_app.py --video test.mp4 --text`（文本模式）/ `--camera --mjpeg`（语音全链路） |
+| 命令 | `python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text`（文本模式）/ `--camera --mjpeg`（语音全链路） |
 | 文档 | docs/07_语音测试用例.md |
 
 ### 7.4 实验难度
@@ -44,10 +44,12 @@ cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 pkill -9 aplay; pkill -f llm_server
 
 # 1. 文本模式状态机（无需麦克风）
-python3 apps/track_app.py --video /path/test.mp4 --text   # 输入小飞小飞→唤醒
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text   # 输入小飞小飞→唤醒
 
-# 2. 语音全链路（板端）
-python3 apps/track_app.py --camera --mjpeg                # 喊 小飞小飞 → 唤醒→录音
+# 2. 语音全链路（板端）— 前提：先启动 ROS 相机（另开一终端）
+source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+ros2 launch car1_peripherals depth_camera.launch.py        # 终端2：启动相机，提供 /ascamera_hp60c/camera_publisher/rgb0/image
+python3 apps/track_app.py --camera --mjpeg                # 终端1：喊 小飞小飞 → 唤醒→录音
 ```
 
 预期：喊"小飞小飞"→ `检测到唤醒` → `录音线程: plughw:4,0` → 提示音 + `开始聆听（mode=DIALOG）`；说"追踪红色皮卡" → `[ASR 结果]` → `[cmd] track_vlm` → TTS 流式"好的"；说"解除" → `[cmd] 清除语义指令` → 恢复全显示。
@@ -67,9 +69,16 @@ graph LR
 
 **操作步骤**：
 
-1. `python3 apps/track_app.py --video /path/test.mp4 --text`。
+1. `python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text`。
 2. 输入 `小飞小飞` → `[文本] 唤醒` → `开始聆听（mode=DIALOG）`；次行输入 `追踪红色皮卡` → LLM→（描述）→ VLM 选车；`你好` → 闲聊；`清除` → 解除。
 3. 理解 `--text` 与音频走同一 VoiceLoop 状态机（`feed_text` 复用回调）。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text
+# 先输入：小飞小飞 → 开始聆听
+# 再输入：追踪红色皮卡 / 你好 / 清除
+```
 
 **易错点**：
 
@@ -89,9 +98,37 @@ graph LR
 2. `python3 apps/track_app.py --camera --mjpeg`。
 3. 观察：`录音线程: plughw:4,0（Recording started）`、`开始聆听`、MJPEG 出流。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+pkill -9 aplay; pkill -f llm_server
+# 另终端启动相机:
+source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+ros2 launch car1_peripherals depth_camera.launch.py
+python3 apps/track_app.py --camera --mjpeg     # 语音全链路
+```
+
 **易错点**：
 
 - ⚠️ 覆盖 XFM 串口 /dev/ttyACM0 需先停固件 log_server，否则唤醒不触发。
+
+**⚠️ 现象：`xfm_wake] XFM 串口无响应（第N轮，已发 2 个唤醒词设置）→ 硬件唤醒暂未就绪（后台自愈探测，稍后自动接管）`**
+
+> 这是 XFM 六麦**设备冷启动/固件未就绪**的常见现象（设备上电后固件需几秒~几分钟才完成握手），`track_app` 会**后台持续探测，设备就绪后自动接管**，通常**不需要人工干预**。按顺序排查：
+
+```bash
+# ① 先等几分钟（后台自愈，日志停止报"串口无响应"即就绪）。若等后仍无响应，继续 ②③
+sleep 120 && grep -n "XFM\|xfm_wake" runs/logs/track_app.log   # 看是否已自动就绪
+
+# ② 用独立脚本手动探测固件（不经过 track_app，验证串口/固件本身是否正常）：
+#   正常输出: 成功打开设备: /dev/ttyACM0 → 讯飞麦克风阵列通信已启动 → 喊"小飞小飞"收到 aiui_event
+python /home/iflytek/ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/xf_mic_array.py
+
+# ③ 若脚本也连不上：停 log_server 释放串口，重插 USB，再试
+pkill -f log_server; ls -l /dev/ttyACM0    # 确认 USB 枚举(VID:PID=1a86:55d4→/dev/ttyACM0)
+```
+
+- 有应答但 track_app 仍报"无响应"：多为**串口被 log_server 占用**（文档前述），停 log 后重跑。
+- 脚本正常收到唤醒（`'aiui_event'` 含 `detected 唤醒`）而 track_app 没有 → 是 track_app 侧时序/占用，重启 track_app 复验。
 
 **知识储备补充**：
 - **XFM 硬件唤醒时序（先唤醒后开录音）**：XFM 六麦阵列通过串口 `/dev/ttyACM0` 上报 aiui 唤醒事件。`notify_wake()`（speech/voice_loop.py L149-158）里才调用 `_ensure_capture()` 打开 ALSA——XFM 在唤醒事件后才出可用音频流，提前常开会把设备停在监听态稀疏流、唤醒后也不恢复（asr_test 实测时序）。因此"录音线程在硬件唤醒后才启动"不是简化而是硬约束。
@@ -108,9 +145,17 @@ graph LR
 2. 若用 KWS 软件：确认 `kws.enabled=true` 与 `kws.threshold`（0.25 正常）。
 3. 观察 `[ASR 实时]` 逐字回显判定麦克风健康；`[diag] 录音 X 帧/5s`（X≈50 正常，≈10 自愈）。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text
+# 运行中念"小飞小飞"，观察唤醒/录音
+grep -n "kws.enabled\|threshold" config/track_config.yaml
+```
+
 **易错点**：
 
 - ⚠️ 录音低帧自愈（≤30 帧重开，≤3 次）；若 X≈10 持续，查 ASR 线程或设备；`[diag] 队列 0`=ASR 消费正常。
+- ⚠️ 喊"小飞小飞"无反应但串口已开 → **XFM 冷启动自愈中**：`track_app` 后台探测稍后自动接管，等 1~2 分钟再喊；若持续无响应按步骤2 排障（手动 `xf_mic_array.py` 探测）。
 
 **知识储备补充**：
 - **流式 ASR 增量解码（zipformer_onnx）**：sherpa_onnx `OnlineRecognizer` 外部驱动：`create_stream()` 建识别流（speech/asr.py L84-86），每帧 0.1s@16k 音频 `feed()` 增量解码（L88-90），返回 `(partial, final)`。partial 是未定稿的中间结果（`[ASR 实时]` 逐字回显的来源），final 是端点判定后的定稿。端点检测由识别器内置：rule1=4.5s 静音 / rule2=1.5s / rule3=300ms——说明"话说完了"由静音时长分层判定，不是等固定时长。
@@ -133,6 +178,13 @@ graph LR
 2. 验证**流式 TTS**：`[tts]` 合成/播放，首句即出声（不等整段合成完）。
 3. 验证播报互斥 `playback_event`：播报期间不开 ASR 窗口，防回声；打断丢弃（新唤醒 → epoch+1 → 旧回复丢弃）。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text
+# 先输入：小飞小飞
+# 再输入：追踪红色皮卡 → 观察 ASR→VLM→TTS 流式
+```
+
 **易错点**：
 
 - ⚠️ 播报被识别进用户话 → playback_event 未生效；重启 track_app 复验。
@@ -150,6 +202,16 @@ graph LR
 
 1. 执行 V1 唤醒 / V2 天气（流式 TTS）/ V3「追踪一百号目标」找不到 / V4 描述选车 / V5 清除 / V6 闲聊 / V7 无话 10s 超时 / V8 打断 / V9 录音健康。
 2. 调 `kws.threshold`（0.25 → 0.4）观察误报下降；确认热词 in beam_search（greedy 不支持热词）。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+cp config/track_config.yaml /tmp/tc.bak
+sed -i 's/kws.threshold: 0.25/kws.threshold: 0.4/' config/track_config.yaml
+python3 apps/track_app.py --camera --mjpeg      # 重跑统计误报
+# 确认热词解码方法（greedy_search 下热词不生效）
+grep -n "decoding_method\|hotwords" config/track_config.yaml
+cp /tmp/tc.bak config/track_config.yaml
+```
 
 **易错点**：
 
@@ -196,6 +258,7 @@ stateDiagram-v2
 
 | 问题 | 原因 | 解决 |
 |------|------|------|
+| `XFM 串口无响应（第N轮...）硬件唤醒暂未就绪` | XFM 固件冷启动/未就绪，track_app 后台自愈 | 等待几分钟自动接管；或手动探测 `python .../car1_speech/tools/xf_mic_array.py` 验证固件 |
 | 唤醒后无录音 | XFM 事件未到 / ttyACM0 占用 | 停 log_server，查串口 |
 | ASR 无实时 | ASR 模型/线程 | 文本模式确认 ASR 模型文件 |
 | 播报无声 | aplay 被占用 | pkill -9 aplay；查串口冲突 |

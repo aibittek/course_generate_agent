@@ -23,7 +23,7 @@
 | OS | Ubuntu 22.04 + ROS 2 Humble |
 | Python | 3.10 |
 | 核心库 | RKNN（YOLO/ReID）、RKLLM（LLM/VLM）、sherpa_onnx（ASR/KWS）、Matcha-TTS |
-| 命令 | `python3 -m pytest tests/ -v`、`printf ... track_app --text`、`ros2 launch car1_peripherals depth_camera.launch.py`、`track_app --camera --mjpeg` |
+| 命令 | `python3 -m pytest tests/ -v`、`python3 apps/track_app.py --video .../test.mp4 --text`（交互式：先`小飞小飞`唤醒再输指令）、`ros2 launch car1_peripherals depth_camera.launch.py`、`track_app --camera --mjpeg` |
 | 文档 | README（常用命令）/ docs/03_开发模式与验证.md |
 
 ### 9.4 实验难度
@@ -43,7 +43,9 @@ cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 python3 -m pytest tests/ -v
 
 # 2. 离线文本全链路
-printf '小飞小飞\n追踪 id3\n' | python3 apps/track_app.py --video /path/test.mp4 --text
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 在输入对话：追踪 id3
 
 # 3. 实时摄像头 + MJPEG
 source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
@@ -71,6 +73,11 @@ graph LR
 1. `python3 -m pytest tests/ -v` 确认全部通过（TDD，x86 可跑）。
 2. 覆盖 tools/门控/VLM 虚测/单帧 pipeline/录音自愈等。确认无回归。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 -m pytest tests/ -v
+```
+
 **易错点**：
 
 - ⚠️ 全功能验证前的 regression 必须全绿，否则后续故障排查会把框架缺陷混入功能问题。
@@ -85,9 +92,16 @@ graph LR
 
 **操作步骤**：
 
-1. `printf '小飞小飞\n追踪 id3\n' | python3 apps/track_app.py --video /path/test.mp4 --text`。
+1. `python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text`，先输入`小飞小飞`唤醒，再输入`追踪 id3`。
 2. 观察：唤醒 → 追踪锁定 → 目标消失 lost 事件 → 清除 unlock_all → 事件日志完整。
 3. 验证 `--text` 与音频同一状态机（`feed_text` 复用回调）。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --
+# 先输入：小飞小飞
+# 再输入：追踪 id3
+```
 
 **易错点**：
 
@@ -108,6 +122,14 @@ graph LR
 3. 浏览器打开 `http://<IP>:8088/track.mjpg` 观察实时推流；目标 ID 稳定（min_confidence=0.3 + [car]）。
 4. 语音链路：喊"小飞小飞" → 唤醒 → 追踪红色皮卡 → 解除 → 恢复全显示。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+# 另终端:
+source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+ros2 launch car1_peripherals depth_camera.launch.py
+python3 apps/track_app.py --camera --mjpeg    # 浏览器 http://<IP>:8088/track.mjpg
+```
+
 **易错点**：
 
 - ⚠️ `--camera` 需相机话题在线（ascamera_hp60c/rgb0/image 惰性 rclpy）；MJPEG 端口 8088 与 stream_name。
@@ -127,6 +149,12 @@ graph LR
 1. 用 `--save` 落盘标注帧（`runs/out`），验证完整性。
 2. 排查：`[diag] 录音 50 帧/5s` 正常；`[ASR 实时]`；`[cmd]` 逐分支；事件 jsonl 条目齐全。
 3. 若出现异常：缩小、复现、用日志注释定位（如 pause_timeout 查 LLM、camera_stall 查相机）。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --camera --mjpeg --save
+# 核对 runs/out 标注帧与 runs/logs/events.jsonl 条目
+```
 
 **易错点**：
 
@@ -156,6 +184,12 @@ graph LR
 1. 按 `docs/03_开发模式与验证.md` 五步（Step1-5）逐项核对。
 2. 清理：`pkill -f llm_server`、`pkill -9 aplay`；确认无残留进程占用串口/设备。
 3. 收尾：事件日志完整性最终确认。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+pkill -f llm_server; pkill -9 aplay
+ps aux | grep -E "track_app|llm_server|aplay" | grep -v grep   # 确认无残留
+```
 
 **易错点**：
 

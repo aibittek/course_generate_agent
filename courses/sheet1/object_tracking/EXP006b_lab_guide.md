@@ -132,6 +132,22 @@ head -60 README.md                             # 架构速览与关键决策
 - 能画出 `多源输入 → 目标检测 → 追踪ID → LLM指令锁定 → 描述选车(VLM) → 清除 → 事件日志` 的完整时序图，并标注每个状态转换的触发条件与门控 fail-closed 节点。
 - 能说出门控防呆至少三个要点（清除词强制 clear_track、非指令回落闲聊、ID 数值不对齐回引导、VLM 无果不锁车）。
 
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ ls docs/
+01_需求总览.md  03_开发模式与验证.md  05_流程与安全.md  07_语音测试用例.md  09_事件与故障测试用例.md
+02_架构设计.md  04_配置方案.md        06_环境依赖.md    08_视觉测试用例.md  10_程序参数详解.md
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ grep -n "R[0-9]" docs/01_需求总览.md
+3:object_tracking（场景1）综合案例功能需求（R1–R12）。对应实现位置见表末，
+11:| R1 | 多源输入统一 | 本地视频 / 静态图片 / 实时摄像头（ROS 话题）三种输入源，config 或 CLI 切换，业务代码零改动 | `common/source.py` + `apps/track_app.py --video/--image/--camera` |
+12:| R2 | 目标检测 | YOLOv8n（RKNN NPU 推理），COCO 80 类，`class_filter=[car]` 只跟踪车 | `vision/yolo/detector.py`（复用 elderly） |
+13:| R3 | 多目标追踪 | DeepSORT 结构（卡尔曼预测 + IoU/外观关联 + 确认框），生成并维护稳定 track id | `tracking/tracker.py` + `tracking/kalman.py` |
+14:| R4 | 外观重识别（ReID） | `use_reid=true` 时 deepsort.rknn 提取外观特征，消除单帧漏检换 ID（级联外观代价不再全 1e5） | `tracking/pipeline.py` + `tracking/reid.py` + `tracking/reidpool.py` |
+15:| R5 | LLM FunctionCall | 自然语言指令 → LLM 输出结构化 JSON 工具调用 → 执行（追踪/清除/截图）；秒级推理在独立线程，不卡帧 | `apps/track_app.py`（CommandWorker）+ `tools/tool_dispatch.py` |
+16:| R6 | 原生 FunctionCall | 预留/可选 rkllm 原生 function tools（`<tool_call>` 自标签）路径，`llm.function_call.native` 切换 | `tools/native_client.py` + `tools/native_parser.py` |
+.....剩下略
+```
+
 ### 1.6 实验步骤
 
 #### 整体流程图
@@ -150,7 +166,12 @@ graph LR
 
 **1.1.1 R1-R13 功能需求体系**
 
-- **原理**：需求体系回答"系统要做什么、边界是什么"。R1-R3 定义输入层（多源统一、目标检测、多目标追踪），R4 定义外观重识别（ReID），R5-R6 定义 LLM 指令解析（结构化 JSON 工具调用 + 原生 FunctionCall 双路径），R7-R8 定义描述选车（VLM 视觉 + fail-closed 铁律），R9 定义清除语义，R10 定义门口词路由，R11 定义流式 TTS 播报，R12 定义事件日志，R13 定义调试运维（文本模式、MJPEG）。梳理时建议按"输入→检测→追踪→指令→选车→清除→日志→调试"八个维度分组，逐条标注"可量化约束"（如 class_filter=[car]、min_box_w/h=32、max_stale=15、min_confidence=0.3、pause_timeout=30.0、cell_cap=16）。R13 的文本调试模式特别重要——`--text` 与音频模式走同一状态机，是后续所有实验的基础调试路径。
+- **原理**：需求体系回答"系统要做什么、边界是什么"。
+
+  R1-R3 定义输入层（多源统一、目标检测、多目标追踪），R4 定义外观重识别（ReID），R5-R6 定义 LLM 指令解析（结构化 JSON 工具调用 + 原生 FunctionCall 双路径），R7-R8 定义描述选车（VLM 视觉 + fail-closed 铁律），R9 定义清除语义，R10 定义门口词路由，R11 定义流式 TTS 播报，R12 定义事件日志，R13 定义调试运维（文本模式、MJPEG）。
+
+  梳理时建议按"输入→检测→追踪→指令→选车→清除→日志→调试"八个维度分组，逐条标注"可量化约束"（如 class_filter=[car]、min_box_w/h=32、max_stale=15、min_confidence=0.3、pause_timeout=30.0、cell_cap=16）。R13 的文本调试模式特别重要——`--text` 与音频模式走同一状态机，是后续所有实验的基础调试路径。
+
 - **源码对应**：`docs/01_需求总览.md L1-L25（需求清单表格 R1-R13）与 L28（非目标范围边界）`
 
 ```markdown
@@ -419,7 +440,10 @@ graph LR
 
 **1.2.1 七层模块架构与依赖方向**
 
-- **原理**：模块分层的核心目标是**依赖单向 + 接口解耦**。架构图把系统分成七层部件，依赖方向严格单向：`common ← (vision/tracking) ← tools ← apps`，而 `speech/llm 独立`（复用 elderly 模块，通过 apps 装配层对接）。所谓"依赖方向"即"谁可以 import 谁"——底层模块（tracking 追踪核心）不 import 上层（tools 工具注册表），上层 tools/apps 依赖下层。这样修改追踪算法不影响工具注册表，改 LLM 客户端不影响追踪引擎。接口对接点集中在 apps 装配层（`track_app.build_engines` 组装引擎 + 注册工具 + 绑定语音）。`README.md` 给出模块映射：apps（入口）、common（输入源/配置）、tracking（自研核心）、tools（工具注册/门控）、speech/llm（复用 elderly）、config（配置）。
+- **原理**：模块分层的核心目标是**依赖单向 + 接口解耦**。
+
+  架构图把系统分成七层部件，依赖方向严格单向：`common ← (vision/tracking) ← tools ← apps`，而 `speech/llm 独立`（复用 elderly 模块，通过 apps 装配层对接）。所谓"依赖方向"即"谁可以 import 谁"——底层模块（tracking 追踪核心）不 import 上层（tools 工具注册表），上层 tools/apps 依赖下层。这样修改追踪算法不影响工具注册表，改 LLM 客户端不影响追踪引擎。接口对接点集中在 apps 装配层（`track_app.build_engines` 组装引擎 + 注册工具 + 绑定语音）。`README.md` 给出模块映射：apps（入口）、common（输入源/配置）、tracking（自研核心）、tools（工具注册/门控）、speech/llm（复用 elderly）、config（配置）。
+
 - **源码对应**：`docs/02_架构设计.md L3-L18（分层结构 ASCII 图 + 依赖方向说明）`
 
 **操作步骤**：
@@ -517,8 +541,11 @@ FrameSource.read → TrackEngine.run（每帧）
 
 - **单状态机主循环**：`TrackEngine.run` 每轮只读一帧，成功后才进入 `pipeline.process`（检测→ReID→tracker.update→过滤）。主循环后半段依次 `_drain_commands()`、`_compute_draw()`（按锁定语义画）、`_publish`（MJPEG/发布）。"读帧—检测—追踪—绘制—消费命令"是有界工作队列驱动的**确定性主动循环**，帧率稳定。
 
-- **卡尔曼预测（时间更新）**：追踪器对每个 track 的状态做匀速运动预测——DeepTrack 采用 8 维状态 $[cx, cy, aspect, height, vx, vy, va, vh]$（`tracking/kalman.py` L29-65），其中 $cx, cy$ 为框中心，$aspect$ 为宽高比，$height$ 为高，$vx, vy, va, vh$ 为对应速度，预测方程为：
+状态机参考流程图
 
+<img src="assets/image-20260907162433491.png" alt="image-20260907162433491" style="zoom: 50%;" />
+
+- **卡尔曼预测（时间更新）**：追踪器对每个 track 的状态做匀速运动预测——DeepTrack 采用 8 维状态 $[cx, cy, aspect, height, vx, vy, va, vh]$（`tracking/kalman.py` L29-65），其中 $cx, cy$ 为框中心，$aspect$ 为宽高比，$height$ 为高，$vx, vy, va, vh$ 为对应速度，预测方程为：
   $$
   \hat{x}_{k|k-1} = F_k\,\hat{x}_{k-1|k-1}
   $$
@@ -526,6 +553,8 @@ FrameSource.read → TrackEngine.run（每帧）
   其中 $\hat{x}_{k|k-1}$ 为第 $k$ 帧先验估计（8×1 向量）、$F_k$ 为状态转移矩阵（匀速模型，把上一帧后验 $\hat{x}_{k-1|k-1}$ 外推一帧）、$k$ 为帧序号。数值示例：若上一帧 $cx=320$、$vx=2$，预测帧 $cx$ 变为 $320+2=322$（同段 `kalman.py`：$F$ 中 $cx$ 行 = $[1,0,0,0,1,0,0,0]$）。
 
 - **门控与距离度量**：CHI2INV95 门控（95% 卡方逆）决定候选关联是否合规，超出门限的检测不进入匹配；级联关联用**马氏距离/余弦距离**混合价格矩阵（DeepSORT 论文定义为 $d^{(1)}$ 马氏运动 + $d^{(2)}$ 外观余弦距离，融合价格 $C = \lambda d^{(1)} + (1-\lambda) d^{(2)}$）。本实验只要求理解语义，不写实现。
+
+  `CHI2INV95` = **自由度为 4，卡方分布 95% 置信区间的临界值**
 
 - **pending 暂停语义**：`engine.pending.set()` 只暂停**读帧**，不暂停命令消费；帧停在最后标注帧，配合 `pause_timeout` 看门狗（默认 30.0s）防 LLM 挂死冻结画面。
 
@@ -551,7 +580,17 @@ FrameSource.read → TrackEngine.run（每帧）
 
 **知识储备补充**（1.3.3 _native_gate 路由优先级）：
 
-- **门控顺序即优先级**：`_native_gate`（`apps/track_app.py` L320-366）是**顺序短路**流水线，命中即返回，未命中才继续下一分支。按位序：①清除词短路 →（忽略一切 tool/描述）；②非指令回落闲聊 → 绝不执行工具；③ `track_id` 存在性/数值对齐校验 → 不对齐回「未找到该 ID 目标」；④ 无 id 带描述 → VLM 选车（fail-closed：不可用/None/99/无匹配 → 引导不锁，绝不空 id 清锁）；⑤ else（save/clear 非 track）→ 放行执行。顺序即优先级——清除 > 闲聊回落 > 存在性 > VLM > 放行。
+- **门控顺序即优先级**：`_native_gate`（`apps/track_app.py` L320-366）是**顺序短路**流水线，命中即返回，未命中才继续下一分支。按位序：
+
+  ①清除词短路 →（忽略一切 tool/描述）；
+
+  ②非指令回落闲聊 → 绝不执行工具；
+
+  ③ `track_id` 存在性/数值对齐校验 → 不对齐回「未找到该 ID 目标」；
+
+  ④ 无 id 带描述 → VLM 选车（fail-closed：不可用/None/99/无匹配 → 引导不锁，绝不空 id 清锁）；
+
+  ⑤ else（save/clear 非 track）→ 放行执行。顺序即优先级——清除 > 闲聊回落 > 存在性 > VLM > 放行。
 
 - **fail-closed 的穷举语义**：VLM 不可用/返 None/返回 99/无匹配 → 引导不锁；绝不空 id 清锁。"编号不存在"与"无编号"都只回引导，不一刀切放行——这是命令安全的关键。
 
@@ -681,21 +720,51 @@ graph TD
 
 **快速验证流程**（含板端可运行步骤）：
 
+> **注意**：`config_schema.py` 只定义 `REQUIRED` 白名单（**无独立校验主函数**），直接 `python3 config/config_schema.py` 不会报错。真正的校验在 `common/config.py` 的 `load_config(..., REQUIRED)`（object_tracking 复用 elderly 的 common）。下面用一行 python 显式调用 `load_config` 触发校验。
+
 ```bash
 cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 
-# 故意改错一个键，验证 schema 拦截
-python3 config/config_schema.py          # 正常（REQUIRED 齐全）
-sed -i 's/min_confidence: 0.3/min_confidence: 0.3x/' config/track_config.yaml
-python3 config/config_schema.py          # 应报 config error: 类型不符
-sed -i 's/min_confidence: 0.3x/min_confidence: 0.3/' config/track_config.yaml  # 恢复
+# ① 正常配置 → 校验通过（输出键数）
+python3 -c "import sys; sys.path.insert(0,'.'); \
+from tracking.util import setup_imports; setup_imports(); \
+from common.config import load_config; from config.config_schema import REQUIRED; \
+print('OK, 校验通过, 顶级键数 =', len(load_config('config/track_config.yaml', REQUIRED)))"
+
+# ② 故意改错一个键（浮点→字符串）→ load_config 抛 ConfigError 拦截
+sed -i 's/min_confidence: 0.3 /min_confidence: 0.3x /' config/track_config.yaml
+python3 -c "import sys; sys.path.insert(0,'.'); \
+from tracking.util import setup_imports; setup_imports(); \
+from common.config import load_config; from config.config_schema import REQUIRED; \
+load_config('config/track_config.yaml', REQUIRED)"
+#    预期报错: ConfigError: tracker.min_confidence: expected float, got str
+
+# ③ 恢复
+sed -i 's/min_confidence: 0.3x /min_confidence: 0.3 /' config/track_config.yaml
 ```
 
 **预期效果描述**：
 
 - 能说出 track_config.yaml 各段键名与调参方法（detect/tracker/lm/vlm/interaction/speech/server）。
-- 能在 config_schema 拦截下发现键名拼写错误（config error: 提示缺失/类型不符）。
-- 能说出 CLI 参数覆盖规则（--video 改 source.mode、--mjpeg 开 server、--text 关 KWS）与"不新增键"约束。
+- 能用 python 调用 `load_config` 触发校验，在故意改错键时拦截（ConfigError: missing key / expected float/int）。
+- 能说出 CLI 参数覆盖规则（`--camera` 只改 source.mode、`--mjpeg` 开 server、`--text` 关 KWS）与"不新增键"约束。
+
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ sed -i 's/min_confidence: 0.3 /min_confidence: 0.3x /' config/track_config.yaml
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ python3 -c "import sys; sys.path.insert(0,'.'); \
+from tracking.util import setup_imports; setup_imports(); \
+from common.config import load_config; from config.config_schema import REQUIRED; \
+load_config('config/track_config.yaml', REQUIRED)"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion/common/config.py", line 66, in load_config
+    return _validate(data, REQUIRED, "")
+  File "/home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion/common/config.py", line 37, in _validate
+    out[key] = _validate(node[key], spec, path)
+  File "/home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion/common/config.py", line 49, in _validate
+    raise ConfigError(
+common.config.ConfigError: tracker.min_confidence: expected float, got str
+```
 
 ### 3.6 实验步骤
 
@@ -759,25 +828,43 @@ graph LR
 
 - **参考资源**：`config/track_config.yaml`（默认值清单）；`config/config_schema.py`（REQUIRED 键表）。
 
-#### 步骤3：故意改错一个键，运行 config_schema 验证拦截（约40min）
+#### 步骤3：故意改错一个键，用 python 调用 load_config 验证拦截（约40min）
 
 **操作步骤**：
 
-1. 用 sed 把 `detect.imgsz` 改成 `detect.imgsz: 640x`（字符串），运行 `python3 config/config_schema.py`，观察 `config error: 类型不符`。
-2. 或删掉一个 REQUIRED 键（如 `tracking.pause_wait`）运行，观察 `config error: 缺失`。
+运行下面 python 命令触发校验（不依赖 `track_app` 启动，直接调 `load_config`）：
+
+```bash
+python3 -c "import sys; sys.path.insert(0,'.'); \
+from tracking.util import setup_imports; setup_imports(); \
+from common.config import load_config; from config.config_schema import REQUIRED; \
+load_config('config/track_config.yaml', REQUIRED)"
+```
+
+1. 用 sed 把 `detect.imgsz` 改成 `detect.imgsz: 640x`（字符串），重跑上面命令，观察 `ConfigError: detect.imgsz: expected int, got str`。
+2. 或删掉一个 REQUIRED 键（如 `tracking.pause_wait`）再跑，观察 `ConfigError: missing key: tracking.pause_wait`。
 3. 恢复后用 diff 确认回到原样。
+
+```bash
+# 改错键触发校验（先备份）
+cp config/track_config.yaml /tmp/tc.bak
+sed -i 's/detect.imgsz: 640/detect.imgsz: 640x/' config/track_config.yaml
+python3 -c "import sys;sys.path.insert(0,'.');from tracking.util import setup_imports;setup_imports();from common.config import load_config;from config.config_schema import REQUIRED;load_config('config/track_config.yaml',REQUIRED)"   # 预期: ConfigError: detect.imgsz: expected int, got str
+# 恢复
+cp /tmp/tc.bak config/track_config.yaml
+```
 
 **易错点**：
 
-- ⚠️ schema 校验只在 config_schema 显式调用或启动时执行 → 改键后务必重跑 schema 或 track_app 一次确认配置合法，否则运行时无效配置静默。
+- ⚠️ schema 校验只在 `load_config` 被调用时执行（不能直接 `python3 config/config_schema.py`，该文件无独立校验主函数）→ 改键后务必重跑上面的 python 校验命令一次确认配置合法，否则运行时无效配置静默。
 
 **知识储备补充**（2.1.2 config_schema 校验机制）：
 
-- **REQUIRED 即契约**：`config_schema.py` 用 REQUIRED 白名单声明"合法键全集 + 必填键"——缺失必填键报 `config error: 缺失`，类型不符报 `config error: 类型不符`。这相当于编译期类型检查的配置层版本，把"拼写/类型错误"拦截在启动前而非运行中。
+- **REQUIRED 即契约**：`config_schema.py` 用 REQUIRED 白名单声明"合法键全集 + 必填键"。真正的校验函数 `load_config`/`_validate` 在 `common/config.py`（object_tracking 复用 elderly 的 common），由入口程序或显式 python 调用触发——缺失必填键抛 `ConfigError: missing key: <path>`，类型不符抛 `ConfigError: <path>: expected <type>, got <实际类型>`。这相当于编译期类型检查的配置层版本，把"拼写/类型错误"拦截在启动前而非运行中。
 
-- **YAML 类型映射**：`[car]` 是列表、`0.3` 是浮点、`true` 是布尔、`8088` 是整数。数值示例：把 `min_confidence: 0.3` 改成 `0.3x` → 浮点变字符串 → 类型校验失败；把 `pause_wait: true` 删除 → 缺失校验失败。两者都是 schema 拦截的典型演示。
+- **YAML 类型映射**：`[car]` 是列表、`0.3` 是浮点、`true` 是布尔、`8088` 是整数。数值示例：把 `min_confidence: 0.3` 改成 `0.3x` → 浮点变字符串 → 类型校验失败；把 `pause_wait: true` 删除 → 缺失校验失败。两者都是 schema 拦截的典型演示（用本节 python 命令调 `load_config` 触发）。
 
-- **参考资源**：`config/config_schema.py`（REQUIRED 定义与校验函数）；`docs/04_配置方案.md`（键表与类型说明）；Python `yaml.safe_load` 官方文档。
+- **参考资源**：`config/config_schema.py`（REQUIRED 白名单定义）；`common/config.py`（`load_config`/`_validate` 校验实现，elderly）；`docs/04_配置方案.md`（键表与类型说明）；Python `yaml.safe_load` 官方文档。
 
 #### 步骤4：阅读程序参数详解，掌握全部入口 CLI 参数与覆盖规则（约60min）
 
@@ -804,11 +891,33 @@ graph LR
 **操作步骤**：
 
 1. 确认 `detect.class_filter: [car]`（默认均已调优）。
+
 2. 用文本模式离线视频跑全链路观察只绘制汽车框（R2/R4）：
-   ```bash
-   printf '小飞小飞\n追踪 id3 的车\n' | python3 apps/track_app.py --video /path/test.mp4 --text
-   ```
+```bash
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入对话：追踪 id3 的车
+```
+
 3. 临时改成 `class_filter: []`（全类）观察误检/ID 变化，最后恢复 [car]。
+
+```bash
+cp config/track_config.yaml /tmp/tc.bak
+sed -i 's/class_filter: \[car\]/class_filter: []/' config/track_config.yaml   # 全类观察误检/ID变化
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg   # 先小飞小飞 再追踪 id3
+# 恢复
+cp /tmp/tc.bak config/track_config.yaml
+```
+
+结果会导致一辆车有多个id或者的id数急速增长，原因是一辆车识别成不同类别了，也上了id
+
+[car]
+
+<img src="assets/image-20260907164715550.png" alt="image-20260907164715550" style="zoom: 50%;" />
+
+[空]：coco80全检测追踪
+
+<img src="assets/image-20260907164807340.png" alt="image-20260907164807340" style="zoom:50%;" />
 
 **易错点**：
 
@@ -913,7 +1022,7 @@ graph LR
 | 核心库 | numpy（追踪核心纯 numpy，零新增依赖） |
 | 模型 | yolov8n.rknn / deepsort.rknn / coco_classes.json（板端） |
 | 测试 | pytest（纯逻辑 x86 可跑） |
-| 命令 | `python3 -m pytest tests/ -v`、`python3 apps/track_demo.py --video test.mp4 --text --list` |
+| 命令 | `python3 -m pytest tests/ -v`、`python3 apps/track_demo.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --list` |
 
 ### 4.4 实验难度
 
@@ -935,7 +1044,7 @@ python3 -m pytest tests/ -v
 #   test_pipeline_tracker.py    小框 min_box 剔除 / stale 超龄剔除
 
 # 2. 纯视觉 ID 底座（无 LLM，stdin 直达 engine）
-printf '追踪 id3\n' | python3 apps/track_demo.py --video /path/test.mp4 --text --list
+printf '追踪 id3\n' | python3 apps/track_demo.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --list --mjpeg
 ```
 
 **预期效果描述**：
@@ -944,6 +1053,36 @@ printf '追踪 id3\n' | python3 apps/track_demo.py --video /path/test.mp4 --text
 - track_demo --list 打印当前跟踪目标 ID 列表，验证 ID 底座稳定性（不随帧跳）。
 - 遮挡场景验证 ReID：遮挡后同 ID 恢复（而非新建 ID）。
 - 调低 min_confidence 观察 ID 跳变（噪声进入 tracker）。
+
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ python3 -m pytest tests/ -v
+===================================== test session starts =====================================
+platform linux -- Python 3.10.12, pytest-6.2.5, py-1.10.0, pluggy-0.13.0 -- /home/iflytek/ros2_venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/iflytek/ros2_ws/src/xflz_eai_car1/app/object_tracking
+plugins: ament-xmllint-0.12.15, launch-testing-1.0.14, ament-flake8-0.12.15, ament-pep257-0.12.15, ament-lint-0.12.15, ament-copyright-0.12.15, launch-testing-ros-0.19.13, colcon-core-0.20.1, cov-3.0.0
+collected 97 items                                                                            
+
+tests/test_chat_prompt.py::test_chat_reply_uses_relaxed_prompt PASSED                   [  1%]
+tests/test_chat_prompt.py::test_chat_reply_fallback_on_error PASSED                     [  2%]
+tests/test_chat_reply_clean.py::test_chat_reply_clean_request_only_system_and_user PASSED [  3%]
+tests/test_chat_reply_clean.py::test_chat_reply_strips_tool_markup_and_json_residue PASSED [  4%]
+tests/test_chat_reply_clean.py::test_chat_reply_degrades_tiny_reply PASSED              [  5%]
+tests/test_chat_reply_clean.py::test_fallback_chat_reply_is_topic_sensitive PASSED      [  6%]
+tests/test_chat_reply_clean.py::test_chat_reply_isolated_from_history PASSED            [  7%]
+tests/test_chat_reply_clean.py::test_chat_reply_streams_sentences PASSED                [  8%]
+tests/test_chat_reply_clean.py::test_chat_reply_streams_keeps_strip_and_guard PASSED    [  9%]
+...略
+```
+
+```bash
+[命令] 追踪 id3
+当前目标： （当前无确认目标）
+id3 已消失
+全部跟随目标已消失，恢复全显示
+```
+
+![image-20260907165852007](assets/image-20260907165852007.png)
 
 ### 4.6 实验步骤
 
@@ -968,6 +1107,10 @@ graph LR
    - `test_native_wiring.py`：门控路由 id 对齐 / 不对齐回「未找到」/ 清除强制 / 描述走 VLM / 闲聊回落。
    - `test_voice_loop_capture_health.py`：录音低帧自愈判定。
 
+```bash
+python3 -m pytest tests/ -v
+```
+
 **易错点**：
 
 - ⚠️ 勿把 pytest 当"贴代码证明"——它验证的是追踪逻辑正确性（ID 分配/剔除/ReID 恢复），是后续所有实验的基础。
@@ -978,7 +1121,13 @@ graph LR
 
 **3.1.1 DeepSORT：卡尔曼预测 + IoU/外观级联关联 + 确认框**
 
-- **原理**：DeepSORT（Deep Association Metric Tracking）在 SORT（仅 IoU 关联）基础上引入**外观特征 + 级联匹配**。目标被建模为 `Track`，生命周期 Tentative→Confirmed（hits≥n_init）→Deleted（`tracking/track.py`）。跟踪器 `Tracker.update()`（`tracking/tracker.py` L72-75）每帧做三步：①卡尔曼预测每个已确认 track；②对 detection 做级联匹配（先按 `time_since_update` 排序，优先级给最近更新的 track，避免被长期遮挡的 track 抢占匹配）；③剩余 detection 与未确认 track 做 IoU 匹配；最后分配新旧确认框。
+- **原理**：DeepSORT（Deep Association Metric Tracking）在 SORT（仅 IoU 关联）基础上引入**外观特征 + 级联匹配**。目标被建模为 `Track`，生命周期 Tentative→Confirmed（hits≥n_init）→Deleted（`tracking/track.py`）。跟踪器 `Tracker.update()`（`tracking/tracker.py` L72-75）每帧做三步：
+
+  ①卡尔曼预测每个已确认 track；
+
+  ②对 detection 做级联匹配（先按 `time_since_update` 排序，优先级给最近更新的 track，避免被长期遮挡的 track 抢占匹配）；
+
+  ③剩余 detection 与未确认 track 做 IoU 匹配；最后分配新旧确认框。
 
 **4 卡尔曼门控**
 
@@ -986,7 +1135,11 @@ graph LR
 
 **知识储备补充**：
 
-- **背景与动机**：SORT（Simple Online and Realtime Tracking）只用 IoU 关联相邻帧检测框，速度快但目标被遮挡几帧后 IoU 归零，轨迹即断、换新 ID。DeepSORT 在 SORT 之上补两项：①用卡尔曼常速模型预测"目标下一帧在哪"；②用 ReID 外观特征弥补 IoU 失效。本实验的 `tracker.py` 是 deep_sort 标准结构的纯 numpy 自实现（`tracking/kalman.py`、`tracking/matching.py` 对照 vendor DeepSORT 的 BSD 参考实现），零新增依赖。
+- **背景与动机**：SORT（Simple Online and Realtime Tracking）只用 IoU 关联相邻帧检测框，速度快但目标被遮挡几帧后 IoU 归零，轨迹即断、换新 ID。DeepSORT 在 SORT 之上补两项：
+
+  ①用卡尔曼常速模型预测"目标下一帧在哪"；
+
+  ②用 ReID 外观特征弥补 IoU 失效。本实验的 `tracker.py` 是 deep_sort 标准结构的纯 numpy 自实现（`tracking/kalman.py`、`tracking/matching.py` 对照 vendor DeepSORT 的 BSD 参考实现），零新增依赖。
 
 - **8 维状态向量与常速模型**：状态 $x = [cx, cy, a, h, vx, vy, va, vh]^\mathsf{T}$，前 4 维是观测（中心横/纵坐标、宽高比 aspect、高），后 4 维是它们的速度。常速（constant velocity）预测即一步线性映射：
 
@@ -1005,13 +1158,12 @@ graph LR
   其中 $\sigma_{pos} = \frac{1}{20}$、$\sigma_{vel} = \frac{1}{160}$（L18-19）为位置/速度噪声权重，h 为当前框高（像素）；aspect 维固定用极小值（1e-2 标准差→1e-4 方差、1e-5→1e-10），因为宽高比几乎不变。数值示例：h=100 像素时位置噪声标准差 $=\frac{1}{20}\times100=5$ 像素，速度噪声标准差 $=\frac{1}{160}\times100=0.625$ 像素/帧。新建 track 时（`initiate` L29-34）不确定性更大：位置标准差 $2\sigma_{pos}h=10$ 像素、速度标准差 $10\sigma_{vel}h=6.25$ 像素/帧——首帧速度完全未知，所以初值协方差放得比稳态预测更大。
 
 - **马氏距离门控（CHI2INV95）**：级联匹配先算马氏距离（观测空间，含缩放），检测 $z$ 与预测投影 $z'=Hx'$ 之间的马氏距离平方为：
-
   $$
   d_M^2(z) = (z - z')^\mathsf{T} S^{-1} (z - z')
   $$
-
+  
   其中 $S=H P H^\mathsf{T} + R$ 是投影协方差加观测噪声、$(z-z')$ 是"检测与预测框的残差"。$d_M^2$ 服从自由度为 2（仅位置 cx,cy）或 4 的卡方分布，`CHI2INV95`（`kalman.py` L13）给出各自 95% 分位阈值：自由度 2→5.9915、4→9.4877。`gate_cost_matrix`（`tracking/matching.py` L45-51）把超过阈值的代价置为 1e5 大值，匈牙利算法就不会选中它——只有落在 95% 置信椭圆内的匹配才被接受，远距误关联被排除。
-
+  
 - **级联匹配顺序**：`Tracker._cascade`（`tracker.py` L107-127）按 `time_since_update` 从 1 到 max_age 逐层分配——刚更新过的 track（time_since_update=1）优先匹配，长期遮挡的 track（time_since_update 大）排后。这是因为一个被遮挡很久的陈旧 track 其预测位置误差已不可信，若与 IoU 全量比，会侵占本该属于新目标的检测。`_appearance_cost`（L129-150）以外观 cosine 距离为代价矩阵，再经 `gate_cost_matrix` 用马氏位置门限把超阈值项置 1e5 大值，最后 `min_cost_matching` 做门限内匈牙利指派。
 
 - **参考资源**：DeepSORT 论文《Simple Online and Realtime Tracking with a Deep Association Metric》（Bewley 等，2017）；`nwojke/deep_sort` 官方实现（`kalman_filter.py`/`tracker.py`）；scikit-learn 的 `linear_sum_assignment` 文档（`tracking/matching.py` L26-31 调用）；马氏距离与卡方门控理论图解（卡方分布自由度与 95% 分位表）。
@@ -1051,7 +1203,11 @@ stateDiagram-v2
 
 - **背景与动机**：ReID（Re-Identification，行人/目标重识别）解决"外观匹配"问题——IoU 只在目标连续可见时有效；目标被挡几帧后 Kalman 预测框仍存在但无真实检测，等它重新出现时，纯 IoU 无法把"旧目标"与"新检测"对上，只能开新 ID。ReID 用深度网络对每个检测框 crop 提取 128 维外观向量，遮挡前后用向量相似度把同一目标串起来，从而保持 ID 不换。
 
+<img src="assets/image-20260907170203597.png" alt="image-20260907170203597" style="zoom:50%;" />
+
 - **外观特征提取流程**：`tracking/reid.py` 的 `preprocess_crop`（L20-29）做四个步骤：cv2.resize 到 64x128 → /255 归一化到 $[0,1]$ → BGR 转 RGB（`im[..., ::-1]` L27）→ 按 ImageNet 均值/方差标准化（L16-17：$\mu=[0.485,0.456,0.406]$、$\sigma=[0.229,0.224,0.225]$）→ 转 CHW 并加 batch 维成 `[1,3,128,64]`。最后 RKNN 推理输出特征向量（通常 128 维，由模型决定：`reidpool.dim` 以首个成功行长度为准）。64×128 是深度排序官方对"行人框"的约定输入尺寸——它保留细粒度外观，同时把输入统一到固定张量形状。
+
+<img src="assets/image-20260907170308800.png" alt="image-20260907170308800" style="zoom: 50%;" />
 
 - **余弦距离公式**：两个特征向量 $a,b$ 的余弦距离（1 减余弦相似度）为：
 
@@ -1079,6 +1235,13 @@ $$
 2. 在 track_config.yaml 把 `tracker.min_confidence` 从 0.3 调低（如 0.1），观察 ID 跳变（噪声检测加深追踪）。
 3. 改回 0.3，验证 ID 稳定。
 
+```bash
+cp config/track_config.yaml /tmp/tc.bak
+sed -i 's/min_confidence: 0.3 /min_confidence: 0.1 /' config/track_config.yaml
+python3 apps/track_demo.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --list --mjpeg   # 观察 ID 跳变
+cp /tmp/tc.bak config/track_config.yaml
+```
+
 **知识储备补充**：
 
 - **min_box_w/h 小框剔除**：`pipeline.process`（`tracking/pipeline.py` L53-60）对每个 confirmed track 取预测宽 $w = aspect \times h$（`to_xyah` L45-48），若 $w < min\_box\_w$ 或 $h < min\_box\_h$（默认 32，`track_config.yaml` L52-53）则从可见列表剔除。物理含义：目标远去/缩小时检测框很小，多半是噪点或目标已消失只剩残影，继续画框/参与 VLM 会误导。宽度由高和宽高比算出：$w = a \cdot h$。
@@ -1097,10 +1260,14 @@ $$
 
 **操作步骤**：
 
-1. `printf '追踪 id3\n' | python3 apps/track_demo.py --video /path/test.mp4 --text --list`
+1. `printf '追踪 id3\n' | python3 apps/track_demo.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --list --mjpeg`
 2. 观察 stdin 直连 engine（无 VoiceLoop/无 LLM），`--list` 每帧打印 scene_summary（当前确认目标）。
 3. 验证：追踪 id3 后，仅绘制该 ID；目标消失 → lost；unlock_on_loss 恢复全显示。
 4. 按 `docs/08_视觉测试用例.md` 执行 O2（多车 ID 稳定）/O3（遮挡 ReID 恢复）/O4（小框剔除）。
+
+```bash
+printf '追踪 id3\n' | python3 apps/track_demo.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --list --mjpeg
+```
 
 **易错点**：
 
@@ -1173,7 +1340,7 @@ $$
 1. **掌握** CommandWorker 门控路由（_native_gate）与 fail-closed 语义。
 2. **理解**清除语义强制 clear_track 与闲聊回落（不执行工具）的差异。
 3. **掌握** LLM 子进程常驻管理（server_manager，端口 8080）与规则兜底。
-4. **独立完成**文本全链路验证（`printf '小飞小飞\n追踪 id3 的车' | track_app --text`）与门控用例。
+4. **独立完成**文本全链路验证（`track_app --text` 交互式：先输入`小飞小飞`唤醒，再输入`追踪 id3 的车`锁定）与门控用例。
 5. **迁移**：理解大模型 FunctionCall 在机器人指令场景的门控安全设计。
 
 ### 5.3 实验环境
@@ -1184,7 +1351,7 @@ $$
 | OS | Ubuntu 22.04 + ROS 2 Humble |
 | Python | 3.10 |
 | 核心库 | RKLLM（非 native 用 ask_stream 通过 HTTP 到 RKLLM 服务 8080） |
-| 命令 | `python3 -m pytest tests/ -q -k not test_real`、`printf '小飞小飞\n追踪 id3 的车\n' \| python3 apps/track_app.py --video test.mp4 --text` |
+| 命令 | `python3 -m pytest tests/ -q -k not test_real`、`python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text`（交互式：先`小飞小飞`唤醒，再输入指令/闲聊） |
 
 ### 5.4 实验难度
 
@@ -1203,9 +1370,17 @@ cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 python3 -m pytest tests/ -q -k "not test_real"      # 覆盖 _native_gate/test_native_wiring/闲聊
 
 # 2. 文本全链路（LLM FunctionCall + 门控）
-printf '小飞小飞\n追踪 id3 的车\n' | python3 apps/track_app.py --video /path/test.mp4 --text
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 在输入对话：追踪id3
 # 3. 清除
-printf '小飞小飞\n清除\n' | python3 apps/track_app.py --video /path/test.mp4 --text
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 在输入对话：清除
+# 4. 手动输入查看结果
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 在输入对话：闲聊
 ```
 
 预期：追踪 id3 的车 → `[cmd] track_ids {3}` → 锁车并播报"好的，只追踪 id3"；`清除` → `[cmd] 清除语义指令，执行 clear_track` → 播报"好的，已解除全部锁定"；闲聊"你好" → LLM 自然回复，无工具执行。
@@ -1228,6 +1403,10 @@ graph LR
 1. `python3 -m pytest tests/ -q -k "not test_real"` 验证 gate/thread 用例。
 2. 关键文件：`test_native_wiring.py`（门控路由 id 对齐/不对齐/清除/描述/闲聊）、`test_native_client.py`、`test_native_parser.py`、`test_chat_reply_*.py`。
 3. 理解断言：闲聊回落干净请求，无 `<tool_call>` 残留。
+
+```bash
+python3 -m pytest tests/ -q -k "not test_real"
+```
 
 **易错点**：
 
@@ -1285,10 +1464,18 @@ flowchart TD
 
 **操作步骤**：
 
-1. 文本全链路：`printf '小飞小飞\n追踪 id3 的车\n' | python3 apps/track_app.py --video test.mp4 --text`。
+1. 文本全链路：`python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg`，先输入`小飞小飞`唤醒，再输入`追踪 id3 的车`。
 2. 观察 `[cmd] track_ids {3}` → 播报"好的，只追踪 id3"。
 3. 输入 `清除`：观察 `[cmd] 清除语义指令，执行 clear_track` → 解除锁定。验证 clear_words 命中强制 clear_track（R9）。
 4. 输入 `你好`：观察 `[LLM] <自然回复>`，且 `[cmd] 不存在`——不执行工具（闲聊回落干净请求）。
+
+```bash
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入：追踪 id3 的车
+# 再输入：清除
+# 再输入：你好（闲聊）
+```
 
 **易错点**：
 
@@ -1302,11 +1489,32 @@ flowchart TD
 2. 阅读 `tools/tools.py` 的 parse_instruction（L45-68）规则兜底（无 LLM 也能追踪/清除）。
 3. 模拟断网/无 LLM：服务不可达 → `_rule_fallback`，追踪/清除仍可，闲聊不可 → 理解 rules 兜底不崩线程。
 
+```bash
+pkill -f llm_server        # 清残留 LLM（断网/停服务模拟）
+# 或 config 关 llm.enabled=false 后重跑 track_app
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text   # 先小飞小飞，再 追踪 id3 → 规则兜底
+```
+
 **知识储备补充**：
 
 - **LLM 子进程生命周期**：`llm/server_manager.py`（复用 elderly_companion/llm）的 `LLMServerManager` 职责：端口预检 → 按需拉起子进程 → 就绪轮询（GET /v1/models）→ 退出清理。`ensure_running`（L55-111）：先探测 `llm.server.port`（默认 8080，0=自动选空闲）是否已监听且响应 /v1/models——已就绪则复用外部服务，否则按 `auto_start=true` 拉起 Flask 子进程并轮询等就绪（超 120s 抛错）。`stop`（L113-117）只终止自己拉起的子进程，复用外部服务不动。同一进程内多个实验共享 8080，`pkill -f llm_server` 是清理残留的标准动作（`track_app.py` main 的 finally 也调 `llm_mgr.stop()`）。
 
-- **规则兜底 parse_instruction**：`tools/tools.py` 的 `parse_instruction`（L46-77）是无 LLM 时的规则解析器，按固定顺序：①颜色词 + 车类词（红/蓝/…/车/卡车/轿车）→ `{"tool":"track_vlm","args":{"color":...}}`（L55-57）；②阿拉伯/中文数字 → track_ids（L58-70，中文数字经 `_zh_to_num` L13-37 转 int，如"六十九"→69）；③清除词 → clear_track（L70-72）。返回 None 表示非指令。核心约束：追踪但 id 无法解析时返回 None（L67），**绝不产空 submit 清当前锁**（评审 P0-2：防误清锁）。
+- **规则兜底 parse_instruction**：`tools/tools.py` 的 `parse_instruction`（L46-77）是无 LLM 时的规则解析器，按固定顺序：
+
+  ①颜色词 + 车类词（红/蓝/…/车/卡车/轿车）→ `{"tool":"track_vlm","args":{"color":...}}`（L55-57）；
+
+  ②阿拉伯/中文数字 → track_ids（L58-70，中文数字经 `_zh_to_num` L13-37 转 int，如"六十九"→69）；
+
+  ③清除词 → clear_track（L70-72）。返回 None 表示非指令。核心约束：追踪但 id 无法解析时返回 None（L67），**绝不产空 submit 清当前锁**（评审 P0-2：防误清锁）。
+
+```json
+interaction:
+  clear_words: [清除, 解除, 取消, 停, 不追, 恢复全, 不跟]
+  track_words: [追踪, 追, 锁定, 识别, 找, 看, 跟, 停]
+  instruct_words: [追踪, 追, 停, 取消, 解除, 不追, 恢复全, 不跟, 清除]
+  color_words: [红, 蓝, 白, 黑, 绿, 黄, 灰, 粉, 紫]
+  desc_words: [红, 黄, 蓝, 白, 黑, 绿, 灰, 粉, 紫, 卡车, 轿车, suv, 大, 小, 新, 旧]
+```
 
 - **中文数字解析公式**：`_zh_to_num`（`tools.py` L13-15）把中文数字串按"低位数字 + 十百千单位"求和：
 
@@ -1399,7 +1607,7 @@ flowchart TD
 | OS | Ubuntu 22.04 + ROS 2 Humble |
 | Python | 3.10 |
 | 模型 | Qwen3.5-0.8B_vision_rk3576.rknn（VLM 视觉，板端） |
-| 命令 | `python3 apps/test_vlm_select.py --image runs/vlm_frames/grid_f200.jpg --json runs/vlm_frames/grid_f200.json --color 红` |
+| 命令 | `python3 apps/dump_track_grids.py --video /路径/test.mp4 --frame-step 200`（先生成网格构图到 runs/vlm_frames/）→ 再用 `python3 apps/test_vlm_select.py --image runs/vlm_frames/grid_f<实际帧号>.jpg --json ... --color 红` |
 | 文档 | `docs/08_视觉测试用例.md` O7 用例 |
 
 ### 6.4 实验难度
@@ -1415,14 +1623,99 @@ flowchart TD
 ```bash
 cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 
-# 1. 断言颜色选车（板端或 fake）
-python3 apps/test_vlm_select.py --image runs/vlm_frames/grid_f200.jpg --json runs/vlm_frames/grid_f200.json --color 红
+# 0. 先生成 VLM 网格构图（板端跑视觉推理，产出 runs/vlm_frames/grid_f<帧号>_rx<行>c<列>.jpg+.json）
+python3 apps/dump_track_grids.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --frame-step 200
+ls runs/vlm_frames/   # 列表生成的实际文件，记下某个 grid_f*.jpg 对应帧号
+
+# 1. 断言颜色选车（板端或 fake），--image/--json 用上面生成的对应文件
+python3 apps/test_vlm_select.py --image runs/vlm_frames/grid_fXXX.jpg --json runs/vlm_frames/grid_fXXX.json --color 红
+# （把 grid_fXXX 换成步骤0 里 ls 看到的实际文件名）
 
 # 2. 文本模式描述选车
-printf '小飞小飞\n追踪红色皮卡\n' | python3 apps/track_app.py --video /path/test.mp4 --text --mjpeg
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 在输入对话：追踪红色皮卡
 ```
 
 预期：test_vlm_select 返回匹配绝对 track id（红车）；描述选车在画面有红车时锁定该 id；无匹配/没找到走 fail-closed 回引导，不锁不空 submit。
+
+<img src="assets/image-20260908100620869.png" alt="image-20260908100620869" style="zoom:50%;" />
+
+```bash
+frame 200: n=4 ids=[29, 30, 32, 33] grid=2x2 cell_ids=[29, 30, 32, 33] -> grid_f200_rx2c2.jpg
+frame 400: n=11 ids=[48, 52, 53, 56, 60, 61, 64, 67, 68, 69, 73] grid=4x4 cell_ids=[48, 52, 53, 56, 60, 61, 64, 67, 68, 69, 73] -> grid_f400_rx4c4.jpg
+frame 600: n=2 ids=[98, 99] grid=2x2 cell_ids=[98, 99] -> grid_f600_rx2c2.jpg
+frame 800: n=7 ids=[114, 117, 120, 121, 125, 126, 127] grid=4x4 cell_ids=[114, 117, 120, 121, 125, 126, 127] -> grid_f800_rx4c4.jpg
+...略
+```
+
+```json
+{
+  "source_video": "test.mp4",
+  "video_fps": 29.97,
+  "frame_index": 200,
+  "timestamp_s": 6.673,
+  "grid": {
+    "rows": 2,
+    "cols": 2,
+    "cell_cap": 16
+  },
+  "order": [
+    29,
+    30,
+    32,
+    33
+  ],
+  "cells": [
+    {
+      "id": 29,
+      "class_id": 2,
+      "class_name": "car"
+    },
+    {
+      "id": 30,
+      "class_id": 2,
+      "class_name": "car"
+    },
+    {
+      "id": 32,
+      "class_id": 2,
+      "class_name": "car"
+    },
+    {
+      "id": 33,
+      "class_id": 2,
+      "class_name": "car"
+    }
+  ],
+  "cell_count": 4,
+  "class_counts": {
+    "car": 4
+  },
+  "total_tracks": 4
+}
+```
+
+```
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/app/object_tracking$ python3 apps/test_vlm_select.py --image runs/vlm_frames/grid_f200_rx2c2.jpg --json runs/vlm_frames/grid_f200_rx2c2.json --color 红
+图: grid_f200_rx2c2.jpg  448x448  grid 2x2  order(row-major)=[29, 30, 32, 33]
+=== PROMPT(带 id 顺序) ===
+图片是 2 行 2 列的网格。数字 xx 代表该格有目标图片，? 代表没有物体（空位）。
+网格编号布局（行优先从左到右、从上到下）：
+1·2
+3·4
+编号对应 ID：
+1 = 29
+2 = 30
+3 = 32
+4 = 33
+目标描述：有一辆红色车辆。
+请回答目标所在格的编号数字（只答数字，1..4）。找不到时回答 0。不要写别的。
+...略
+=== VLM 原始输出 ===
+'3'  (5s)
+→ 格子编号 3 => 绝对 track id 32
+```
 
 ### 6.6 实验步骤
 
@@ -1435,17 +1728,40 @@ graph LR
     C --> D["步骤4: 未找到目标fail-closed"] --> E["步骤5: O7用例与泛化"]
 ```
 
-#### 步骤1：运行颜色选车（约70min）
+#### 步骤1：生成网格构图 + 运行颜色选车（约70min）
 
 **操作步骤**：
 
-1. 确认 runs/vlm_frames/grid_f200.jpg + grid_f200.json 存在（dump_track_grids 产生）。
-2. `python3 apps/test_vlm_select.py --image runs/vlm_frames/grid_f200.jpg --json runs/vlm_frames/grid_f200.json --color 红`。
-3. 观察 VLM 返回绝对 track id；--desc '红色小轿车' 亦可。
+1. 若 `runs/vlm_frames/` 尚无网格图，先用 `dump_track_grids.py` 生成（对视频跑 YOLO+ReID，按 `--frame-step` 采样拼 448×448 网格到 runs/vlm_frames/，不调用 VLM，只依赖检测/模型）：
+   ```bash
+   cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+   python3 apps/dump_track_grids.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --frame-step 200
+   ls runs/vlm_frames/   # 记下实际生成的 grid_f<帧号>_rx<行>c<列>.jpg / .json
+   ```
+
+   ```
+   grid_f200_rx2c2.jpg   grid_f400_rx4c4.jpg   grid_f600_rx2c2.jpg   grid_f800_rx4c4.jpg
+   grid_f200_rx2c2.json  grid_f400_rx4c4.json  grid_f600_rx2c2.json  grid_f800_rx4c4.json
+   ```
+
+2. 用**实际生成的文件**跑颜色选车：
+
+   ```bash
+   python3 apps/test_vlm_select.py \
+     --image runs/vlm_frames/grid_f<实际帧号>.jpg \
+     --json  runs/vlm_frames/grid_f<实际帧号>.json \
+     --color 红
+    
+   # 下面参考
+   python3 apps/test_vlm_select.py --image runs/vlm_frames/grid_f200_rx2c2.jpg --json runs/vlm_frames/grid_f200_rx2c2.json --color 红
+   ```
+
+3. 观察 VLM 返回绝对 track id；`--desc '红色小轿车'` 亦可。
 
 **易错点**：
 
-- ⚠️ json 需与 image 对齐（runs/vlm_frames 产生的构图），描述词未与词表匹配时直接无果。
+- ⚠️ json 需与 image 对齐（同一帧的 grid_fXXX 的 .jpg/.json 必须名字一致，由 dump_track_grids 同帧生成）。描述词未与词表匹配（`--color`/`--desc` 不在 color_words/desc_words）时直接无果。
+- ⚠️ `--frame-step` 控制采样帧号：200 → 每 200 帧 dump 一张（grid_f200/400/...）；若想指定某帧，改用 `--frame-step 1` 全量采样后挑含目标车的那张。
 
 #### 步骤2：读 vlm_real.py，理解网格构图返回绝对 id（约90min）
 
@@ -1474,9 +1790,17 @@ flowchart TD
 
 - **背景与动机**：多模态模型（VLM）能"看图说话"，但直接问"哪辆是红车"模型只能答"左边那辆/框里那个"这类位置描述，无法直接给出可执行的 track id——因为 track id 是 Python 侧动态分配的，模型不知道。解决方案是"网格画像"：把每个候选目标裁成小图、按 id 升序拼成标准网格、在提示词里显式给出"第 k 格 = 绝对 id X"的布局表，让 VLM 只回答格编号（1..n 的数字），再由 Python 把编号映射回绝对 id。模型回答从"自由文本"收敛为"单个枚举数字"，幻觉面大幅缩小。
 
-- **网格构图 build_grid**：`tools/vlm_real.py` `build_grid`（L187-213）做四件事：①输入 `crops`（每格目标 BGR 裁剪）与 `ids`（对应绝对 track id），按 id 升序配对（L193 `sorted(zip(ids, crops))`）；②过滤空裁剪（`size>0`，L194-196）；③`_pick_grid`（L170-185）从 448 的整除因子里选 (rows, cols)，约束 $rows \times cols \le cell\_cap$ 且 $\ge n$（候选数），排序键是 (方形度 |r-c|, 格子数, min(r,c), r)——**方形优先于格子数少**：例如 3 个候选时选 2×2（4 格、|r-c|=0），5 个候选时选 4×4（16 格、|r-c|=0）而不是 2×4（8 格但 |r-c|=2）；④每个 crop 经 `_fit_cell`（L151-167）等比缩放到 `cell_px = 448 // max(rows,cols)`、居中黑边 pad（不拉伸破坏宽高比），按行优先填入网格。返回 `(grid_bgr, cell_ids, (rows,cols))`；无候选或超出 cell_cap → None（上层 fail-closed）。
+- **网格构图 build_grid**：`tools/vlm_real.py` `build_grid`（L187-213）做四件事：
 
-- **布局表与编号对应**：`grid_select_prompt`（L215-240）生成提示词：先给"图像是 R 行 C 列网格，行优先编号 1..R*C"，再贴布局表（每格填绝对 id、空位用 ·，L224-227）、"编号对应 ID：i+1 = cell_ids[i]"映射块（L228-231），最后问"用户要追踪的描述是 X，找符合描述的格子编号，只答数字（1..R*C），找不到答 0"。关键设计：**不提供"不确定/99"逃逸口**（L218 注释）——0.8B 见到 escape 会直接答不确定而偷懒；无匹配的唯一合法输出是 0。
+  ①输入 `crops`（每格目标 BGR 裁剪）与 `ids`（对应绝对 track id），按 id 升序配对（L193 `sorted(zip(ids, crops))`）；
+
+  ②过滤空裁剪（`size>0`，L194-196）；
+
+  ③`_pick_grid`（L170-185）从 448 的整除因子里选 (rows, cols)，约束 $rows \times cols \le cell\_cap$ 且 $\ge n$（候选数），排序键是 (方形度 |r-c|, 格子数, min(r,c), r)——**方形优先于格子数少**：例如 3 个候选时选 2×2（4 格、|r-c|=0），5 个候选时选 4×4（16 格、|r-c|=0）而不是 2×4（8 格但 |r-c|=2）；
+
+  ④每个 crop 经 `_fit_cell`（L151-167）等比缩放到 `cell_px = 448 // max(rows,cols)`、居中黑边 pad（不拉伸破坏宽高比），按行优先填入网格。返回 `(grid_bgr, cell_ids, (rows,cols))`；无候选或超出 cell_cap → None（上层 fail-closed）。
+
+- **布局表与编号对应**：`grid_select_prompt`（L215-240）生成提示词：先声明"图片是 R 行 C 列网格，数字 xx 代表该格有目标图、? 代表空位"，再贴布局表（有内容格填编号 1..N、空位填 `?`，行间用 `·` 分隔，L224-227）、"编号对应 ID：i+1 = cell_ids[i]"映射块（L228-231），最后给"目标描述"并问"只答数字（1..R*C），找不到答 0"。关键设计：**空位显式标记成 `?`**（旧版用 `·`/编号会让 4×4 模型把空位也当有效格，选格 0/3；改成 `?` 后 4×4 命中 3/3）；且**不提供"不确定/99"逃逸口**（L218 注释）——0.8B 见到 escape 会直接答不确定而偷懒；无匹配的唯一合法输出是 0。
 
 - **编号→绝对 id 映射与 _parse_tile**：`_parse_tile`（L248-263）从 VLM 回复中正则提取数字：1≤k≤n 返 k（格编号），0 与 99 都→None（无选择契约，L256-258），其他→None。`select_crops`（L433-473）最后用 `int(cell_ids[k-1])` 把格编号映回**绝对 track id**（L471）。数值示例：cell_ids=[3,7,15]（3 号、7 号、15 号车），VLM 答 "2" → k=2 → cell_ids[1]=7 → 锁定 id 7。若把编号当 id 直接用（锁 2），就会锁错目标——这正是实验易错点的根源。
 
@@ -1486,7 +1810,7 @@ flowchart TD
   cell\_px = \left\lfloor \frac{448}{\max(rows,\ cols)} \right\rfloor, \qquad k = r \times cols + c + 1, \qquad id = cell\_ids[k-1]
   $$
 
-  其中 $rows, cols$ 为 `_pick_grid`（L170-185）选出的行列数、$k$ 为行优先编号（第 $r$ 行第 $c$ 列，均从 0 起）、$cell\_ids[k-1]$ 为编号 $k$ 对应的绝对 track id。数值示例：3 个候选（ids=[3,7,15]）选 2×2 网格，$cell_{px}=\lfloor448/2\rfloor=224$；布局按行优先为 cell_ids=[3,7,15,·]（第 4 格空位），编号 1→id3、2→id7、3→id15。VLM 答 "2" → 锁 id7。
+  其中 $rows, cols$ 为 `_pick_grid`（L170-185）选出的行列数、$k$ 为行优先编号（第 $r$ 行第 $c$ 列，均从 0 起）、$cell\_ids[k-1]$ 为编号 $k$ 对应的绝对 track id。数值示例：3 个候选（ids=[3,7,15]）选 2×2 网格，$cell_{px}=\lfloor448/2\rfloor=224$；布局按行优先为 cell_ids=[3,7,15,·]（第 4 格空位，提示词中显示为 `?`），编号 1→id3、2→id7、3→id15。VLM 答 "2" → 锁 id7。
 
 - **cell_cap=16 候选上限**：`_pick_grid` 约束 $rows \times cols \le cell\_cap$（默认 16，`config/track_config.yaml` L35-36 vlm.grid.cell_cap）。原因：网格越大，VLM 视觉分辨率越差（448px 网格、4×4 时每格仅 112px），容易误判；格子太多提示词也更长。超过 16 个候选 → `build_grid` 返回 None → `_vlm_none` 回引导不锁（fail-closed）。
 
@@ -1500,9 +1824,51 @@ flowchart TD
 
 **操作步骤**：
 
-1. `printf '小飞小飞\n追踪红色皮卡\n' | python3 apps/track_app.py --video /path/test.mp4 --text`。
+1. `python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text`，先输入`小飞小飞`唤醒，再输入`追踪红色皮卡`。
 2. 有红车：`[track_vlm] dump 网格` → `锁定目标 ID X`（X 在当前画面）。
 3. 无红车：`[track_vlm] 无法识别该描述目标` → 引导。
+
+```bash
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入：追踪红色小轿车
+```
+
+```bash
+[2026-09-08 14:37:16,727][I][llm_mgr] 拉起 LLM 服务: /home/iflytek/ros2_venv/bin/python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion/llm/llm_server.py --rkllm_model_path /home/iflytek/models/rkllm/Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm --target_platform rk3576 --port 8080（日志 runs/logs/llm_server.log，首次加载 30-60s）
+[2026-09-08 14:37:20,740][I][llm_mgr] LLM 服务就绪: http://127.0.0.1:8080
+[2026-09-08 14:37:20,756][I][track_app] 文本模式：stdin 喂词（唤醒词→对话；'track idX'/'清除' 触发指令）
+[2026-09-08 14:37:22,939][I][asr] ASR 就绪（provider=cpu, threads=2, method=greedy_search, hotwords=无）
+小飞小飞
+[2026-09-08 14:37:27,430][I][voice_loop] [文本] 唤醒
+[2026-09-08 14:37:27,432][I][voice_loop] 开始聆听（mode=DIALOG）...
+追踪红色小轿车
+[2026-09-08 14:37:33,358][I][track_app] [cmd] 追踪红色小轿车
+[2026-09-08 14:37:43,403][I][track_app] native tool=track_ids args={'ids': [18, 20, 21, 23, 24, 25]}
+[2026-09-08 14:37:43,408][I][track_app] [cmd] track_ids 无 id 但含描述，改 VLM 选车
+[2026-09-08 14:37:43,416][I][track_app] [track_vlm] dump 带标签网格 -> /home/iflytek/ros2_ws/src/xflz_eai_car1/app/object_tracking/runs/vlm_frames/vlm_in_1788849463414.jpg
+[2026-09-08 14:37:43,417][I][track_app] [track_vlm] dump json -> /home/iflytek/ros2_ws/src/xflz_eai_car1/app/object_tracking/runs/vlm_frames/vlm_in_1788849463414.json
+
+...
+
+I RKNN: [14:37:45.703] RKNN LLM Runtime Information, rknn llm lib version: 2.3.3b0 (c824afd6c@2025-08-25T09:55:02)
+I RKNN: [14:37:45.704] RKNN Driver Information, version: 0.9.8
+I rkllm: Enabled cpus: [4, 5, 6, 7]
+I rkllm: Enabled cpus num: 4
+I rkllm: Using mrope
+[2026-09-08 14:37:55,551][I][track_app] [track_vlm] 锁定目标 ID 24
+[LLM] 好的，锁定目标 ID 24
+[2026-09-08 14:37:55,553][I][tts] [TTS-stream] 好的，锁定目标 ID 24
+[2026-09-08 14:37:58,817][I][tts] [TTS] id24 已消失
+```
+
+追踪前一帧
+
+<img src="assets/image-20260908143853402.png" alt="image-20260908143853402" style="zoom:50%;" />
+
+追踪后一帧，实现了VLM自动识别
+
+<img src="assets/image-20260908143939098.png" alt="image-20260908143939098" style="zoom:50%;" />
 
 **易错点**：
 
@@ -1516,9 +1882,35 @@ flowchart TD
 2. 验证 0/99/无匹配 → `_vlm_none`，绝不 submit 空/错 id。
 3. 思考 fail-closed 铁律的意义：绝不锁错目标（R8）。
 
+```bash
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入：追踪火车（画面无蓝车 → fail-closed 回引导，不锁车）
+```
+
+```bash
+[2026-09-08 14:42:02,712][I][llm_mgr] 拉起 LLM 服务: /home/iflytek/ros2_venv/bin/python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/app/elderly_companion/llm/llm_server.py --rkllm_model_path /home/iflytek/models/rkllm/Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm --target_platform rk3576 --port 8080（日志 runs/logs/llm_server.log，首次加载 30-60s）
+[2026-09-08 14:42:08,726][I][llm_mgr] LLM 服务就绪: http://127.0.0.1:8080
+[2026-09-08 14:42:08,742][I][track_app] 文本模式：stdin 喂词（唤醒词→对话；'track idX'/'清除' 触发指令）
+[2026-09-08 14:42:10,825][I][asr] ASR 就绪（provider=cpu, threads=2, method=greedy_search, hotwords=无）
+小飞小飞
+[2026-09-08 14:42:11,702][I][voice_loop] [文本] 唤醒
+[2026-09-08 14:42:11,706][I][voice_loop] 开始聆听（mode=DIALOG）...
+追踪火车
+[2026-09-08 14:42:15,165][I][track_app] [cmd] 追踪火车
+[2026-09-08 14:42:25,226][I][track_app] native tool=track_ids args={'ids': [6, 10, 12, 13, 14, 15, 16]}
+[2026-09-08 14:42:25,233][I][track_app] [cmd] track_ids 无可用 id，回引导
+[LLM] 好的，要追踪请告诉我目标 id，例如「追踪 id53」
+[2026-09-08 14:42:25,234][I][tts] [TTS-stream] 好的，要追踪请告诉我目标 id，例如「追踪 id53」
+```
+
 **知识储备补充**：
 
-- **fail-closed 的定义域**：fail-closed（失效即关闭/保守）指"任何无法确定锁哪个目标的路径都不得产生副作用"。本实验具体三条：①VLM 不可用（懒加载失败 `self._loaded=False`）→ `select`/`select_crops` 返回 None（`vlm_real.py` L417-431/L442-462 的 try/except 全程兜底）；②VLM 回复解析不出合法编号（0 / 99 / 非数字 / 越界）→ `_parse_tile` 返回 None；③候选超 cell_cap=16 → `build_grid` 返回 None。三条路径最终都汇入 `CommandWorker._vlm_none`（`track_app.py` L402-405）：只 WARN + 回引导语"暂时无法识别该目标，请描述更具体（颜色/车型）或告诉我目标编号"，**绝不调用 `submit_effect`**——因为 submit_effect(None) 会把当前锁定清空（副作用），submit_effect(错 id) 会锁错车（更危险）。
+- **fail-closed 的定义域**：fail-closed（失效即关闭/保守）指"任何无法确定锁哪个目标的路径都不得产生副作用"。本实验具体三条：①VLM 不可用（懒加载失败 `self._loaded=False`）→ `select`/`select_crops` 返回 None（`vlm_real.py` L417-431/L442-462 的 try/except 全程兜底）；
+
+  ②VLM 回复解析不出合法编号（0 / 99 / 非数字 / 越界）→ `_parse_tile` 返回 None；
+
+  ③候选超 cell_cap=16 → `build_grid` 返回 None。三条路径最终都汇入 `CommandWorker._vlm_none`（`track_app.py` L402-405）：只 WARN + 回引导语"暂时无法识别该目标，请描述更具体（颜色/车型）或告诉我目标编号"，**绝不调用 `submit_effect`**——因为 submit_effect(None) 会把当前锁定清空（副作用），submit_effect(错 id) 会锁错车（更危险）。
 
 - **为什么 99 与 0 都要拒绝**：`_parse_tile`（L248-263）把 0 和 99 都→None。0 是提示词约定的"找不到"输出；99 是历史模型版本会输出的"不确定"逃逸码（现版本提示词已删掉逃逸口，但解析器保留 99 兜底兼容旧模型输出）。两者含义都是"VLM 无法确定"，必须同等对待为无结果——即使画面"看起来显然只有一辆"，也不允许猜，因为 VLM 可能看漏了画面角落里的第二辆（低置信但真实存在）。ReID 的目标是"不丢 ID"，VLM 的目标是"不锁错"，后者优先级更高。
 
@@ -1536,6 +1928,11 @@ flowchart TD
 
 1. 执行 O7：画面有红车锁定 / 无红车回引导 / 候选超上限回引导 / 数值 id 直锁（不走 VLM）。
 2. 讨论 VLM 泛化边界：desc_words 主要面向车辆（颜色/车型/车），任意类别需扩展词表（追加进 desc_words）并重新验证。
+
+```bash
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 逐条输入 O7 场景：红车锁定 / 无蓝车 / 超 cap / 数值 id
+```
 
 **易错点**：
 
@@ -1617,7 +2014,7 @@ flowchart TD
 | Python | 3.10 |
 | 核心库 | sherpa_onnx（ASR/KWS）、Matcha-TTS（TTS）、RKLLM |
 | 模型 | /home/iflytek/models/{zipformer_kws, zipformer_onnx, tts}（板端） |
-| 命令 | `python3 apps/track_app.py --video test.mp4 --text`（文本模式）/ `--camera --mjpeg`（语音全链路） |
+| 命令 | `python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text`（文本模式）/ `--camera --mjpeg`（语音全链路） |
 | 文档 | docs/07_语音测试用例.md |
 
 ### 7.4 实验难度
@@ -1637,10 +2034,12 @@ cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 pkill -9 aplay; pkill -f llm_server
 
 # 1. 文本模式状态机（无需麦克风）
-python3 apps/track_app.py --video /path/test.mp4 --text   # 输入小飞小飞→唤醒
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text   # 输入小飞小飞→唤醒
 
-# 2. 语音全链路（板端）
-python3 apps/track_app.py --camera --mjpeg                # 喊 小飞小飞 → 唤醒→录音
+# 2. 语音全链路（板端）— 前提：先启动 ROS 相机（另开一终端）
+source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+ros2 launch car1_peripherals depth_camera.launch.py        # 终端2：启动相机，提供 /ascamera_hp60c/camera_publisher/rgb0/image
+python3 apps/track_app.py --camera --mjpeg                # 终端1：喊 小飞小飞 → 唤醒→录音
 ```
 
 预期：喊"小飞小飞"→ `检测到唤醒` → `录音线程: plughw:4,0` → 提示音 + `开始聆听（mode=DIALOG）`；说"追踪红色皮卡" → `[ASR 结果]` → `[cmd] track_vlm` → TTS 流式"好的"；说"解除" → `[cmd] 清除语义指令` → 恢复全显示。
@@ -1660,9 +2059,16 @@ graph LR
 
 **操作步骤**：
 
-1. `python3 apps/track_app.py --video /path/test.mp4 --text`。
+1. `python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text`。
 2. 输入 `小飞小飞` → `[文本] 唤醒` → `开始聆听（mode=DIALOG）`；次行输入 `追踪红色皮卡` → LLM→（描述）→ VLM 选车；`你好` → 闲聊；`清除` → 解除。
 3. 理解 `--text` 与音频走同一 VoiceLoop 状态机（`feed_text` 复用回调）。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text
+# 先输入：小飞小飞 → 开始聆听
+# 再输入：追踪红色皮卡 / 你好 / 清除
+```
 
 **易错点**：
 
@@ -1682,9 +2088,37 @@ graph LR
 2. `python3 apps/track_app.py --camera --mjpeg`。
 3. 观察：`录音线程: plughw:4,0（Recording started）`、`开始聆听`、MJPEG 出流。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+pkill -9 aplay; pkill -f llm_server
+# 另终端启动相机:
+source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+ros2 launch car1_peripherals depth_camera.launch.py
+python3 apps/track_app.py --camera --mjpeg     # 语音全链路
+```
+
 **易错点**：
 
 - ⚠️ 覆盖 XFM 串口 /dev/ttyACM0 需先停固件 log_server，否则唤醒不触发。
+
+**⚠️ 现象：`xfm_wake] XFM 串口无响应（第N轮，已发 2 个唤醒词设置）→ 硬件唤醒暂未就绪（后台自愈探测，稍后自动接管）`**
+
+> 这是 XFM 六麦**设备冷启动/固件未就绪**的常见现象（设备上电后固件需几秒~几分钟才完成握手），`track_app` 会**后台持续探测，设备就绪后自动接管**，通常**不需要人工干预**。按顺序排查：
+
+```bash
+# ① 先等几分钟（后台自愈，日志停止报"串口无响应"即就绪）。若等后仍无响应，继续 ②③
+sleep 120 && grep -n "XFM\|xfm_wake" runs/logs/track_app.log   # 看是否已自动就绪
+
+# ② 用独立脚本手动探测固件（不经过 track_app，验证串口/固件本身是否正常）：
+#   正常输出: 成功打开设备: /dev/ttyACM0 → 讯飞麦克风阵列通信已启动 → 喊"小飞小飞"收到 aiui_event
+python /home/iflytek/ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/xf_mic_array.py
+
+# ③ 若脚本也连不上：停 log_server 释放串口，重插 USB，再试
+pkill -f log_server; ls -l /dev/ttyACM0    # 确认 USB 枚举(VID:PID=1a86:55d4→/dev/ttyACM0)
+```
+
+- 有应答但 track_app 仍报"无响应"：多为**串口被 log_server 占用**（文档前述），停 log 后重跑。
+- 脚本正常收到唤醒（`'aiui_event'` 含 `detected 唤醒`）而 track_app 没有 → 是 track_app 侧时序/占用，重启 track_app 复验。
 
 **知识储备补充**：
 - **XFM 硬件唤醒时序（先唤醒后开录音）**：XFM 六麦阵列通过串口 `/dev/ttyACM0` 上报 aiui 唤醒事件。`notify_wake()`（speech/voice_loop.py L149-158）里才调用 `_ensure_capture()` 打开 ALSA——XFM 在唤醒事件后才出可用音频流，提前常开会把设备停在监听态稀疏流、唤醒后也不恢复（asr_test 实测时序）。因此"录音线程在硬件唤醒后才启动"不是简化而是硬约束。
@@ -1701,9 +2135,17 @@ graph LR
 2. 若用 KWS 软件：确认 `kws.enabled=true` 与 `kws.threshold`（0.25 正常）。
 3. 观察 `[ASR 实时]` 逐字回显判定麦克风健康；`[diag] 录音 X 帧/5s`（X≈50 正常，≈10 自愈）。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text
+# 运行中念"小飞小飞"，观察唤醒/录音
+grep -n "kws.enabled\|threshold" config/track_config.yaml
+```
+
 **易错点**：
 
 - ⚠️ 录音低帧自愈（≤30 帧重开，≤3 次）；若 X≈10 持续，查 ASR 线程或设备；`[diag] 队列 0`=ASR 消费正常。
+- ⚠️ 喊"小飞小飞"无反应但串口已开 → **XFM 冷启动自愈中**：`track_app` 后台探测稍后自动接管，等 1~2 分钟再喊；若持续无响应按步骤2 排障（手动 `xf_mic_array.py` 探测）。
 
 **知识储备补充**：
 - **流式 ASR 增量解码（zipformer_onnx）**：sherpa_onnx `OnlineRecognizer` 外部驱动：`create_stream()` 建识别流（speech/asr.py L84-86），每帧 0.1s@16k 音频 `feed()` 增量解码（L88-90），返回 `(partial, final)`。partial 是未定稿的中间结果（`[ASR 实时]` 逐字回显的来源），final 是端点判定后的定稿。端点检测由识别器内置：rule1=4.5s 静音 / rule2=1.5s / rule3=300ms——说明"话说完了"由静音时长分层判定，不是等固定时长。
@@ -1726,6 +2168,13 @@ graph LR
 2. 验证**流式 TTS**：`[tts]` 合成/播放，首句即出声（不等整段合成完）。
 3. 验证播报互斥 `playback_event`：播报期间不开 ASR 窗口，防回声；打断丢弃（新唤醒 → epoch+1 → 旧回复丢弃）。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text
+# 先输入：小飞小飞
+# 再输入：追踪红色皮卡 → 观察 ASR→VLM→TTS 流式
+```
+
 **易错点**：
 
 - ⚠️ 播报被识别进用户话 → playback_event 未生效；重启 track_app 复验。
@@ -1743,6 +2192,16 @@ graph LR
 
 1. 执行 V1 唤醒 / V2 天气（流式 TTS）/ V3「追踪一百号目标」找不到 / V4 描述选车 / V5 清除 / V6 闲聊 / V7 无话 10s 超时 / V8 打断 / V9 录音健康。
 2. 调 `kws.threshold`（0.25 → 0.4）观察误报下降；确认热词 in beam_search（greedy 不支持热词）。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+cp config/track_config.yaml /tmp/tc.bak
+sed -i 's/kws.threshold: 0.25/kws.threshold: 0.4/' config/track_config.yaml
+python3 apps/track_app.py --camera --mjpeg      # 重跑统计误报
+# 确认热词解码方法（greedy_search 下热词不生效）
+grep -n "decoding_method\|hotwords" config/track_config.yaml
+cp /tmp/tc.bak config/track_config.yaml
+```
 
 **易错点**：
 
@@ -1789,6 +2248,7 @@ stateDiagram-v2
 
 | 问题 | 原因 | 解决 |
 |------|------|------|
+| `XFM 串口无响应（第N轮...）硬件唤醒暂未就绪` | XFM 固件冷启动/未就绪，track_app 后台自愈 | 等待几分钟自动接管；或手动探测 `python .../car1_speech/tools/xf_mic_array.py` 验证固件 |
 | 唤醒后无录音 | XFM 事件未到 / ttyACM0 占用 | 停 log_server，查串口 |
 | ASR 无实时 | ASR 模型/线程 | 文本模式确认 ASR 模型文件 |
 | 播报无声 | aplay 被占用 | pkill -9 aplay；查串口冲突 |
@@ -1844,7 +2304,7 @@ stateDiagram-v2
 | OS | Ubuntu 22.04 + ROS 2 Humble |
 | Python | 3.10 |
 | 核心库 | 同前（RKNN/ReID/LLM） |
-| 命令 | `tail -f runs/logs/events.jsonl`、`python3 apps/track_app.py --video test.mp4 --text` |
+| 命令 | `tail -f runs/logs/events.jsonl`、`python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text` |
 | 文档 | docs/09_事件与故障测试用例.md |
 
 ### 8.4 实验难度
@@ -1861,7 +2321,10 @@ stateDiagram-v2
 cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 
 # 文本模式触发 lost / unlock_all / command
-printf '小飞小飞\n追踪 id3 的车\n清除\n' | python3 apps/track_app.py --video /path/test.mp4 --text
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text
+# 先输入：小飞小飞
+# 在输入对话：追踪 id3 的车
+# 再输入：清除
 
 # 观察事件日志追加
 tail -f runs/logs/events.jsonl
@@ -1888,6 +2351,19 @@ graph LR
 2. `tail -f runs/logs/events.jsonl` 逐条核对 `command`、`lost`。
 3. 理解 lost 由 engine 主循环 `on_event` 触发（`tracking/events.py` append_event_log）。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入：追踪 id3
+# 待目标出画 → 查事件
+tail -f runs/logs/events.jsonl
+```
+
+<img src="assets/image-20260908151129233.png" alt="image-20260908151129233" style="zoom:50%;" />
+
+<img src="assets/image-20260908151136730.png" alt="image-20260908151136730" style="zoom:50%;" />
+
 **易错点**：
 
 - ⚠️ lost 只在 follow 目标从 confirmed 消失时触发；纯视觉 video 若无 follow 则不产生 lost。
@@ -1906,14 +2382,30 @@ graph LR
 2. 验证 unlock_on_loss=true 时全丢恢复全显示 → `unlock_all`。
 3. 理解 unlock_all 区分：清除语义 clear_track / 丢失解锁 unlock_on_loss 两路径。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text
+# 先输入：小飞小飞
+# 再输入：追踪 id3
+# 运行中输入：清除 → 看 unlock_all
+tail -f runs/logs/events.jsonl
+```
+
 **易错点**：
 
 - ⚠️ unlock_all 事件在"全部解锁"（clear 或 unlock_on_loss）时写；仅部分丢失不写。
 
 **知识储备补充**：
-- **两条解锁路径**：`unlock_all` 由两条不同链路产生——① 用户清除指令：`clear_track` → `submit_effect(None)` → 引擎 `_apply_effect` 清空 follow；② `unlock_on_loss=true`：被追踪目标丢失后 `on_track_lost` 清空 follow（tracking/engine.py L142-144）且 follow 集合为空 → 写 `unlock_all`。两者语义都是"全部解锁"，事件合并记录便于追责"系统为何放弃了锁定"。
+- **两条解锁路径**：`unlock_all` 由两条不同链路产生
+
+  ① 用户清除指令：`clear_track` → `submit_effect(None)` → 引擎 `_apply_effect` 清空 follow；
+
+  ② `unlock_on_loss=true`：被追踪目标丢失后 `on_track_lost` 清空 follow（tracking/engine.py L142-144）且 follow 集合为空 → 写 `unlock_all`。两者语义都是"全部解锁"，事件合并记录便于追责"系统为何放弃了锁定"。
+
 - **部分丢失不写**：仅部分目标丢失（follow 集合仍非空）时只写 `lost`（带 ids），不写 `unlock_all`——事件粒度与"锁状态是否清空"一一对应，不会用 unlock_all 掩盖部分丢失的事实。
+
 - **clear_track 的来源**：`_native_gate`（apps/track_app.py L320-337）先按 clear_words（清除/解除/取消/停/不追/恢复全/不跟）拦截，无论 LLM 吐什么 tool 都强制 `clear_track`——防 0.8B 模型把"清除"误吐成 track_ids 锁错目标。这也是 fail-closed 的语义护栏。
+
 - **参考资源**：DeepTrack/TrackSession 锁定语义文档（docs/05_流程与安全.md）；事件驱动日志设计模式（Event Sourcing 导读）。
 
 **参考模板**（事件时序，sequenceDiagram）：
@@ -1945,14 +2437,33 @@ sequenceDiagram
 3. E3 `清除` → `清除语义指令，执行 clear_track` → 解锁。
 4. E5 `追踪 id999` → `未找到该 ID 目标`；E6 指令队列满丢弃最旧。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 依次输入：E1 追踪一百号目标 → 未找到该 ID 目标
+# 再输入：E2 追踪蓝色皮卡（无蓝车）→ 引导不锁
+# 再输入：E3 清除 → 清除语义指令，执行 clear_track
+# 再输入：E5 追踪 id999 → 未找到该 ID 目标
+```
+
 **易错点**：
 
 - ⚠️ fail-closed 目的在于不生副作用：任何"不确定锁谁"（id 不对齐/VLM 无果）都不 submit_effect，只回引导/兜底。
 
 **知识储备补充**：
-- **fail-closed 降级原则**：任何"不确定锁谁"的分支都不产副作用——`_native_gate` 三道闸：① 清除语义强制 clear_track（L320-337）；② `track_ids` 无 id→按是否有描述决定 VLM/引导，有 id 但数值不对齐（`expect ∩ got` 为空）→ 只回「未找到该 ID 目标」，**绝不**走 VLM 猜车（L365-375 附近）；③ track_vlm 视觉选车失败/返 None → `_vlm_none()` 引导语，同样不锁。所有 fail 分支的共同点：**不调用 `engine.submit_effect()`**——锁是副作用，副作用只发生在完全确定时。
+- **fail-closed 降级原则**：任何"不确定锁谁"的分支都不产副作用——`_native_gate` 三道闸：
+
+  ① 清除语义强制 clear_track（L320-337）；
+
+  ② `track_ids` 无 id→按是否有描述决定 VLM/引导，有 id 但数值不对齐（`expect ∩ got` 为空）→ 只回「未找到该 ID 目标」，**绝不**走 VLM 猜车（L365-375 附近）；
+
+  ③ track_vlm 视觉选车失败/返 None → `_vlm_none()` 引导语，同样不锁。所有 fail 分支的共同点：**不调用 `engine.submit_effect()`**——锁是副作用，副作用只发生在完全确定时。
+
 - **为什么不空 submit（思考题2的原理）**：若空集合也能 submit，`submit_effect(set())` 会清空当前锁定——用户问"追踪一百号"系统却把已锁定的 id3 解锁，产生"误导误锁"状态翻转；错误 id 则会锁一个与用户意图无关的目标。fail-closed 保证"不确定 → 维持现状 + 引导"，把错误状态转移的概率压到零。
+
 - **E 用例映射到源码分支**：E1（id 不对齐）→ gate ③；E2（描述无果）→ `_vlm_select_locked` 里 `not confirmed`/`built is None`/`chosen` 为空三处都落 `_vlm_none()`；E3（清除）→ clear_words 拦截。E6（队列满丢最旧）：`CommandWorker.q` maxsize=8（apps/track_app.py L220），`push` 用 `put_nowait` 满了丢弃（L247-250）——有界队列 + 丢弃策略保证 LLM 风暴也不撑爆内存。
+
 - **参考资源**：fail-closed vs fail-open 安全设计对比资料；有界队列背压（bounded queue backpressure）并发编程模式。
 
 #### 步骤4：模拟断网验证规则兜底（约1h30m）
@@ -1962,6 +2473,15 @@ sequenceDiagram
 1. 断网（LLM 不可达）或 `llm.enabled=false`：观察 `chat fallback failed` → `_rule_fallback`。
 2. 验证追踪/清除仍可（parse_instruction 规则兜底）；闲聊不可（无 LLM）。
 3. ReID 故障注入：reid_pool 全 worker 崩 → extract 超时 → features=None 纯 IoU，主循环不挂死。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+pkill -f llm_server        # 断网/停服务模拟
+# 或 config 关 llm.enabled=false 后重跑 track_app
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入：追踪 id3 → 规则兜底仍可追踪/清除
+```
 
 **易错点**：
 
@@ -1981,6 +2501,18 @@ sequenceDiagram
 1. 执行 E2E 脚本化验收：`小飞小飞` → 唤醒；`追踪红色皮卡` → VLM 锁；`追踪不存在的id` → 未找到；`清除` → 解锁；`你好` → 闲聊流式。
 2. 验证 `runs/logs/events.jsonl` 对应 command/lost/unlock_all 条目齐全（完整性）。
 3. 相机拔线 → `camera_stall` 事件 + 暂停重试；aplay 被杀 → 播放线程重启或降级打印。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 再输入：追踪红色皮卡 → VLM 锁
+# 再输入：追踪不存在的id → 未找到
+# 再输入：清除 → 解锁
+# 再输入：你好 → 闲聊流式
+# 另终端：kill -9 $(pgrep aplay) → 观察播放降级
+tail -f runs/logs/events.jsonl
+```
 
 **易错点**：
 
@@ -2079,7 +2611,7 @@ graph TD
 | OS | Ubuntu 22.04 + ROS 2 Humble |
 | Python | 3.10 |
 | 核心库 | RKNN（YOLO/ReID）、RKLLM（LLM/VLM）、sherpa_onnx（ASR/KWS）、Matcha-TTS |
-| 命令 | `python3 -m pytest tests/ -v`、`printf ... track_app --text`、`ros2 launch car1_peripherals depth_camera.launch.py`、`track_app --camera --mjpeg` |
+| 命令 | `python3 -m pytest tests/ -v`、`python3 apps/track_app.py --video .../test.mp4 --text`（交互式：先`小飞小飞`唤醒再输指令）、`ros2 launch car1_peripherals depth_camera.launch.py`、`track_app --camera --mjpeg` |
 | 文档 | README（常用命令）/ docs/03_开发模式与验证.md |
 
 ### 9.4 实验难度
@@ -2099,7 +2631,9 @@ cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
 python3 -m pytest tests/ -v
 
 # 2. 离线文本全链路
-printf '小飞小飞\n追踪 id3\n' | python3 apps/track_app.py --video /path/test.mp4 --text
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --mjpeg
+# 先输入：小飞小飞
+# 在输入对话：追踪 id3
 
 # 3. 实时摄像头 + MJPEG
 source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
@@ -2127,6 +2661,11 @@ graph LR
 1. `python3 -m pytest tests/ -v` 确认全部通过（TDD，x86 可跑）。
 2. 覆盖 tools/门控/VLM 虚测/单帧 pipeline/录音自愈等。确认无回归。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 -m pytest tests/ -v
+```
+
 **易错点**：
 
 - ⚠️ 全功能验证前的 regression 必须全绿，否则后续故障排查会把框架缺陷混入功能问题。
@@ -2141,9 +2680,16 @@ graph LR
 
 **操作步骤**：
 
-1. `printf '小飞小飞\n追踪 id3\n' | python3 apps/track_app.py --video /path/test.mp4 --text`。
+1. `python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text`，先输入`小飞小飞`唤醒，再输入`追踪 id3`。
 2. 观察：唤醒 → 追踪锁定 → 目标消失 lost 事件 → 清除 unlock_all → 事件日志完整。
 3. 验证 `--text` 与音频同一状态机（`feed_text` 复用回调）。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --video /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/test.mp4 --text --
+# 先输入：小飞小飞
+# 再输入：追踪 id3
+```
 
 **易错点**：
 
@@ -2164,6 +2710,14 @@ graph LR
 3. 浏览器打开 `http://<IP>:8088/track.mjpg` 观察实时推流；目标 ID 稳定（min_confidence=0.3 + [car]）。
 4. 语音链路：喊"小飞小飞" → 唤醒 → 追踪红色皮卡 → 解除 → 恢复全显示。
 
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+# 另终端:
+source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+ros2 launch car1_peripherals depth_camera.launch.py
+python3 apps/track_app.py --camera --mjpeg    # 浏览器 http://<IP>:8088/track.mjpg
+```
+
 **易错点**：
 
 - ⚠️ `--camera` 需相机话题在线（ascamera_hp60c/rgb0/image 惰性 rclpy）；MJPEG 端口 8088 与 stream_name。
@@ -2183,6 +2737,12 @@ graph LR
 1. 用 `--save` 落盘标注帧（`runs/out`），验证完整性。
 2. 排查：`[diag] 录音 50 帧/5s` 正常；`[ASR 实时]`；`[cmd]` 逐分支；事件 jsonl 条目齐全。
 3. 若出现异常：缩小、复现、用日志注释定位（如 pause_timeout 查 LLM、camera_stall 查相机）。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+python3 apps/track_app.py --camera --mjpeg --save
+# 核对 runs/out 标注帧与 runs/logs/events.jsonl 条目
+```
 
 **易错点**：
 
@@ -2212,6 +2772,12 @@ graph LR
 1. 按 `docs/03_开发模式与验证.md` 五步（Step1-5）逐项核对。
 2. 清理：`pkill -f llm_server`、`pkill -9 aplay`；确认无残留进程占用串口/设备。
 3. 收尾：事件日志完整性最终确认。
+
+```bash
+cd ~/ros2_ws/src/xflz_eai_car1/app/object_tracking
+pkill -f llm_server; pkill -9 aplay
+ps aux | grep -E "track_app|llm_server|aplay" | grep -v grep   # 确认无残留
+```
 
 **易错点**：
 
