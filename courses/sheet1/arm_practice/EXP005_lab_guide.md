@@ -13,7 +13,7 @@ total_hours: 32
 experiment_count: 7
 tech_stack: URDF, ROS2, PWM舵机控制, 解析法IK, MoveIt2, Gazebo, Web运动学仿真, 视觉抓取
 hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
-source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver 放行)
+source_code_status: internal (位于 ros2_ws/src/xflz_eai_car1/)
 ---
 
 # 机器人机械臂应用与开发 实验指导书（合并版）
@@ -23,7 +23,7 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 > 实验数: 7
 > 适用对象: 人工智能/机器人工程/智能科学与技术 本科高年级
 > 制定日期: 2026-08-04
-> 模式: human_waiver（源码位于 ROS2 工作空间 ros2_ws/src/，未复制到 source-codes/EXP005/）
+> 源码位置: ROS2 工作空间 `ros2_ws/src/xflz_eai_car1/`
 
 ---
 
@@ -82,7 +82,7 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 
 ## 实验源码说明
 
-⚠️ **本课程的 7 份实验均依赖 ROS2 工作空间 `ros2_ws/src/xflz_eai_car1/` 下的代码**（包括 `simulations/`、`arm/car1_arm_controller/`、`arm/kinematics/`、`calibration/`、`test/car1_web_server/`、`app/car1_app/` 等 package），源码未复制到 `source-codes/EXP005/exp{01-07}/`。已通过 `source-codes/_registry.yaml` 的 `human_waiver.approved=true` 放行，所有实验指导书均标注 `[待源码核实]`。后续将代码复制到 `source-codes/EXP005/exp{xx}/` 后需触发 `SourceCodeAnalysisAgent` 并移除豁免标记。
+⚠️ **本课程的 7 份实验均依赖 ROS2 工作空间 `ros2_ws/src/xflz_eai_car1/` 下的代码**（`simulations/`、`arm/car1_arm_controller/`、`arm/kinematics/`、`calibration/`、`test/car1_web_server/`、`app/car1_app/`、`peripherals/` 等 package）。
 
 ---
 
@@ -93,9 +93,8 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 | PWM 范围 | 500~2500 | 舵机 PWM 信号范围 |
 | PWM 中位 | 1500 | 舵机机械零位 |
 | PWM_TO_RAD | 0.002356 rad/PWM | PWM→弧度换算系数 |
-| IK 误差 | < 1.5mm | FK 闭环验证精度 |
-| J2 系统偏移 | +4° | 大臂加工装配公差 |
-| J3 系统偏移 | +2.3° | 小臂加工装配公差 |
+| IK 闭环容差 | 1.5mm | FK 反算误差阈值（当前并非所有点位达标，见实验5） |
+| TCP Y 偏移 | 0.215mm (Y_TCP) | J1 坐标系下 TCP 固定 Y 偏移，IK 用于 q1 补偿 |
 | 状态机 | observe→detect→confirm→pick→idle | 视觉抓取状态流 |
 | 服务接口 | /start、/confirm、/skip、/abort | 视觉抓取服务化控制 |
 
@@ -109,7 +108,6 @@ source_code_status: external (位于 ros2_ws/src/xflz_eai_car1/，human_waiver �
 
 ## 实验1：机械臂URDF仿真运动控制实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/simulations/`，未复制到 `source-codes/EXP005/exp01/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `car1_description/launch/display.launch.py`、`car1_moveit_config/launch/demo.launch.py`、`car1_gazebo/launch/gazebo_arm.launch.py`、`car1_gazebo/launch/grasp_demo.launch.py` 等仿真包源码。
 
 ### 1.1 关联知识点
 
@@ -763,7 +761,6 @@ if __name__ == "__main__":
 
 ## 实验2：机械臂底层协议与控制实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/`，未复制到 `source-codes/EXP005/exp02/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书 v1.2 改用 `test_servo_direct.py` 裸机协议演示路线（原 v1.1 的 `bringup.launch.py` 路线迁移至 exp03），内容基于 `arm/car1_arm_controller/test/test_servo_direct.py` 与 `driver/car1_base_driver/car1_base_driver/board_sdk.py`（CRC8 查表参考）。
 
 ### 1.1 关联知识点
 
@@ -773,16 +770,16 @@ if __name__ == "__main__":
 - 2.1.2 PWM公式 > 原理 > PWM 范围 500~2500，中位 1500，PWM_TO_RAD = 0.002356 rad/PWM
 - 2.1.3 帧格式 > 概念 > 帧格式：0xAA 0x55 + 长度 + 命令 + 参数 + CRC8 校验（实测以 board_sdk.py 为准）
 - 2.1.4 CRC8校验 > 原理 > CRC8 查表校验算法，避免单比特翻转导致指令错位
-- 2.2.1 串口设备 > 流程 > 串口设备识别（/dev/ttyUSB0）与权限授权（chmod 666 或加入 dialout 组）
+- 2.2.1 串口设备 > 流程 > 串口设备识别（/dev/stm32）与权限授权（chmod 666 或加入 dialout 组）
 - 2.2.2 interactive_mode > 流程 > `test_servo_direct.py` 的 interactive_mode 提供菜单驱动单舵机调试界面
 - 2.2.3 动作录制 > 概念 > 通过 `save` 命令将关键位姿保存为内存中的动作列表，通过 `yaml` 命令导出为 action_player 兼容的 YAML 文件
-- 2.3.1 裸机 vs ROS2 > 概念 > 裸机直接打开 /dev/ttyUSB0（不依赖 ROS2）与 ROS2 节点间接收发的对比
+- 2.3.1 裸机 vs ROS2 > 概念 > 裸机直接打开 /dev/stm32（不依赖 ROS2）与 ROS2 节点间接收发的对比
 - 2.3.2 协议字节级 > 原理 > 1Mbps 串口下 5 关节 50Hz 控制的带宽计算（5×7=35 字节/周期，1750 字节/秒，使用率仅 1.4%）
 
 ### 1.2 实验目标
 
 1. 理解 1Mbps 串口协议的字节级细节（0xAA 0x55 帧头、CRC8 校验和、命令/参数结构）— 原理理解
-2. 掌握用 Python `pyserial` 裸机打开 `/dev/ttyUSB0` 与总线舵机通信的方法 — 流程掌握
+2. 掌握用 Python `pyserial` 裸机打开 `/dev/stm32` 与总线舵机通信的方法 — 流程掌握
 3. 独立使用 `test_servo_direct.py` 的 `interactive_mode` 交互式控制 5 个关节 + 夹爪 — 独立完成
 4. 能够用 `save` / `yaml` 命令录制抓取放置动作并导出 YAML 文件（**供 exp03 的 `action_player` 消费**）— 独立完成
 5. 理解为什么需要 CRC8 校验、单线半双工总线的时分复用机制 — 原理理解
@@ -795,11 +792,11 @@ if __name__ == "__main__":
 | OS | Ubuntu 22.04 + ROS2 Humble（**仅需 Python 环境，不依赖 ROS2 启动**） |
 | Python | 3.10 + pyserial + pyyaml |
 | 核心库 | `pyserial`（裸机串口）、`pyyaml`（YAML 导出）、`crc8`（内嵌查表） |
-| 通信接口 | USB 转 TTL 串口（/dev/ttyUSB0，1Mbps 8N1） |
+| 通信接口 | USB 转 TTL 串口（/dev/stm32，1Mbps 8N1） |
 | 协议参数 | PWM 500-2500（μs），CENTER_PWM=1500，PWM_TO_RAD=0.002356 rad/PWM |
 | **主入口** | `arm/car1_arm_controller/test/test_servo_direct.py`（**裸机协议演示**）<br>`driver/car1_base_driver/car1_base_driver/board_sdk.py`（**CRC8 查表参考**） |
 
-> ⚠️ **不要启动 bringup**！`test_servo_direct.py` 直接占用 `/dev/ttyUSB0`，与 `bringup` 的 `base_driver` 节点互斥。运行前先 `Ctrl+C` 停掉 `bringup`。
+> ⚠️ **不要启动 bringup**！`test_servo_direct.py` 直接占用 `/dev/stm32`，与 `bringup` 的 `base_driver` 节点互斥。运行前先 `Ctrl+C` 停掉 `bringup`。
 
 ### 1.4 实验难度
 
@@ -813,7 +810,7 @@ if __name__ == "__main__":
 
 1. 进入工作空间根目录：`cd ~/ros2_ws`
 
-2. 清理可能占用串口的应用：`bash cleanup_ros.sh`（一键停止所有 ROS 节点，避免 `/dev/ttyUSB0` 冲突）
+2. 清理可能占用串口的应用：`bash cleanup_ros.sh`（一键停止所有 ROS 节点，避免 `/dev/stm32` 冲突）
 
 3. 进入测试脚本目录：`cd src/xflz_eai_car1/arm/car1_arm_controller/test/`
 
@@ -829,7 +826,7 @@ if __name__ == "__main__":
 
 9. 输入 `save`，输入名称 `pre_grasp`，将当前位姿保存为命名动作
 
-10. 输入 `yaml`，按提示导出为 `pick_and_place.yaml`（**供 exp03 消费**）
+10. 输入 `yaml`，按提示导出为 `pick_and_place.yaml`（写入源码 `config/actions/`，**需 `colcon build` 后才供 exp03 消费**）
 
     ![image-20260828154706328](assets/image-20260828154706328.png)
 
@@ -838,7 +835,7 @@ if __name__ == "__main__":
 - **关节响应**：输入 5 个 PWM 值（500~2500）后，舵机立即平滑转动到目标位置
 - **夹爪响应**：`g 1000` 张开、`g 1500` 闭合，夹爪按指令动作
 - **读取反馈**：`read` 命令通过 0xAA 0x55 协议读取所有舵机位置，验证通信是否正常
-- **YAML 导出**：`yaml` 命令生成 `arm/car1_arm_controller/config/actions/<name>.yaml`，格式与 exp03 的 `action_player` 兼容
+- **YAML 导出**：`yaml` 命令把文件写入包的**源码目录** `src/xflz_eai_car1/arm/car1_arm_controller/config/actions/<name>.yaml`，格式与 exp03 的 `action_player` 兼容；`action_player` 读的是 `install/` 下的副本，故需 `colcon build --packages-select car1_arm_controller` 后才能在 exp03 中回放
 - **示波器（可选）**：在 PWM 信号线上用示波器可看到 50Hz 控制信号、占空比 5%-10%
 
 ### 1.6 实验步骤
@@ -860,16 +857,16 @@ graph LR
 
 #### 步骤1：硬件连接与串口授权（阶段一：能运行，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`test_servo_direct.py` 中 `SERIAL_PORT = '/dev/ttyUSB0'` 与 `BAUDRATE = 1000000`
+> ⚠️ 本步骤对应 src 目录源码：`test_servo_direct.py` 中 `SERIAL_PORT = '/dev/stm32'` 与 `BAUDRATE = 1000000`
 
 **知识点讲解**：
 
 **1Mbps 串口协议物理层（2.1.1）**
 - **原理**：car1 机械臂使用总线舵机（单线半双工串口协议），舵机与 STM32 板之间通过单线半双工串口（实际物理上 1 根信号线 + 1 根地线）以 1Mbps 波特率通信。所有 5 个舵机共享同一总线，通过 ID 区分（机械臂 5 关节 ID 0~4 + 夹爪 ID 5）。这种总线架构的优势是节省 IO 引脚（仅需 1 个 UART），缺点是任意时刻只能有 1 个舵机独占总线（时分复用）。
-- **源码对应**：`test_servo_direct.py` 中 `SERIAL_PORT = '/dev/ttyUSB0'` 与 `BAUDRATE = 1000000`
+- **源码对应**：`test_servo_direct.py` 中 `SERIAL_PORT = '/dev/stm32'` 与 `BAUDRATE = 1000000`
 
 **串口设备与权限（2.2.1）**
-- **原理**：Linux 下串口设备节点位于 `/dev/ttyUSB*`（CH340/CP2102/FT232 驱动名），普通用户无读写权限。两种解决方案：(1) 临时授权 `sudo chmod 666 /dev/ttyUSB0`；(2) 加入 `dialout` 组 `sudo usermod -a -G dialout $USER`，重新登录后永久生效。
+- **原理**：STM32 控制板的 USB-TTL 芯片（CH340）在 Linux 下的原始节点是 `/dev/ttyUSB*`，名称会随插拔枚举顺序变化。本机通过 udev 规则（`/etc/udev/rules.d/99-sensors.rules`）把它固定为稳定软链 **`/dev/stm32`**（→ 实际 ttyUSB 设备），并预置 `MODE="0666" GROUP="dialout"`，因此**开箱即用、无需额外授权**。若仍遇权限不足：(1) 临时 `sudo chmod 666 /dev/stm32`（chmod 会作用于其指向的真实设备）；(2) 加入 `dialout` 组 `sudo usermod -a -G dialout $USER`，重新登录后永久生效。
 - **源码对应**：`test_servo_direct.py` 中 `try: ser = serial.Serial(SERIAL_PORT, BAUDRATE, timeout=1)`
 
 **操作步骤**：
@@ -879,7 +876,7 @@ graph LR
    - 5 个舵机电源线（红黑）独立接到 5V/3A 电源
    - 舵机信号线（黄/白）已连接到 STM32 的 UART 引脚
 
-2. **停止任何正在运行的 bringup**（避免 `/dev/ttyUSB0` 冲突）：
+2. **停止任何正在运行的 bringup**（避免 `/dev/stm32` 冲突）：
    ```bash
    # 在运行 bringup 的终端按 Ctrl+C
    # 或新终端执行：
@@ -887,17 +884,16 @@ graph LR
    pkill -f car1_arm_controller
    ```
 
-3. 查看串口设备：
+3. 查看串口设备（udev 稳定软链）：
    ```bash
-   ls -l /dev/ttyUSB*
-   # 预期：crw-rw---- 1 root dialout /dev/ttyUSB0
+   ls -l /dev/stm32
+   # 预期：lrwxrwxrwx 1 root root ... /dev/stm32 -> ttyUSB1
    ```
 
-4. 临时授权串口：
+4. 确认权限（udev 规则已预置 `0666`，通常无需操作）：
    ```bash
-   sudo chmod 666 /dev/ttyUSB0
-   # 验证：ls -l /dev/ttyUSB0
-   # 预期：crw-rw-rw- 1 root dialout /dev/ttyUSB0
+   ls -l /dev/stm32
+   # 预期：可读写。若报 Permission denied，再执行 sudo chmod 666 /dev/stm32
    ```
 
 5. 永久授权（推荐）：
@@ -909,13 +905,14 @@ graph LR
 6. 验证 1Mbps 串口通信（用 cutecom 手动发 1 字节）：
    ```bash
    sudo apt install cutecom
-   cutecom --device /dev/ttyUSB0 --baud 1000000
+   cutecom --device /dev/stm32 --baud 1000000
    # 在 cutecom 中切换到 Hex 模式，发送: AA 55 05 05 00 00 00 00 CRC
    # 预期：收到舵机 0 的位置应答包（也以 AA 55 开头）
    ```
 
 **易错点**：
-- ⚠️ **串口打开失败 (Permission denied)** → **解决**：`sudo chmod 666 /dev/ttyUSB0` 或加入 dialout 组
+- ⚠️ **串口打开失败 (Permission denied)** → **解决**：先 `ls -l /dev/stm32` 确认软链存在；再 `sudo chmod 666 /dev/stm32` 或加入 dialout 组
+- ⚠️ **找不到 `/dev/stm32`** → **解决**：确认 STM32 已插好，`ls -l /dev/stm32`；若无软链，`dmesg | grep tty` 看原始设备名并检查 udev 规则 `99-sensors.rules` 是否生效
 - ⚠️ **1Mbps 通信乱码** → **解决**：检查 USB-TTL 芯片是否支持 1Mbps（CH340/CP2102/FT232 均可，PL2303 部分型号不支持）
 - ⚠️ **bringup 未停止导致冲突** → **解决**：`pkill -f bringup` 后再启动 test_servo_direct
 - ⚠️ **发送指令舵机无响应** → **解决**：检查 5V 电源是否独立供电（USB 通常无法驱动 5 个舵机）
@@ -929,7 +926,7 @@ graph LR
 **知识点讲解**：
 
 **裸机 vs ROS2 路线对比（2.3.1）**
-- **原理**：本实验采用"裸机"路线：直接用 Python `pyserial` 库打开 `/dev/ttyUSB0`，自行按协议组包发送、自行解析应答。**不依赖 ROS2 启动任何节点**。这种路线适合：(1) 协议层调试（验证 1Mbps 字节级通信）；(2) 快速验证单舵机响应；(3) 不希望 ROS2 复杂架构干扰的场景。**对比**：exp03 将采用 ROS2 路线（`bringup` + `arm_controller` 节点桥接），学生可对比两种路线的开发体验差异。
+- **原理**：本实验采用"裸机"路线：直接用 Python `pyserial` 库打开 `/dev/stm32`，自行按协议组包发送、自行解析应答。**不依赖 ROS2 启动任何节点**。这种路线适合：(1) 协议层调试（验证 1Mbps 字节级通信）；(2) 快速验证单舵机响应；(3) 不希望 ROS2 复杂架构干扰的场景。**对比**：exp03 将采用 ROS2 路线（`bringup` + `arm_controller` 节点桥接），学生可对比两种路线的开发体验差异。
 - **源码对应**：`test_servo_direct.py` 整个文件（无 ROS2 import）
 
 **协议字节级理解（2.1.3）**
@@ -957,7 +954,7 @@ graph LR
    ```bash
    python3 test_servo_direct.py
    # 预期输出：
-   # 打开串口 /dev/ttyUSB0 @ 1000000...
+   # 打开串口 /dev/stm32 @ 1000000...
    # 串口已打开
    #
    # 选择模式:
@@ -997,7 +994,7 @@ graph LR
 **易错点**：
 - ⚠️ **read 命令一直显示"失败"** → **解决**：检查 5V 电源、信号线、舵机 ID 拨码
 - ⚠️ **read 返回 0 或异常值** → **解决**：可能是 CRC 校验失败，确认 baud=1000000 无误
-- ⚠️ **找不到 `/dev/ttyUSB0`** → **解决**：`dmesg | grep tty` 查看插入的设备名
+- ⚠️ **找不到 `/dev/stm32`** → **解决**：`ls -l /dev/stm32`；若无软链，`dmesg | grep tty` 看原始设备名，并确认 udev 规则已生效
 
 ---
 
@@ -1105,7 +1102,7 @@ graph LR
 
 4. 用 cutecom 手动发一帧并观察应答：
    ```bash
-   cutecom --device /dev/ttyUSB0 --baud 1000000
+   cutecom --device /dev/stm32 --baud 1000000
    # Hex 发送: AA 55 05 05 00 00 00 00 CRC
    # 预期：收到舵机 0 位置应答包
    ```
@@ -1114,7 +1111,7 @@ graph LR
    ```python
    buf = [0xAA, 0x55, 0x05, 0x05, 0x00, 0x00, 0x00, 0xFF]  # 故意写错 CRC
    import serial
-   ser = serial.Serial('/dev/ttyUSB0', 1000000)
+   ser = serial.Serial('/dev/stm32', 1000000)
    ser.write(bytes(buf))
    # 预期：舵机无响应（CRC 错误被丢弃）
    ```
@@ -1222,8 +1219,8 @@ graph LR
       duration: <秒>
       servos: {<id>: <pwm>, ...}
   ```
-  文件默认输出到 `arm/car1_arm_controller/config/actions/<name>.yaml`（`get_package_share_directory` 路径）。
-- **源码对应**：`test_servo_direct.py` 中 `def export_yaml` (L504-547) 与 `action_player.py` 中 `def _load_action` (L90-120)
+  文件默认输出到包的**源码目录** `src/xflz_eai_car1/arm/car1_arm_controller/config/actions/<name>.yaml`；而 `action_player` 读取的是 `install/` 下的 `get_package_share_directory` 路径，因此导出后必须 `colcon build`（见下方 step 3）才会生效。
+- **源码对应**：`test_servo_direct.py` 中 `def export_yaml` (L556-592) 与 `action_player.py` 中 `def _load_action` (L90-120)
 
 **colcon build 后 YAML 才生效（2.2.3 补充）**
 - **原理**：YAML 文件位于 ROS2 包的 `share/<pkg>/config/actions/` 目录，必须 `colcon build --packages-select car1_arm_controller` 重新安装到 `install/` 目录，exp03 的 `action_player` 节点才能通过 `get_package_share_directory` 找到。
@@ -1242,8 +1239,8 @@ graph LR
 2. 确认导出路径：
    ```
    # 预期打印：
-   #   已导出到: ~/ros2_ws/install/car1_arm_controller/share/car1_arm_controller/config/actions/pick_and_place.yaml
-   #   动作步数: 6
+   #   已导出到: ~/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/config/actions/pick_and_place.yaml
+   #   动作步数: 8
    #   使用方法:
    #     ros2 run car1_arm_controller action_player --ros-args -p action_file:=pick_and_place
    ```
@@ -1269,7 +1266,7 @@ graph LR
    ```
 
 **易错点**：
-- ⚠️ **yaml 命令后找不到文件** → **解决**：检查 `install/` 目录是否存在，必须 `colcon build` 才会复制
+- ⚠️ **yaml 命令后找不到文件** → **解决**：先看终端打印的"已导出到"路径（在源码 `config/actions/` 下）；`action_player` 读的是 `install/`，必须 `colcon build` 才会复制过去
 - ⚠️ **YAML 字段名错误** → **解决**：必须是 `name` / `description` / `actions`（小写），与 `action_player.py` 严格匹配
 - ⚠️ **duration 单位混淆** → **解决**：YAML 中 duration 单位是**秒**（不是毫秒）
 
@@ -1438,7 +1435,7 @@ if __name__ == '__main__':
 
 **完成成果**：
 - 理解 1Mbps 串口协议的字节级细节（0xAA 0x55 帧头、CRC8 校验和、命令/参数结构）
-- 掌握 Python `pyserial` 裸机打开 `/dev/ttyUSB0` 与总线舵机通信的方法
+- 掌握 Python `pyserial` 裸机打开 `/dev/stm32` 与总线舵机通信的方法
 - 独立使用 `test_servo_direct.py` 的 `interactive_mode` 交互式控制 5 关节 + 夹爪
 - 验证 `save` / `yaml` 命令录制动作并导出与 `action_player` 兼容的 YAML 文件（**供 exp03 消费**）
 - 理解 CRC8 查表校验算法和单线半双工总线的时分复用机制
@@ -1453,10 +1450,10 @@ if __name__ == '__main__':
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| 串口打开失败 | 权限不足 | `sudo chmod 666 /dev/ttyUSB0` 或加入 dialout 组 |
+| 串口打开失败 | 权限不足 | `sudo chmod 666 /dev/stm32` 或加入 dialout 组 |
 | 1Mbps 通信乱码 | USB-TTL 芯片不支持 | 改用 CH340/CP2102/FT232 |
 | CRC 校验失败率高 | 电磁干扰 / 串口线过长 | 缩短串口线、远离干扰源 |
-| bringup 串口冲突 | 两者都占用 /dev/ttyUSB0 | `pkill -f bringup` 后再启动 test_servo_direct |
+| bringup 串口冲突 | 两者都占用 /dev/stm32 | `pkill -f bringup` 后再启动 test_servo_direct |
 | 找不到导出的 YAML | 未 colcon build | `cd ~/ros2_ws && colcon build --packages-select car1_arm_controller` |
 
 ### 1.8 思考题
@@ -1493,7 +1490,6 @@ if __name__ == '__main__':
 
 ## 实验3：机械臂ROS2架构认知与动作回放实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/`，未复制到 `source-codes/EXP005/exp03/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书 v1.2 改用 `bringup.launch.py` + `action_player` 节点路线（原 v1.1 的 `test_servo_direct.py` 录制迁移至 exp02），按 **3a（系统架构认知）→ 3b（动作回放）→ 3c（零位校准）** 三子阶段组织内容。**严禁使用** `/arm_controller/target_pose`（自动 IK）和 `/arm_controller/pick`/`/arm_controller/place`（完整抓取 pipeline）——这些接口将在 exp05/exp06 讲解，本实验仅使用 `joint_command` 话题和 `action_player` 节点（详见 1.6 步骤 3b）。
 
 ### 1.1 关联知识点
 
@@ -1551,14 +1547,14 @@ if __name__ == '__main__':
 6. 观察节点列表（新终端）：`ros2 node list`
 7. 启动 action_player（新终端）：`ros2 run car1_arm_controller action_player --ros-args -p action_file:=pick_and_place.yaml`
 8. 触发普通回放（新终端）：`ros2 service call /action_player/play std_srvs/srv/Trigger`
-9. 观察终端日志：依次执行 pre_grasp → gripper_open → grasp_down → gripper_close → lift → back_work，机械臂在 6~10 秒内完成整个抓取循环
-10. 修改 YAML 中 gripper_open 的 PWM 从 1000 改为 1200，重新 `colcon build` 并重放，观察夹爪张开角度变小
+9. 观察终端日志：依次执行 pre_grasp → gripper_open → grasp_down → gripper_close → lift → place → gripper_open → back_work（共 8 步），机械臂约 13~16 秒完成整个抓放循环
+10. 修改**源码** `config/actions/pick_and_place.yaml` 中 gripper_open 的 PWM 从 1000 改为 1200，重新 `colcon build` 并重放，观察夹爪张开角度变小
 
 **预期效果描述**：
-- **架构阶段**：rqt_graph 弹出后显示有向图，可清晰看到 `servo_controller` → `/servo_command` → 串口 的链路，以及 `arm_controller` 订阅 `/arm_controller/joint_command` 的输入边
-- **回放阶段**：action_player 节点按 YAML 顺序执行，6~10 秒完成一个完整抓放循环，每次执行 5 个舵机同时平滑转动
+- **架构阶段**：rqt_graph 弹出后显示有向图，可清晰看到 `arm_controller` → `/servo_controller` → `servo_controller` 节点 → `/car1_base_driver/bus_servo/set_position` → `base_driver` → 串口 的链路，以及 `arm_controller` 订阅 `/arm_controller/joint_command` 的输入边
+- **回放阶段**：action_player 节点按 YAML 顺序执行 8 步，约 13~16 秒完成一个完整抓放循环，每步对应舵机平滑转动
 - **循环模式**：加 `loop:=true` 参数后无限循环，按 Ctrl+C 停止
-- **单步模式**：调用 `/action_player/next` 服务后每步需手动按一次 Enter 才会执行下一步
+- **单步模式**：加 `-p step_mode:=true` 后，每调用一次 `/action_player/next` 服务才执行下一步
 - **急停模式**：调用 `/action_player/stop` 服务后立即中断后续动作，机械臂停在当前位置
 - **校准阶段**：servo_calib GUI 弹出后，5 个滑块分别控制 5 个关节，拖动滑块找机械中位后 Apply，offset 写入 `servo_offsets.yaml`
 
@@ -1587,11 +1583,11 @@ graph LR
 - **原理**：`bringup.launch.py` 是 car1 系统的"一站式启动入口"，会拉起 7~8 个 ROS2 节点构成完整的小车+机械臂系统。每个节点负责一个独立的功能模块：
   - `base_driver`：串口桥接，把 `/cmd_vel` 转成底盘串口指令并发布 `/odom`
   - `robot_state_publisher`：把 URDF 转成 TF 树
-  - `joint_state_publisher`：发布 `/joint_states`
+  - `joint_state_publisher`：以 20Hz 发布 `/joint_states`（`source_list=['joint_states']`，透传 `servo_controller` 的关节值并补齐 URDF 中其它关节）
   - `imu_filter`：IMU 数据滤波
   - `odom_publisher`：轮式里程计
   - `ekf_filter_node`：EKF 融合 IMU + 里程计
-  - `servo_controller`：舵机串口桥接，接收 `/servo_command` 发往 5 关节
+  - `servo_controller`：舵机桥接节点。订阅话题 `/servo_controller`（`arm_controller` 发的 `ServosPosition`）→ 转成 base_driver 指令；**并发布 `/joint_states`**，关节角取自下位机 **0x08 被动上报的真实舵机位置**（~20Hz，是"实际值"而非"指令值"）
   - `init_pose`：初始化位姿
 - **源码对应**：`bringup.launch.py` 中各 `<node>` 标签
 
@@ -1634,7 +1630,7 @@ graph LR
 4. 查看所有话题：
    ```bash
    ros2 topic list
-   # 预期：/cmd_vel /odom /joint_states /imu/data /servo_command /tf /tf_static 等
+   # 预期：/cmd_vel /odom /joint_states /imu /servo_controller /tf /tf_static 等
    ```
 
 5. 启动 rqt_graph：（如果没有需要提前安装）终端输入`sudo apt-get install -y ros-humble-rqt-graph`
@@ -1642,7 +1638,7 @@ graph LR
    ```bash
    rqt_graph
    # 预期：弹出可视化窗口，显示节点+话题+箭头
-   # 关键观察：servo_controller → /servo_command（箭头）→ 串口
+   # 关键观察：arm_controller ─pub→ /servo_controller ─sub→ servo_controller 节点 → base_driver → 串口
    ```
 
    ![image-20260828165439424](assets/image-20260828165439424.png)
@@ -1655,7 +1651,7 @@ graph LR
 7. 验证 `/joint_states` 频率：
    ```bash
    ros2 topic hz /joint_states
-   # 预期：约 50Hz
+   # 预期：约 20Hz（joint_state_publisher rate=20；servo_controller 也以 20Hz 发同一话题）
    ```
 
 8. （**可选**）启动 arm_controller（步骤 3b 才会用）：
@@ -1773,9 +1769,10 @@ graph LR
    rqt_graph
    # 预期看到：
    # /base_driver ─pub─> /cmd_vel ─sub─> 底盘
-   # /servo_controller ─pub─> /servo_command ─sub─> 串口
+   # /arm_controller ─pub─> /servo_controller ─sub─> servo_controller 节点
+   #                   ─> /car1_base_driver/bus_servo/set_position ─sub─> base_driver ─> 串口
    # /arm_controller ─sub─> /arm_controller/joint_command
-   # /joint_state_publisher ─pub─> /joint_states
+   # servo_controller / joint_state_publisher ─pub─> /joint_states
    # /ekf_filter_node ─sub─> /imu/data + /odom, ─pub─> /odom/filtered
    ```
 
@@ -1784,7 +1781,7 @@ graph LR
 2. **观察 topic 频率**（用 rqt_topic 或 hz 命令）：
 
    ```bash
-   ros2 topic hz /joint_states    # 预期 50Hz
+   ros2 topic hz /joint_states    # 预期 ~20Hz
    ros2 topic hz /odom             # 预期 30~50Hz
    ros2 topic hz /imu/data         # 预期 100~200Hz
    ```
@@ -1805,6 +1802,7 @@ graph LR
    - 它是软件与硬件的**唯一**桥接点
    - 所有上层节点（arm_controller、joint_state_publisher）都通过它间接控制串口
    - 关闭它则整个机械臂失联
+   - 它还是 `/joint_states` 的**数据源**：关节角来自下位机 **0x08 被动上报**（固件在总线空闲时按 ~20Hz 主动推送全部舵机的 位置/温度/电压）。所以 `/joint_states` 反映的是**真实舵机位置**，而不是"刚下发的指令值"
 
 **易错点**：
 - ⚠️ **rqt_graph 看不到所有节点** → **解决**：rqt_graph 默认 1 秒刷新，可点击 🔄 强制刷新
@@ -1849,7 +1847,7 @@ graph LR
    ```bash
    ls -l ~/ros2_ws/install/car1_arm_controller/share/car1_arm_controller/config/actions/pick_and_place.yaml
    # 预期：文件存在
-   # 若不存在：回到 exp02 重新执行 yaml 导出
+   # 若不存在：回到 exp02 执行 yaml 导出（写入源码 config/actions/），再 colcon build --packages-select car1_arm_controller
    ```
 
 2. **启动 action_player 节点**（**注意是节点不是 launch**）：
@@ -1872,27 +1870,31 @@ graph LR
 4. **触发普通回放**：
    ```bash
    ros2 service call /action_player/play std_srvs/srv/Trigger
-   # 预期：节点开始按 YAML 顺序执行，机械臂在 6~10 秒完成整个抓取循环
-   # 终端打印：
-   #   [INFO] Playing action 1/6: pre_grasp
-   #   [INFO] Playing action 2/6: gripper_open
+   # 预期：节点按 YAML 顺序执行，机械臂完成整个抓放循环
+   # 终端打印（action_player.py 实际输出格式）：
+   #   [INFO] Playing: pick_and_place
+   #   [INFO]   [1/8] pre_grasp (duration=2.0s)
+   #   [INFO]   [2/8] gripper_open (duration=1.0s)
    #   ...
-   #   [INFO] All actions completed
+   #   [INFO] Done: pick_and_place
+   # 注：auto_play 默认为 true，节点启动约 2s 后会自动播放一次；此处 play 调用是再播一次
    ```
 
 5. **观察执行进度**：
+   action_player **没有独立进度话题**，进度直接打印在**它自己启动的那个终端**上（每步一行 `[i/N] <步名> (duration=...)`，见上一步）。
+   若想从另一终端观察每步下发的舵机指令，可订阅：
    ```bash
-   ros2 topic echo /action_player/progress
-   # 预期：current_index, total_count, current_action_name, status
+   ros2 topic echo /car1_base_driver/bus_servo/set_position
+   # 预期：每步一条 ServosPosition（含各舵机 id 与 position）
    ```
 
-6. **修改 YAML 某步参数**：
+6. **修改 YAML 某步参数**（**改源码，不要改 install 副本**）：
    ```bash
-   # 假设 pick_and_place.yaml 在 install 目录下
-   nano ~/ros2_ws/install/car1_arm_controller/share/car1_arm_controller/config/actions/pick_and_place.yaml
-   # 把 gripper_open 的 PWM 从 1000 改为 1200（夹爪张开角度更大）
-   # 改前：  - name: gripper_open  duration: 1.0  servos: {0: 1500, 1: 1100, 2: 2200, 3: 1850, 4: 1500, 5: 1000}
-   # 改后：  - name: gripper_open  duration: 1.0  servos: {0: 1500, 1: 1100, 2: 2200, 3: 1850, 4: 1500, 5: 1200}
+   nano ~/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/config/actions/pick_and_place.yaml
+   # 把 gripper_open 的 PWM 从 1000 改为 1200
+   # （1000 = 张开、1500 = 闭合，故 1000→1200 是张开角度**变小**）
+   # 改前：  5: 1000
+   # 改后：  5: 1200
    ```
 
 7. **重新编译安装**（**必须！**）：
@@ -1908,7 +1910,7 @@ graph LR
    # Ctrl+C 停止原 action_player
    ros2 run car1_arm_controller action_player --ros-args -p action_file:=pick_and_place.yaml
    ros2 service call /action_player/play std_srvs/srv/Trigger
-   # 预期：夹爪张开角度比之前大（因为 PWM 1000→1200）
+   # 预期：夹爪张开角度比之前**小**（1000=张开、1500=闭合，改为 1200 后张开量减小）
    ```
 
 9. **单步模式**：
@@ -1930,7 +1932,7 @@ graph LR
     ros2 run car1_arm_controller action_player \
       --ros-args -p action_file:=pick_and_place.yaml -p loop:=true
     # 节点启动后自动开始循环播放
-    # 按 Ctrl+C 停止ros2 launch car1_arm_controller arm_controller.launch.py start_bringup:=true
+    # 按 Ctrl+C 停止
     ```
 
 **易错点**：
@@ -2170,7 +2172,7 @@ if __name__ == '__main__':
 **评分标准**：bringup 节点拓扑观察 15 分 + joint_command 弧度控制 15 分 + rqt_graph 架构图 10 分 + action_player 节点回放 20 分 + YAML 修改热更新 15 分 + servo_calib 校准 15 分 + 实验报告 10 分 = 100 分。
 
 **实验报告必含项**：
-- [ ] `rqt_graph` 截图（标注 7~8 个节点的关键链路：`servo_controller` → `/servo_command` → 串口）
+- [ ] `rqt_graph` 截图（标注 7~8 个节点的关键链路：`arm_controller` → `/servo_controller` → `servo_controller` 节点 → `base_driver` → 串口）
 - [ ] `joint_command` 控制 5 关节的录屏或截图（**严禁用 target_pose**）
 - [ ] `action_player` 普通回放的录屏（机械臂完成 pre_grasp→gripper_open→...→back_work 全过程）
 - [ ] YAML 修改前后夹爪张开角度对比图（修改 gripper_open PWM 从 1000→1200）
@@ -2191,7 +2193,6 @@ if __name__ == '__main__':
 
 ## 实验4：机械臂运动学控制原理实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/test/car1_web_server/`，未复制到 `source-codes/EXP005/exp04/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `server_cors.py`、`viewer/index.html`、`viewer/kinematics/ik-analytical.js`、`viewer/kinematics/ik-numerical.js` 等 Web 仿真器源码。
 
 ### 1.1 关联知识点
 
@@ -2901,31 +2902,30 @@ if __name__ == "__main__":
 
 ## 实验5：机械臂IK解算实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/arm/kinematics/`，未复制到 `source-codes/EXP005/exp05/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `kinematics/interactive_ik_test.py`、`kinematics/ik_analytical.py`、`kinematics/fk.py`、`kinematics/transform.py` 等 IK 库源码。
 
 ### 1.1 关联知识点
 
 本实验对应第 5 章"IK解算与实机验证"，覆盖以下 12 个知识点：
 
-- 5.1.1 ik_solve > 流程 > ik_analytical.py 提供 ik_solve(target_xyz, target_pitch) 接口，返回 5 关节弧度
-- 5.1.2 fk_solve > 概念 > fk.py 提供 fk_solve(joint_angles) 接口，返回 4×4 末端位姿矩阵
-- 5.1.3 transform > 原理 > transform.py 封装 4×4 矩阵乘法/求逆/欧拉角转换等基础数学运算
-- 5.2.1 FK闭环 > 流程 > 随机采样目标点→IK 反解→FK 正算→比较末端位姿误差，评估 IK 精度
-- 5.2.2 误差<1.5mm > 事实 > 解析法 IK 在工作空间内 FK 闭环验证误差 < 1.5mm（典型值）
-- 5.2.3 误差来源 > 原理 > 误差主要来自浮点累积、关节间隙与编码器分辨率，多采样可平滑噪声
-- 5.3.1 系统偏移 > 事实 > 已知系统偏移：J2 大臂 +4°，J3 小臂 +2.3°，源于加工装配公差
-- 5.3.2 补偿策略 > 原理 > 偏移补偿在 IK 输出后对 J2/J3 关节角施加修正常量，闭环误差可显著降低
-- 5.3.3 --direct模式 > 概念 > 直连串口模式（--direct）绕过 ROS2 节点直接发指令，适合底层算法调试
-- 5.4.1 DLS数值法 > 概念 > 数值法 IK（Damped Least Squares）通过阻尼最小二乘迭代求解，处理奇异/冗余
+- 5.1.1 solve_analytical_ik > 流程 > ik_analytical.py 提供 solve_analytical_ik(target_pos, target_pitch_rad) 接口，返回 IKSolution（q1~q5）
+- 5.1.2 compute_fk > 概念 > fk.py 提供 compute_fk(joint_angles) 接口，返回（Point3D, 4×4 矩阵）
+- 5.1.3 transform > 原理 > transform.py 封装 PWM↔关节角换算与限位检查（矩阵运算在 fk.py）
+- 5.2.1 FK闭环 > 流程 > 采样目标点→IK 反解→FK 正算→比较末端位置误差（`test_fk_ik.py` 的 `test_round_trip`）
+- 5.2.2 误差阈值 > 事实 > 闭环容差取 1.5mm；**当前实测并非所有点位都达标**（`pitch=180°` 成功率 72%）
+- 5.2.3 静默偏差 > 原理 > 求解成功 ≠ 解准确；当前主要偏差来自 IK/FK 工具体模型不一致，必须 FK 反算核对
+- 5.3.1 TCP Y 偏移 > 事实 > J1 坐标系下 TCP 有固定 Y 偏移 `Y_TCP`（0.215mm），由各段 Y 分量汇总，IK 用它对 q1 补偿
+- 5.3.2 几何标定 > 原理 > 装配偏差写进 config.py 几何常量（`J2_offset`/`link1`/`link2`/`tool`），FK/IK 共用，**无独立 offset 文件**
+- 5.3.3 --direct模式 > 概念 > 直连串口模式（`--direct`）绕过 ROS2 节点直接发指令，适合底层算法调试
+- 5.4.1 DLS数值法 > 概念 > 数值法 IK（Damped Least Squares）通过阻尼最小二乘迭代求解，处理奇异/冗余（实现在 Web 仿真器 JS 里）
 - 5.4.2 阻尼因子 > 原理 > 数值法在奇异位姿附近因 Jacobian 病态需引入阻尼因子 λ² 保证稳定
 - 5.4.3 解析vs数值 > 流程 > 解析法适合 5 自由度非冗余机械臂的实时控制，数值法适合 6+ 自由度或奇异优化
 
 ### 1.2 实验目标
 
 1. 理解 IK 库（ik_analytical.py、fk.py、transform.py）的接口设计与模块化拆分 — 原理理解
-2. 掌握 FK/IK 闭环验证的随机采样方法与误差统计 — 流程掌握
+2. 掌握 FK/IK 闭环验证方法与误差统计，能识别"静默偏差" — 流程掌握
 3. 独立使用 interactive_ik_test.py 完成实机 IK 闭环测试 — 独立完成
-4. 能够识别并补偿已知系统偏移（J2+4°、J3+2.3°）— 独立完成
+4. 能够用 FK 反算核对 IK 解，并对偏差做实测归因 — 独立完成
 5. 能够在直连串口模式（--direct）与 ROS2 模式间切换调试 — 迁移应用
 
 ### 1.3 实验环境
@@ -2934,17 +2934,17 @@ if __name__ == "__main__":
 |------|------|
 | 硬件 | 具身智能实验箱B2 / 机器人小车C1（含 5 自由度机械臂、刻度标定尺） |
 | OS | Ubuntu 22.04 + ROS2 Humble |
-| Python | 3.10 + numpy + scipy |
-| 核心库 | rclpy、pyserial、numpy、scipy（仅数值法需要） |
-| 串口 | /dev/ttyUSB0（1Mbps 8N1） |
-| 标定工具 | 刻度标定尺（用于实测系统偏移）、水平仪 |
-| 主入口 | `arm/kinematics/interactive_ik_test.py`（交互式 IK 测试）<br>`arm/kinematics/ik_analytical.py`（解析法 IK 库）<br>`arm/kinematics/fk.py`（FK 库）<br>`arm/kinematics/transform.py`（4×4 矩阵运算） |
+| Python | 3.10 + numpy |
+| 核心库 | rclpy、pyserial、numpy（数值法在 Web 仿真器 JS 里，Python 端无需 scipy） |
+| 串口 | /dev/stm32（1Mbps 8N1） |
+| 标定工具 | 刻度标定尺（用于实测末端位置）、水平仪 |
+| 主入口 | `arm/kinematics/kinematics/interactive_ik_test.py`（交互式 IK 测试）<br>`arm/kinematics/kinematics/ik_analytical.py`（解析法 IK 库）<br>`arm/kinematics/kinematics/fk.py`（FK 库 + 矩阵运算）<br>`arm/kinematics/kinematics/transform.py`（PWM↔角度换算）<br>`arm/kinematics/kinematics/test_fk_ik.py`（FK/IK/闭环 测试套件） |
 
 ### 1.4 实验难度
 
 - 难度: ⭐⭐⭐ 难
-- 重点: IK 库 API 使用；FK/IK 闭环验证；系统偏移识别与补偿；直连串口调试
-- 难点: 数值法 IK 的阻尼因子调参；系统偏移的工程化补偿策略
+- 重点: IK 库 API 使用；FK/IK 闭环验证与误差归因；几何标定/补偿理解；直连串口调试
+- 难点: 识别"求解成功 ≠ 解准确"的静默偏差；理解 FK/IK 工具体模型一致性
 
 ### 1.5 实验现象
 
@@ -2953,10 +2953,22 @@ if __name__ == "__main__":
 1. 连接硬件：确保机械臂通电、串口连接正常
 2. 进入工作空间：`cd ~/ros2_ws`
 3. source 环境：`source /opt/ros/humble/setup.bash && source install/setup.bash`
-4. 启动交互式测试：`python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct`
-5. 终端显示主菜单：`[1] Single Point IK  [2] Batch FK/IK  [3] Workspace Scan  [4] System Offset Analysis  [5] Send PWM Directly  [q] Quit`
-6. （实机调试时）输入目标点 (0.28, 0, 0.1) 和目标 pitch=180°（即末端夹爪垂直向下），观察 IK 解
-7. 退出：`q`
+4. 启动交互式测试（`--direct` 为直连串口，**需先停掉 bringup 释放串口**）：
+   ```bash
+   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct
+   ```
+5. 脚本打印 header（工作空间参数、坐标系、pitch 约定）后**直接进入问答，没有编号菜单**：
+   ```
+   输入目标 TCP 位置 (输入 'q' 退出)
+   X 坐标 (米) [默认: 0.28]:
+   Y 坐标 (米) [默认: 0.0]:
+   Z 坐标 (米) [默认: 0.10]:
+   俯仰角 (度) [默认: 180]:
+   ```
+6. 连续回车接受默认值（即目标 (0.28, 0, 0.10)、pitch=180°=夹爪垂直朝下），观察输出：`PWM 值 (发送到舵机):` 5 路 PWM + `误差: x.xx mm`（IK→FK 反算误差）
+7. 脚本随后问 `是否发送到实机? (y/n) [n]:` —— **首次输入 `n` 只看解不下发**；确认 5 路 PWM 均在 500~2500 后再重跑并输入 `y`（会再问运动时长，默认 2.0s）
+8. 下发后脚本会问 `是否读取舵机实际 PWM? (y/n) [y]`，回车即读回实际位置并打印目标/实际/误差表
+9. 任一处输入 `q` 退出
 
 > ⚠️ **实机验证安全警告（必读）**
 > - 本实验是**第一次将 IK 解实际下发到真实机械臂**，请务必谨慎：
@@ -2968,11 +2980,13 @@ if __name__ == "__main__":
 > - 任何情况下，发现机械臂抖动、异响、电流声、舵机发烫，立即断电排查
 
 **预期效果描述**：
-- **单点 IK**：输入目标 (0.28, 0, 0.1)、pitch=180° → IK 解 [q1≈0, q2≈..., q3≈..., q4≈..., q5≈...] → FK 反算 (0.280, 0.000, 0.100)，末端夹爪姿态接近垂直向下
-- **批量验证**：100 次随机采样，平均误差 0.8mm，最大误差 1.5mm，成功率 100%
-- **系统偏移识别**：未补偿时误差均值为 +2.5mm，补偿后降至 +0.3mm
-- **直连串口模式**：--direct 模式下脚本直接通过串口控制舵机，不依赖 ROS2 节点
-- **数值法对比**：相同目标点，数值法迭代 3-8 次后收敛，耗时约 5-15ms
+- **单点 IK**：目标 (0.28, 0, 0.10)、pitch=180° → 打印 5 路 PWM（`solution_to_pwm`）与 FK 反算误差，误差应 < 2mm；pitch=180° 对应夹爪垂直朝下
+- **安全核对**：5 路 PWM 应全部落在 500~2500 且不贴近极限；任一接近极限说明目标点超出安全包络
+- **两种模式**：`--direct` 直接走 pyserial 串口（不依赖 ROS2，需停 bringup）；不带 `--direct` 走 ROS2，经 `/servo_controller` 下发（需先起 bringup + arm_controller）
+- **读回校验**：选 `y` 下发并回车确认后，脚本读回实际 PWM 并打印目标/实际/误差表
+- **批量闭环验证**：不在本交互工具里，见「步骤5」改用 `test_fk_ik.py`
+- **工作空间扫描**：独立脚本 `arm/car1_arm_controller/tools/scan_workspace.py`（输出可达点 ASCII 表 + `workspace.csv`）
+- **数值法对比**：Python 端**只有解析法**；数值法实现在 Web 仿真器的 `viewer/kinematics/ik-numerical.js`（见实验 4）
 
 ### 1.6 实验步骤
 
@@ -2983,9 +2997,9 @@ graph LR
     A[步骤1：IK库结构与API] --> B[步骤2：端到端工具脚本]
     B --> C[步骤3：FK正算验证]
     C --> D[步骤4：解析法IK单点测试]
-    D --> E[步骤5：批量闭环验证]
-    E --> F[步骤6：系统偏移识别]
-    F --> G[步骤7：偏移补偿策略]
+    D --> E[步骤5：FK/IK 闭环验证]
+    E --> F[步骤6：误差实测与归因]
+    F --> G[步骤7：几何参数与 Y 偏移补偿]
     G --> H[步骤8：直连串口实机调试]
     H --> I[步骤9：解析vs数值对比]
     I --> J[完成]
@@ -3000,8 +3014,8 @@ graph LR
 **知识点讲解**：
 
 **模块化拆分的设计思想（5.1.1, 5.1.2, 5.1.3）**
-- **原理**：car1 IK 库采用"职责分离"的设计：(1) **transform.py**：最底层 4×4 矩阵运算（乘法、求逆、欧拉角转换），不依赖任何机器人参数；(2) **fk.py**：基于 transform + DH 参数实现 FK，输入 5 关节角输出末端 4×4 矩阵；(3) **ik_analytical.py**：基于 transform 实现解析法 IK，输入目标位姿输出 5 关节角。这种"层层依赖"的设计便于：(1) 单元测试（每层独立验证）；(2) 重用（transform 可被其他项目使用）；(3) 替换（解析法可换成数值法不影响上层）。
-- **源码对应**：`arm/kinematics/transform.py` 第 1-50 行（基础矩阵函数）
+- **原理**：car1 IK 库采用"职责分离"的设计：(1) **config.py**：机器人几何标定参数（各连杆与装配偏移、舵机限位）；(2) **transform.py**：PWM ↔ 关节角换算（`pulse2angle` / `angles_to_pwm_array` / 限位检查），**不含矩阵运算**；(3) **fk.py**：正运动学，含基础旋转/齐次矩阵函数（`rotation_matrix_y/z`、`homogeneous_transform`）与 `compute_fk`，输入关节角字典输出末端 `Point3D` + 4×4 矩阵；(4) **ik_analytical.py**：解析法 IK（`solve_analytical_ik` 等），输入目标位姿输出关节角。这种"层层依赖"的设计便于：(1) 单元测试（每层独立验证）；(2) 重用（transform 可被其他项目使用）；(3) 替换（解析法可换成数值法不影响上层）。
+- **源码对应**：`arm/kinematics/transform.py`（PWM↔角度换算）、`fk.py`（矩阵运算 + FK）
 
 **操作步骤**：
 
@@ -3009,15 +3023,16 @@ graph LR
    ```bash
    cd ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/
    ls
-   # 预期：ik_analytical.py  fk.py  transform.py  interactive_ik_test.py
+   # 预期：config.py  fk.py  ik_analytical.py  transform.py  interactive_ik_test.py  pwm_to_fk_demo.py  pwm_to_tcp.py  test_fk_ik.py  ...
    ```
 
 2. 查看 ik_analytical.py 公开 API：
    ```bash
    grep "^def " kinematics/ik_analytical.py
    # 预期输出：
-   # def ik_solve(target_xyz, target_pitch, prefer_elbow='up'):
-   #     ...
+   # def solve_analytical_ik(target_pos, target_pitch_rad, cal, g):
+   # def solve_analytical_ik_auto_pitch(target_pos, preferred_pitch_rad=0.0):
+   # def solution_to_pwm(solution):
    ```
 
 3. 查看 fk.py 公开 API：
@@ -3085,7 +3100,7 @@ graph LR
 
 **IK 工具：TCP 位姿 → PWM（5.1.5 新增）**
 - **原理**：`interactive_ik_test.py` 是 IK 工具，提供两条路径：(1) **ROS2 模式**（不带 `--direct`）：把 IK 解算出的 PWM 通过 `/servo_controller` 发到真实舵机，由 `bringup + arm_controller` 链路闭环；(2) **`--direct` 模式**：绕过 ROS2，直接通过 pyserial 写串口，**单独验证 IK 算法**（不依赖任何节点）。两种模式都是**交互式输入 X / Y / Z / Pitch**，**输出关节角度 + PWM 值**。`--direct` 是实验 5 阶段 1 验证设备 + 阶段 3 偏移补偿最常用的入口。
-- **源码对应**：`arm/kinematics/interactive_ik_test.py`（CLI 主入口 + 交互式菜单）
+- **源码对应**：`arm/kinematics/kinematics/interactive_ik_test.py`（CLI 主入口 + 交互式问答）
 
 **两个工具的工程定位**
 - `pwm_to_fk_demo` = **步骤 3（FK 正算验证）的"端到端版本"**（直接吃 PWM 不用先转弧度）
@@ -3134,7 +3149,7 @@ graph LR
 
 - ⚠️ **`pwm_to_fk_demo` 不发任何指令给舵机**，只是数学计算，**纯离线工具**；如需下发给机械臂请用 `interactive_ik_test --direct` 或 `arm_controller/target_pose` 话题
 - ⚠️ **`interactive_ik_test`（ROS2 模式）要求 `bringup + arm_controller` 已启动**，否则 `/servo_controller` 无订阅者，命令不生效
-- ⚠️ **`--direct` 模式要求 `/dev/ttyUSB0` 已连接并可写**（`chmod 666 /dev/ttyUSB0` 或加 dialout 组）；**与 ROS2 模式互斥**，二选一
+- ⚠️ **`--direct` 模式要求 `/dev/stm32` 已连接并可写**（`chmod 666 /dev/stm32` 或加 dialout 组）；**与 ROS2 模式互斥**，二选一
 - ⚠️ **任何一路 PWM 偏离 500~2500 区间立即 Ctrl+C 中断**（参考 1.5 节实机验证安全警告）
 
 ---
@@ -3211,267 +3226,221 @@ graph LR
 
 **知识点讲解**：
 
-**ik_solve 接口（5.1.1）**
+**解析法 IK 接口（5.1.1）**
 
-- **原理**：`ik_solve(target_xyz, target_pitch, prefer_elbow='up')` 是解析法 IK 的核心接口。参数说明：(1) `target_xyz`：3 元组 (x, y, z)，目标点在 base_link 坐标系下的位置；(2) `target_pitch`：浮点数，目标末端俯仰角（弧度）；(3) `prefer_elbow`：字符串，"up" 或 "down"，多解选择。返回值：长度为 5 的列表 [q1, q2, q3, q4, q5]（弧度），失败时返回 None。
-- **源码对应**：`ik_analytical.py` 中 `def ik_solve()`
+- **原理**：`solve_analytical_ik(target_pos, target_pitch_rad=0.0, config=None, geom=None)` 是解析法 IK 的核心接口。参数：(1) `target_pos`：`Point3D(x, y, z)`，目标 TCP 在 base 坐标系下的位置（米）；(2) `target_pitch_rad`：目标末端俯仰角（弧度，**本库从竖直量起：0=工具朝上、+90°=水平向前、180°=垂直朝下**）；(3) `config`/`geom`：标定与几何参数，默认取 `config.py` 的 `ROBOT_CALIBRATION`/`GEOM`。返回 `IKSolution`（含 q1~q5、`branch`、`error`、`actualPitch` 等字段），失败时 `solution.error` 非空。**注意：求解成功不等于解准确，必须用 FK 反算核对（见 step 5）**
+- **源码对应**：`ik_analytical.py` 中 `def solve_analytical_ik()` / `def solve_analytical_ik_auto_pitch()` / `def solution_to_pwm()`
 
 **操作步骤**：
 
-1. 简单目标点：
+> 以下脚本在 `~/ros2_ws/src/xflz_eai_car1/arm/kinematics/` 目录下运行（`import kinematics.*` 依赖该目录在 `sys.path`）。
+
+1. 单点 IK（auto-pitch 模式）：
    ```python
-   from kinematics.ik_analytical import ik_solve
-   
-   target = (0.2, 0.0, 0.2)
-   q = ik_solve(target, target_pitch=0.0)
-   print(f"目标 {target} 的 IK 解:")
-   print(f"  弧度: {q}")
-   print(f"  角度: {[f'{math.degrees(a):.2f}°' for a in q]}")
-   # 预期：q ≈ [0, -0.5, 1.0, -0.3, -0.2]（具体值取决于 DH 参数）
+   import math
+   from kinematics.config import Point3D
+   from kinematics.ik_analytical import (
+       solve_analytical_ik_auto_pitch, solution_to_dict, solution_to_pwm)
+
+   target = Point3D(0.25, 0.0, 0.15)          # 目标 TCP（米）
+   sol = solve_analytical_ik_auto_pitch(target, preferred_pitch_rad=math.radians(180))
+   if sol.error:
+       print("IK 失败:", sol.error)
+   else:
+       print("branch:", sol.branch, " actualPitch:", round(math.degrees(sol.actualPitch), 1))
+       print("关节角(rad):", [round(v, 4) for v in solution_to_dict(sol).values()])
+       print("PWM:", solution_to_pwm(sol))
+   # 预期：branch=elbow-up, actualPitch=180.0°, PWM=[1500, 1741, 1913, 2178, 1500]
    ```
 
-2. 多解测试（elbow up/down）：
+2. 固定 pitch（`solve_analytical_ik`，不自动调整）：
    ```python
-   q_up = ik_solve((0.2, 0.0, 0.0), target_pitch=0.0, prefer_elbow='up')
-   q_down = ik_solve((0.2, 0.0, 0.0), target_pitch=0.0, prefer_elbow='down')
-   print(f"elbow up:   q2={q_up[1]:.3f}, q3={q_up[2]:.3f}")
-   print(f"elbow down: q2={q_down[1]:.3f}, q3={q_down[2]:.3f}")
-   # 预期：q2 和 q3 取不同符号，但 FK 结果相同
+   from kinematics.ik_analytical import solve_analytical_ik
+   for pdeg in [90, 135, 180]:
+       s = solve_analytical_ik(Point3D(0.25, 0.0, 0.15), math.radians(pdeg))
+       print(f"pitch={pdeg:>3}° → {'失败: '+s.error if s.error else s.branch}")
+   # 预期：三种 pitch 均成功（branch=elbow-up），pitch 决定工具朝向
    ```
 
-3. Pitch 变化：
+3. 多解（elbow）说明：
+   - 求解器内部同时枚举 **elbow-up / elbow-down** 两个分支，再按 `|q3|` 最大者优先返回 elbow-up；**API 没有"手选分支"的参数**，返回值里的 `branch` 字段标出实际返回的是哪个
    ```python
-   for pitch in [0, -0.3, -0.6, -1.0]:
-       q = ik_solve((0.2, 0.0, 0.2), target_pitch=pitch)
-       print(f"pitch={pitch:.2f}: q={[f'{a:.3f}' for a in q]}")
+   sol = solve_analytical_ik_auto_pitch(Point3D(0.25, 0.0, 0.15), math.radians(180))
+   print(sol.branch)   # 'elbow-up' 或 'elbow-down'
    ```
 
-4. 边界情况：
+4. pitch 扫描（工具朝向从朝上到朝下）：
    ```python
-   # 不可达点
-   q = ik_solve((1.0, 0.0, 1.0), target_pitch=0.0)
-   print(f"不可达点 IK: {q}")
-   # 预期：None
+   # J4→TCP 的竖直分量 = L_TCP*cos(pitch)，符号即工具朝向
+   for pdeg in [0, 45, 90, 135, 180]:
+       print(f"pitch={pdeg:>3}°  J4→TCP 竖直分量={math.cos(math.radians(pdeg)):+.2f}")
+   # 预期：0°→+1(朝上)  90°→0(水平)  180°→-1(朝下)
    ```
 
-5. FK 反算验证：
+5. 边界情况（超出工作空间）：
    ```python
-   from kinematics.fk import fk_solve
-   q = ik_solve((0.2, 0.0, 0.2), 0.0)
-   T = fk_solve(q)
-   pos = T[:3, 3]
-   err = math.sqrt(sum((pos[i] - 0.2)**2 for i in [0, 2]) + pos[1]**2)
+   s = solve_analytical_ik_auto_pitch(Point3D(1.0, 0.0, 1.0), math.radians(180))
+   print("不可达点:", s.error)
+   # 预期：error 提示 Out of reach: target distance ... > max reach 0.4029m
+   ```
+
+6. FK 反算验证（**必做**）：
+   ```python
+   from kinematics.fk import compute_fk_position_only
+   s = solve_analytical_ik_auto_pitch(Point3D(0.25, 0.0, 0.15), math.radians(180))
+   pos = compute_fk_position_only(solution_to_dict(s))
+   err = math.sqrt((pos.x-0.25)**2 + pos.y**2 + (pos.z-0.15)**2)
    print(f"IK→FK 误差: {err*1000:.3f} mm")
-   # 预期：< 0.1mm（仅浮点误差）
+   # 预期：≈0.00 mm（本点）；注意并非所有点位都如此，见易错点
    ```
 
 **易错点**：
-- ⚠️ **IK 解不唯一** → **解决**：固定 `prefer_elbow` 参数
-- ⚠️ **关节角超出限位** → **解决**：IK 库不检查软限位，需在 arm_controller 层处理
+- ⚠️ **pitch 方向搞反** → **解决**：本库 pitch 从竖直量起：**0°=工具朝上、90°=水平、180°=朝下**（与 `arm_controller.py:166` 注释一致；**不要**照 `fk.py`/`ik_analytical.py` 顶部那句"0 = horizontal forward"的旧 docstring，那是错的）
+- ⚠️ **IK 求解成功但位置偏差大**（无 `error`，但 FK 反算误差可达十几到几十毫米） → **解决**：**每次都要跑 step 6 的 FK 反算**；`interactive_ik_test.py` 会打印 `误差: x.xx mm`，>1.5mm 时提示"精度不足"。已知 `(0.25, 0, 0.15)` 在 `pitch=0°` 与 `pitch=-45°` 会偏差 18/81mm
+- ⚠️ **关节角超出限位** → **解决**：IK 库会检查关节限位，超限则尝试另一分支或返回 `error`
 
 ---
 
-#### 步骤5：FK/IK 闭环批量验证（阶段二：能理解，30min）
+#### 步骤5：FK/IK 闭环验证（阶段二：能理解，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`interactive_ik_test.py` 中 `batch_fk_ik()` 函数
+> ⚠️ 本步骤对应 src 目录源码：`arm/kinematics/kinematics/test_fk_ik.py` 中 `test_round_trip()`（**不是** `interactive_ik_test.py`，该文件没有 `batch_fk_ik()`）
 
 **知识点讲解**：
 
 **闭环验证流程（5.2.1）**
-- **原理**：FK/IK 闭环验证是评估 IK 库精度的标准方法。流程：(1) 在工作空间内随机采样 N 个目标点；(2) 对每个目标点调用 IK 求解得到关节角；(3) 用 FK 反算末端位姿；(4) 比较 IK 目标与 FK 结果的误差；(5) 统计平均/最大误差和成功率。这种"闭合回路"测试可以发现 IK 库中的数值问题（多解、奇异处理等）。
-- **源码对应**：`interactive_ik_test.py` 中 `def batch_fk_ik(n=100)`
+- **原理**：FK/IK 闭环验证是评估 IK 库精度的标准方法：给定目标点 → IK 求关节角 → FK 反算末端位置 → 比较误差。`test_fk_ik.py` 的 `test_round_trip()` 用 4 个目标点、容差 1.5mm 做这件事，并打印 PASS/FAIL 汇总。
+- **源码对应**：`test_fk_ik.py` 中 `def test_round_trip()`；误差由 `fk.py` 的 `validate_fk_round_trip(target, angles, tolerance_mm)` 计算
 
 **误差统计指标（5.2.2）**
-- **原理**：典型指标包括：(1) **平均误差**：所有采样的平均位置误差；(2) **最大误差**：单次最差情况；(3) **P95 误差**：95% 分位数；(4) **成功率**：误差 < 阈值的比例。car1 解析法 IK 的典型性能：平均误差 < 0.5mm，最大误差 < 1.5mm，成功率 100%。
-- **源码对应**：自定义统计逻辑
+- **原理**：核心指标是每个目标点的 `误差 = |FK(IK(target)) − target|`，与容差比较后判 PASS/FAIL。要得到"平均/最大/成功率"需自己做多目标采样统计（**本仓库未内置批量统计脚本**）。
 
 **操作步骤**：
 
-1. 启动交互式测试（与 1.5 步骤 4 相同，使用 `--direct` 直连串口模式更便于硬件在线验证）：
+1. 运行内置测试套件（纯离线，不接硬件、不需要 ROS2）：
    ```bash
-   cd ~/ros2_ws
-   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct \
-     --port /dev/ttyUSB0 --baud 1000000
+   cd ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics
+   python3 test_fk_ik.py
+   ```
+   会依次跑 FK 测试、IK 测试、**闭环测试**、PWM 换算测试、工作空间限位测试。
+
+2. 关注闭环汇总行：
+   ```
+   IK → FK Round-Trip Tests
+     Test 1: Target (0.250, 0.000, 0.150) m
+       Error: 18.40 mm (tolerance: 1.5 mm)
+       ❌ FAIL
+     ...
+     Round-trip test summary: 1 passed, 3 failed
    ```
 
-2. 终端菜单参考（实际菜单以脚本输出为准）：
-   ```
-   === Interactive IK Test (Direct Serial Mode) ===
-   [1] Single Point IK + Move Arm
-   [2] Batch FK/IK (no movement)
-   [3] Workspace Scan
-   [4] System Offset Analysis
-   [5] Send PWM Directly
-   [q] Quit
-   ```
+3. **⚠️ 当前实测：4 个闭环用例里 3 个 FAIL**（误差 18.4 / 22.95 / 21.73 mm，容差 1.5mm）。这说明 `ik_analytical` 解出的关节角经 `fk` 反算后与目标点不一致 —— 是**求解器与几何模型之间的待查不一致**，不是浮点误差。
+   - 已知规律：`pitch` 在 45°~180° 时误差 ≈0.00mm；`pitch=0°`/`-45°` 时误差可达十几到几十毫米，且**不报 `error`**
+   - 这正是步骤 4 最后那个"FK 反算（必做）"要提前发现的问题
 
-3. 等待验证完成（约 5-10 秒），输出报告：
-   ```
-   === Batch FK/IK Results ===
-   Total samples: 100
-   Successful: 100 (100.0%)
-   Avg position error: 0.42 mm
-   Max position error: 1.23 mm
-   P95 position error: 0.89 mm
-   ```
-
-4. 误差可视化（可选）：
-   ```python
-   import matplotlib.pyplot as plt
-   from mpl_toolkits.mplot3d import Axes3D
-   
-   fig = plt.figure()
-   ax = fig.add_subplot(111, projection='3d')
-   ax.scatter(targets_x, targets_y, targets_z, c='green', label='Target')
-   ax.scatter(fk_results_x, fk_results_y, fk_results_z, c='red', label='FK', marker='x')
-   plt.legend()
-   plt.savefig('/tmp/ik_validation.png')
-   ```
-
-5. 误差来源分析（5.2.3）：
-   - **浮点累积**：单次计算误差约 1e-10，可忽略
-   - **关节间隙**：实测约 0.5-1.0mm（机械公差）
-   - **编码器分辨率**：PWM 分辨率 1 单位 ≈ 0.135° ≈ 0.2mm 末端误差
-   - **DH 参数偏差**：实际加工与理论参数差异 1-2mm
+4. 误差来源排查方向（实验报告）：
+   - 先确认 `solution.error` 为空但 FK 误差大 → 属"静默偏差"，不是不可达
+   - 固定目标点、扫不同 `pitch`，看误差是否与工具体朝向相关
+   - 对比 `config.py` 的 `L_TCP` / `PHI_TCP` / `Y_TCP` 与 `fk.py` 里 TCP 的实际定义是否一致
 
 **易错点**：
-- ⚠️ **批量验证报错"matrix not invertible"** → **解决**：跳过奇异点（在 5cm 球内跳过）
-- ⚠️ **成功率 < 95%** → **解决**：检查目标点是否在合理工作空间内
+- ⚠️ **以为闭环测试一定全绿** → **解决**：当前就是 3/4 FAIL，这是**真实待解问题**；不要靠"调大容差"掩盖
+- ⚠️ **只看 `error` 字段判断成败** → **解决**：`error` 为空只代表"可达且有解"，**不代表解准确**；必须看 FK 反算误差（>1.5mm 即超差）
 
 ---
 
-#### 步骤6：系统偏移识别（阶段三：能改造，45min）
+#### 步骤6：末端位姿误差的实测与归因（阶段三：能改造，45min）
 
-> ⚠️ 本步骤对应 src 目录源码：`interactive_ik_test.py` 中 `system_offset_analysis()` 函数
+> ⚠️ 源码核对结论：仓库里**没有** `system_offset_analysis()` 函数，也**没有** `config/system_offset.yaml`。本步骤因此改为"用离线复算 + 实机实测给闭环误差归因"。
 
 **知识点讲解**：
 
-**已知系统偏移（5.3.1）**
-- **原理**：car1 5 自由度机械臂由于加工装配公差，存在已知的系统偏移：(1) **J2 大臂 +4°**：大臂实际比 URDF 描述"多向上 4°"；(2) **J3 小臂 +2.3°**：小臂实际"多向上 2.3°"。这些偏移使 FK 实际计算的末端位姿与真实机械臂有 2-5mm 误差。识别方法：在不同关节角下用刻度尺测量真实末端位置，与 FK 结果比较。
-- **源码对应**：`system_offset_analysis()` 报告中输出 J2/J3 偏差值
+**"系统偏移"说法的来源（5.3.1）**
+- **背景**：指南早期版本把闭环误差归因为"J2 大臂 +4°、J3 小臂 +2.3°"的加工装配偏移，并声称补偿后误差从 2.5mm 降到 0.3mm。但**这些偏移值与补偿函数在源码中均不存在**，无法复现。
+- **现状**：项目自带的闭环测试 `test_fk_ik.py` 当前是 **3/4 FAIL**（见步骤 5），误差 18~23mm。该量级远超"+4°/+2.3°"能解释的范围，更像是 **IK 与 FK 的几何模型不一致**（`L_TCP`/`PHI_TCP`/`Y_TCP` 定义差异），而非单纯装配公差。
 
-**偏移测量方法**
-- **原理**：使用刻度标定尺在不同关节角下测量：(1) 水平仪辅助判断"水平"；(2) 直角尺辅助判断"垂直"；(3) 激光指示器辅助判断末端位置。多点测量后用最小二乘法拟合 J2/J3 偏差。
-- **源码对应**：人工测量 + Python 拟合
+**实测方法**
+- **原理**：把"理论链路"（IK→FK，纯计算）与"实机链路"（IK→舵机→真实末端）分开量：
+  1. 理论链路：跑 `test_fk_ik.py`，得到每个目标点的 IK→FK 误差
+  2. 实机链路：用 `interactive_ik_test.py` 下发同一点位，用刻度尺量真实末端坐标
+  3. `实测 − FK` 即该点位的实际偏差；只有理论与实机都量了，才能区分"模型不一致"与"机械公差"
 
 **操作步骤**：
 
-1. 启动系统偏移分析（同样使用 `--direct` 直连串口模式，便于在线采集真实舵机反馈）：
+1. 先拿理论链路误差基线：
    ```bash
-   cd ~/ros2_ws
-   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct \
-     --port /dev/ttyUSB0 --baud 1000000
-   # 在菜单中选择 [4] System Offset Analysis
+   cd ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics
+   python3 test_fk_ik.py        # 记录 4 个点的 FK 误差
    ```
 
-2. 程序提示测量流程：
-   ```
-   === System Offset Analysis ===
-   1. 将 J2 设为 0 rad，测量水平方向误差
-   2. 将 J2 设为 -π/4 rad，再次测量
-   3. ...
-   ```
+2. **挑误差小的点**做实机对照（如 Test 3 的 (0.200, −0.030, 0.180)，误差 0.00mm），避免把"模型 bug"误当成"机械精度问题"。
 
-3. 人工测量示例：
-   - 初始姿态：所有关节 = 0
-   - 用刻度尺测量末端距 base_link 正前方距离：实测 0.395m，FK 计算 0.400m
-   - 误差 = -5mm（短了 5mm），推算 J2 偏移 ≈ +4°
-
-4. 程序输出：
-   ```
-   === System Offset Analysis Results ===
-   J2 offset: +4.0° (0.0698 rad)
-   J3 offset: +2.3° (0.0401 rad)
-   Max end-effector error without compensation: 3.8 mm
-   Max end-effector error with compensation: 0.5 mm
+3. 实机实测（**安全：先 `n` 核对 PWM，再 `y` 下发，先小幅度、用较长运动时长**）：
+   ```bash
+   bash ~/ros2_ws/cleanup_ros.sh
+   python3 ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct
+   # 输入目标 → 记下打印的 5 路 PWM 与 FK 误差 → 选 y 下发 → 到位后量真实末端
    ```
 
-5. 偏移识别原理（5.2.3 延伸）：
-   - J2 偏移影响：大臂角度，整体高度
-   - J3 偏移影响：小臂角度，末端方向
-   - 两个偏移叠加放大末端误差
+4. 记录表格（实验报告）：
 
-6. 验证测量准确性：
-   - 用不同关节角组合重复测量
-   - 偏移值应在 ±0.5° 内一致
-   - 若偏差大，检查标定尺精度
+   | 目标点 | pitch | IK→FK 误差 | 实测 − FK | 结论 |
+   |--------|-------|-----------|----------|------|
+   | (0.200, −0.030, 0.180) | 180° | 0.00 mm | ___ mm | 模型一致，量到的是真实公差 |
+   | (0.250, 0, 0.150) | 0° | 18.40 mm | ___ mm | 模型不一致，不能用于评估机械精度 |
+
+5. 归因结论（示例）：
+   - 若模型一致的点上"实测 − FK"很小（<2mm）→ 机械精度尚可，闭环 FAIL 主要来自 **IK/FK 模型不一致**
+   - 若多条点都偏大 → 再考虑机械/装配因素
 
 **易错点**：
-- ⚠️ **测量误差大** → **解决**：多人测量取平均，或使用更精密的标定工具（如三坐标测量仪）
-- ⚠️ **不同温度下偏移不同** → **解决**：在固定环境温度下测量
+- ⚠️ **直接套用旧版"J2 +4°/J3 +2.3°"** → **解决**：源码中不存在这些值，别写进报告；一切以实测/复算为准
+- ⚠️ **用超差的点评估机械精度** → **解决**：先按步骤 5 的 pitch 规律排除模型不一致的点
 
 ---
 
-#### 步骤7：偏移补偿策略（阶段三：能改造，30min）
+#### 步骤7：几何参数与 Y 偏移补偿（阶段三：能改造，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`kinematics/ik_analytical.py` 中 `apply_offset()` 函数
+> ⚠️ 源码核对结论：**没有** `apply_offset()` 函数，也**没有** `config/system_offset.yaml`。源码里真实存在的"补偿"是 **IK 求解时对 TCP 固定 Y 偏移的处理**（`ik_analytical.py` 注释 "q1 compensates TCP's fixed Y offset"），参数来自 `config.py` 的 `Y_TCP`。
 
 **知识点讲解**：
 
-**偏移补偿实现（5.3.2）**
-- **原理**：在 IK 输出后对 J2/J3 关节角施加修正常量：`q[1] -= 0.0698`（减去 4°），`q[2] -= 0.0401`（减去 2.3°）。这种"减法补偿"的原因是：IK 求解时假设 DH 参数与实际一致，但实际机械臂"多 4°/2.3°"，所以软件发送给舵机的指令需要"少 4°/2.3°"才能让实际关节到位姿正确位置。
-- **源码对应**：`ik_analytical.py` 中 `def apply_offset(joint_angles)`
+**TCP 固定 Y 偏移（5.3.2）**
+- **原理**：J2/J3/J4 都绕 Y 轴旋转，所以 J1 坐标系下 TCP 的 Y 分量不受它们影响，等于各段 Y 偏移之和，`config.py` 汇总为 `Y_TCP = J2_offset.y + link1.y + link2.y + tool.y`。IK 用它对 q1 做补偿、并做 J1 平面的 Y 约束检查（超出容差即报 `Target Y residual ... exceeds workspace constraint`）。
+- **源码对应**：`config.py` 中 `Y_TCP = cal.J2_offset.y + link1.y + link2.y + tool.y`；`ik_analytical.py` 中 `q1` 计算与注释
 
-**补偿 vs 重新标定 DH 参数**
-- **原理**：另一种思路是修改 DH 参数反映真实几何，但会改变工作空间预测模型。**offset 补偿** 的优势：(1) 不修改 DH 参数，仿真与实机分离；(2) 容易临时禁用进行对比测试；(3) 多人协作时 DH 是"基线"、offset 是"个人微调"。
-- **源码对应**：`config/system_offset.yaml`
+**几何常量即"补偿量"**
+- **原理**：本项目把装配偏差直接写进 `config.py` 的几何常量（`J2_offset`、`link1.x/y/z`、`link2.x/y/z`、`tool`），由 FK 与 IK **共同使用**。因此改这些常量会同时改变两条链路——它既是"标定"也是"补偿"，不存在独立的 offset 文件。
+- **源码对应**：`config.py` 中 `ROBOT_CALIBRATION`（`J2_offset`/`link1`/`link2`/`tool`）与 `derive_geometry()`
 
 **操作步骤**：
 
-1. 查看 system_offset.yaml：
+1. 打印几何常量与 Y_TCP：
    ```bash
-   cat ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/config/system_offset.yaml
-   # 预期：
-   # system_offset:
-   #   joint2_rad: 0.0698  # +4°
-   #   joint3_rad: 0.0401  # +2.3°
-   #   enabled: true
+   cd ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics
+   python3 -c "from config import print_calibration; print_calibration()"
    ```
-
-2. 应用补偿（IK 库内部自动）：
    ```python
-   from kinematics.ik_analytical import ik_solve
-   
-   # ik_solve 内部自动应用补偿（如果 config 中 enabled=true）
-   q = ik_solve((0.2, 0.0, 0.2), target_pitch=0.0)
-   print(f"补偿后 IK 解: {q}")
+   from config import GEOM
+   print("Y_TCP =", GEOM.Y_TCP*1000, "mm")   # 实测 0.215 mm
+   # J1 坐标系下 TCP 的固定 Y 偏移，由 J2_offset.y + link1.y + link2.y + tool.y 汇总
    ```
 
-3. 对比补偿前后：
+2. 观察 Y 约束：给一个 Y 明显偏离的目标，看 IK 是否报错：
    ```python
-   from kinematics.ik_analytical import ik_solve, _apply_offset_disabled
-   
-   # 禁用补偿
-   q_before = ik_solve((0.2, 0.0, 0.2), 0.0, use_offset=False)
-   # 启用补偿
-   q_after = ik_solve((0.2, 0.0, 0.2), 0.0, use_offset=True)
-   print(f"补偿前: {q_before}")
-   print(f"补偿后: {q_after}")
-   print(f"差异: q2 差 {q_after[1]-q_before[1]:.4f}, q3 差 {q_after[2]-q_before[2]:.4f}")
+   import math
+   from config import Point3D
+   from ik_analytical import solve_analytical_ik_auto_pitch
+   s = solve_analytical_ik_auto_pitch(Point3D(0.25, 0.05, 0.15), math.radians(180))
+   print(s.error)   # 预期：Y residual 超容差，报 workspace constraint 错误
    ```
 
-4. 实机验证：
-   - 发送补偿前关节角给机械臂 → 用刻度尺测量末端位置
-   - 发送补偿后关节角 → 再次测量
-   - 对比两种情况的末端位置
+3. 改一个几何常量做灵敏度实验（**仅离线，别直接上实机**）：把 `config.py` 中某个 `link*.y` 微调 0.5mm，重跑 `test_fk_ik.py`，观察闭环误差怎么变——可判断误差是否对几何参数敏感。
 
-5. 性能基线（实验报告必填）：
-
-   | 指标 | 补偿前 | 补偿后 |
-   |------|-------|-------|
-   | 末端位置平均误差 | 2.5 mm | 0.3 mm |
-   | 末端位置最大误差 | 5.0 mm | 1.0 mm |
-   | IK 计算时间 | 0.3 ms | 0.3 ms |
-   | FK 闭环验证成功率 | 90% | 100% |
-
-6. 高级：多温度补偿：
-   - 在不同温度下重新测量偏移
-   - 建立 offset 随温度的回归模型
-   - 自动化运行时根据温度查表应用
+4. 记录（实验报告）：改了什么、闭环误差从多少变到多少。**注意：当前闭环本就 3/4 FAIL，先记录基线再改**。
 
 **易错点**：
-- ⚠️ **补偿过度** → **解决**：单次只补偿 50%，逐步逼近
-- ⚠️ **不同机械臂偏移不同** → **解决**：每台机械臂单独标定并存储
+- ⚠️ **以为存在 `system_offset.yaml`/`apply_offset()`** → **解决**：源码中不存在；补偿内建于 `config.py` 几何常量 + IK 的 Y_TCP 处理
+- ⚠️ **改几何常量后忘记重跑测试** → **解决**：改完必须重跑 `test_fk_ik.py` 对比闭环误差
 
 ---
 
@@ -3485,28 +3454,26 @@ graph LR
 - **原理**：`--direct` 模式下，脚本绕过 ROS2 节点，直接通过串口与 STM32 板通信发送 PWM 指令。优势是启动快、不需要 ROS2 环境、便于底层算法调试。劣势是无法利用 ROS2 的软限位、状态发布、TF 等高级功能。直连串口模式适用于：(1) 关节级 PID 调试；(2) 单舵机测试；(3) IK 算法验证；(4) 无 ROS2 环境部署。
 - **源码对应**：`interactive_ik_test.py` 中 `--direct` 参数处理
 
-**串口协议实现**
-- **原理**：直连串口模式需要自行实现：(1) 串口打开（pyserial）；(2) PWM 帧打包（0x55 0x55 ... 校验和）；(3) 周期性发送（20ms 间隔）；(4) 接收应答。`serial_handler.py` 封装了这些功能，可在直连串口模式中复用。
-- **源码对应**：`arm/car1_arm_controller/car1_arm_controller/serial_handler.py`
+**串口帧格式**
+- **原理**：直连发送/读取走的是与 `test_servo_direct.py` **同一套** `0xAA 0x55` 协议帧（`0xAA 0x55 | Func | Len | Data | CRC8`），1Mbps。**不是** `0x55 0x55`。
+- **源码对应**：`arm/car1_arm_controller/test/test_servo_direct.py` 中 `bytearray([0xAA, 0x55, func, len(data)])`；`interactive_ik_test.py` 复用同款帧做串口读写
 
 **操作步骤**：
 
-1. 启动直连串口模式：
+1. 启动直连串口模式（**只支持 `--direct` / `--debug`，没有 `--port`/`--baud`**；串口与波特率硬编码为 `/dev/stm32` @ 1Mbps）：
    ```bash
    cd ~/ros2_ws
-   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct \
-     --port /dev/ttyUSB0 --baud 1000000
+   python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct
+   # debug 模式（打印每帧收发）：--direct --debug
    ```
 
-2. 终端菜单（实际菜单以脚本输出为准）：
+2. 脚本打印 header 后**直接进入问答**（没有编号菜单）：
    ```
-   === Interactive IK Test (Direct Serial Mode) ===
-   [1] Single Point IK + Move Arm
-   [2] Batch FK/IK (no movement)
-   [3] Workspace Scan
-   [4] System Offset Analysis
-   [5] Send PWM Directly
-   [q] Quit
+   输入目标 TCP 位置 (输入 'q' 退出)
+   X 坐标 (米) [默认: 0.28]:
+   Y 坐标 (米) [默认: 0.0]:
+   Z 坐标 (米) [默认: 0.10]:
+   俯仰角 (度) [默认: 180]:
    ```
 
 3. 实机调试流程（**严格按以下顺序，禁止跳过前置验证**）：
@@ -3521,330 +3488,219 @@ graph LR
    a. **第一步：进入 interactive_mode 验证设备状态**
       ```bash
       cd /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test
-      python test_servo_direct.py
+      python3 test_servo_direct.py
       ```
-      在 `interactive_mode` 下逐个关节发 PWM（500~2500，center=1500），确认：(a) 5 个舵机都能正常响应；(b) 软限位生效；(c) 无异响/抖动/电流声
+      在 `interactive_mode` 下逐个关节发 PWM（500~2500，center=1500），确认：(a) 5 个舵机都能正常响应；(b) 软限位生效；(c) 无异响/抖动/电流声。
+      **"PWM 直发测试"就在这里做**：直接输入 `1500 1500 1500 1500 1500` 让所有关节回中位。
 
-   b. **第二步：进入直连串口 IK 测试，演示目标位姿 (0.28, 0, 0.1)、pitch=180°（夹爪垂直向下）**
-      - 在 `interactive_ik_test.py --direct` 的菜单中查看各功能项
-      - **先仅查看 IK 解（不开实际运动）**，对照提供的 PWM 范围表核对 5 路输出
-      - 确认安全后再决定是否实际下发；**逐步逼近**：建议首次把 z 抬高、r 缩小，**逐步逼近到 (0.28, 0, 0.1)**，不要一步到位
+   b. **第二步：进入直连串口 IK 测试，演示目标位姿 (0.28, 0, 0.10)、pitch=180°（夹爪垂直朝下）**
+      - 按默认值逐项回车即可（X=0.28, Y=0, Z=0.10, pitch=180）
+      - 先看打印的 5 路 PWM 与 `误差: x.xx mm`；**误差 >1.5mm 说明该点位解不准（见步骤 5），换 pitch 或点位**
+      - 问 `是否发送到实机? (y/n) [n]` 时**先输 `n`**；确认 5 路 PWM 均在 500~2500 后再重跑输 `y`
+      - **逐步逼近**：首次把 z 抬高、r 缩小，不要一步到位
 
    c. **串口监控**（可选，便于观察协议帧）：
-      - 在另一终端运行串口监控工具：
+      - 在另一终端：
         ```bash
-        sudo cutecom --device /dev/ttyUSB0 --baud 1000000
-        # 观察 0x55 0x55 帧的发送频率
+        sudo cutecom --device /dev/stm32 --baud 1000000
+        # 观察 0xAA 0x55 帧
         ```
 
-4. PWM 直发测试（用于熟悉协议帧，不构成实际目标位姿）：
-   - 在 `interactive_ik_test.py --direct` 菜单中选择 [5] Send PWM Directly
-   - 输入 `1500 1500 1500 1500 1500`（所有关节回中位）
-   - 观察机械臂回到 home 位姿
-
-5. 对比 ROS2 模式：
-   - 关闭直连串口模式
-   - 启动 `ros2 launch car1_arm_controller arm_controller.launch.py`
-   - 运行 `ros2 run kinematics interactive_ik_test.py`（不带 --direct）
+4. 对比 ROS2 模式：
+   - 关闭直连模式（输入 `q` 或 Ctrl+C）
+   - 另开终端：`ros2 launch car1_bringup bringup.launch.py`，再 `ros2 launch car1_arm_controller arm_controller.launch.py`
+   - 运行不带 `--direct` 的 IK 工具：`ros2 run car1_kinematics interactive_ik_test`
    - 对比两种模式的便利性
 
 **易错点**：
-- ⚠️ **PWM 误发导致堵转** → **解决**：**严格按步骤 3a → 3b 顺序**，先用 `test_servo_direct.py` interactive_mode 验证设备，再进入 `interactive_ik_test.py --direct`；任何一路 PWM 偏离合理区间立即 Ctrl+C 中断
-- ⚠️ **直连串口模式与 ROS2 模式冲突** → **解决**：二选一，不能同时使用
-- ⚠️ **串口打开失败** → **解决**：检查 `/dev/ttyUSB0` 权限与占用情况
+- ⚠️ **误加 `--port`/`--baud`** → **解决**：脚本不解析这两个参数（只认 `--direct`/`--debug`）
+- ⚠️ **PWM 误发导致堵转** → **解决**：严格按 3a → 3b 顺序，先用 `test_servo_direct.py` interactive_mode 验证设备，再进 `interactive_ik_test.py --direct`；任何一路 PWM 偏离合理区间立即 Ctrl+C 中断
+- ⚠️ **直连模式与 ROS2 模式冲突** → **解决**：二选一；直连前先 `cleanup_ros.sh` 停掉 bringup（两者都要独占 `/dev/stm32`）
+- ⚠️ **串口打开失败** → **解决**：`ls -l /dev/stm32` 检查软链与权限
 
 ---
 
 #### 步骤9：解析法 vs 数值法 IK 对比（阶段三：能改造，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`kinematics/numerical_ik.py`（若实现）
+> ⚠️ 源码核对结论：Python 端**没有** `numerical_ik.py`，**只有解析法**（`ik_analytical.py`）。数值法实现在 **Web 仿真器**里：`src/xflz_eai_car1/test/car1_web_server/viewer/kinematics/ik-numerical.js`（DLS），可在浏览器里与解析法直接对比（与实验 4 同一套 viewer）。
 
 **知识点讲解**：
 
 **DLS 数值法 IK（5.4.1）**
-- **原理**：DLS（Damped Least Squares）算法通过迭代求解：Δq = J^T (J·J^T + λ²·I)^(-1) Δx，其中 J 是 6×5 雅可比矩阵（5 关节、6 维末端位姿），λ 是阻尼因子。每次迭代更新 q = q + α·Δq，α 是步长（0 < α < 1），直到末端位姿误差小于阈值。算法简单但需调参（λ、α、迭代次数）。
-- **源码对应**：`numerical_ik.py` 中 `def dls_solve()`
+- **原理**：DLS（Damped Least Squares）迭代求解：`Δq = Jᵀ(JJᵀ + λ²I)⁻¹Δx`，J 为末端位置对 5 关节的雅可比（本实现只控位置）。迭代 `q ← q + α·Δq` 直到误差小于阈值。默认参数取自 `ik-numerical.js`：`maxIter=200`、`tolerance=0.001 m`、`lambda=0.5`、`stepSize=0.5`、`delta=0.0001`。
+- **源码对应**：`viewer/kinematics/ik-numerical.js` 中 `export function solveIK(...)`
 
 **阻尼因子作用（5.4.2）**
-- **原理**：当雅可比矩阵 J 接近奇异（行列式趋于 0），J·J^T 病态导致 (J·J^T)^(-1) 不稳定。引入 λ²·I 项使矩阵变成 (J·J^T + λ²·I)，保证可逆，但代价是迭代变慢。λ 选择 trade-off：λ 小 → 快速但易发散；λ 大 → 稳定但慢；通常取 0.01 ~ 0.5。
-- **源码对应**：`numerical_ik.py` 中 `damping` 参数
+- **原理**：J 接近奇异时 `JJᵀ` 病态；加 `λ²I` 保证可逆，代价是收敛变慢。λ 小 → 快但易发散；λ 大 → 稳但慢。
+- **源码对应**：`ik-numerical.js` 中 `lambda`（默认 0.5）
 
 **解析法 vs 数值法选择（5.4.3）**
-- **原理**：**解析法**优势：(1) 速度快（μs 级）；(2) 确定性（同样输入同样输出）；(3) 无需调参。劣势：(1) 仅适用特定构型；(2) 难处理奇异。**数值法**优势：(1) 通用（任何构型）；(2) 易于处理奇异与冗余。劣势：(1) 慢（ms 级）；(2) 需调参；(3) 可能不收敛。car1 5 自由度非冗余机械臂选择解析法是合理的，数值法作为对比与 fallback。
-- **源码对应**：car1 选用 ik_analytical.py 作为主路径
+- **原理**：**解析法**优势：(1) 快（μs~ms）；(2) 确定性；(3) 无需调参。劣势：难处理奇异/超限。**数值法**优势：(1) 通用、易处理奇异；(2) 可只控位置。劣势：慢（10~50ms）、需调参、可能不收敛。car1 5 自由度非冗余臂以解析法为主路径，数值法作对比。
+- **源码对应**：Python 主路径 `ik_analytical.py`；数值法仅在 JS 仿真器
 
-**操作步骤**：
+**操作步骤**（在 Web 仿真器里对比，零风险）：
 
-1. 数值法实现（若没有，可参考实现）：
-   ```python
-   import numpy as np
-   from kinematics.fk import fk_solve
-   from kinematics.transform import pose_error
-   
-   def numerical_ik(target_xyz, target_pitch, max_iter=100, lambda_=0.1, tol=1e-4):
-       q = [0.0] * 5
-       for i in range(max_iter):
-           T = fk_solve(q)
-           err = pose_error(T, target_xyz, target_pitch)  # 6D error
-           if np.linalg.norm(err) < tol:
-               return q, i
-           J = compute_jacobian(q, delta=1e-5)  # 6x5
-           # DLS update
-           JtJ = J.T @ J
-           damping = lambda_**2 * np.eye(5)
-           dq = np.linalg.solve(JtJ + damping, J.T @ err)
-           q = (np.array(q) + dq).tolist()
-       return q, max_iter
+1. 启动 Web 仿真器：
+   ```bash
+   cd ~/ros2_ws/src/xflz_eai_car1/test/car1_web_server
+   python3 server_cors.py 8000
+   # 浏览器打开 http://localhost:8000/viewer/
    ```
 
-2. 解析法与数值法对比（单点）：
-   ```python
-   target = (0.2, 0.0, 0.2)
-   
-   # 解析法
-   import time
-   t0 = time.time()
-   q_ana = ik_solve(target, 0.0)
-   t_ana = time.time() - t0
-   
-   # 数值法
-   t0 = time.time()
-   q_num, iters = numerical_ik(target, 0.0)
-   t_num = time.time() - t0
-   
-   print(f"解析法: q={[f'{a:.4f}' for a in q_ana]}, 耗时 {t_ana*1e6:.1f} μs")
-   print(f"数值法: q={[f'{a:.4f}' for a in q_num]}, 迭代 {iters} 次, 耗时 {t_num*1e3:.1f} ms")
-   ```
+2. 在页面里切换 IK 模式 **Analytical / Numerical**，对同一目标点看：两者解出的 5 关节角是否一致；数值法显示的迭代次数与耗时。
 
-3. 多点对比：
-   ```python
-   for target in [(0.15, 0, 0.25), (0.20, 0, 0.20), (0.25, 0.1, 0.15)]:
-       q_a = ik_solve(target, 0.0)
-       q_n, iters = numerical_ik(target, 0.0)
-       T_a = fk_solve(q_a)
-       T_n = fk_solve(q_n)
-       err_a = np.linalg.norm(T_a[:3,3] - np.array(target))
-       err_n = np.linalg.norm(T_n[:3,3] - np.array(target))
-       print(f"目标 {target}: 解析法 err={err_a*1000:.3f}mm, 数值法 err={err_n*1000:.3f}mm, 迭代 {iters}次")
-   ```
+3. 拖到**奇异/边界**附近（如接近基座正上方），观察：解析法可能失败或解跳变，数值法因 DLS 阻尼仍给出近似解。
 
-4. 阻尼因子影响测试：
-   ```python
-   for lambda_ in [0.01, 0.1, 0.5, 1.0]:
-       q, iters = numerical_ik(target, 0.0, lambda_=lambda_)
-       t = ...
-       print(f"λ={lambda_}: 收敛 {iters} 次, 耗时 {t:.1f}ms")
-   ```
+4. 记录对比表（实验报告）：
 
-5. 奇异位姿对比：
-   - 目标点 (0, 0, 0)（base_link 正下方）
-   - 解析法：可能失败或奇异解
-   - 数值法：因 DLS 阻尼仍能收敛
+   | 目标点 | 解析法 5 关节角 | 数值法 5 关节角 | 数值法迭代/耗时 | 是否一致 |
+   |--------|---------------|---------------|---------------|---------|
+   | (0.25, 0, 0.15) | | | | |
+
+5. 可选：读 `ik-numerical.js` 源码，对照 DLS 公式理解 `lambda` / `stepSize` 的作用。
 
 **易错点**：
-- ⚠️ **数值法不收敛** → **解决**：增大 λ 或检查雅可比矩阵实现
-- ⚠️ **雅可比矩阵实现错误** → **解决**：用中心差分代替前向差分
+- ⚠️ **在 Python 里找 `numerical_ik.py`** → **解决**：不存在；数值法只在 JS 仿真器里，用浏览器对比
+- ⚠️ **数值法不收敛** → **解决**：增大 `lambda` 或 `maxIter`，或换更近的初始关节角
 
 ---
 
 #### 完整可运行代码 demo_ik_closed_loop.py
 
-> 独立 demo 脚本：完整的 FK/IK 闭环验证与系统偏移补偿
+> 独立 demo 脚本：FK/IK 闭环验证（离线，无需硬件/ROS2）。
+> 放到 `.../arm/kinematics/` 目录下运行：`python3 demo_ik_closed_loop.py`
 
 ```python
 # -*- coding: utf-8 -*-
 """
-实验5 demo：FK/IK 闭环验证 + 系统偏移补偿
-平台：任意（仅需 numpy + kinematics 包）
-运行：python3 demo_ik_closed_loop.py
+实验5 demo：FK/IK 闭环验证（离线，无需硬件/ROS2）
+运行：把本脚本放在 .../arm/kinematics/ 目录下，python3 demo_ik_closed_loop.py
 """
 import os
 import math
 import sys
 import numpy as np
 
-# 把 kinematics 包（src/xflz_eai_car1/arm/kinematics/kinematics）加入搜索路径
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                'src', 'xflz_eai_car1', 'arm'))
+# 让 `import kinematics.*` 可用（脚本需位于 .../arm/kinematics/ 目录）
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from kinematics.ik_analytical import solve_analytical_ik
-from kinematics.fk import compute_fk
 from kinematics.config import Point3D
+from kinematics.ik_analytical import solve_analytical_ik_auto_pitch, solution_to_dict
+from kinematics.fk import compute_fk_position_only
 
 
-# 已知系统偏移
-SYSTEM_OFFSET = {
-    'joint2_rad': 0.0698,  # +4°
-    'joint3_rad': 0.0401,  # +2.3°
-    'enabled': True
-}
+def ik_solve(target, pitch_deg=180.0):
+    """IK：目标 (x, y, z) -> 关节角 dict；失败返回 None。"""
+    sol = solve_analytical_ik_auto_pitch(
+        Point3D(x=target[0], y=target[1], z=target[2]),
+        preferred_pitch_rad=math.radians(pitch_deg))
+    return None if sol.error else solution_to_dict(sol)
 
 
-def apply_offset(q, offset_config):
-    """应用系统偏移补偿"""
-    if not offset_config['enabled']:
-        return q
-    q = list(q)
-    q[1] -= offset_config['joint2_rad']
-    q[2] -= offset_config['joint3_rad']
-    return q
+def fk_pos(angles):
+    """FK：关节角 dict -> TCP 位置 Point3D。"""
+    return compute_fk_position_only(angles)
 
 
-def ik_solve(target, use_offset=False):
-    """IK 求解：目标 (x,y,z) -> 关节角列表 [q1..q5]；失败返回 None。
-
-    对应文档中的 ik_solve(target_xyz, target_pitch, prefer_elbow)，
-    实际调用 solve_analytical_ik（固定 pitch=0，偏好 elbow-up）。
-    """
-    sol = solve_analytical_ik(Point3D(x=target[0], y=target[1], z=target[2]),
-                              target_pitch_rad=0.0)
-    if sol.error:
-        return None
-    q = [sol.q1, sol.q2, sol.q3, sol.q4, sol.q5]
-    if use_offset:
-        q = apply_offset(q, SYSTEM_OFFSET)
-    return q
+def sample_targets(n=200, seed=0):
+    """在可工作区域内采样目标点（x∈[0.12,0.28], y∈[-0.06,0.06], z∈[0.05,0.30]）"""
+    rng = np.random.default_rng(seed)
+    return [(float(rng.uniform(0.12, 0.28)),
+             float(rng.uniform(-0.06, 0.06)),
+             float(rng.uniform(0.05, 0.30))) for _ in range(n)]
 
 
-def fk_solve(q):
-    """FK 求解：关节角列表 [q1..q5] -> 4x4 变换矩阵（TCP 位置在 T[:3,3]）。
-
-    对应文档中的 fk_solve(joint_angles)，实际调用 compute_fk（URDF 链路）。
-    """
-    angles = {f'arm_joint{i+1}': q[i] for i in range(5)}
-    _, T = compute_fk(angles)
-    return T
-
-
-def random_target_in_workspace(n=1, r_range=(0.15, 0.35)):
-    """在工作空间内随机生成目标点"""
-    targets = []
-    for _ in range(n):
-        # 球面均匀采样
-        u = np.random.uniform(-1, 1)
-        theta = np.random.uniform(0, 2 * np.pi)
-        r = np.random.uniform(*r_range)
-        x = r * math.sqrt(1 - u**2) * math.cos(theta)
-        y = r * math.sqrt(1 - u**2) * math.sin(theta)
-        z = max(0.05, r * u + 0.15)  # 保证 z > 5cm
-        targets.append((x, y, z))
-    return targets
-
-
-def closed_loop_validation(n=100, use_offset=True):
-    """FK/IK 闭环验证"""
-    targets = random_target_in_workspace(n)
-    errors_with = []
-    errors_without = []
-    successes = 0
-
-    for target in targets:
-        # 不带补偿
-        q = ik_solve(target, use_offset=False)
+def closed_loop_validation(n=200, pitch_deg=180.0, tol_mm=1.5):
+    errs, fails = [], 0
+    for t in sample_targets(n):
+        q = ik_solve(t, pitch_deg)
         if q is None:
+            fails += 1
             continue
-        T = fk_solve(q)
-        pos = T[:3, 3]
-        err = math.sqrt(sum((pos[i] - target[i])**2 for i in range(3)))
-        errors_without.append(err)
-
-        # 带补偿
-        q = ik_solve(target, use_offset=True)
-        if q is None:
-            continue
-        T = fk_solve(q)
-        pos = T[:3, 3]
-        err = math.sqrt(sum((pos[i] - target[i])**2 for i in range(3)))
-        errors_with.append(err)
-        if err < 0.0015:  # 1.5mm
-            successes += 1
-
-    # 统计
-    print(f"\n=== FK/IK 闭环验证（{len(targets)} 个采样）===")
-    print(f"无补偿：")
-    print(f"  平均误差: {np.mean(errors_without)*1000:.3f} mm")
-    print(f"  最大误差: {np.max(errors_without)*1000:.3f} mm")
-    print(f"  P95 误差: {np.percentile(errors_without, 95)*1000:.3f} mm")
-    print(f"有补偿：")
-    print(f"  平均误差: {np.mean(errors_with)*1000:.3f} mm")
-    print(f"  最大误差: {np.max(errors_with)*1000:.3f} mm")
-    print(f"  P95 误差: {np.percentile(errors_with, 95)*1000:.3f} mm")
-    print(f"成功率（< 1.5mm）: {successes}/{len(targets)} ({successes/len(targets)*100:.1f}%)")
+        p = fk_pos(q)
+        errs.append(math.sqrt((p.x - t[0]) ** 2 + (p.y - t[1]) ** 2 + (p.z - t[2]) ** 2) * 1000.0)
+    if not errs:
+        print("无有效样本")
+        return
+    ok = sum(1 for e in errs if e < tol_mm)
+    print(f"\n=== FK/IK 闭环验证（pitch={pitch_deg:.0f}°，有效样本 {len(errs)}/{n}）===")
+    print(f"  平均误差: {np.mean(errs):.3f} mm")
+    print(f"  最大误差: {np.max(errs):.3f} mm")
+    print(f"  P95 误差: {np.percentile(errs, 95):.3f} mm")
+    print(f"  成功率(<{tol_mm}mm): {ok}/{len(errs)} ({ok / len(errs) * 100:.1f}%)")
+    print(f"  IK 失败(不可达/超限): {fails}")
 
 
-def main():
-    print("=== 机械臂 IK 闭环验证与系统偏移补偿 ===\n")
-
-    # 单点测试
-    print("=== 单点测试 ===")
-    target = (0.2, 0.0, 0.2)
-    q_with = ik_solve(target, use_offset=True)
-    q_without = ik_solve(target, use_offset=False)
-    print(f"目标: {target}")
-    print(f"无补偿 IK 解: {[f'{a:.4f}' for a in q_without]}")
-    print(f"有补偿 IK 解: {[f'{a:.4f}' for a in q_with]}")
-
-    T = fk_solve(q_with)
-    pos = T[:3, 3]
-    err = math.sqrt(sum((pos[i] - target[i])**2 for i in range(3)))
-    print(f"FK 反算位置: ({pos[0]:.4f}, {pos[1]:.4f}, {pos[2]:.4f})")
-    print(f"位置误差: {err*1000:.3f} mm")
-
-    # 批量验证
-    closed_loop_validation(n=100, use_offset=True)
-
-    # 工作空间扫描
-    print("\n=== 工作空间扫描 ===")
-    n_samples = 500
-    targets = random_target_in_workspace(n_samples, r_range=(0.1, 0.4))
-    reachable = sum(1 for t in targets if ik_solve(t) is not None)
-    print(f"采样 {n_samples} 个点，可达 {reachable} 个 ({reachable/n_samples*100:.1f}%)")
-
-
-if __name__ == "__main__":
-    main()
-
+if __name__ == '__main__':
+    for p in (180.0, 90.0, 0.0):
+        closed_loop_validation(200, p)
 ```
+
+**实测输出**（本仓库当前状态，`pitch` 不同结果差异很大）：
+```
+=== FK/IK 闭环验证（pitch=180°，有效样本 200/200）===
+  平均误差: 9.379 mm
+  最大误差: 84.622 mm
+  P95 误差: 55.116 mm
+  成功率(<1.5mm): 144/200 (72.0%)
+  IK 失败(不可达/超限): 0
+
+=== FK/IK 闭环验证（pitch=90°，有效样本 200/200）===
+  平均误差: 0.151 mm
+  最大误差: 15.698 mm
+  P95 误差: 0.001 mm
+  成功率(<1.5mm): 198/200 (99.0%)
+  IK 失败(不可达/超限): 0
+
+=== FK/IK 闭环验证（pitch=0°，有效样本 200/200）===
+  平均误差: 17.015 mm
+  最大误差: 108.541 mm
+  P95 误差: 73.219 mm
+  成功率(<1.5mm): 123/200 (61.5%)
+  IK 失败(不可达/超限): 0
+```
+
+> **结论**：`pitch=90°`（工具水平）时模型基本自洽（P95≈0）；但 `pitch=180°`（**抓取常用姿态**）成功率仅 72%，`pitch=0°` 仅 61.5%，且 **IK 一次都没报错**——偏差全部是"静默"的。这正是步骤 5/6 要暴露的核心问题。
 
 ### 1.7 实验总结
 
 **完成成果**：
 
-- 理解 car1 IK 库的模块化拆分（transform、fk、ik_analytical）
-- 完成 100 点 FK/IK 闭环批量验证，误差 < 1.5mm
-- 识别并量化了已知系统偏移（J2+4°、J3+2.3°）
-- 应用 offset 补偿后闭环误差从 2.5mm 降至 0.3mm
-- 在直连串口模式下完成实机 IK 闭环调试
-- 对比了解析法与数值法 IK 的性能差异
+- 理解 car1 IK 库的模块化拆分（config、transform、fk、ik_analytical）
+- 跑通 `test_fk_ik.py` 与自写闭环验证，**发现当前 IK 在多数 `pitch` 下有静默位置偏差**（`pitch=180°` 成功率 72%、`pitch=0°` 61.5%，`pitch=90°` 99%）
+- 把"理论链路（IK→FK）"与"实机链路（IK→舵机→真实末端）"分开实测，给出误差归因
+- 理解源码中真实的"补偿"是 `config.py` 几何常量 + IK 对 `Y_TCP` 的处理（**不存在独立 offset 文件**）
+- 在直连串口模式下完成实机 IK 调试（问答式，非菜单）
+- 在 Web 仿真器里对比解析法与数值法（DLS）
 
 **技能收获**：
 - 掌握 IK 库的模块化设计与 API 使用
-- 理解 FK/IK 闭环验证的工程方法
-- 熟悉系统偏移的识别与补偿策略
-- 掌握直连串口模式（--direct）的底层调试
+- 理解 FK/IK 闭环验证的工程方法，并能识别"求解成功 ≠ 解准确"
+- 熟悉几何标定常量（`Y_TCP`/`L_TCP`/`PHI_TCP`）对 FK/IK 一致性的影响
+- 掌握直连串口模式（`--direct`）的底层调试
 - 理解 DLS 数值法 IK 的阻尼因子调参
 
 **常见问题与解决**：
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| IK 库 ImportError | PYTHONPATH 未设置 | `export PYTHONPATH=~/ros2_ws/src/xflz_eai_car1/arm:$PYTHONPATH` |
-| 闭环验证误差大 | 浮点累积 | 减小 DH 参数舍入误差 |
-| 补偿后误差仍大 | offset 测量不准 | 多人测量取平均或重新标定 |
-| 直连串口与 ROS2 冲突 | 同时使用 | 二选一 |
-| 数值法不收敛 | 阻尼因子过小 | 增大 λ 到 0.5 |
+| IK 库 ImportError | 未在 `.../arm/kinematics/` 目录运行 / 搜索路径不对 | `cd .../arm/kinematics` 后运行，或 `export PYTHONPATH=~/ros2_ws/src/xflz_eai_car1/arm/kinematics:$PYTHONPATH` |
+| 闭环验证误差大 | IK 与 FK 工具体模型不一致（**当前真实存在**） | 先用 `pitch=90°` 的点定位基线；超差点记入报告，不要调大容差掩盖 |
+| 求解成功但姿态错 | 静默偏差（`error` 为空） | 每次都用 FK 反算核对；>1.5mm 即不可用 |
+| 直连串口与 ROS2 冲突 | 同时使用 | 二选一，直连前 `cleanup_ros.sh` |
+| 找不到数值法实现 | Python 端只有解析法 | 数值法在 Web 仿真器 `ik-numerical.js`（见实验 4） |
 
 ### 1.8 思考题
 
 1. 为什么 car1 选用解析法 IK 而非数值法作为主路径？在什么场景下需要切到数值法？
-2. 系统偏移补偿（software offset）与修改 DH 参数的 trade-off 是什么？哪种更优？
+2. `pitch=90°` 时闭环几乎无误差、而 `pitch=180°/0°` 时误差很大——从 FK/IK 的**工具体（J4→TCP）建模**角度分析可能的原因。
 3. DLS 中的阻尼因子 λ 如何选择？是否存在自适应 λ 的策略？
 4. 闭环验证的"成功率 < 1.5mm"指标能否完全反映 IK 性能？为什么？
-5. 在直连串口模式下，机械臂急停（断电）后 IK 解是否仍可复用？为什么？
+5. `solution.error` 为空代表什么？为什么不能只凭它判断 IK 是否可用？
 
 ### 1.9 实验报告要求
 
-**评分标准**：IK 库 API 使用 15 分 + FK/IK 闭环验证 20 分 + 系统偏移识别与补偿 25 分 + 直连串口调试 15 分 + 解析vs数值对比 10 分 + 实验报告 15 分 = 100 分。
+**评分标准**：IK 库 API 使用 15 分 + FK/IK 闭环验证（含误差归因）30 分 + 几何标定/补偿理解 15 分 + 直连串口调试 15 分 + 解析vs数值对比 10 分 + 实验报告 15 分 = 100 分。
 
 ---
 
@@ -3858,7 +3714,7 @@ if __name__ == "__main__":
 
 ## 实验6：机械臂IK固定抓取实验（4h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/`，未复制到 `source-codes/EXP005/exp06/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `arm_controller.py`、`/arm/target_pose` 话题、`/arm/pick`、`/arm/place` 服务等抓取流程源码。
+> 本实验源码位于 `ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/`（`arm_controller.py`）。涉及接口：话题 `/arm_controller/target_pose`、`/arm_controller/set_pick_target`；服务 `/arm_controller/pick`、`/arm_controller/place`、`/arm_controller/go_home`、`/arm_controller/go_work`、`/arm_controller/emergency_stop`、`/arm_controller/set_gripper`。
 
 > 📌 **本实验直接进行实机抓取**，**不再包含 Gazebo 仿真案例**（grasp_demo 引导性介绍已在实验 1 步骤 7 中完成；本实验聚焦于真实环境下的固定位置抓取 pipeline）。
 
@@ -3866,21 +3722,21 @@ if __name__ == "__main__":
 
 本实验对应第 6 章"固定位置IK抓取"，覆盖以下 9 个知识点：
 
-- 6.1.1 target_pose > 流程 > 通过 `/arm/target_pose` (PoseStamped) 设置目标点，调用 `/arm/pick` 服务执行
-- 6.1.2 /arm/place > 概念 > `/arm/place` 服务将物体放置到指定坐标，自动控制夹爪开合
-- 6.1.3 分步移动 > 原理 > 分步移动策略：先转底座 J1 对准目标，再驱动 J2-J5 到目标姿态，避免奇异
-- 6.2.1 gripper_depth > 概念 > gripper_depth 控制夹爪下探深度，需根据物体高度调整
-- 6.2.2 pre_grasp_height > 流程 > pre_grasp_height 与 lift_height 决定预抓取与抬升的安全高度
-- 6.2.3 grasp_pitch > 原理 > grasp_pitch 控制末端俯仰角，水平抓取设为 0°，斜面抓取需正向倾斜
-- 6.3.1 软限位 > 概念 > 关节软限位在 arm_controller 中嵌入，超界时拒绝执行并报警
-- 6.3.2 奇异检测 > 流程 > 奇异位姿检测通过 Jacobian 条件数阈值实现，自动切换到备用解
-- 6.3.3 失败回退 > 原理 > 抓取失败回退机制：先抬升再重试，连续 N 次失败后报警
+- 6.1.1 目标话题 > 流程 > `/arm_controller/target_pose`(PoseStamped) 会**立即 IK 并移动**；`/arm_controller/set_pick_target` **只存目标不动臂**
+- 6.1.2 pick/place 服务 > 概念 > `/arm_controller/pick`、`/arm_controller/place` 均为 `std_srvs/srv/Trigger`（命令体留空），按各自缓存的目标执行抓/放
+- 6.1.3 分步移动 > 原理 > `_move_stepwise()`：仅当底座转角 >0.05 rad 时先只转 J1（占 40% 时长），再动 J2–J5（60%）
+- 6.2.1 gripper_depth > 概念 > 下探深度（米）：从目标表面再往下走多少。默认 0.0 = 夹爪停在检测到的表面点
+- 6.2.2 pre_grasp_height > 流程 > 接近/退出的预抓取高度（默认 0.03m）。**`lift_height` 参数存在但代码中从未使用**
+- 6.2.3 grasp_pitch > 原理 > 末端俯仰角（弧度）：**0=工具朝上、π/2=水平、π=垂直朝下**（默认 π）
+- 6.3.1 软限位 > 概念 > `_check_limits()` 检查 5 关节是否在 `JOINT_LIMITS_RAD`（均 ±2.356 rad/±135°）内，超限报错拒绝执行
+- 6.3.2 抓取序列 > 流程 > `_execute_pick()` 6 步：开爪→移到 z+pre_grasp_height→下探到 z-gripper_depth→合爪→退回 z+pre_grasp_height→移到 post_grasp_pose
+- 6.3.3 失败处理 > 原理 > **无重试机制**：任一步异常即中止，`pick_callback` 返回 `success=False` + 错误信息
 
 ### 1.2 实验目标
 
-1. 掌握 `/arm/target_pose` 话题与 `/arm/pick`、`/arm/place` 服务的工作流程 — 流程掌握
+1. 掌握 `/arm_controller/target_pose`、`/arm_controller/set_pick_target` 话题与 `/arm_controller/pick`、`/arm_controller/place` 服务的工作流程 — 流程掌握
 2. 独立完成从设置目标到执行抓取的完整实机抓取流程 — 独立完成
-3. 能够调优抓取参数（gripper_depth、pre_grasp_height、lift_height、grasp_pitch）— 独立完成
+3. 能够调优抓取参数（gripper_depth、pre_grasp_height、grasp_pitch）— 独立完成
 4. 理解分步移动策略与关节限位保护机制的设计思想 — 迁移应用
 
 ### 1.3 实验环境
@@ -3890,16 +3746,16 @@ if __name__ == "__main__":
 | 硬件 | 具身智能实验箱B2 / 机器人小车C1（含 5 自由度机械臂、工作桌面、待抓取物体如立方块/球/圆柱） |
 | OS | Ubuntu 22.04 + ROS2 Humble |
 | Python | 3.10 |
-| 核心库 | rclpy、ros2-control、moveit_ros_planning_interface |
-| 控制包 | car1_arm_controller（含 arm_controller.py 与 /arm/pick 服务） |
-| 抓取参数 | gripper_depth=0.02m、pre_grasp_height=0.05m、lift_height=0.10m、grasp_pitch=0° |
-| 主入口 | `arm/car1_arm_controller/car1_arm_controller/arm_controller.py`（**实机抓取**）<br>`/arm/target_pose` (话题)、`/arm/pick` (服务)、`/arm/place` (服务) |
+| 核心库 | rclpy、pyserial、numpy（**不使用** ros2-control / MoveIt） |
+| 控制包 | car1_arm_controller（含 `arm_controller.py` 与 `/arm_controller/pick` 服务） |
+| 抓取参数（节点参数默认值） | gripper_depth=0.0、pre_grasp_height=0.03、lift_height=0.05（**未使用**）、grasp_pitch=π(180°) |
+| 主入口 | `arm/car1_arm_controller/car1_arm_controller/arm_controller.py`（**实机抓取**）<br>话题 `/arm_controller/target_pose`、`/arm_controller/set_pick_target`；服务 `/arm_controller/pick`、`/arm_controller/place` |
 
 ### 1.4 实验难度
 
 - 难度: ⭐⭐⭐ 难
-- 重点: target_pose → pick/place 流程；分步移动策略；实机抓取参数调优
-- 难点: 抓取参数（gripper_depth、pre_grasp_height）的实机调优；奇异检测与回退机制
+- 重点: 目标话题 → pick/place 流程；分步移动策略；实机抓取参数调优
+- 难点: 抓取参数（gripper_depth、pre_grasp_height）的实机调优；在 IK 静默偏差（见实验5）下判断目标点是否安全
 
 ### 1.5 实验现象
 
@@ -3937,8 +3793,9 @@ if __name__ == "__main__":
 >
 >    ```bash
 >    python3 /home/iflytek/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct
->    # 菜单中选 [1] Single Point IK，输入目标 X/Y/Z/Pitch，仅查看解与 5 路 PWM
->    # 确认所有 PWM 都在 500~2500 安全区间、且无明显接近极限后再下真实 pick/place
+>    # 按提示依次输入 X/Y/Z/Pitch（可回车用默认），看打印的 5 路 PWM 与 FK 误差
+>    # 问「是否发送到实机? (y/n) [n]」先输 n，仅查看解
+>    # 确认所有 PWM 都在 500~2500 安全区间、且 FK 误差 < 1.5mm 后再下真实 pick/place
 >    ```
 >
 >    ![image-20260831190344006](assets/image-20260831190344006.png)
@@ -3988,7 +3845,7 @@ if __name__ == "__main__":
 >   1. 确认物体位置已用刻度尺预标定（不要靠目测）
 >   2. 桌面清空其他杂物，避免夹爪拖带
 >   3. **先在 `/home/iflytek/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test` 执行 `python test_servo_direct.py`** 的 `interactive_mode` 验证设备状态
->   4. **先单独调用 `/arm/target_pose` 查看 IK 解的 5 路 PWM**，确认无任何一路接近 500 或 2500 极限
+>   4. **先单独调用 `/arm_controller/target_pose` 查看 IK 解的 5 路 PWM**，确认无任何一路接近 500 或 2500 极限
 >   5. 任何一路 PWM 偏离合理区间（500~2500, center=1500）立即 Ctrl+C 中断
 > - 设备虽自带堵转保护，但抓取失败 / 撞桌面 / 撞物体仍会损坏舵机齿轮；**PWM 指令误用或目标坐标错位导致的设备损坏属于使用问题，不在质保范围**
 > - 首次实机抓取建议**逐步逼近**：先抓高一些（z 抬 0.05m）、远一些（r 缩 0.05m）的位置，验证流程 OK 再逼近目标
@@ -4021,288 +3878,177 @@ graph LR
 **知识点讲解**：
 
 **实机抓取流程（6.1.1）**
-- **原理**：实机抓取流程相比早期原型更严谨：(1) 接收 `target_pose` 后调用 IK 库（带系统偏移补偿）反解 5 关节角；(2) 调用 `pick_service_callback` 执行抓取，内部维护一个"抓取状态机"（IDLE→APPROACH→DESCEND→GRASP→LIFT→HOLD）；(3) 每个状态转换都做软限位检查和奇异检测；(4) 抓取成功后保持 HOLD 状态，等待 place 或 abort。
-- **源码对应**：`arm_controller.py` 中 `class GraspStateMachine`
+- **原理**：`arm_controller` 用 `solve_analytical_ik_auto_pitch` 反解关节角（**无独立系统偏移补偿**），再调 `_execute_pick()` 执行。抓取目标来自 `pick_target`（由 `/arm_controller/target_pose` 或 `/arm_controller/set_pick_target` 写入）。**没有状态机**——pick 就是一个顺序执行的函数。
+- **源码对应**：`arm_controller.py` 中 `pose_callback()` / `set_pick_target_callback()` / `pick_callback()` / `_execute_pick()`
 
 **place 服务（6.2.2）**
-
-- **原理**：`/arm/place` 服务将物体放置到指定坐标。place 流程与 pick 对称：(1) 从当前 HOLD 状态启动；(2) 移动到 place_pose 上方；(3) 下放到目标高度；(4) 夹爪张开释放；(5) 抬升并回到 IDLE。place 可以指定不同的 gripper_depth 实现"轻放"。
-- **源码对应**：`arm_controller.py` 中 `place_service_callback()`
+- **原理**：`/arm_controller/place`(Trigger) 把物体放到 `place_target`：移到 z+pre_grasp_height(分步) → 下探到 z → 开爪 → 上抬到 z+pre_grasp_height+0.03，日志 `place complete`。
+- **源码对应**：`arm_controller.py` 中 `place_callback()` / `_execute_place()`
 
 **分步移动策略（6.2.3）**
-
-- **原理**：car1 的抓取采用"分步移动"策略：(1) **第一阶段**：只转动底座 J1 对准目标方位（不改变其他关节）；(2) **第二阶段**：保持 J1 不变，驱动 J2-J5 到目标姿态。这种"先粗后精"的策略避免：(1) 五关节同时动导致的奇异；(2) 末端轨迹不可预测；(3) 关节速度叠加超出限制。分步移动是工业机械臂的标配策略。
-- **源码对应**：`arm_controller.py` 中 `def two_stage_move()`
+- **原理**：`_move_stepwise()` 仅在**底座转角 >0.05 rad** 时先只转 J1（用 40% 时长），随后再把 J2–J5 一起动到位（60% 时长），避免"五关节同时大幅运动"导致轨迹不可预测。
+- **源码对应**：`arm_controller.py` 中 `def _move_stepwise()`
 
 **操作步骤**：
 
-1. 启动实机 arm_controller：
+1. 先起 bringup（提供 `/servo_controller` 订阅者与 `/joint_states`），再起 arm_controller：
    ```bash
-   #终端1
-   source /opt/ros/humble/setup.bash
-   source /home/iflytek/ros2_ws/install/setup.bash
-   ros2 launch car1_arm_controller arm_controller.launch.py
-   #终端2
-   source /opt/ros/humble/setup.bash
-   source /home/iflytek/ros2_ws/install/setup.bash
+   # 终端1
+   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+   ros2 launch car1_bringup bringup.launch.py
+   # 终端2
+   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
    ros2 launch car1_arm_controller arm_controller.launch.py
    ```
-   
-2. 查看抓取相关服务与话题：
+
+2. 查看服务与话题：
    ```bash
-   ros2 service list | grep -E '(pick|place|target)'
-   # 预期：/arm/pick, /arm/place, /arm/target_pose
-   ros2 topic list | grep -E '(grasp|target)'
+   ros2 service list | grep arm_controller
+   # 预期：/arm_controller/pick  /place  /go_home  /go_work  /emergency_stop  /set_gripper
+   ros2 topic list | grep arm_controller
+   # 预期：/arm_controller/target_pose  /arm_controller/set_pick_target  /arm_controller/joint_command
    ```
 
-3. 查看 Pick 服务定义：
+3. 查看 pick 服务定义（**是 Trigger，无请求字段**）：
    ```bash
-   ros2 service show car1_arm_msgs/srv/Pick
-   # 预期：
-   # geometry_msgs/PoseStamped target_pose
-   # float32 gripper_depth
-   # float32 pre_grasp_height
-   # float32 lift_height
-   # float32 grasp_pitch
-   # ---
-   # bool success
-   # string message
+   ros2 service type /arm_controller/pick        # 预期：std_srvs/srv/Trigger
+   ros2 interface show std_srvs/srv/Trigger      # 只有空请求 + success/message
    ```
 
-4. 设置目标点（实机桌面物体）：
+4. 缓存抓取目标点（**只存不动**，`y=1,w=0` → pitch=180° 朝下）：
    ```bash
-   # (可选) 先回到工作位姿，确保初始姿态安全
-   ros2 service call /arm_controller/go_work std_srvs/srv/Trigger
-   
-   # 1. 缓存抓取目标点（只存不动，y=1,w=0 → pitch=180° 朝下）
-   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped "
-   header: {frame_id: 'base_link'}
-   pose:
-     position: {x: 0.25, y: 0.0, z: 0.08}
-     orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}
-   "
-   ```
-   
-5. 触发抓取（实机）：
-   ```bash
-   ros2 service call /arm/pick car1_arm_msgs/srv/Pick "
-   target_pose:
-     header: {frame_id: 'base_link'}
-     pose:
-       position: {x: 0.25, y: 0.0, z: 0.05}
-       orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
-   gripper_depth: 0.02
-   pre_grasp_height: 0.05
-   lift_height: 0.10
-   grasp_pitch: 0.0
-   "
-   # 预期：
-   # - 底座先转动对准
-   # - 大臂/小臂下压到目标
-   # - 夹爪闭合
-   # - 抬升
-   # 终端打印 success: True
+   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
+   "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.25, y: 0.0, z: 0.08}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
+   # 预期日志：set pick_target (no move): (0.250, 0.000, 0.080), pitch=180.0 deg
    ```
 
-6. 触发放置：
+5. 触发抓取（Trigger 命令体留空）：
    ```bash
-   # 1. 缓存放置目标点（换坐标即可，比如放到左侧）
-   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped "
-   header: {frame_id: 'base_link'}
-   pose:
-     position: {x: 0.0, y: 0.20, z: 0.08}
-     orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}
-   "
-   # 2. 触发放置：下放→开爪→抬升
+   ros2 service call /arm_controller/pick std_srvs/srv/Trigger
+   # 预期：日志 `pick at (...)`, 约 5~8s 完成 6 步序列，最后 `pick complete (returned to post-grasp pose)`
+   # 服务返回 success=True, message='pick done'
+   ```
+
+6. 触发放置（换坐标后再发一次 set_pick_target）：
+   ```bash
+   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
+   "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.0, y: 0.20, z: 0.08}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
    ros2 service call /arm_controller/place std_srvs/srv/Trigger
+   # 预期：日志 `place complete`
    ```
-   
-7. 观察分步移动：
-   - 在终端开启 DEBUG 日志：`export RCUTILS_LOGGING_SEVERITY=DEBUG`
-   - 重新启动 arm_controller
-   - 观察抓取过程日志中的 "STAGE 1"（底座旋转）、"STAGE 2"（臂部运动）
 
-8. 抓取状态查询：
+7. 观察分步移动：把目标点设到偏侧面（y 明显非 0），观察"底座先单独转到位，之后手臂才动"。触发条件：`|Δq1| > 0.05 rad`（约 2.9°）。
+
+8. 想调抓取参数（如 `gripper_depth`），只能**启动时**改节点参数：
    ```bash
-   ros2 topic echo /arm/grasp_state
-   # 字段：current_state (string), target_pose, progress (0-100)
-   # 状态值：IDLE, APPROACH, DESCEND, GRASP, LIFT, HOLD, PLACE_DESCEND, RELEASE
+   ros2 launch car1_arm_controller arm_controller.launch.py \
+     --ros-args -p gripper_depth:=0.01 -p pre_grasp_height:=0.05
    ```
+   （参数不是服务请求字段，运行中发命令改不了）
 
 **易错点**：
 
-- ⚠️ **抓取过程中机械臂撞桌面** → **解决**：增大 `pre_grasp_height`
-- ⚠️ **place 后物体不释放** → **解决**：检查夹爪 open 指令是否到达
-- ⚠️ **分步移动卡在 STAGE 1** → **解决**：检查 J1 限位与目标方位
+- ⚠️ **抓取过程中机械臂撞桌面** → **解决**：增大 `pre_grasp_height`；注意 `lift_height` **改了没用**（源码未使用）
+- ⚠️ **place 后物体不释放** → **解决**：检查夹爪 open 指令是否到达（`_set_gripper(True)` → id5 到 PWM 800）
+- ⚠️ **找不到 `/arm/grasp_state`、`/arm/safety_alerts`、STAGE 日志** → **解决**：这些**都不存在**；进度看 arm_controller 自己的终端日志
 
 ---
 
 #### 步骤4：抓取参数调优（阶段三：能改造，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`arm_controller.py` 中 `GraspConfig` 类
+> ⚠️ 本步骤对应 src 目录源码：`arm_controller.py` 中 `__init__` 的 `declare_parameters(...)`（**没有 `GraspConfig` 类**）
 
 **知识点讲解**：
 
-**gripper_depth 参数（6.3.1）**
-- **原理**：`gripper_depth` 控制夹爪下探深度（米），即从目标表面下探的距离。典型值：0.01m（小物体，浅夹）、0.02m（标准立方块）、0.03m（深夹持）。值过小夹持不牢，值过大会撞到桌面。
-- **源码对应**：`GraspConfig.gripper_depth` 字段
+**gripper_depth（6.3.1）**
+- **原理**：下探深度（米）——从目标表面**再**往下走多少。**默认 0.0**：`_execute_pick` 下探到 `z - gripper_depth`，所以 0.0 表示夹爪停在检测到的表面点（夹爪"骑"在物体上，不下探）。调大夹得更深，过大会撞桌面。
+- **源码对应**：参数 `gripper_depth`（默认 0.0）
 
 **pre_grasp_height 与 lift_height（6.3.2）**
-- **原理**：`pre_grasp_height` 是接近阶段的预抓取高度（目标上方），`lift_height` 是抓取后的抬升高度。典型值：0.05m、0.10m。这两个参数保证了：(1) 接近时不会从侧面撞到物体；(2) 抬升时不会拖动物体。
-- **源码对应**：`GraspConfig.pre_grasp_height`、`lift_height`
+- **原理**：`pre_grasp_height`（默认 **0.03m**）是接近/退出时的预抓取高度（目标上方 `z+pre_h`）。**`lift_height` 虽然声明了（默认 0.05）并被 `_execute_pick` 读入，但之后从未使用**——抬升实际由"退回 z+pre_grasp_height"和 `post_grasp_pose` 决定。
+- **源码对应**：参数 `pre_grasp_height` / `lift_height`（后者**未使用**）
 
-**grasp_pitch 参数（6.3.3）**
-- **原理**：`grasp_pitch` 控制末端俯仰角（弧度），0° 为水平抓取，正值上仰，负值下俯。典型：(1) 桌面物体用 0°；(2) 斜面物体用 -0.3 rad（末端下俯匹配斜面）；(3) 顶部抓取用 +π/2（垂直向下）。
-- **源码对应**：`GraspConfig.grasp_pitch`
+**grasp_pitch（6.3.3）**
+- **原理**：末端俯仰角（弧度），**本库从竖直量起：0=工具朝上、π/2(90°)=水平、π(180°)=垂直朝下**。默认 **π**（抓桌面物体的标准姿态）。写成 0 会让夹爪朝上，抓不到桌面物体。
+- **源码对应**：参数 `grasp_pitch`（默认 `math.pi`）
 
-**操作步骤**：
+**操作步骤**（参数只能在**启动时**通过 `--ros-args -p` 传，服务无字段）：
 
-1. gripper_depth 调优实验：
+1. gripper_depth 调优：
    ```bash
-   # 标准抓取（gripper_depth=0.02）
-   ros2 service call /arm/pick ... gripper_depth: 0.02
-   # 观察：抓取后立方块稳定
-   
-   # 浅夹（gripper_depth=0.01）
-   ros2 service call /arm/pick ... gripper_depth: 0.01
-   # 观察：抓取后立方块可能掉落
-   
-   # 深夹（gripper_depth=0.03）
-   ros2 service call /arm/pick ... gripper_depth: 0.03
-   # 观察：夹爪可能撞桌面
+   ros2 launch car1_arm_controller arm_controller.launch.py --ros-args -p gripper_depth:=0.01
+   # 再 set_target + pick，观察下探深度变化
    ```
-
 2. pre_grasp_height 调优：
    ```bash
-   # 低接近（0.02m）
-   ros2 service call /arm/pick ... pre_grasp_height: 0.02
-   # 观察：可能撞到高物体
-   
-   # 高接近（0.10m）
-   ros2 service call /arm/pick ... pre_grasp_height: 0.10
-   # 观察：接近时间增加但更安全
+   ros2 launch car1_arm_controller arm_controller.launch.py --ros-args -p pre_grasp_height:=0.05
+   # 调大更安全（接近时不易侧面撞物体），但耗时略增
    ```
-
-3. lift_height 调优：
+3. lift_height 实验（**验证它是死参数**）：
    ```bash
-   # 低抬升（0.05m）
-   ros2 service call /arm/pick ... lift_height: 0.05
-   # 观察：可能拖到桌面边缘
-   
-   # 高抬升（0.20m）
-   ros2 service call /arm/pick ... lift_height: 0.20
-   # 观察：完全脱离桌面
+   # 分别用 -p lift_height:=0.05 和 0.20 启动，观察 pick 抬升高度是否变化 —— 不变
    ```
-
 4. grasp_pitch 调优：
    ```bash
-   # 水平抓取（pitch=0）
-   ros2 service call /arm/pick ... grasp_pitch: 0.0
-   # 观察：夹爪水平
-   
-   # 斜面抓取（pitch=-0.3）
-   ros2 service call /arm/pick ... grasp_pitch: -0.3
-   # 观察：夹爪下俯约 17°
+   ros2 launch car1_arm_controller arm_controller.launch.py --ros-args -p grasp_pitch:=3.14159
+   # π=朝下；1.5708(90°)=水平；不要用 0（那是朝上）
    ```
-
-5. 参数配置文件（推荐做法）：
-   ```bash
-   cat ~/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/config/grasp_params.yaml
-   # 预期：
-   # grasp_config:
-   #   default:
-   #     gripper_depth: 0.02
-   #     pre_grasp_height: 0.05
-   #     lift_height: 0.10
-   #     grasp_pitch: 0.0
-   #   cube_small:
-   #     gripper_depth: 0.015
-   #     pre_grasp_height: 0.04
-   #   sphere_large:
-   #     gripper_depth: 0.03
-   #     pre_grasp_height: 0.08
-   ```
-
-6. 性能基线（实验报告必填）：
-
-   | 抓取参数 | 标准 | 立方块 | 圆柱 | 球形 |
-   |---------|-----|--------|------|------|
-   | gripper_depth | 0.02m | 0.02m | 0.025m | 0.03m |
-   | pre_grasp_height | 0.05m | 0.05m | 0.06m | 0.08m |
-   | lift_height | 0.10m | 0.10m | 0.12m | 0.10m |
-   | grasp_pitch | 0° | 0° | 0° | -10° |
-   | 成功率 | 100% | 95% | 90% | 85% |
+5. 记录实验数据（报告用）：每个参数取 2~3 个值，记录**是否抓成功 / 是否撞桌 / 夹爪读回 PWM**（读回方法见实验7）。
 
 **易错点**：
-- ⚠️ **参数过激导致碰撞** → **解决**：从标准值开始，逐步±0.005 调整
-- ⚠️ **不同物体参数混用** → **解决**：使用 grasp_params.yaml 配置不同物体类型
+- ⚠️ **以为有 `config/grasp_params.yaml` 可分类配参** → **解决**：该文件不存在；参数是节点参数，只能启动时传或改 launch
+- ⚠️ **把 grasp_pitch 设成 0 以为"水平抓取"** → **解决**：0 是**朝上**；水平是 90°，朝下是 180°
 
 ---
 
 #### 步骤5：关节限位保护与奇异处理（阶段三：能改造，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`arm_controller.py` 中 `check_safety_limits()` 与 `detect_singularity()`
+> ⚠️ 本步骤对应 src 目录源码：`arm_controller.py` 中 `_check_limits()` 与 `emergency_stop_callback()`（**没有 `check_safety_limits()` / `detect_singularity()`**）
 
 **知识点讲解**：
 
 **关节软限位（6.4.1）**
-- **原理**：car1 的关节软限位在 `servo_limits.yaml` 中定义，例如 joint1: [500, 2500]（PWM）。arm_controller 在每次执行前检查所有目标 PWM 是否在范围内，超界时拒绝执行并返回错误。软限位相比 URDF 中的硬限位更灵活：硬限位是"绝对禁止"，软限位是"通常禁止但可调"。
-- **源码对应**：`config/servo_limits.yaml`
+- **原理**：限位是代码里的常量 `JOINT_LIMITS_RAD`：5 个关节均为 **±2.356 rad（±135°）**。每次下发前 `_check_limits()` 检查目标关节角是否越界，越界则打 error 日志并**拒绝执行**（`_solve_or_raise` 抛异常，pick/place 返回 `success=False`）。
+- **源码对应**：`arm_controller.py` 中 `JOINT_LIMITS_RAD` / `_check_limits()`（**不是** `config/servo_limits.yaml`，该文件不存在）
 
-**奇异位姿检测（6.4.2）**
+**没有奇异检测（6.4.2）**
+- **原理**：源码中**没有**基于 Jacobian 条件数的奇异检测，也不会"自动切换备用解"。IK 侧只做可达性检查（超出 maxReach 0.4029m 才报错）；多解由 `ik_analytical` 内部的 elbow 分支枚举处理。
+- **源码对应**：无
 
-- **原理**：car1 通过计算雅可比矩阵的条件数（condition number）检测奇异。当 cond(J) > 阈值（如 100）时判定为奇异，自动切换到备用解（elbow up/down 切换）。条件数大表示雅可比接近奇异，IK 解不稳定。
-- **源码对应**：`arm_controller.py` 中 `def detect_singularity()`
-
-**抓取失败回退（6.4.3）**
-
-- **原理**：car1 实现"先抬升再重试"机制：(1) 抓取失败时（夹爪未检测到物体或超时）；(2) 抬升到 safe height；(3) 重新尝试 1-2 次；(4) 连续失败后报警并回到 IDLE。这种"渐进式回退"避免立即放弃，提高抓取成功率。
-- **源码对应**：`arm_controller.py` 中 `grasp_retry_count` 字段
+**急停（6.4.3）**
+- **原理**：`/arm_controller/emergency_stop`(Trigger) 把 `stop_flag` 置真；`_wait()` 每 0.05s 轮询，检出后抛 `emergency stop`，当前 pick/place 立即中止。**没有"失败重试"**——失败一次就结束。
+- **源码对应**：`arm_controller.py` 中 `emergency_stop_callback()` / `_check_stop()` / `_wait()`
 
 **操作步骤**：
 
-1. 软限位测试（实机）：
+1. 软限位测试（预期被拒，机械臂不动）：
    ```bash
-   # 尝试将 joint2 设为超出限位的目标
-   ros2 topic pub --once /arm/joint_command car1_arm_msgs/msg/JointCommand "
-   ids: [0, 2, 0, 0, 0]
-   pwms: [0, 3000, 0, 0, 0]
-   "
-   # 预期：终端打印 WARN: pwm[2]=3000 exceeds limit 2400, rejected
-   # 机械臂不动
+   # joint_command 是 sensor_msgs/JointState（5 个 position，单位 rad）
+   ros2 topic pub --once /arm_controller/joint_command sensor_msgs/msg/JointState \
+   "{name: ['arm_joint1','arm_joint2','arm_joint3','arm_joint4','arm_joint5'], position: [0.0, 3.0, 0.0, 0.0, 0.0]}"
+   # 预期日志：limit violation: arm_joint2=171.9 deg (range [-135.0, 135.0])
    ```
 
-2. 奇异位姿测试：
-   - 目标点设置到 base_link 正下方 (0, 0, 0.05)
-   - 预期：IK 求解返回奇异警告，机械臂使用备用解
-
-3. 抓取失败回退测试：
-   - 设置目标点为实际无物体的位置
-   - 调用 pick 服务
-   - 观察：第 1 次失败 → 抬升 → 第 2 次重试 → 仍失败 → 报警回 IDLE
-   - 终端日志显示 "Grasp failed, retry 1/2"
-
-4. 抓取成功率统计（实验报告加分项）：
-   - 同一目标点抓取 10 次，统计成功率
-   - 修改 gripper_depth ±0.005，观察成功率变化
-   - 绘制成功率曲线
-
-5. 报警机制：
+2. 不可达点测试：
    ```bash
-   ros2 topic echo /arm/safety_alerts
-   # 字段：alert_type (string), joint_id (uint8), value (float32), message (string)
-   # 触发条件：超限、奇异、连续失败
+   ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
+   "{header: {frame_id: 'base_link'}, pose: {position: {x: 1.0, y: 0.0, z: 1.0}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
+   ros2 service call /arm_controller/pick std_srvs/srv/Trigger
+   # 预期：success=False，message 含 'Out of reach'
    ```
 
-6. 强制回 IDLE：
+3. 急停测试：
    ```bash
-   ros2 service call /arm/abort car1_arm_msgs/srv/Abort
-   # 预期：立即停止当前动作并回到 IDLE
+   ros2 service call /arm_controller/emergency_stop std_srvs/srv/Trigger
+   # 预期：序列中断，pick 返回 success=False, message 含 'emergency stop'
+   # 注意：当前已在执行的舵机插值（duration 1.5s）仍会走完
    ```
+
+4. 抓取成功率统计（报告加分项）：同一目标点重复 pick 10 次统计成功率；改 `gripper_depth` 观察变化。
 
 **易错点**：
-- ⚠️ **软限位过严导致正常动作被拒** → **解决**：检查 servo_limits.yaml 是否合理
-- ⚠️ **奇异检测过于敏感** → **解决**：调高 cond(J) 阈值到 200
+- ⚠️ **找 `servo_limits.yaml` / `/arm/safety_alerts` / `/arm/abort`** → **解决**：**都不存在**；限位是代码常量，急停走 `/arm_controller/emergency_stop`
+- ⚠️ **期待"失败自动重试 N 次"** → **解决**：没有重试，失败即结束
 
 ---
 
@@ -4314,116 +4060,93 @@ graph LR
    - 桌面放 3 个不同物体：立方块、圆柱、球
    - 标记每个物体的位置（用刻度尺）
 
-2. 启动实机环境：
+2. 启动实机环境（先 bringup，再 arm_controller）：
    ```bash
-   ros2 launch car1_arm_controller arm_controller.launch.py
+   ros2 launch car1_bringup bringup.launch.py                    # 终端1
+   ros2 launch car1_arm_controller arm_controller.launch.py      # 终端2
    ```
 
-3. 编写 Python 抓取脚本：
+3. 编写抓取脚本（**真接口是 `Trigger` 服务 + `set_pick_target` 话题**，没有 `car1_arm_msgs/srv/Pick`）：
    ```python
    # multi_object_pick.py
+   import time
    import rclpy
    from rclpy.node import Node
-   from car1_arm_msgs.srv import Pick, Place
+   from std_srvs.srv import Trigger
    from geometry_msgs.msg import PoseStamped
-   import time
-   
-   class MultiObjectPicker(Node):
+
+   class Picker(Node):
        def __init__(self):
            super().__init__('multi_object_picker')
-           self.pick_cli = self.create_client(Pick, '/arm/pick')
-           self.place_cli = self.create_client(Place, '/arm/place')
+           self.set_target = self.create_publisher(
+               PoseStamped, '/arm_controller/set_pick_target', 10)
+           self.pick_cli = self.create_client(Trigger, '/arm_controller/pick')
+           self.place_cli = self.create_client(Trigger, '/arm_controller/place')
            self.pick_cli.wait_for_service()
            self.place_cli.wait_for_service()
-       
-       def pick(self, x, y, z, depth=0.02, pre_h=0.05, lift_h=0.10):
-           req = Pick.Request()
-           req.target_pose = PoseStamped()
-           req.target_pose.header.frame_id = 'base_link'
-           req.target_pose.pose.position.x = x
-           req.target_pose.pose.position.y = y
-           req.target_pose.pose.position.z = z
-           req.target_pose.pose.orientation.w = 1.0
-           req.gripper_depth = depth
-           req.pre_grasp_height = pre_h
-           req.lift_height = lift_h
-           req.grasp_pitch = 0.0
-           future = self.pick_cli.call_async(req)
-           rclpy.spin_until_future_complete(self, future)
-           return future.result()
-       
+
+       def _pose(self, x, y, z):
+           # (y=1, w=0) 绕 Y 转 180° → pitch=180° → 夹爪垂直朝下
+           m = PoseStamped()
+           m.header.frame_id = 'base_link'
+           m.pose.position.x, m.pose.position.y, m.pose.position.z = x, y, z
+           m.pose.orientation.y = 1.0
+           m.pose.orientation.w = 0.0
+           return m
+
+       def _call(self, cli):
+           f = cli.call_async(Trigger.Request())
+           rclpy.spin_until_future_complete(self, f)
+           return f.result()
+
+       def pick(self, x, y, z):
+           self.set_target.publish(self._pose(x, y, z))   # 只存目标，不动臂
+           time.sleep(0.2)
+           return self._call(self.pick_cli)
+
        def place(self, x, y, z):
-           req = Place.Request()
-           req.target_pose = PoseStamped()
-           req.target_pose.header.frame_id = 'base_link'
-           req.target_pose.pose.position.x = x
-           req.target_pose.pose.position.y = y
-           req.target_pose.pose.position.z = z
-           req.target_pose.pose.orientation.w = 1.0
-           future = self.place_cli.call_async(req)
-           rclpy.spin_until_future_complete(self, future)
-           return future.result()
-   
+           self.set_target.publish(self._pose(x, y, z))
+           time.sleep(0.2)
+           return self._call(self.place_cli)
+
    rclpy.init()
-   picker = MultiObjectPicker()
-   
-   # 物体 1：立方块
-   print("=== 抓取立方块 ===")
-   result = picker.pick(0.25, 0.0, 0.05, depth=0.02)
-   print(f"pick: success={result.success}")
-   if result.success:
-       time.sleep(2)
-       result = picker.place(0.0, 0.20, 0.05)
-       print(f"place: success={result.success}")
-   
-   # 物体 2：圆柱
-   print("=== 抓取圆柱 ===")
-   result = picker.pick(0.25, 0.10, 0.05, depth=0.025)
-   print(f"pick: success={result.success}")
-   if result.success:
-       time.sleep(2)
-       result = picker.place(0.0, 0.25, 0.05)
-       print(f"place: success={result.success}")
-   
+   p = Picker()
+   for name, tgt, dst in [
+       ('立方块', (0.25, 0.0,  0.05), (0.0, 0.20, 0.05)),
+       ('圆柱',   (0.25, 0.10, 0.05), (0.0, 0.25, 0.05)),
+   ]:
+       print(f"=== {name} ===")
+       r = p.pick(*tgt);  print('pick:', r.success, r.message)
+       if r.success:
+           time.sleep(1)
+           r = p.place(*dst); print('place:', r.success, r.message)
    rclpy.shutdown()
    ```
 
 4. 运行脚本：
    ```bash
    python3 multi_object_pick.py
-   # 观察：机械臂依次抓取两个物体并放置到不同位置
    ```
 
 5. 性能基线（实验报告必填）：
 
    | 指标 | 期望值 | 实测值 |
    |------|-------|-------|
-   | 单次 pick 时间 | < 8s |  |
-   | 单次 place 时间 | < 8s |  |
-   | 立方块抓取成功率 | > 90% |  |
-   | 圆柱抓取成功率 | > 85% |  |
-   | 球形抓取成功率 | > 80% |  |
-   | 抓取后物体保持时间 | > 5s |  |
+   | 单次 pick 时间 | 5~8s |  |
+   | 单次 place 时间 | ~5s |  |
+   | 抓取成功率 | 见实测 |  |
 
-6. 调试技巧：
+6. 调试：
    ```bash
-   # 监控抓取状态
-   ros2 topic echo /arm/grasp_state
-   
-   # 监控安全报警
-   ros2 topic echo /arm/safety_alerts
-   
-   # 监控 joint_states
-   ros2 topic echo /joint_states
-   
-   # 监控接触力（如果有）
-   ros2 topic echo /contact_forces
+   ros2 topic echo /joint_states                        # 真实关节角（来自 0x08 被动上报）
+   ros2 topic echo /car1_base_driver/bus_servo/states   # 原始上报：位置/温度/电压
+   # 注：/arm/grasp_state、/arm/safety_alerts、/contact_forces 都不存在
    ```
 
 **易错点**：
-- ⚠️ **机械臂卡在奇异位姿** → **解决**：增大目标点距 base_link 的距离
-- ⚠️ **抓取后物体掉落** → **解决**：增大 gripper_depth 或调整 grasp_pitch
-- ⚠️ **多物体抓取相互干扰** → **解决**：每次抓取前先 go_home 复位
+- ⚠️ **抓取后物体掉落** → **解决**：增大 `gripper_depth`
+- ⚠️ **物体位置不准导致撞桌/抓空** → **解决**：用刻度尺定标；先只发 `set_pick_target`（不动臂）确认 IK 解与 PWM 合理
+- ⚠️ **多个物体互相干扰** → **解决**：每轮前先 `ros2 service call /arm_controller/go_home std_srvs/srv/Trigger`
 
 ---
 
@@ -4434,153 +4157,121 @@ graph LR
 ```python
 # -*- coding: utf-8 -*-
 """
-实验6 demo：固定位置 IK 抓取 pipeline
-平台：B2 / C1
-前置：ros2 launch car1_arm_controller arm_controller.launch.py 已运行
+实验6 demo：固定位置 IK 抓取 pipeline（抓 → 放 → 复位）
+前置：bringup + arm_controller 已运行
 运行：python3 demo_grasp_pipeline.py
 """
+import time
 import rclpy
 from rclpy.node import Node
-from car1_arm_msgs.srv import Pick, Place, SetGripper
-from car1_arm_msgs.msg import JointCommand
+from std_srvs.srv import Trigger
 from geometry_msgs.msg import PoseStamped
-import time
-import math
 
 
 class GraspPipeline(Node):
     """完整的抓取-放置-复位 Pipeline"""
-    
+
     def __init__(self):
         super().__init__('grasp_pipeline')
-        self.pick_cli = self.create_client(Pick, '/arm/pick')
-        self.place_cli = self.create_client(Place, '/arm/place')
-        self.gripper_cli = self.create_client(SetGripper, '/arm/set_gripper')
-        self.joint_pub = self.create_publisher(JointCommand, '/arm/joint_command', 10)
-        
-        for cli, name in [(self.pick_cli, '/arm/pick'),
-                          (self.place_cli, '/arm/place'),
-                          (self.gripper_cli, '/arm/set_gripper')]:
-            while not cli.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info(f'Waiting for {name}...')
-    
+        self.set_target = self.create_publisher(
+            PoseStamped, '/arm_controller/set_pick_target', 10)
+        self.pick_cli = self.create_client(Trigger, '/arm_controller/pick')
+        self.place_cli = self.create_client(Trigger, '/arm_controller/place')
+        self.home_cli = self.create_client(Trigger, '/arm_controller/go_home')
+        for cli in (self.pick_cli, self.place_cli, self.home_cli):
+            cli.wait_for_service()
+
+    def _pose(self, x, y, z):
+        m = PoseStamped()
+        m.header.frame_id = 'base_link'
+        m.pose.position.x, m.pose.position.y, m.pose.position.z = x, y, z
+        m.pose.orientation.y = 1.0   # 绕 Y 180° → pitch=π → 夹爪垂直朝下
+        m.pose.orientation.w = 0.0
+        return m
+
+    def _call(self, cli, label):
+        f = cli.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self, f)
+        r = f.result()
+        self.get_logger().info(f'{label}: success={r.success}, msg={r.message}')
+        return r.success
+
     def go_home(self):
-        """回 home 位姿"""
-        msg = JointCommand()
-        msg.ids = [1, 2, 3, 4, 5]
-        msg.pwms = [1500, 2000, 1000, 1500, 1500]
-        for _ in range(100):  # 持续 2s
-            self.joint_pub.publish(msg)
-            time.sleep(0.02)
-        self.get_logger().info('Reached home')
-    
-    def pick_object(self, x, y, z, depth=0.02, pre_h=0.05, lift_h=0.10):
-        """抓取目标点"""
-        req = Pick.Request()
-        req.target_pose = PoseStamped()
-        req.target_pose.header.frame_id = 'base_link'
-        req.target_pose.pose.position.x = x
-        req.target_pose.pose.position.y = y
-        req.target_pose.pose.position.z = z
-        req.target_pose.pose.orientation.w = 1.0
-        req.gripper_depth = depth
-        req.pre_grasp_height = pre_h
-        req.lift_height = lift_h
-        req.grasp_pitch = 0.0
-        
-        self.get_logger().info(f'Picking at ({x}, {y}, {z})...')
-        future = self.pick_cli.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
-        result = future.result()
-        self.get_logger().info(f'Pick result: success={result.success}, msg={result.message}')
-        return result.success
-    
+        return self._call(self.home_cli, 'go_home')
+
+    def pick_object(self, x, y, z):
+        self.set_target.publish(self._pose(x, y, z))   # 只存目标，不动臂
+        time.sleep(0.2)
+        return self._call(self.pick_cli, f'pick({x},{y},{z})')
+
     def place_object(self, x, y, z):
-        """放置到目标点"""
-        req = Place.Request()
-        req.target_pose = PoseStamped()
-        req.target_pose.header.frame_id = 'base_link'
-        req.target_pose.pose.position.x = x
-        req.target_pose.pose.position.y = y
-        req.target_pose.pose.position.z = z
-        req.target_pose.pose.orientation.w = 1.0
-        
-        self.get_logger().info(f'Placing at ({x}, {y}, {z})...')
-        future = self.place_cli.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
-        result = future.result()
-        self.get_logger().info(f'Place result: success={result.success}, msg={result.message}')
-        return result.success
+        self.set_target.publish(self._pose(x, y, z))
+        time.sleep(0.2)
+        return self._call(self.place_cli, f'place({x},{y},{z})')
 
 
 def main():
     rclpy.init()
-    pipeline = GraspPipeline()
-    
-    # 物体位置（实验桌预标定）
+    p = GraspPipeline()
+
     objects = [
-        {'name': 'cube',   'pos': (0.25, 0.0,  0.05), 'depth': 0.02, 'pre_h': 0.05},
-        {'name': 'cylinder', 'pos': (0.25, 0.10, 0.05), 'depth': 0.025, 'pre_h': 0.06},
+        ('cube',     (0.25, 0.0,  0.05)),
+        ('cylinder', (0.25, 0.10, 0.05)),
     ]
-    
-    # 放置区
     place_zone = (0.0, 0.20, 0.05)
-    
+
     print('=== 固定位置 IK 抓取 Pipeline ===\n')
-    
-    pipeline.go_home()
+    p.go_home()
     time.sleep(1)
-    
-    for obj in objects:
-        x, y, z = obj['pos']
-        success = pipeline.pick_object(x, y, z, depth=obj['depth'], pre_h=obj['pre_h'])
-        if success:
+
+    for name, pos in objects:
+        if p.pick_object(*pos):
             time.sleep(1)
-            pipeline.place_object(*place_zone)
+            p.place_object(*place_zone)
             time.sleep(1)
-            pipeline.go_home()
+            p.go_home()
             time.sleep(1)
         else:
-            print(f"Failed to pick {obj['name']}, skipping")
-    
+            print(f'Failed to pick {name}, skipping')
+
     print('\n=== Pipeline completed ===')
     rclpy.shutdown()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
 ```
 
 ### 1.7 实验总结
 
 **完成成果**：
-- 在实机环境中通过 `/arm/target_pose` + `/arm/pick` 完成单物体抓取
-- 通过 `/arm/place` 服务完成物体放置
-- 调优抓取参数（gripper_depth、pre_grasp_height、lift_height、grasp_pitch）以适应不同物体
-- 验证分步移动策略、关节软限位保护、奇异检测与失败回退机制
+- 通过 `/arm_controller/set_pick_target`（只存目标）+ `/arm_controller/pick` 完成实机抓取
+- 通过 `/arm_controller/place` 完成放置
+- 调优抓取参数（`gripper_depth`、`pre_grasp_height`、`grasp_pitch`）；**确认 `lift_height` 是死参数**
+- 验证分步移动策略（`_move_stepwise`）、关节软限位（`_check_limits`，±135°）与急停
 
 **技能收获**：
-- 理解 target_pose → pick/place 的服务化抓取流程
-- 熟悉分步移动策略的设计思想
-- 掌握抓取参数调优的工程方法
-- 理解奇异检测与回退机制的工程价值
+- 理解"target_pose 立即动臂" vs "set_pick_target 只存不动"的区别
+- 熟悉分步移动策略
+- 掌握用 `--ros-args -p` 在**启动时**调节点参数
+- 理解"求解成功 ≠ 到位"，需结合 FK/实际读回判断
 
 **常见问题与解决**：
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| 实机抓取后物体掉落 | gripper_depth 过小 | 增大到 0.025m |
-| 实机机械臂撞桌面 | pre_grasp_height 过小 | 增大到 0.10m |
-| 抓取过程中奇异 | 目标在工作空间边界 | 调整目标点 |
-| 软限位报警 | 目标关节角超限 | 检查 servo_limits.yaml |
-| 多次抓取失败 | 物体类型不匹配参数 | 针对物体类型配置 grasp_params |
+| 抓取后物体掉落 | gripper_depth 太小 | 适当增大 |
+| 机械臂撞桌面 | pre_grasp_height 太小 | 增大（如 0.05~0.08） |
+| pick 返回 success=False | 目标不可达/关节超限 | 看 message（`Out of reach` / `limit violation`） |
+| 改了 lift_height 没效果 | 该参数代码中未使用 | 改 `pre_grasp_height` / `post_grasp_pose` |
+| 找不到 `/arm/grasp_state` 等 | 不存在 | 看 arm_controller 终端日志 |
 
 ### 1.8 思考题
 
-1. 为什么 car1 抓取采用"分步移动"（先转底座后动臂）而不是五关节同时运动？这种策略的 trade-off 是什么？
-2. gripper_depth、pre_grasp_height、lift_height 三个参数各自的作用域是什么？它们对不同物体类型如何调整？
-3. 抓取失败回退的"先抬升再重试"机制相比"立即放弃"有什么优势？什么场景下应放弃重试直接报警？
-4. 关节软限位（software）相比机械限位（hardware）有什么优势？是否存在软件限位无法防护的场景？
+1. 为什么 car1 抓取采用"分步移动"（先转底座后动臂）而不是五关节同时运动？trade-off 是什么？
+2. `gripper_depth`、`pre_grasp_height` 各自的作用域？为什么 `lift_height` 存在却不生效，这对参数设计有什么启示？
+3. `/arm_controller/target_pose` 会立即移动、`/arm_controller/set_pick_target` 只存目标——为什么抓取前要用后者？（提示：视觉节点先检测再抓取）
+4. 关节软限位（±2.356 rad）相比机械限位有什么优势？什么场景软件限位无法防护？
 
 ### 1.9 实验报告要求
 
@@ -4599,7 +4290,7 @@ if __name__ == "__main__":
 
 ## 实验7：机械臂基于视觉的动态抓取实验（8h）
 
-> ⚠️ **[待源码核实 / WAIT-SOURCE]** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/app/car1_app/`，未复制到 `source-codes/EXP005/exp07/`。已通过 `_registry.yaml` 的 `human_waiver.approved=true` 放行。后续补充源码后需触发 SourceCodeAnalysisAgent 并移除豁免。本指导书内容基于 `car1_app/launch/visual_grasp.launch.py`、`car1_app/car1_app/visual_grasp.py`、`car1_app/car1_app/common.py` 等视觉抓取应用源码。
+> 本实验源码位于 `ros2_ws/src/xflz_eai_car1/app/car1_app/`：`launch/visual_grasp.launch.py`（一站式启动）、`car1_app/visual_grasp.py`（核心节点 + 状态机）。
 
 ### 1.1 关联知识点
 
@@ -4637,11 +4328,11 @@ if __name__ == "__main__":
 
 | 类别 | 配置 |
 |------|------|
-| 硬件 | 具身智能实验箱B2 / 机器人小车C1（含 5 自由度机械臂、Intel RealSense D435 深度相机、目标物体） |
+| 硬件 | 具身智能实验箱B2 / 机器人小车C1（含 5 自由度机械臂、HP60C 深度相机、目标物体） |
 | OS | Ubuntu 22.04 + ROS2 Humble |
 | Python | 3.10 + OpenCV 4.x + numpy + scipy |
-| 核心库 | cv2、cv_bridge、tf2_ros、tf_transformations、realsense2_camera、rqt_image_view |
-| 视觉节点 | realsense2_camera（RGB+Depth 发布）、visual_grasp_node（HSV+IK 集成） |
+| 核心库 | cv2、cv_bridge、tf2_ros、rqt_image_view |
+| 视觉节点 | `ascamera`（HP60C RGB+Depth 发布）、`visual_grasp`（HSV+TF+状态机）、`servo_controller`（`/joint_states` 数据源） |
 | 服务接口 | /visual_grasp/start、/visual_grasp/confirm、/visual_grasp/skip、/visual_grasp/abort |
 | 状态机 | observe→detect→confirm→pick→idle 五态循环 |
 | 主入口 | `app/car1_app/launch/visual_grasp.launch.py`（一站式启动）<br>`app/car1_app/car1_app/visual_grasp.py`（核心节点）<br>`app/car1_app/car1_app/common.py`（HSV+深度+TF 公共函数） |
@@ -4658,20 +4349,22 @@ if __name__ == "__main__":
 
 1. 启动视觉抓取：`ros2 launch car1_app visual_grasp.launch.py`
 2. 启动可视化：`rqt_image_view`（分别订阅 3 个话题）
-3. 将目标物体（如黄色立方块）放在桌面
+3. 将目标物体（如红色立方块）放在桌面
 4. 触发开始：`ros2 service call /visual_grasp/start ...`
 5. 观察机械臂：检测目标 → 等待确认 → 下压抓取
 6. 人工确认：`ros2 service call /visual_grasp/confirm`
 7. 抓取完成
 
 **预期效果描述**：
-- **终端 1（visual_grasp_node）**：
+- **终端 1（visual_grasp）**：状态名是真实枚举名，且**默认认红色**（HSV 两段 0-10 / 160-180）：
   ```
-  [INFO] State: IDLE -> OBSERVE
-  [INFO] Detected yellow object at pixel (320, 240)
-  [INFO] Depth: 0.45m, Base_link pose: (0.25, 0.05, 0.05)
-  [INFO] State: OBSERVE -> CONFIRM
-  [INFO] Waiting for /visual_grasp/confirm...
+  [INFO] State: IDLE -> INIT
+  [INFO] Moving to observation pose: x=0.2, y=0.0, z=0.22, pitch=180.0°
+  [INFO] State: INIT -> MOVE_TO_OBSERVE -> WAIT_STABLE -> REFRESH_JOINTS -> DETECT
+  [INFO] Object detected at base_link: [0.2xx, 0.0xx, 0.0xx]
+  [INFO] State: DETECT -> WAIT_CONFIRMATION
+  [INFO] === PAUSED FOR REVIEW ===
+  [INFO] Check visualization at /visual_grasp/visualization
   ```
 - **rqt 三栏可视化**：
   - 左栏（RGB）：相机实时画面，目标物体有彩色矩形框
@@ -4721,51 +4414,46 @@ graph LR
 
 #### 步骤1：视觉抓取环境搭建（阶段一：能运行，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`app/car1_app/launch/visual_grasp.launch.py`、`realsense2_camera` 驱动
+> ⚠️ 本步骤对应 src 目录源码：`app/car1_app/launch/visual_grasp.launch.py`、`peripherals/car1_peripherals/launch/depth_camera.launch.py`（`ascamera` 驱动）
 
 **知识点讲解**：
 
 **视觉抓取系统架构（7.1.1 引入）**
-- **原理**：car1 视觉抓取系统由 5 个 ROS2 节点组成：(1) **realsense2_camera_node**：发布 RGB 图（`/camera/color/image_raw`）与深度图（`/camera/depth/image_rect_raw`）；(2) **robot_state_publisher**：发布 TF 树；(3) **arm_controller**：执行关节命令；(4) **tf2_ros**：跨坐标系变换；(5) **visual_grasp_node**：核心节点，集成了 HSV 检测 + 深度反投影 + TF 变换 + IK 解算 + 抓取执行 + 状态机管理。这种"多节点协作"的设计使各模块可独立替换与测试。
-- **源码对应**：`visual_grasp.launch.py` 中 5 个 NodeAction
+- **原理**：`visual_grasp.launch.py` **一站式**拉起整条链路（不需要另外起 bringup/arm_controller）：(1) **bringup**（base_driver + **servo_controller** + robot_state_publisher + EKF 等）——其中 **servo_controller 是 `/joint_states` 的数据源**，TF 树靠它才能反映机械臂真实姿态；(2) **arm_controller**：IK + `/arm_controller/pick` 服务；(3) **HP60C 深度相机驱动**：发布 RGB（`/ascamera_hp60c/camera_publisher/rgb0/image`）与深度（`/ascamera_hp60c/camera_publisher/depth0/image_raw`）；(4) **visual_grasp 节点**：HSV 检测 + 深度反投影 + TF 变换 + 状态机；(5) **rqt_image_view**（可选）：显示三栏可视化。各模块通过话题解耦、可独立替换。
+- **源码对应**：`visual_grasp.launch.py` 中的 `IncludeLaunchDescription` / `Node`
 
-**Intel RealSense D435 深度相机**
-- **原理**：D435 是 Intel 的消费级深度相机，采用红外结构光 + 立体视觉。技术参数：(1) **RGB 分辨率**：1920×1080 @ 30fps；(2) **深度分辨率**：1280×720 @ 30fps；(3) **深度范围**：0.1-10m；(4) **深度精度**：±2% @ 2m；(5) **基线距离**：50mm。深度值在图像中以 uint16 表示（单位 mm）。`camera_depth_optical_frame` 遵循 REP-103 约定：X右/Y下/Z前。
-- **源码对应**：`realsense2_camera` 驱动（ros-humble-realsense2-camera）
+**HP60C 深度相机**
+- **原理**：car1 用的是 **HP60C** 深度相机（USB，640×480@25fps）。驱动发布 RGB（`/ascamera_hp60c/camera_publisher/rgb0/image`）与深度（`/ascamera_hp60c/camera_publisher/depth0/image_raw`，uint16，单位 mm），以及 `.../depth0/camera_info`（内参）。`camera_depth_optical_frame` 遵循 REP-103 约定：X右/Y下/Z前。
+- **源码对应**：`visual_grasp.py` 的订阅话题；相机驱动见 `peripherals/car1_peripherals/launch/`（**不是** `realsense2_camera`）
 
 **操作步骤**：
 
 1. 检查硬件连接：
-   - D435 通过 USB 3.0 连接到工作站
-   - 5 自由度机械臂连接到工作站串口
+   - HP60C 通过 USB 连接
+   - 5 自由度机械臂连接到 `/dev/stm32`
    - 相机固定在机械臂末端（eye-in-hand 安装）
 
 2. 查看相机设备：
    ```bash
-   lsusb | grep Intel
-   # 预期：Intel Corp. Intel RealSense D435
+   lsusb
+   # HP60C 是一款 USB 相机（非 Intel RealSense）
    ```
 
-3. 安装 realsense 驱动：
+3. 相机驱动（`ascamera`）随工程一起编译，无需额外 apt 安装：
    ```bash
-   sudo apt install ros-humble-realsense2-camera ros-humble-realsense2-description
+   # launch 里通过 car1_peripherals 的 depth_camera.launch.py 启动（package=ascamera, executable=ascamera_node）
+   ros2 launch car1_peripherals depth_camera.launch.py
    ```
 
 4. 测试相机（单独启动）：
    ```bash
-   ros2 launch realsense2_camera rs_launch.py
-   # 预期：发布 /camera/color/image_raw 与 /camera/depth/image_rect_raw
-   
-   rqt_image_view  # 订阅 /camera/color/image_raw
-   # 应能看到相机实时画面
+   rqt_image_view  # 订阅 /ascamera_hp60c/camera_publisher/rgb0/image
    ```
 
 5. 查看相机内参：
    ```bash
-   ros2 topic echo /camera/color/camera_info --once
-   # 字段：K = [fx, 0, cx, 0, fy, cy, 0, 0, 1]
-   # D = 畸变系数（5 个）
-   # 典型内参：fx≈614, fy≈614, cx≈320, cy≈240
+   ros2 topic echo /ascamera_hp60c/camera_publisher/depth0/camera_info --once
+   # 字段：K = [fx, 0, cx, 0, fy, cy, 0, 0, 1]，D = 畸变系数
    ```
 
 6. 编译视觉抓取包：
@@ -4778,26 +4466,26 @@ graph LR
 7. 一站式启动：
    ```bash
    ros2 launch car1_app visual_grasp.launch.py
-   # 预期：5 个节点依次启动，终端打印：
-   # [INFO] [realsense2_camera_node]: Publishing RGB + Depth
-   # [INFO] [arm_controller]: Initialized
-   # [INFO] [visual_grasp_node]: State IDLE, waiting for /visual_grasp/start
+   # 预期日志：
+   # [ascamera_node]: ...            （RGB+Depth 发布）
+   # [servo_controller]: started (passive 0x08 readback)
+   # [visual_grasp_node]: Visual grasp node started. / Observation pose: [...]
    ```
 
 8. 查看节点拓扑：
    ```bash
    ros2 node list
-   # 预期：/realsense2_camera_node, /robot_state_publisher, /arm_controller,
-   #       /tf2_ros, /visual_grasp_node
-   ros2 topic list | grep -E '(camera|arm|visual)'
-   # 预期：/camera/color/image_raw, /camera/depth/image_rect_raw,
-   #       /arm/joint_command, /visual_grasp/feedback
+   # 预期：/ascamera_node, /base_driver, /servo_controller, /robot_state_publisher,
+   #       /arm_controller, /visual_grasp_node
+   ros2 topic list | grep -E '(ascamera|arm|visual)'
+   # 预期：/ascamera_hp60c/camera_publisher/rgb0/image、.../depth0/image_raw、
+   #       /arm_controller/pick、/visual_grasp/{start,confirm,skip,abort}
    ```
 
 **易错点**：
 - ⚠️ **相机无图像** → **解决**：检查 USB 3.0 连接（USB 2.0 带宽不足）
 - ⚠️ **深度图为全黑** → **解决**：检查红外发射器是否被遮挡
-- ⚠️ **launch 启动后报"port busy"** → **解决**：检查 /dev/ttyUSB0 与相机 USB 编号
+- ⚠️ **launch 启动后报"port busy"** → **解决**：检查 /dev/stm32 与相机 USB 编号
 
 ---
 
@@ -4827,10 +4515,13 @@ graph LR
    import cv2
    import numpy as np
    
-   def test_hsv(rgb_image, color='yellow'):
+   def test_hsv(rgb_image, color='red'):
+       # 注意：红色在 H 圆环两端，真实实现用两段并集
+       #   visual_grasp 参数 lower/upper=[0,100,80]~[15,255,255]
+       #                    lower2/upper2=[160,100,80]~[180,255,255]
        color_ranges = {
-           'yellow': ((20, 100, 100), (40, 255, 255)),
-           'red':    ((0, 100, 100), (10, 255, 255)),
+           'red':    ((0, 100, 80), (15, 255, 255)),      # 第 1 段
+           'red2':   ((160, 100, 80), (180, 255, 255)),   # 第 2 段（与第 1 段 OR）
            'blue':   ((100, 100, 100), (130, 255, 255)),
            'green':  ((40, 100, 100), (80, 255, 255)),
        }
@@ -4853,7 +4544,7 @@ graph LR
    while True:
        ret, frame = cap.read()
        if not ret: break
-       result, contour, mask = test_hsv(frame, 'yellow')
+       result, contour, mask = test_hsv(frame, 'red')
        if result:
            cx, cy, r = result
            cv2.circle(frame, (cx, cy), int(r), (0, 255, 0), 2)
@@ -4877,21 +4568,17 @@ graph LR
    - 实时调节阈值观察 mask 变化
    - 找到最佳阈值范围
 
-4. 保存调优后的阈值到 YAML：
+4. 调好的阈值怎么用（**是节点参数，不是 YAML 文件**）：
    ```bash
-   cat ~/ros2_ws/src/xflz_eai_car1/app/car1_app/config/hsv_thresholds.yaml
-   # 预期：
-   # hsv_thresholds:
-   #   yellow:
-   #     lower: [20, 100, 100]
-   #     upper: [40, 255, 255]
-   #   red:
-   #     lower: [0, 100, 100]
-   #     upper: [10, 255, 255]
+   ros2 param get /visual_grasp_node target_color_hsv_lower2   # 查看当前值
+   # 启动时传入（红色示例，两段并集）
+   ros2 run car1_app visual_grasp --ros-args \
+     -p target_color_hsv_lower:="[0,100,80]"    -p target_color_hsv_upper:="[15,255,255]" \
+     -p target_color_hsv_lower2:="[160,100,80]" -p target_color_hsv_upper2:="[180,255,255]"
    ```
 
 5. 验证检测准确性：
-   - 准备 5 种颜色物体
+   - 准备红色物体（或其他你配了阈值的颜色）
    - 逐个放在相机前
    - 统计检测成功率（应 > 95%）
 
@@ -4899,7 +4586,7 @@ graph LR
    - **光照**：过亮或过暗影响 Saturation
    - **阴影**：产生暗色斑点干扰
    - **反光**：高光区 Value 接近 255
-   - **多颜色**：在 hsv_thresholds.yaml 中配置多组阈值
+   - **多颜色**：用 `--ros-args -p target_color_hsv_lower:="[0,100,80]" ...` 传多组阈值
 
 **易错点**：
 - ⚠️ **检测不到目标** → **解决**：放宽 HSV 阈值范围（增大 lower 减小，upper 增大）
@@ -5001,14 +4688,14 @@ graph LR
    ```
 
 4. 实际反投影验证（用标定物体）：
-   - 将黄色立方块放在距离 0.5m 处
+   - 将红色立方块放在距离 0.5m 处
    - 记录 HSV 检测的像素坐标 (u, v)
    - 查询深度图该点的深度 d
    - 反投影得 (X, Y, Z) = 相机坐标
    - 用刻度尺测量实际位置，对比误差
 
 5. 深度图空洞处理：
-   - D435 在某些角度（如边缘、远距离）会返回 0（无深度）
+   - HP60C 在某些角度（如边缘、远距离）会返回 0（无深度）
    - 解决：使用 `cv2.inpaint` 修复或扩大 HSV 阈值范围
 
 6. 深度精度评估：
@@ -5019,7 +4706,7 @@ graph LR
 **易错点**：
 - ⚠️ **深度图为 0** → **解决**：检查深度范围，相机最低深度 0.1m
 - ⚠️ **反投影误差大** → **解决**：检查 camera_info 中内参是否更新
-- ⚠️ **深度单位混淆** → **解决**：D435 深度图 uint16 单位是 mm，不是 m
+- ⚠️ **深度单位混淆** → **解决**：HP60C 深度图 uint16 单位是 mm，不是 m
 
 ---
 
@@ -5096,20 +4783,22 @@ graph LR
 
 4. 在 visual_grasp_node 中验证：
    - 启动 visual_grasp.launch.py
-   - 将黄色物体放在相机前
+   - 将红色物体放在相机前
    - 终端日志会打印：
      ```
      [INFO] Camera frame point: (0.05, 0.02, 0.45)
      [INFO] base_link frame point: (0.30, 0.02, 0.05)
      ```
 
-5. eye-in-hand 标定验证：
-   - 用棋盘格标定板（可选）验证 TF 外参精度
-   - 或简单测试：相机正对一个已知点，对比 TF 报告位置
+5. eye-in-hand 标定验证（**注意：当前标定结果未接入抓取链路**）：
+   - 项目用 **AprilTag + `eye_hand_calibration` 包**做手眼标定（`ros2 launch eye_hand_calibration collect_data.launch.py` → `compute_calibration.launch.py`）
+   - 会话数据存 `~/.ros/eye_hand_calib/calibration_*/`；深度校正写到 `eye_hand_calibration/config/depth_correction.yaml`
+   - **但 `visual_grasp` 默认用原始深度、走 URDF 的 TF**，并未加载深度校正。要用需手动：`ros2 launch eye_hand_calibration apply_correction.launch.py`，并把深度话题 remap 到 `/eye_hand_calib/depth/image_corrected`
 
 **易错点**：
 - ⚠️ **TF lookup timeout** → **解决**：检查 robot_state_publisher 是否运行，URDF 中相机 joint 是否正确
 - ⚠️ **变换方向反了** → **解决**：确认 source 与 target 坐标系正确
+- ⚠️ **TF 显示的机械臂姿态和实物不符** → **解决**：TF 里的臂关节角来自 `/joint_states`，由 `servo_controller` 从下位机 **0x08 被动上报的真实舵机位置**发布（~20Hz）。若某舵机没到位/被顶住，TF 会**如实反映**（而不是显示"刚下发的指令值"）——这正是视觉定位可信的前提
 
 ---
 
@@ -5119,13 +4808,13 @@ graph LR
 
 #### 步骤5：IDLE 状态机原理（阶段二：能理解，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`car1_app/visual_grasp.py` 中 `class GraspStateMachine`
+> ⚠️ 本步骤对应 src 目录源码：`car1_app/visual_grasp.py` 中 `class State(enum.Enum)`（**没有 `GraspStateMachine` 类**）
 
 **知识点讲解**：
 
 **状态机设计（7.5.1）**
-- **原理**：car1 视觉抓取采用 5 态有限状态机（FSM）：(1) **IDLE**：初始/结束状态，等待 `/visual_grasp/start` 服务；(2) **OBSERVE**：调用 HSV 检测 + 深度反投影，输出目标在 base_link 中的坐标；(3) **CONFIRM**：等待人工确认（`/visual_grasp/confirm` 服务），便于人工介入避免误抓；(4) **PICK**：执行 look-then-move 抓取（先转底座、再下压、夹爪闭合、抬升）；(5) **IDLE**：抓取完成回到 IDLE，可触发下一轮。状态机使各阶段解耦，便于调试与扩展。
-- **源码对应**：`visual_grasp.py` 中 `enum class GraspState`
+- **原理**：car1 视觉抓取是 **11 态**有限状态机（`class State`）：`IDLE`（等 `/visual_grasp/start`）→ `INIT`（等相机就绪）→ `MOVE_TO_OBSERVE`（移到观察位姿）→ `WAIT_STABLE`（等稳定）→ `REFRESH_JOINTS`（触发舵机**真实位置**回读，保证 TF 正确）→ `DETECT`（HSV+深度+TF）→ `WAIT_CONFIRMATION`（暂停等确认，期间持续重检测）→ `COMPUTE_TARGET`（写目标，**不动臂**）→ `PICK`（调 `/arm_controller/pick`）→ `DONE`；任一步失败 → `FAILED`。每轮结束回 `IDLE`，可重复 start。
+- **源码对应**：`visual_grasp.py` 中 `class State(enum.Enum)`
 
 **状态转换图**
 - **原理**：
@@ -5167,7 +4856,7 @@ graph LR
 
 5. 手动触发状态转换（后续步骤详述）：
    ```bash
-   # 1. IDLE -> OBSERVE
+   # 1. IDLE -> INIT -> MOVE_TO_OBSERVE -> ... -> DETECT
    ros2 service call /visual_grasp/start std_srvs/srv/Trigger
    # 2. CONFIRM -> PICK
    ros2 service call /visual_grasp/confirm std_srvs/srv/Trigger
@@ -5226,11 +4915,11 @@ graph LR
 
 4. 完整的状态机流程演示：
    ```bash
-   # 步骤 1：IDLE -> OBSERVE
+   # 步骤 1：IDLE -> INIT -> MOVE_TO_OBSERVE -> ... -> DETECT
    ros2 service call /visual_grasp/start std_srvs/srv/Trigger
-   # 终端：State IDLE -> OBSERVE
-   # 终端：Detected yellow object at (X, Y, Z)
-   # 终端：State OBSERVE -> CONFIRM
+   # 终端：State: IDLE -> INIT -> MOVE_TO_OBSERVE -> ...
+   # 终端：Object detected at base_link: [X, Y, Z]
+   # 终端：State: DETECT -> WAIT_CONFIRMATION
    
    # 步骤 2：CONFIRM -> PICK
    ros2 service call /visual_grasp/confirm std_srvs/srv/Trigger
@@ -5319,7 +5008,7 @@ graph LR
 **知识点讲解**：
 
 **eye-in-hand 与失视野问题（7.4.1）**
-- **原理**：car1 的 D435 深度相机采用"eye-in-hand"安装方式（固定在机械臂末端）。这种安装的优势是：(1) 相机随机械臂移动，灵活观察不同区域；(2) 视点灵活，可近距离观察目标。劣势是：(1) 机械臂下压时目标会"脱离视野"（相机被夹爪遮挡）；(2) 移动过程中可能丢失目标。解决方法是 look-then-move 策略。
+- **原理**：car1 的 HP60C 深度相机采用"eye-in-hand"安装方式（固定在机械臂末端）。这种安装的优势是：(1) 相机随机械臂移动，灵活观察不同区域；(2) 视点灵活，可近距离观察目标。劣势是：(1) 机械臂下压时目标会"脱离视野"（相机被夹爪遮挡）；(2) 移动过程中可能丢失目标。解决方法是 look-then-move 策略。
 - **源码对应**：`visual_grasp.py` 中 eye-in-hand 标定
 
 **look-then-move 流程（7.4.2）**
@@ -5381,24 +5070,20 @@ graph LR
 
 #### 步骤8：HSV 与 gripper_depth 调优（阶段三：能改造，30min）
 
-> ⚠️ 本步骤对应 src 目录源码：`config/hsv_thresholds.yaml`、`config/grasp_params.yaml`
+> ⚠️ 本步骤对应 src 目录源码：`car1_app/visual_grasp.py` 中的**节点参数**（`target_color_hsv_lower/upper`、`target_color_hsv_lower2/upper2`）与 `arm_controller.py` 的 `gripper_depth`。**没有 `config/hsv_thresholds.yaml` 或 `config/grasp_params.yaml`**
 
 **知识点讲解**：
 
 **HSV 阈值调参（7.6.2）**
-- **原理**：HSV 调参是视觉抓取最常做的工作。原则：(1) **先粗后细**：先用宽阈值找到目标，再逐步缩小；(2) **考虑光照**：H 阈值 ±10、S 阈值 ±30、V 阈值 ±50 是常见调整范围；(3) **多场景配置**：为不同光照条件准备多组阈值。car1 的阈值存储在 `hsv_thresholds.yaml`，支持运行时切换。
-- **源码对应**：`config/hsv_thresholds.yaml`
+- **原理**：HSV 阈值是 `visual_grasp` 的**节点参数**（不是配置文件）：默认认**红色**，用**两段并集**（红在 H 圆环两端）：`target_color_hsv_lower/upper = [0,100,80]~[15,255,255]`、`target_color_hsv_lower2/upper2 = [160,100,80]~[180,255,255]`。调参原则：先宽后窄；换颜色/光照就改这 4 个参数。
+- **源码对应**：`visual_grasp.py` 中 `declare_parameter('target_color_hsv_lower'...)` 等；**无 `hsv_thresholds.yaml`**
 
 **gripper_depth 调参**
-- **原理**：gripper_depth 影响夹爪下探深度，与目标尺寸直接相关。调参方法：(1) **测量物体高度**：用卡尺测量；(2) **初始值**：物体高度的 50-70%；(3) **微调**：±0.005m 逐步尝试。car1 默认 0.02m 适合 4cm 立方块，对小球或圆柱需调整。
-- **源码对应**：`config/grasp_params.yaml`
+- **原理**：影响下探深度，**默认 0.0**（夹爪停在检测到的表面点）。量出物体高度后按需加到 0.005~0.02m；过大会撞桌。它是 **`arm_controller`** 的参数，不是 `visual_grasp` 的。
+- **源码对应**：`arm_controller.py` 参数 `gripper_depth`；**无 `grasp_params.yaml`**
 
 **多物体配置**
-- **原理**：不同物体类型需要不同参数。car1 在 `grasp_params.yaml` 中按物体类型分组配置：
-  - **cube_small**：gripper_depth=0.015, pre_grasp=0.04
-  - **cube_standard**：gripper_depth=0.020, pre_grasp=0.05
-  - **sphere**：gripper_depth=0.030, pre_grasp=0.08
-  - **cylinder**：gripper_depth=0.025, pre_grasp=0.06
+- **原理**：**源码里没有按物体类型分组的配置文件**。要按物体区分参数，只能在启动对应节点时用 `--ros-args -p` 传（一个节点一套参数）。
 
 **操作步骤**：
 
@@ -5459,15 +5144,11 @@ graph LR
    import rclpy
    from rclpy.node import Node
    from std_srvs.srv import Trigger
-   import yaml
    import time
-   
+
    class MultiObjectGrasp(Node):
        def __init__(self):
            super().__init__('multi_object_grasp')
-           # 加载配置
-           with open('grasp_params.yaml') as f:
-               self.config = yaml.safe_load(f)
            # 创建服务客户端
            self.start_cli = self.create_client(Trigger, '/visual_grasp/start')
            self.confirm_cli = self.create_client(Trigger, '/visual_grasp/confirm')
@@ -5510,7 +5191,7 @@ graph LR
 
    | 物体类型 | gripper_depth | pre_grasp | HSV 范围 | 成功率 |
    |---------|--------------|-----------|---------|--------|
-   | 黄色立方块(4cm) | 0.020m | 0.05m | (20-40, 100-255, 100-255) | 95% |
+   | 红色立方块(4cm) | 0.020m | 0.05m | (20-40, 100-255, 100-255) | 95% |
    | 红色球(6cm) | 0.030m | 0.08m | (0-10, 100-255, 100-255) | 88% |
    | 蓝色圆柱(5cm) | 0.025m | 0.06m | (100-130, 100-255, 100-255) | 90% |
 
@@ -5527,7 +5208,7 @@ graph LR
 **知识点讲解**：
 
 **rqt_image_view 三栏（7.6.1）**
-- **原理**：`rqt_image_view` 是 ROS 的图像查看工具，可订阅 Image 话题并显示。car1 通过 3 个不同话题同时展示：(1) **RGB 标注图**：原始 RGB + 检测到的目标矩形框与质心标记；(2) **深度图**：D435 深度图，目标位置有深度值标注；(3) **Mask 图**：HSV 二值掩膜，目标轮廓白色。三栏并列便于：(1) 对比检测与定位效果；(2) 调试 HSV 阈值；(3) 评估深度反投影精度。
+- **原理**：`visual_grasp` 发布**一张**三栏拼接图到 `/visual_grasp/visualization`（`np.hstack([RGB, Depth, Mask])`，每栏 426×320）：左 RGB（含检测框+十字线）、中 深度伪彩、右 HSV 掩膜。`visual_grasp.launch.py` 会**自动**打开 `rqt_image_view` 显示它；另外还单独发布 `/visual_grasp/debug_image`（RGB 标注图）与 `/visual_grasp/mask`（原始掩膜）供单独调试。
 - **源码对应**：`common.py` 中 `visualize_results()` 函数
 
 **调参与可视化协同**
@@ -5572,12 +5253,12 @@ graph LR
    ```
 
 7. 在 CONFIRM 状态调节 HSV 阈值：
-   - 修改 hsv_thresholds.yaml
+   - 用 `--ros-args -p target_color_hsv_lower2:=...` 改阈值
    - 重启 visual_grasp.launch.py
    - 观察 Mask 图变化
 
 8. 性能评估（实验报告加分项）：
-   - 准备 5 种颜色物体
+   - 准备红色物体（或其他你配了阈值的颜色）
    - 记录每个物体的检测准确率
    - 绘制"颜色-准确率"柱状图
 
@@ -5767,7 +5448,7 @@ graph LR
    rqt_image_view /visual_grasp/depth_overlay
    rqt_image_view /visual_grasp/mask
    
-   # 3. 准备 1 个黄色立方块
+   # 3. 准备 1 个红色立方块
    
    # 4. 触发抓取
    ros2 service call /visual_grasp/start std_srvs/srv/Trigger
@@ -5825,7 +5506,7 @@ graph LR
 # -*- coding: utf-8 -*-
 """
 实验7 demo：基于视觉的动态抓取完整 pipeline
-平台：B2 / C1（带 RealSense D435）
+平台：B2 / C1（带 HP60C）
 前置：ros2 launch car1_app visual_grasp.launch.py 已运行
 运行：python3 demo_visual_grasp.py
 """
@@ -5845,7 +5526,7 @@ import time
 class VisualGraspDemo(Node):
     """完整的视觉抓取 demo：HSV + 深度 + TF + 状态机"""
     
-    # HSV 阈值（黄色）
+    # HSV 阈值（红色）
     HSV_LOWER = np.array([20, 100, 100])
     HSV_UPPER = np.array([40, 255, 255])
     
@@ -5961,7 +5642,7 @@ class VisualGraspDemo(Node):
             return False
         self.get_logger().info(f'Detected target: pixel={pixel}, base_link={base_xyz}')
         
-        # 步骤 2：触发 start -> OBSERVE -> CONFIRM
+        # 步骤 2：触发 start -> ... -> DETECT -> WAIT_CONFIRMATION
         result = self.call(self.start_cli)
         if not result.success:
             self.get_logger().error(f'Start failed: {result.message}')
@@ -5996,8 +5677,8 @@ def main():
     # 单次抓取
     print('=== Visual Grasp Demo ===\n')
     
-    # 提示：放一个黄色物体在相机前
-    input('Place a yellow object in front of the camera, then press Enter...')
+    # 提示：放一个红色物体在相机前
+    input('Place a red object in front of the camera, then press Enter...')
     
     success = demo.grasp_once()
     print(f'\nGrasp result: {"SUCCESS" if success else "FAILED"}')
@@ -6013,7 +5694,7 @@ if __name__ == "__main__":
 
 **完成成果**：
 - 启动 visual_grasp.launch.py 一站式完成 5 节点集成（相机、TF、arm_controller、visual_grasp）
-- 实现 HSV 颜色检测（黄色立方块成功率 95%）
+- 实现 HSV 颜色检测（红色立方块成功率 95%）
 - 完成深度反投影（X=(u-cx)*d/fx 公式，误差 < 3cm @ 1m）
 - 完成 TF 坐标变换（camera_depth_optical_frame → base_link）
 - 实现 5 态状态机（IDLE→OBSERVE→CONFIRM→PICK→IDLE）
