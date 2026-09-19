@@ -73,9 +73,21 @@ source_knowledge_graph: courses/sheet1/ros_practice/ros_practice_knowledge_graph
 完成本实验后，你应能观察到以下现象：
 
 1. 在终端 A 执行 `ros2 run demo_nodes_cpp talker`，终端持续输出 `Publishing: 'Hello World: N'` 递增序列号
+
 2. 在终端 B 执行 `ros2 run demo_nodes_cpp listener`，终端持续输出 `I heard: [Hello World: N]`，序列号与 talker 保持同步
+
 3. 在终端 C 执行 `ros2 node list`，可同时看到 `/talker` 和 `/listener` 两个运行中的节点
+
 4. 在终端 C 执行 `ros2 topic echo /chatter`，可实时看到滚动输出的 `std_msgs/msg/String` 消息，内容与 listener 收到的完全一致
+
+   如果执行失败或者没有包需要执行编译一下
+
+   `cd ~/ros2_ws`
+
+   `colcon build --packages-select demo_nodes_cpp`
+
+   `source /opt/ros/$ROS_DISTRO/setup.bash   # 先系统`
+   `source ~/ros2_ws/install/setup.bash      # 后工作区（覆盖优先）`
 
 #### 5.2 预期效果描述
 
@@ -1489,7 +1501,7 @@ cat ~/ros2_ws/src/my_hello/package.xml
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd"
 ```
 
-  schematypens="http://www.w3.org/2001/XMLSchema"?>
+  `schematypens="http://www.w3.org/2001/XMLSchema"?>`
 
 ```xml
 <package format="3">
