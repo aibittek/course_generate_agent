@@ -1,0 +1,152 @@
+course_code: EXP007
+course_name: 机器人小车智能工厂综合项目
+category: sheet1
+folder: intelligent_factory_project
+prerequisites:
+  - C++或Python编程
+  - 机器人ROS2应用与开发（EXP003）
+  - 机器人视觉应用与开发（EXP001）
+  - 机器人SLAM与Nav应用开发（EXP004）
+  - 机器人大模型综合应用开发（EXP006）
+total_hours: 32
+theory_hours: 0
+lab_hours: 32
+experiment_count: 4
+tech_stack:
+  - ROS2
+  - SLAM_Toolbox
+  - Nav2
+  - AMCL
+  - ThetaStar
+  - DWB
+  - HSV颜色空间
+  - 深度相机反投影
+  - TF2坐标变换
+  - 机械臂抓取/放置
+  - sherpa-onnx
+  - RKLLM
+  - Qwen大模型
+  - 语音交互
+hardware: 具身智能实验箱B2 / 具身智能机器人小车C1
+description: 本课程为具身智能综合实训课程，围绕"建图导航控制小车到指定位置抓取红色方块"这一真实工程案例，打通建图导航、视觉感知、机械臂抓取、离线语音与大模型意图识别四大模块，最终实现"语音指令 → 意图识别 → 建图导航 → 视觉抓取 → 运输放置"的端到端闭环。底层复用已交付的 SLAM/Nav/视觉/机械臂/语音各功能包，上层以 navigation_grasp_transport 状态机为任务编排核心，强调从单一模块能力到复杂任务闭环的工程整合能力。
+experiments:
+  - id: exp01
+    experiment_id: 1
+    name: 机器人建图与导航
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp01/
+    objectives:
+      - 掌握 SLAM_Toolbox 二维激光建图与地图保存/加载
+      - 掌握 AMCL 定位与 Nav2 全局/局部导航的完整链路
+      - 能够设定导航目标点，完成智能工厂场景下的自主移动
+    exp_content:
+      - 智能工厂综合任务背景与工程架构（导航 → 视觉 → 抓取 → 语音）
+      - SLAM_Toolbox 建图参数配置（分辨率、回环检测、地图更新）与遥控建图
+      - 地图保存（map_save）与 map_server 加载
+      - AMCL 粒子滤波定位初始位姿设置与收敛
+      - Nav2 ThetaStar 全局规划 + DWB 局部规划 + velocity_smoother
+      - 代价地图（Local/Global Costmap）与行为树
+      - 设定 pick_pose / place_pose 目标点，实现自主导航
+    source_files:
+      - ros2_ws/src/xflz_eai_car1/slam/car1_slam/launch/slam.launch.py
+      - ros2_ws/src/xflz_eai_car1/slam/car1_slam/config/slam.yaml
+      - ros2_ws/src/xflz_eai_car1/slam/car1_slam/car1_slam/slam_teleop.py
+      - ros2_ws/src/xflz_eai_car1/slam/car1_slam/car1_slam/map_save.py
+      - ros2_ws/src/xflz_eai_car1/slam/car1_slam/maps/slam_map.yaml
+      - ros2_ws/src/xflz_eai_car1/navigation/car1_navigation/launch/navigation.launch.py
+      - ros2_ws/src/xflz_eai_car1/navigation/car1_navigation/config/nav2_params.yaml
+      - ros2_ws/src/xflz_eai_car1/navigation/car1_navigation/launch/include/localization.launch.py
+    notes: 复用 SLAM(Nav 课程能力)，聚焦综合任务坐标对接
+
+  - id: exp02
+    experiment_id: 2
+    name: 机器人视觉与抓取
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp02/
+    objectives:
+      - 掌握 HSV 颜色阈值识别目标物（红色方块）与形态学去噪
+      - 掌握深度相机反投影像素坐标 → 三维坐标与 TF 坐标变换
+      - 掌握 arm_controller 抓取/放置服务调用，实现抓取与放置
+    exp_content:
+      - HSV 颜色空间与红色双阈值区间（H 绕 0/180 回绕）
+      - OpenCV inRange + 形态学开/闭运算 + 轮廓质心提取
+      - 深度采样（轮廓内中位数 + MAD 离群剔除）与单位换算（mm → m）
+      - 相机内参反投影公式与 camera_depth_optical_frame → base_link TF 变换
+      - bus 舵机 refresh_positions 刷新实际关节角（防 TF 失真）
+      - arm_controller 服务 API（set_pick_target / pick / place / set_gripper / go_home / go_work）
+      - 观察位姿 observe_pose 与放置目标 place_target_arm 参数整定
+    source_files:
+      - ros2_ws/src/xflz_eai_car1/app/car1_app/car1_app/navigation_grasp_transport.py
+      - ros2_ws/src/xflz_eai_car1/app/car1_app/car1_app/visual_grasp.py
+      - ros2_ws/src/xflz_eai_car1/app/car1_app/config/navigation_grasp_transport.yaml
+      - ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection/src/*.py
+      - ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/car1_arm_controller/*.py
+    notes: 有资源，基于 navigation_grasp_transport 视觉与抓取模块
+
+  - id: exp03
+    experiment_id: 3
+    name: 机器人离线大模型语音交互
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp03/
+    objectives:
+      - 掌握 sherpa-onnx 本地离线语音唤醒（KWS）与识别（ASR）
+      - 掌握本地 TTS 语音合成与播报打断
+      - 掌握 RKLLM 大模型离线意图识别与工具（技能）调用
+    exp_content:
+      - 离线语音链路架构（唤醒 → 识别 → 意图 → 回复）
+      - sherpa-onnx zipformer_kws 唤醒词（"小飞小飞"）与灵敏度调参
+      - sherpa-onnx zipformer_onnx 离线 ASR 与 hotword 热词
+      - GTCRN 神经网络降噪（仅 KWS 生效）
+      - 本地 TTS 语音合成与提示音播报
+      - RKLLM 内嵌本地点燃大模型（Qwen3.5-0.8B）意图分类
+      - 意图（intent）命中 start → 调用任务启动服务 ; 运行中暂停唤醒的机制
+    source_files:
+      - ros2_ws/src/xflz_eai_car1/interaction/car1_speech/car1_speech/wake_word_node.py
+      - ros2_ws/src/xflz_eai_car1/interaction/car1_speech/car1_speech/tts_node.py
+      - ros2_ws/src/xflz_eai_car1/interaction/car1_speech/config/wake_word.yaml
+      - ros2_ws/src/xflz_eai_car1/interaction/car1_speech/launch/speech.launch.py
+      - ros2_ws/src/xflz_eai_car1/interaction/car1_llm/launch/llm.launch.py
+      - ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/config/interaction.yaml
+    notes: 有资源，复用语音/L大模型课程能力，聚焦意图驱动
+
+  - id: exp04
+    experiment_id: 4
+    name: 机器人语音控制导航抓取综合应用
+    hours: 8
+    difficulty: 3
+    difficulty_stars: "⭐⭐⭐"
+    experiment_type: 综合性
+    source_code_path: source-codes/exp04/
+    objectives:
+      - 掌握智能工厂任务的完整状态机设计与任务编排
+      - 掌握旋转搜索、视觉抓取、运输放置的多模块协同
+      - 掌握语音指令 → 意图识别 → 建图导航 → 视觉抓取 → 运输放置的全流程闭环
+    exp_content:
+      - 任务状态机设计（IDLE→SET_INITIAL_POSE→WAIT_LOCALIZATION→NAV_TO_PICK→MOVE_TO_OBSERVE→WAIT_ARM_STABLE→ROTATE_SEARCH→DETECT_AND_GRASP→CALL_PICK→WAIT_GRASP→NAV_TO_PLACE→PLACE_OBJECT→DONE）
+      - 原地旋转搜索（map→base_footprint 航向闭环，P 控制器）
+      - set_pick_target 与 pick 服务的分拍调用（避免回调未消费）
+      - 多阶段放置序列（place 服务 → go_work → 夹爪闭合）
+      - 回调组设计（Reentrant / MutuallyExclusive）与 MultiThreadedExecutor
+      - 语音闭环：唤醒 → ASR → RKLLM 意图(start) → 任务启动服务 → 状态机运行 → 语音恢复
+      - 端到端综合联调与故障分析（定位漂移 / 检不到目标 / 抓取失败）
+    source_files:
+      - ros2_ws/src/xflz_eai_car1/app/car1_app/car1_app/navigation_grasp_transport.py
+      - ros2_ws/src/xflz_eai_car1/app/car1_app/config/navigation_grasp_transport.yaml
+      - ros2_ws/src/xflz_eai_car1/app/car1_app/launch/navigation_grasp_transport.launch.py
+      - ros2_ws/src/xflz_eai_car1/interaction/car1_llm/config/skills.yaml
+      - ros2_ws/src/xflz_eai_car1/interaction/car1_llm/car1_llm/chat_node.py
+      - ros2_ws/src/xflz_eai_car1/app/car1_app/car1_app/visual_grasp.py
+    notes: 综合应用，端到端闭环联调
+
+_source:
+  base_source: ros2_ws/src/xflz_eai_car1
+  source_map: 具身智能机器人小车C1课程资源列表.xlsx
