@@ -3694,22 +3694,24 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 
 通过本实验的学习，学生能够：
 
-1. **原理理解**：阐述ROS2参数服务器的设计原理——参数作为节点内部状态的"运行时可读写配置"，与话题（数据流）和服务（操作）的本质区别，以及`ParameterDescriptor`在约束参数范围中的作用
-2. **流程掌握**：正确完成declare_parameter声明参数及其默认值与描述、get_parameter/set_parameter运行时读写、add_on_set_parameters_callback注册动态回调的完整编程流程
-3. **独立完成**：独立编写一个"传感器采样率可动态调整"的ROS2节点，使用参数控制采样频率、传感器使能状态、报警阈值等运行时可调节配置项
-4. **迁移应用**：能够为实际机器人系统（如巡线小车）设计参数化的控制策略——PID系数、速度上限、传感器触发阈值等均通过参数暴露，支持不重启节点即可调优
+1. **原理理解**：阐述 ROS2 参数系统的设计原理——参数是节点内部状态的"运行时可读写配置"，与话题（数据流）、服务（操作）有本质区别；说明 `ParameterDescriptor` 在参数自描述与范围声明中的作用
+2. **流程掌握**：以实验6 的 `gas_sensor_node` 代码为基础，在 `ros_sensor` 包内新建参数化节点，完成 `declare_parameter` 声明、`get_parameter` 读取、`add_on_set_parameters_callback` 动态回调的完整编程流程
+3. **独立完成**：独立实现一个"发布周期/采样使能/报警阈值可在线调整"的 MQ5 节点，注册 `entry_points` 后用 `ros2 run` 启动，并用 `ros2 param list/get/set/describe/dump` 完成验证
+4. **迁移应用**：能够为实际机器人系统（如巡线小车）设计参数化配置——PID 系数、速度上限、触发阈值等均通过参数暴露，不重启节点即可调优
+
+> 本实验直接**复制实验6 的 `gas_sensor_node.py` 作为起点**，同样放在 `ros_sensor` 包内、复用 `common.read_mq5_once()` 与 `/gas_sensor` 发布逻辑，只是在它身上逐步增加"参数化"能力。
 
 ### 三、实验环境
 
 | 类别 | 配置 |
 |---|---|
-| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1 |
-| 操作系统 | Ubuntu 22.04 |
-| ROS2 发行版 | Humble Hawksbill |
-| 核心依赖 | `rclpy`、`rcl_interfaces` |
-| 终端工具 | 系统自带 Terminal（Bash），建议准备至少 2 个终端窗口 |
+| 硬件平台 | 具身智能实验箱B2 或 具身智能机器人小车C1（集成 MQ5 可燃气体传感器） |
+| 操作系统 | Ubuntu 22.04 + ROS2 Humble |
+| 核心依赖 | `rclpy`、`std_msgs`、`rcl_interfaces` |
+| 开发语言 | Python 3.10 |
+| 源码位置 | `~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor`（节点包 `ros_sensor`） |
 
-> 说明：本实验为参数系统编程实验，连接真实MQ5可燃气体传感器（复用实验6的`common.py`），通过参数动态控制采样率、使能状态与报警阈值，读取真实浓度数据。
+> 说明：节点文件与实验6 的 `gas_sensor_node.py` 放在同一目录（`ros_sensor/ros_sensor/`），通过包内相对导入 `from .common import read_mq5_once` 复用真实 MQ5 读取函数，无需任何 `sys.path` 处理。
 
 ### 四、实验难度
 
@@ -3721,34 +3723,37 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 
 **重点**：
 
-- 掌握`declare_parameter`的参数声明语法（名称、默认值、描述符）
-- 掌握`add_on_set_parameters_callback`的动态参数回调机制及其返回值规范
-- 使用`ParameterDescriptor`限定参数的数值范围
+- 掌握 `declare_parameter` 的声明语法（名称、默认值决定类型、可选描述符）
+- 掌握 `add_on_set_parameters_callback` 动态回调的编写及其 `SetParametersResult` 返回值规范
+- 使用 `ParameterDescriptor` 为参数补充描述与数值范围
 
 **难点**：
 
-- 理解`set_parameters_callback`的返回值格式：必须返回`SetParametersResult(successful=True/False, reason="...")`，否则ROS2参数服务会认为设置失败
-- 区分`declare_parameter`（声明参数，通常只执行一次）与`get_parameter`（读取参数，可在任意时刻调用）的使用场景
+- 回调必须返回 `SetParametersResult(successful=True/False, reason="...")`，否则外部会认为设置失败
+- 理解参数回调中"校验 → 应用 → 影响后续行为（如重建定时器）"三步缺一不可
 
 ### 五、实验现象
 
 #### 5.1 快速验证流程
 
-1. 启动参数化传感器节点后，终端输出节点中所有参数的当前值
-2. 在另一终端使用`ros2 param list`看到自定义参数的列表
-3. 使用`ros2 param get`读取参数的当前值
-4. 使用`ros2 param set`修改参数（如采样率从1Hz改为5Hz），观察节点终端输出"参数已更新"日志
-5. 尝试设置超出范围的参数值（如采样率设置为100），观察节点拒绝该参数并输出拒绝原因
+1. 用 `ros2 run ros_sensor param_sensor` 启动节点后，启动日志显示三个参数的初始值，节点每秒发布一次 MQ5 浓度
+2. 另一终端执行 `ros2 param list`，在 `/param_sensor` 下看到 `publish_period`、`sensor_enabled`、`alarm_threshold_ppm`
+3. `ros2 param get /param_sensor publish_period` 读出当前值 `1.0`
+4. `ros2 param set /param_sensor publish_period 0.2` 后，节点端打印"发布周期已更新"，日志频率明显加快
+5. 执行 `ros2 param set /param_sensor publish_period 100.0`，设置被节点拒绝，CLI 显示失败并给出原因
+6. `ros2 param set /param_sensor sensor_enabled false` 后节点停止采样发布，重新设为 `true` 后恢复
 
 #### 5.2 预期效果描述
 
 | 操作 | 预期输出 |
 |---|---|
-| `python3 param_sensor_node.py` | `[INFO] 节点已启动，采样率: 1.0 Hz, 传感器: True, 报警阈值: 500.0 ppm` |
-| `ros2 param list` | 列出节点的参数名：`sample_rate_hz`、`sensor_enabled`、`alarm_threshold_ppm` |
-| `ros2 param get /param_sensor sample_rate_hz` | `Double value is: 1.0` |
-| `ros2 param set /param_sensor sample_rate_hz 5.0` | 客户端：`Set parameter successful`；节点端：`[INFO] 采样率已更新: 5.0 Hz` |
-| `ros2 param set /param_sensor sample_rate_hz 100.0` | 客户端：`Setting parameter failed`；节点端：`[WARN] 拒绝: 采样率必须在[0.1, 50.0]范围内` |
+| `ros2 run ros_sensor param_sensor` | `节点已启动: 周期=1.0s, 使能=True, 报警阈值=500.0ppm`，随后每秒输出 `raw=... ppm=...` |
+| `ros2 param list`（另一终端） | `/param_sensor` 下含 `publish_period`、`sensor_enabled`、`alarm_threshold_ppm`、`use_sim_time` |
+| `ros2 param get /param_sensor publish_period` | `Double value is: 1.0` |
+| `ros2 param set /param_sensor publish_period 0.2` | 客户端 `Set parameter successful`；节点端 `发布周期已更新: 0.2s` |
+| `ros2 param set /param_sensor publish_period 100.0` | 客户端 `Setting parameter failed`；节点端告警并给出拒绝原因 |
+| `ros2 param set /param_sensor sensor_enabled false` | 节点端 `采样已关闭`，不再打印浓度日志 |
+| `ros2 param describe /param_sensor publish_period` | 显示参数描述与浮点范围 `[0.02, 10.0]` |
 
 ---
 
@@ -3758,163 +3763,117 @@ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
 
 ```mermaid
 graph LR
-    A[步骤1: 理解参数系统架构] --> B[步骤2: 声明参数与类型基础]
+    A[步骤1: 理解参数系统架构] --> B[步骤2: 基于gas_sensor_node创建参数节点]
     B --> C[步骤3: 实现动态参数回调]
-    C --> D[步骤4: 使用ParameterDescriptor限制范围]
-    D --> E[步骤5: CLI联调验证与完整demo]
+    C --> D[步骤4: 用ParameterDescriptor声明范围]
+    D --> E[步骤5: CLI联调与参数文件加载]
 ```
 
 ---
 
-#### 步骤1：理解ROS2参数系统架构（15 分钟）
+#### 步骤 1：理解 ROS2 参数系统架构（10 分钟）
 
 **知识点讲解**：
 
-**参数系统的设计原理（知识点 2.5.3）**：
+**参数系统的设计原理（知识点 2.5.3）**
 
-ROS2参数系统是节点内部状态的"可读写配置层"。与话题（Topic，异步数据流）和服务（Service，同步RPC调用）不同，参数不定义通信通道——它直接读写节点的内存变量。每个节点在启动时通过`declare_parameter`声明自己的参数列表（名称、类型、默认值、约束），ROS2的`parameter_server`将这些声明注册到DDS全局数据空间中，使外部工具（CLI、rqt_reconfigure）可以发现并修改这些参数。
+ROS2 参数是节点内部状态的"可读写配置层"。与话题（异步数据流）和服务（同步 RPC）不同，参数本身不定义持续的通信通道——它直接读写节点内存中的变量。每个节点在构造时通过 `declare_parameter` 声明自己的参数列表（名称、类型、默认值、约束），外部工具（`ros2 param`、`rqt_reconfigure`）即可发现并修改这些参数。
 
-**为什么需要参数系统**：
+**为什么需要参数系统**：机器人系统中有大量"调优型"变量：PID 的 Kp/Ki/Kd、传感器采样周期、速度上限、报警阈值等。若硬编码在源码中，每次调整都要改代码 → 重新编译 → 重新部署。参数把这些值"拉出"代码，支持运行时修改。
 
-在实际机器人系统中，有大量的"调优型"变量需要在运行时修改：PID控制器的Kp/Ki/Kd系数、传感器采样频率、速度上限、距离阈值等。如果这些值硬编码在源码中，每次调整都需要修改代码→重新编译→重新部署。参数系统将这些可调整值"拉出"代码，暴露给运行时修改，大幅提升开发和调试效率。
+**参数设置的数据流**：
 
-**参数读写的数据流**：
+```text
+ros2 param set /节点名 参数名 值
+        │
+        ▼
+节点内部的参数服务
+        │  触发 add_on_set_parameters_callback 注册的回调
+        ▼
+回调：校验合法性 → 更新内部变量 → 改变节点行为（如重建定时器）
+        │
+        ▼
+返回 SetParametersResult(successful=True/False)
+```
 
-外部CLI/rqt_reconfigure
-
-        |
-    
-        | ros2 param set /node_name param_name value
-    
-        v
-
-   参数服务（节点内部）
-
-        |
-    
-        | 触发 set_parameters_callback
-    
-        v
-
-   节点业务逻辑（使用新参数值）
-
-**操作步骤**：
+**操作**：观察任意节点自带的参数：
 
 ```bash
-# 观察任意运行中的ROS2节点的默认参数
-ros2 run demo_nodes_cpp talker &
-ros2 param list
-# 预期: /talker: use_sim_time
-
+ros2 run demo_nodes_cpp talker &      # 后台启动一个示例节点
+ros2 param list                       # 预期：/talker 下有 use_sim_time
 ros2 param describe /talker use_sim_time
-# 预期: 显示参数类型、描述、约束等信息
-
-# 停止talker
-kill %1
+kill %1                               # 停止 talker
 ```
 
 ---
 
-#### 步骤2：编写参数声明与读写的基础节点
+#### 步骤 2：基于 `gas_sensor_node` 创建参数节点（25 分钟）
 
 **知识点讲解**：
 
-**参数生命周期**：
+**参数生命周期三步**：
 
-1. **声明（declare）**：节点在`__init__`中调用`self.declare_parameter('name', default_value)`，向ROS2参数服务注册该参数的存在
-2. **读取（get）**：在回调函数或业务逻辑中调用`self.get_parameter('name').value`获取当前值
-3. **设置（set）**：外部通过CLI或代码调用`self.set_parameter(rclpy.Parameter(name', value))`修改参数，触发`set_parameters_callback`
+1. **声明 declare**：构造函数中调用 `self.declare_parameter('name', 默认值)`，默认值同时决定参数类型（`1.0`→float、`1`→int、`True`→bool、`'x'`→str）
+2. **读取 get**：任何时刻调用 `self.get_parameter('name').value` 取当前值
+3. **设置 set**：外部通过 `ros2 param set` 修改；若注册了回调，回调会被触发（步骤3 实现）
 
-**操作步骤**：
+**操作 1：复制实验6 的节点作为起点**。在与 `gas_sensor_node.py` 同一目录下新建 `param_sensor_node.py`：
 
 ```bash
-将下面代码写入param_sensor_node.py
-# -*- coding: utf-8 -*-
-"""
-实验10：ROS2参数化传感器节点
-平台：B2实验箱
-运行：python3 param_sensor_node.py
-功能：通过参数动态控制MQ5气体传感器的采样率、使能状态和报警阈值
-"""
-import sys
+# 节点文件路径（与 gas_sensor_node.py 同目录）：
+# ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor/param_sensor_node.py
+```
 
+```python
+# -*- coding: utf-8 -*-
+"""实验10：参数化 MQ5 节点（在实验6 gas_sensor_node 基础上改造）
+运行：ros2 run ros_sensor param_sensor
+"""
 import rclpy
 from rclpy.node import Node
-from rclpy.parameter import Parameter
-from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
+from std_msgs.msg import Float32
+from rclpy.qos import QoSProfile, HistoryPolicy, ReliabilityPolicy
+from .common import read_mq5_once   # 包内相对导入，复用实验6 的真实 MQ5 读取
 
-sys.path.insert(0, "/home/iflytek/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor")
-from common import read_mq5_once  # 复用实验6的MQ5真实读取函数
 
 class ParamSensorNode(Node):
-    """参数化传感器节点——演示参数的声明、读写、动态更新"""
-
     def __init__(self):
         super().__init__('param_sensor')
 
-        # ====== 步骤1：声明参数 ======
-        # declare_parameter 的参数：
-        #   name: 参数名称（ROS2命名规范：snake_case）
-        #   value: 默认值（同时决定了参数类型：float/int/str/bool/list）
-        #   descriptor: 参数描述符（可选，用于约束和文档）
+        # ① 声明三个参数（名称 + 默认值）
+        self.declare_parameter('publish_period', 1.0)        # 发布周期（秒）
+        self.declare_parameter('sensor_enabled', True)       # 采样使能
+        self.declare_parameter('alarm_threshold_ppm', 500.0)  # 报警阈值（ppm）
 
-        # 参数1：采样率（Hz）
-        self.declare_parameter('sample_rate_hz', 1.0)
-        # 参数2：传感器使能（bool）
-        self.declare_parameter('sensor_enabled', True)
-        # 参数3：报警阈值（ppm）
-        self.declare_parameter('alarm_threshold_ppm', 500.0)
-
-        # ====== 步骤2：读取参数的当前值 ======
-        self.sample_rate = self.get_parameter('sample_rate_hz').value
-        self.sensor_enabled = self.get_parameter('sensor_enabled').value
-        self.alarm_threshold = self.get_parameter('alarm_threshold_ppm').value
-
-        # 打印初始参数配置
+        # ② 读取参数当前值到成员变量
+        self.publish_period = float(self.get_parameter('publish_period').value)
+        self.sensor_enabled = bool(self.get_parameter('sensor_enabled').value)
+        self.alarm_threshold = float(self.get_parameter('alarm_threshold_ppm').value)
         self.get_logger().info(
-            f'节点已启动，采样率: {self.sample_rate} Hz, '
-            f'传感器: {"开启" if self.sensor_enabled else "关闭"}, '
-            f'报警阈值: {self.alarm_threshold} ppm'
-        )
+            f'节点已启动: 周期={self.publish_period}s, '
+            f'使能={self.sensor_enabled}, 报警阈值={self.alarm_threshold}ppm')
 
-        # ====== 步骤3：根据参数创建定时器 ======
-        self._update_timer()
-        self._counter = 0
+        # ③ Publisher 与定时器（与实验6 的 gas_sensor_node 完全一致）
+        qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10,
+                         reliability=ReliabilityPolicy.RELIABLE)
+        self.pub = self.create_publisher(Float32, '/gas_sensor', qos)
+        self.timer = self.create_timer(self.publish_period, self.timer_cb)
 
-    def _update_timer(self):
-        """根据当前采样率参数更新定时器"""
-        # 移除旧定时器（如果存在）
-        if hasattr(self, '_timer') and self._timer is not None:
-            self.destroy_timer(self._timer)
-            self.get_logger().info(f'旧定时器已销毁')
-
-        # 根据采样率创建新定时器
-        period_sec = 1.0 / self.sample_rate if self.sample_rate > 0 else 1.0
-        self._timer = self.create_timer(period_sec, self._timer_callback)
-        self.get_logger().info(f'新定时器已创建: 周期={period_sec:.3f}s (频率={self.sample_rate} Hz)')
-
-    def _timer_callback(self):
-        """定时器回调：读取真实MQ5传感器浓度并检查报警"""
-        if not self.sensor_enabled:
+    def timer_cb(self):
+        if not self.sensor_enabled:          # 由参数控制：关闭时不采样、不发布
             return
-
-        self._counter += 1
-        # 读取真实MQ5传感器浓度（复用实验6的common.read_mq5_once）
-        raw, voltage, ppm, err = read_mq5_once()
+        raw, v, ppm, err = read_mq5_once()
         if err:
-            self.get_logger().error(f'读取MQ5传感器失败: {err}')
+            self.get_logger().error(f'读取 ADC 失败: {err}')
             return
-
-        # 报警逻辑
-        if ppm > self.alarm_threshold:
-            self.get_logger().warn(
-                f'[{self._counter}] [报警!] 气体浓度 {ppm:.1f} ppm > '
-                f'阈值 {self.alarm_threshold} ppm'
-            )
+        msg = Float32()
+        msg.data = float(ppm)
+        self.pub.publish(msg)
+        if ppm >= self.alarm_threshold:      # 由参数控制：超过阈值报警
+            self.get_logger().warn(f'[报警] ppm={ppm:.2f} >= {self.alarm_threshold}ppm')
         else:
-            self.get_logger().info(
-                f'[{self._counter}] 正常: {ppm:.1f} ppm'
-            )
+            self.get_logger().info(f'raw={raw} voltage={v:.3f}V ppm={ppm:.2f}')
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -3922,318 +3881,219 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info('节点被用户中断')
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
+        pass
+    node.destroy_node()
+    rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
 ```
 
-**运行并测试**：
+**与实验6 代码的异同**：Publisher 话题、消息类型、QoS、`read_mq5_once()` 调用、main 入口结构与 `gas_sensor_node` 完全相同；区别仅在于把周期、使能、阈值三个原本固定/没有的量改为参数读取。
 
-```bash
-# 终端A：启动节点
+**操作 2：注册可执行入口**。打开功能包的 `setup.py`，在 `entry_points` 的 `console_scripts` 中增加一行（其它已有节点保持不变）：
 
-python3 param_sensor_node.py
-
-# 终端B：查看参数
-
-ros2 param list
-
-# 预期: /param_sensor 下列出 sample_rate_hz, sensor_enabled, alarm_threshold_ppm
-
-ros2 param get /param_sensor sample_rate_hz
-
-# 预期: Double value is: 1.0
-
-ros2 param set /param_sensor alarm_threshold_ppm 600.0
-
-# 预期: Set parameter successful
-
-# 观察终端A：报警日志的频率应发生变化
+```python
+entry_points={
+    'console_scripts': [
+        'gas_sensor_node = ros_sensor.gas_sensor_node:main',
+        'param_sensor = ros_sensor.param_sensor_node:main',   # 新增
+        # ...其它节点
+    ],
+},
 ```
 
-第一步将代码写入并运行
+**操作 3：编译、运行与启动时传参**：
 
-查看当前传感器参数
+```bash
+cd ~/ros2_ws
+colcon build --symlink-install --packages-select ros_sensor
+source install/setup.bash
+
+# 终端 A：默认参数启动
+ros2 run ros_sensor param_sensor
+
+# 也可在启动时通过命令行覆盖参数（:= 语法）：
+ros2 run ros_sensor param_sensor --ros-args -p publish_period:=0.5 -p alarm_threshold_ppm:=100.0
+
+# 终端 B：查看参数
+ros2 param list                                   # /param_sensor 下看到三个自定义参数
+ros2 param get /param_sensor publish_period       # Double value is: 1.0
+ros2 param get /param_sensor sensor_enabled       # Boolean value is: True
+```
+
+第一步将代码写入并运行，查看当前传感器参数：
 
 ![image-20260821183801665](assets/image-20260821183801665.png)
 
 ![image-20260821183937791](assets/image-20260821183937791.png)
 
-#### 步骤3：实现动态参数回调（20 分钟）
+> ⚠️ 注意：此时 `ros2 param set` 即使提示成功，节点行为也**不会改变**——因为还没有写参数回调（成员变量只在构造时读取了一次）。这正是步骤3 要解决的问题。
+
+---
+
+#### 步骤 3：实现动态参数回调（20 分钟）
 
 **知识点讲解**：
 
-****`add_on_set_parameters_callback` 的原理****：
+**`add_on_set_parameters_callback` 的原理**：外部执行 `ros2 param set` 时，ROS2 并不直接改值，而是先调用节点注册的参数回调。回调中可以：① 校验合法性；② 更新内部变量并改变节点行为；③ 返回 `SetParametersResult` 告知外部成功或失败。
 
-当外部调用`ros2 param set`修改参数时，ROS2参数服务并非直接修改节点的参数值——它会触发节点注册的`set_parameters_callback`。在这个回调中，开发者可以：
+**重要**：回调必须返回 `SetParametersResult` 对象；返回 `None` 或不返回都会被判定为设置失败。
 
-1. **校验参数合法性**：判断新值是否在允许范围内
-2. **应用参数变更**：更新节点内部的变量，调整行为（如重新创建定时器、切换传感器状态）
-3. **返回结果**：返回`SetParametersResult(successful=True/False, reason="...")`告知外部修改是否成功
+**操作**：修改 `param_sensor_node.py`，先在文件顶部补充导入：
 
-**重要**：回调函数必须返回`SetParametersResult`对象。如果返回`None`或格式错误，ROS2会认为参数设置失败，但不会给出明确错误信息。
+```python
+from rcl_interfaces.msg import SetParametersResult
+```
 
-**操作步骤**：
+在 `__init__` 末尾（创建定时器之后）注册回调，并新增两个方法：
+
+```python
+        # ④ 注册动态参数回调：外部 ros2 param set 时触发
+        self.add_on_set_parameters_callback(self.on_parameters_set)
+
+    def _recreate_timer(self):
+        """按新的发布周期重建定时器"""
+        self.destroy_timer(self.timer)
+        self.timer = self.create_timer(self.publish_period, self.timer_cb)
+
+    def on_parameters_set(self, params):
+        """参数更新回调：params 是本次被修改的参数列表"""
+        for p in params:
+            if p.name == 'publish_period':
+                # ① 校验：周期限定在 [0.02, 10.0] 秒
+                if p.value < 0.02 or p.value > 10.0:
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f'publish_period 必须在 [0.02, 10.0] 秒内，收到: {p.value}')
+                # ② 应用：更新变量并重建定时器，行为才真正改变
+                self.publish_period = float(p.value)
+                self._recreate_timer()
+                self.get_logger().info(f'发布周期已更新: {self.publish_period}s')
+
+            elif p.name == 'sensor_enabled':
+                self.sensor_enabled = bool(p.value)
+                self.get_logger().info(f'采样已{"开启" if self.sensor_enabled else "关闭"}')
+
+            elif p.name == 'alarm_threshold_ppm':
+                if p.value < 0.0:
+                    return SetParametersResult(successful=False,
+                                               reason='报警阈值不能为负数')
+                self.alarm_threshold = float(p.value)
+                self.get_logger().info(f'报警阈值已更新: {self.alarm_threshold}ppm')
+
+        return SetParametersResult(successful=True)
+```
+
+重新编译运行后，在另一终端动态修改参数：
 
 ```bash
-在上面的ParamSensorNode.__init__中添加参数回调注册：
-    def __init__(self):
-        # ...（前面的代码保持不变）...
-
-        # ====== 注册参数动态更新回调 ======
-        # 当外部通过 CLI 或代码修改参数时，此回调被触发
-        self.add_on_set_parameters_callback(self._on_param_changed)
-
-    def _on_param_changed(self, params):
-        """
-        参数更新回调（在参数被外部修改时触发）
-        参数: params - 被修改的参数列表（可能同时修改多个参数）
-        返回: SetParametersResult - 告知ROS2参数修改是否成功
-        """
-        from rcl_interfaces.msg import SetParametersResult
-
-        for param in params:
-            if param.name == 'sample_rate_hz':
-                # 业务校验：采样率必须在有效范围内
-                if param.value < 0.1 or param.value > 50.0:
-                    self.get_logger().warn(
-                        f'拒绝设置采样率: {param.value} Hz（有效范围: [0.1, 50.0]）'
-                    )
-                    return SetParametersResult(
-                        successful=False,
-                        reason=f'采样率必须在[0.1, 50.0]范围内，收到: {param.value}'
-                    )
-                # 应用新参数：重新创建定时器
-                self.sample_rate = param.value
-                self.get_logger().info(f'采样率已更新: {param.value} Hz')
-                self._update_timer()  # 重建定时器以匹配新的采样率
-
-            elif param.name == 'sensor_enabled':
-                # 切换传感器使能状态
-                self.sensor_enabled = param.value
-                state_str = "开启" if param.value else "关闭"
-                self.get_logger().info(f'传感器已{state_str}')
-
-            elif param.name == 'alarm_threshold_ppm':
-                # 更新报警阈值
-                if param.value < 0:
-                    return SetParametersResult(
-                        successful=False,
-                        reason=f'报警阈值必须为非负数，收到: {param.value}'
-                    )
-                self.alarm_threshold = param.value
-                self.get_logger().info(f'报警阈值已更新: {param.value} ppm')
-
-        return SetParametersResult(successful=True, reason='参数更新成功')
+ros2 param set /param_sensor publish_period 0.2      # 成功，节点日志明显变快（5Hz）
+ros2 param set /param_sensor publish_period 100.0    # 失败：超出 [0.02, 10.0]，被回调拒绝
+ros2 param set /param_sensor sensor_enabled false    # 成功，节点停止打印浓度
+ros2 param set /param_sensor sensor_enabled true     # 成功，恢复采样发布
+ros2 param set /param_sensor alarm_threshold_ppm 100.0  # 成功，此后浓度超 100ppm 即报警
 ```
 
 **易错点**：
 
-- ⚠️ ****`add_on_set_parameters_callback` 注册后仍按原频率运行**** → 解决：确保回调中不仅更新了变量的值，还调用了影响行为的后续逻辑（如这里的`_update_timer()`重建定时器）
-- ⚠️ ****`SetParametersResult` 返回后CLI显示"成功"但参数实际未应用**** → 解决：检查`successful=True`仅在全部校验通过时才应返回；若任一参数校验失败，立即返回`successful=False`
-- ⚠️ ****回调函数未从 `rcl_interfaces.msg` 导入 `SetParametersResult`**** → 解决：添加 `from rcl_interfaces.msg import SetParametersResult`
+- ⚠️ set 之后频率没变 → 回调里只更新了变量、没有重建定时器。必须调用影响行为的后续逻辑（这里是 `_recreate_timer()`）。
+- ⚠️ 回调里忘记导入 `SetParametersResult` → 在文件顶部加 `from rcl_interfaces.msg import SetParametersResult`。
+- ⚠️ 不要在参数回调里做耗时操作（如加载模型），回调运行在参数服务线程中，耗时过长会导致设置超时。
 
 ---
 
-#### 步骤4：使用ParameterDescriptor增强参数约束（15 分钟）
+#### 步骤 4：用 ParameterDescriptor 声明参数约束（15 分钟）
 
 **知识点讲解**：
 
-**ParameterDescriptor 的设计目的**：
+**ParameterDescriptor 的作用**：声明参数时可以附带描述符，提供文字说明与数值范围（`floating_point_range` / `integer_range`）。这些元数据可通过 `ros2 param describe` 查看，也会被 `rqt_reconfigure` 读取并自动渲染成滑动条/输入框。
 
-`ParameterDescriptor`允许开发者在声明参数时预定义约束条件（数值范围、整数步长、字符串枚举等）。这些约束可以被`rqt_reconfigure`等GUI工具读取并渲染为滑动条/下拉菜单，无需编写额外的UI代码。更重要的是，`ParameterDescriptor`提供的`floating_point_range`、`integer_range`等字段可以向外部工具声明参数的有效范围
+> 注意：在 rclpy（Humble）中，描述符里的范围主要是**给外部工具看的"自描述信息"**，本身不会强制拦截非法赋值；真正的运行时拦截仍要靠步骤3 回调里的手动校验（思考题1 会验证这一点）。
 
-**操作步骤**：
+**操作**：把步骤2 中的三条 `declare_parameter` 替换为"描述符 + 声明"的写法，并在顶部补充导入：
+
+```python
+from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
+```
+
+```python
+        # 参数1：发布周期，带浮点范围 [0.02, 10.0]
+        period_desc = ParameterDescriptor(
+            description='MQ5 数据发布周期（秒），越小采样越快',
+            floating_point_range=[
+                FloatingPointRange(from_value=0.02, to_value=10.0, step=0.01)])
+        self.declare_parameter('publish_period', 1.0, period_desc)
+
+        # 参数2：采样使能
+        enabled_desc = ParameterDescriptor(
+            description='传感器采样使能：false 时停止采集与发布')
+        self.declare_parameter('sensor_enabled', True, enabled_desc)
+
+        # 参数3：报警阈值，带浮点范围 [0, 10000]
+        threshold_desc = ParameterDescriptor(
+            description='气体浓度报警阈值（ppm），超过后输出 WARN 报警',
+            floating_point_range=[
+                FloatingPointRange(from_value=0.0, to_value=10000.0, step=1.0)])
+        self.declare_parameter('alarm_threshold_ppm', 500.0, threshold_desc)
+```
+
+重新编译运行，查看描述符效果：
 
 ```bash
-修改declare_parameter调用以添加描述符：
-将param_sensor_node.py修改成下面代码
-# -*- coding: utf-8 -*-
-"""
-实验10：ROS2参数化传感器节点
-平台：B2实验箱
-运行：python3 param_sensor_node.py
-功能：通过参数动态控制MQ5气体传感器的采样率、使能状态和报警阈值
-"""
-import rclpy
-from rclpy.node import Node
-from rclpy.parameter import Parameter
-from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
-from common import read_mq5_once  # 复用实验6的MQ5真实读取函数
-
-class ParamSensorNode(Node):
-    """参数化传感器节点——演示参数的声明、读写、动态更新"""
-
-    def __init__(self):
-        super().__init__('param_sensor')
-
-        # ====== 步骤1：声明参数 ======
-        # declare_parameter 的参数：
-        #   name: 参数名称（ROS2命名规范：snake_case）
-        #   value: 默认值（同时决定了参数类型：float/int/str/bool/list）
-        #   descriptor: 参数描述符（可选，用于约束和文档）
-
-        # 参数1：采样率（Hz）
-        sample_rate_desc = ParameterDescriptor(
-            description='气体传感器采样频率（Hz）。值越高，数据越密集，CPU占用越大。',
-            floating_point_range=[
-                FloatingPointRange(from_value=0.1, to_value=50.0, step=0.1)
-            ]
-        )
-        self.declare_parameter('sample_rate_hz', 1.0, sample_rate_desc)
-
-        # 参数2：传感器使能（bool）
-        sensor_enable_desc = ParameterDescriptor(
-            description='是否启用气体传感器。关闭后节点停止数据采集以节省CPU。'
-        )
-        self.declare_parameter('sensor_enabled', True, sensor_enable_desc)
-
-        # 参数3：报警阈值（ppm）
-        alarm_threshold_desc = ParameterDescriptor(
-            description='气体浓度报警阈值（ppm）。当采样值超过此阈值时触发报警。',
-            floating_point_range=[
-                FloatingPointRange(from_value=0.0, to_value=10000.0, step=10.0)
-            ]
-        )
-        self.declare_parameter('alarm_threshold_ppm', 500.0, alarm_threshold_desc)
-
-        # ====== 步骤2：读取参数的当前值 ======
-        self.sample_rate = self.get_parameter('sample_rate_hz').value
-        self.sensor_enabled = self.get_parameter('sensor_enabled').value
-        self.alarm_threshold = self.get_parameter('alarm_threshold_ppm').value
-        # 打印初始参数配置
-        self.get_logger().info(
-            f'节点已启动，采样率: {self.sample_rate} Hz, '
-            f'传感器: {"开启" if self.sensor_enabled else "关闭"}, '
-            f'报警阈值: {self.alarm_threshold} ppm'
-        )
-
-        # ====== 步骤3：根据参数创建定时器 ======
-        self._update_timer()
-        self._counter = 0
-
-    def _update_timer(self):
-        """根据当前采样率参数更新定时器"""
-        # 移除旧定时器（如果存在）
-        if hasattr(self, '_timer') and self._timer is not None:
-            self.destroy_timer(self._timer)
-            self.get_logger().info(f'旧定时器已销毁')
-
-        # 根据采样率创建新定时器
-        period_sec = 1.0 / self.sample_rate if self.sample_rate > 0 else 1.0
-        self._timer = self.create_timer(period_sec, self._timer_callback)
-        self.get_logger().info(f'新定时器已创建: 周期={period_sec:.3f}s (频率={self.sample_rate} Hz)')
-
-    def _timer_callback(self):
-        """定时器回调：读取真实MQ5传感器浓度并检查报警"""
-        if not self.sensor_enabled:
-            return
-
-        self._counter += 1
-        # 读取真实MQ5传感器浓度（复用实验6的common.read_mq5_once）
-        raw, voltage, ppm, err = read_mq5_once()
-        if err:
-            self.get_logger().error(f'读取MQ5传感器失败: {err}')
-            return
-
-        # 报警逻辑
-        if ppm > self.alarm_threshold:
-            self.get_logger().warn(
-                f'[{self._counter}] [报警!] 气体浓度 {ppm:.1f} ppm > '
-                f'阈值 {self.alarm_threshold} ppm'
-            )
-        else:
-            self.get_logger().info(
-                f'[{self._counter}] 正常: {ppm:.1f} ppm'
-            )
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = ParamSensorNode()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        node.get_logger().info('节点被用户中断')
-    finally:
-        node.destroy_node()
-        if rclpy.ok():
-            rclpy.shutdown()
-
-if __name__ == '__main__':
-    main()
-使用ros2 param describe查看描述符效果：
-ros2 param describe /param_sensor sample_rate_hz
-# 预期输出: 显示 Descriptor 中的 description 和 floating_point_range 信息
-
+ros2 param describe /param_sensor publish_period
+# 预期：显示 Type: DOUBLE、Description 文本，以及 Floating Point Range [0.02, 10.0]
 ```
 
 ![image-20260821184026834](assets/image-20260821184026834.png)
 
-#### 步骤5：CLI联调验证完整流程（15 分钟）
+---
 
-**操作步骤**：
+#### 步骤 5：CLI 完整联调与参数文件加载（15 分钟）
+
+**操作**：
 
 ```bash
-# ====== 完整测试流程 ======
+# 终端 A：启动节点（实验时不要同时运行 gas_sensor_node，避免两个发布者同发 /gas_sensor）
+ros2 run ros_sensor param_sensor
 
-# 终端A：启动参数化节点
-cd ~/ros2_ws && source install/setup.bash
-python3 param_sensor_node.py
+# 终端 B：完整验证
+ros2 param list                                        # 1. 参数列表
+ros2 param describe /param_sensor publish_period       # 2. 查看描述符与范围
+ros2 param get /param_sensor publish_period            # 3. 读取当前值 -> 1.0
+ros2 param set /param_sensor publish_period 0.2        # 4. 在线改周期 -> 成功，日志加快
+ros2 param set /param_sensor publish_period 100.0      # 5. 超范围 -> 失败，节点端打印拒绝原因
+ros2 param set /param_sensor sensor_enabled false      # 6. 关闭采样 -> 日志停止
 
-# 终端B：CLI 验证
-
-# 1. 查看参数列表
-ros2 param list
-# 预期: /param_sensor: sample_rate_hz, sensor_enabled, alarm_threshold_ppm
-
-# 2. 查看参数描述（验证 ParameterDescriptor 生效）
-ros2 param describe /param_sensor sample_rate_hz
-# 预期: 显示 description 和 floating_point_range
-
-# 3. 读出当前值
-ros2 param get /param_sensor sample_rate_hz
-# 预期: 1.0
-
-# 4. 动态修改采样率（观察终端A的变化）
-ros2 param set /param_sensor sample_rate_hz 5.0
-# 预期: 终端A输出 "采样率已更新: 5.0 Hz" 且日志频率加快
-
-# 5. 测试范围校验（设置超出范围的值）
-ros2 param set /param_sensor sample_rate_hz 100.0
-# 预期: 设置失败（CLI会显示失败信息），终端A输出拒绝原因
-
-# 6. 关闭传感器
-ros2 param set /param_sensor sensor_enabled false
-# 预期: 终端A输出 "传感器已关闭"，日志停止输出
-
-# 7. 重新开启传感器
-ros2 param set /param_sensor sensor_enabled true
-# 预期: 终端A输出 "传感器已开启"，日志恢复输出
-
-# 8. 导出所有参数到文件
-ros2 param dump /param_sensor
-# 预期: 生成 param_sensor.yaml 文件
+# 7. 导出当前全部参数为 YAML
+ros2 param dump /param_sensor > param_sensor.yaml
 cat param_sensor.yaml
+# 预期内容形如：
+# /param_sensor:
+#   ros__parameters:
+#     alarm_threshold_ppm: 500.0
+#     publish_period: 0.2
+#     sensor_enabled: false
+#     use_sim_time: false
 
-# 9. 使用 dump 的 yaml 文件启动新节点（参数预加载）
-ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
+# 8. 用参数文件启动节点（参数预加载，不使用默认值）
+ros2 run ros_sensor param_sensor --ros-args --params-file ./param_sensor.yaml
 ```
+
+> 参数只存在于节点运行时内存中，重启后恢复为代码里的默认值；要"记住"上次调好的配置，就用 `ros2 param dump` 导出，再通过 `--params-file` 或 Launch 文件加载。
 
 ### 七、注意事项
 
-| ⚠️ 参数名称 | 参数名必须符合ROS2命名规范（snake_case，仅限字母/数字/下划线），且在同一节点内**全局唯一**。重复声明同名参数会导致运行时错误 |
-
-| ⚠️ 类型匹配 | `declare_parameter`的默认值决定了参数类型（`1.0`→float, `1`→int, `"hello"`→str, `True`→bool）。后续`set_parameter`时必须使用相同类型，否则设置失败 |
-
-| ⚠️ 回调线程 | `set_parameters_callback`在参数服务线程中被调用，而非主线程。若回调中涉及共享状态修改，需加锁保护（`threading.Lock`） |
-
-| ⚠️ 参数持久化 | 节点的参数值仅存在于运行时内存中。节点重启后，所有参数恢复为`declare_parameter`中的默认值。若需持久化，使用`ros2 param dump`导出并在Launch文件中加载 |
-
-| ⚠️ 性能 | 参数读写是轻量级操作（内存访问），不存在网络通信开销。但`set_parameters_callback`中若执行重计算（如模型加载），可能导致参数服务超时 |
+| 类别 | 注意事项 |
+|---|---|
+| ⚠️ 包内运行 | 节点文件必须放在 `ros_sensor/ros_sensor/` 目录下、用 `from .common import ...` 相对导入，并在 `setup.py` 注册 `entry_points`，通过 `ros2 run ros_sensor param_sensor` 启动；不要用 `python3 xxx.py` + `sys.path.insert` 的方式运行 |
+| ⚠️ 改完要重编译 | 新增节点文件或修改 `setup.py` 后，需重新 `colcon build --packages-select ros_sensor` 并 `source install/setup.bash`，否则报 package/executable not found |
+| ⚠️ 参数名规范 | 参数名使用 snake_case，同一节点内唯一；重复声明同名参数会报 "already declared" |
+| ⚠️ 类型匹配 | 默认值决定类型：float 用 `1.0`、int 用 `1`、bool 用 `true/false`。CLI 赋值类型不符会报 Type mismatch |
+| ⚠️ 回调必须生效 | 动态参数要改变行为，回调中除了更新变量，还要执行对应动作（如重建定时器），并返回 `SetParametersResult` |
+| ⚠️ 避免重复发布者 | 本节点与 `gas_sensor_node` 都向 `/gas_sensor` 发布，实验时只启动其中一个 |
+| ⚠️ 参数持久化 | 参数值仅保存在运行时内存，重启恢复默认；需要持久化时用 `ros2 param dump` 导出 YAML |
 
 ### 八、实验总结
 
@@ -4241,31 +4101,32 @@ ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
 
 完成本实验后，你应当能够：
 
-- ✅ 在ROS2节点中使用`declare_parameter`声明参数及其默认值
-- ✅ 使用`get_parameter`和`set_parameter`读写运行时的参数值
-- ✅ 使用`add_on_set_parameters_callback`注册参数动态更新回调，实现运行时调参
-- ✅ 使用`ParameterDescriptor`限制参数的数值范围，增强参数的自描述能力
-- ✅ 使用`ros2 param list/get/set/describe/dump`命令行工具管理节点参数
+- ✅ 在 `ros_sensor` 包内基于 `gas_sensor_node` 新建参数化节点并注册 `entry_points`，用 `ros2 run` 启动
+- ✅ 使用 `declare_parameter` / `get_parameter` 声明和读取参数，启动时用 `-p` 覆盖
+- ✅ 使用 `add_on_set_parameters_callback` 实现运行时调参（改周期、开关采样、改阈值），并在回调中做合法性校验
+- ✅ 使用 `ParameterDescriptor` 为参数添加描述与数值范围，通过 `ros2 param describe` 查看
+- ✅ 使用 `ros2 param list/get/set/describe/dump` 完成参数管理，并能用 `--params-file` 预加载配置
 
 #### 8.2 技能收获
 
 | 技能 | 说明 |
 |---|---|
-| 参数化编程 | 掌握将硬编码常量"拉出"为可配置参数的编程范式 |
-| 动态调参 | 能设计参数回调逻辑，实现不重启节点即可改变运行行为的动态调整能力 |
-| 约束设计 | 理解ParameterDescriptor的作用，能为参数添加合理的范围约束和描述文档 |
-| CLI调试 | 熟练掌握param命令组的六种操作，支持开发调试阶段的快速参数验证 |
-| 配置管理 | 能通过dump/load实现参数的"配置即代码"（Configuration as Code） |
+| 参数化编程 | 掌握把硬编码常量"拉出"为可配置参数的编程范式 |
+| 动态调参 | 能设计参数回调，实现不重启节点即可改变运行行为 |
+| 约束设计 | 理解 ParameterDescriptor 的自描述作用，能为参数添加范围与说明 |
+| CLI 调试 | 熟练使用 `ros2 param` 命令族在开发阶段快速调参 |
+| 配置管理 | 能通过 dump / `--params-file` 实现参数的"配置即代码" |
 
 #### 8.3 常见问题与解答
 
 | 问题 | 原因 | 解决方法 |
 |---|---|---|
-| `declare_parameter` 报 "already declared" | 多次声明了同名参数 | 使用 `if not self.has_parameter('name'): self.declare_parameter(...)` |
-| `set_parameter` 后节点行为未改变 | 未在回调中应用新参数值 | 检查 `add_on_set_parameters_callback` 中是否正确更新了内部变量并触发了后续逻辑 |
-| `ros2 param set` 报 "Type mismatch" | 设置值的类型与声明时不一致 | 确保类型匹配：声明float用`1.0`而非`1`，声明int用`1`而非`1.0` |
-| `ros2 param describe` 不显示约束信息 | ParameterDescriptor 未传递或编译问题 | 检查 `declare_parameter` 的第三个参数是否正确传入了 `ParameterDescriptor` 对象 |
-| 参数回调中修改定时器导致崩溃 | 定时器在回调线程中操作不安全 | 使用 `self._pending_rate = value` 保存新值，在主循环的定时器回调中检查并应用 |
+| `ros2 run` 找不到 param_sensor | 未注册 entry_points 或未重新编译/source | 检查 `setup.py` 的 `console_scripts`，重新 `colcon build` 并 `source install/setup.bash` |
+| 导入 common 失败（ModuleNotFoundError） | 用 `python3` 直接跑脚本，脱离了包上下文 | 节点放入包内用 `from .common import ...`，通过 `ros2 run` 启动 |
+| `declare_parameter` 报 already declared | 同名参数声明了两次 | 仅声明一次；必要时先用 `self.has_parameter()` 判断 |
+| `ros2 param set` 报 Type mismatch | 赋值类型与声明不一致 | float 参数写 `0.2`、bool 参数写 `true/false` |
+| set 成功但节点行为没变 | 回调里没执行"改变行为"的动作 | 在回调中更新变量后重建定时器/切换使能等 |
+| describe 看不到范围信息 | 描述符未传入 declare_parameter | 确认第三个参数传入了带 `floating_point_range` 的 `ParameterDescriptor` |
 
 ### 九、实验报告要求
 
@@ -4274,29 +4135,29 @@ ros2 run <package> param_sensor_node --ros-args --params-file param_sensor.yaml
 完成实验后，提交一份实验报告，包含以下内容：
 
 1. **实验基本信息**：实验名称、实验日期、实验者姓名、实验平台信息
-2. **实验过程记录**：截取步骤5完整测试流程的关键命令输出截图（至少包含：`param list`、`param get`、`param set`成功、`param set`被拒绝、`param dump` 共5个场景）
-3. **原理分析**（不少于250字）：用自己的语言描述ROS2参数系统在"代码中硬编码常量 → 参数声明 → 动态回调 → 外部CLI修改"这个过程中的数据流和控制流，解释为什么这种设计能提升机器人系统的开发效率
+2. **实验过程记录**：截取完整测试流程的关键命令与节点端日志截图（至少包含：`param list`、`param get`、`param set` 成功、`param set` 被拒绝、`param dump` 共 5 个场景）
+3. **原理分析**（不少于 250 字）：描述"硬编码常量 → declare 声明 → 动态回调 → CLI 修改生效"整条链路上的数据流与控制流，并解释为什么参数化能提升机器人系统的调试效率
 4. **思考题**（见下方）
 
 #### 9.2 思考题
 
 **思考题 1**：
 
-在本实验中，我们在`_on_param_changed`回调中手动校验了采样率的范围（0.1~50.0）。但我们又在`declare_parameter`中通过`ParameterDescriptor`声明了相同的范围约束。这两种范围约束分别在什么层级生效？如果CLI尝试设置一个超出范围的值，哪一个约束会先触发？请设计一个实验验证你的判断。
+步骤3 中我们在回调里手动校验了 `publish_period` 的范围（0.02~10.0），步骤4 又用 `ParameterDescriptor` 声明了同样的范围。这两种约束分别在哪一层生效？如果把回调里的手动校验删掉、只保留描述符，再执行 `ros2 param set /param_sensor publish_period 100.0`，你预计会发生什么？请先给出判断，再动手实验验证，并解释原因。
 
 **思考题 2**：
 
-假设你正在开发一个巡线小车，有PID速度控制器的三个参数（Kp、Ki、Kd），这三个参数相互关联——修改任意一个后，控制器需要重新计算积分累计值以避免"积分突变"。请设计`set_parameters_callback`的处理逻辑，描述当Kp被修改后，应该如何更新内部状态，并说明是否需要同时重置Ki和Kd的累计值。
+假设你在开发巡线小车，PID 速度控制器有 Kp、Ki、Kd 三个互相关联的参数——修改任意一个后都要重新处理积分累计量，避免"积分突变"。请设计 `on_parameters_set` 回调的处理逻辑：当 Kp 被修改后应如何更新内部状态？多个参数在同一次 set 中被修改时，回调收到的 `params` 列表应如何遍历与统一校验？
 
 #### 9.3 评分标准
 
 | 评分项 | 权重 | 评分标准 |
 |---|---|---|
-| 实验操作完整性 | 25% | 是否完成参数声明、读写、动态回调的完整编码与CLI验证 |
-| 代码质量 | 25% | 参数回调中是否包含校验逻辑、是否正确应用参数变更、是否使用ParameterDescriptor |
-| 原理分析 | 20% | 对参数系统数据流和控制流的理解深度 |
-| 思考题 1 | 15% | 对两种约束机制的理解与实验设计方案 |
-| 思考题 2 | 15% | PID参数联动更新逻辑的设计合理性 |
+| 实验操作完整性 | 25% | 是否完成包内建节点、注册入口、编译运行与 CLI 全流程验证 |
+| 代码质量 | 25% | 参数声明、回调校验、行为更新（重建定时器等）、描述符使用是否规范 |
+| 原理分析 | 20% | 对参数系统数据流与控制流的理解深度 |
+| 思考题 1 | 15% | 对描述符约束与回调校验两个层级的理解及实验验证 |
+| 思考题 2 | 15% | 多参数联动回调设计的合理性 |
 
 ## 实验11：ROS2时间相关API
 
