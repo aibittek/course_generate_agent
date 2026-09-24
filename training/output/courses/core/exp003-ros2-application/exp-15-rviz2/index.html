@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-15 · rviz2 三维可视化 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#65a30d;--theme-deep:#4d7c0f;--theme-bg:#ecfccb;--theme-bd:#d9f99d}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-15</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：机器人眼中的世界长什么样</a>
+  <a href="#s2">02 核心原理：Fixed Frame 决定"上帝站在哪"</a>
+  <a href="#s3">03 动画：一条雷达点如何画上屏</a>
+  <a href="#s4">04 原理专题：七大 Display 逐个拆</a>
+  <a href="#s5">05 交互实验：rviz 黑屏诊断台</a>
+  <a href="#s6">06 命令精讲：启动与图形环境</a>
+  <a href="#s7">07 实操 A：TF 动态演示——看懂坐标树</a>
+  <a href="#s8">08 实操 B：配置保存与团队复现</a>
+  <a href="#s9">09 注意事项与验收</a>
+  <a href="#s10">10 本课总结</a>
+  <h4>CH4 · 工具链</h4>
+  <a href="../exp-14-rqt/index.html">EXP-14 rqt 工具箱</a>
+  <a href="../exp-15-rviz2/index.html" style="color:var(--theme);font-weight:700">EXP-15 rviz2 可视化</a>
+  <a href="../exp-16-rosbag/index.html">EXP-16 rosbag2 数据录制</a>
+  <a href="../exp-17-launch/index.html">EXP-17 Launch 启动系统</a>
+  <a href="../exp-18-metapackage/index.html">EXP-18 元功能包集成</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-15 · 第四章 · 验证性 · 2 学时</span>
+  <h1>rviz2 三维可视化：机器人的"上帝视角"</h1>
+  <p class="desc">激光打出的点、TF 坐标轴、规划出的路径——ROS2 系统里 80% 的数据都是"空间数据"，用终端 echo 永远看不懂。rviz2 是基于 OGRE 渲染引擎的 3D 可视化器：Fixed Frame 定视角原点，Display 图层按需叠加数据。本课讲清它的工作原理，掌握七大核心 Display。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 rviz2 · Fixed Frame · Display · TF 可视化</span></div>
+</div>
+
+<!-- 01 问题引入 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：机器人眼中的世界长什么样</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>盲人摸象</b><p>echo /scan 一屏数字：[2.31, 2.29, 2.35...]——你知道前方有障碍，但不知道形状</p></div>
+    <div class="step"><div class="n">2</div><b>空间数据</b><p>激光点云、机器人模型、路径轨迹，本质都是 3D 空间的点和形状</p></div>
+    <div class="step"><div class="n">3</div><b>直观验证</b><p>导航规划的路径对不对？模型装配的关节转没转？一眼看穿 vs 十分钟 echo</p></div>
+    <div class="step"><div class="n">4</div><b>正解</b><p>rviz2 把消息"画"进三维视口——调试 IMU/雷达/TF/模型的统一窗口</p></div>
+  </div>
+  <div class="tip">
+    <span class="lab">定义</span>
+    <b>rviz2</b>（ROS Visualization 2）是 ROS2 的三维可视化工具：订阅你关心的话题，把消息内容渲染成几何图形。它<b>不生产数据、不控制机器人</b>，只是一个"取景器"——所以画面异常时，问题通常在数据源（话题/TF）而不在 rviz 本身。
+  </div>
+</section>
+
+<!-- 02 原理 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>核心原理：Fixed Frame 决定"上帝站在哪"</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">渲染引擎</div><div class="kt">OGRE 3D + 图层化 Display</div><p>rqt 是 2D 控件，rviz2 走 OGRE 实时渲染管线：每个 Display 是一个图层，各自订阅话题、各自把数据变换到统一坐标系后叠加绘制——可独立开关、设属性，互不干扰。</p></div>
+    <div class="kcard"><div class="kd">灵魂参数</div><div class="kt">Fixed Frame：观测基准系</div><p>它回答"相机架在哪个坐标系上看世界"。设成 map：整张地图静止，机器人在图上移动；设成 base_laser：机器人钉在原点，墙壁绕着车动。<b>所有数据都会被 TF 变换到这个系</b>再画。</p></div>
+    <div class="kcard"><div class="kd">变换链</div><div class="kt">TF2 逐层查找</dt></div><p>雷达点云 frame_id=laser → 沿 laser→base_link→odom→map 链逐级算到 Fixed Frame。链上任何一环断裂，该 Display 立即报黄 "Transform [sender=unknown]"——这就是 rviz 满屏黄字的第一大原因。</p></div>
+    <div class="kcard"><div class="kd">刷新节奏</div><div class="kt">Frame Rate 30 + 按需重绘</div><p>默认每秒渲 30 帧。它只消费数据不驱动系统：把 Fixed Frame 改掉、关掉某个 Display，被调试的机器人毫发无损——放心折腾。</p></div>
+  </div>
+  <table>
+    <tr><th>Fixed Frame 设成</th><th>画面效果</th><th>典型用途</th></tr>
+    <tr><td>map</td><td>地图静止，机器人在地图中移动</td><td>导航调试（默认值就是它）</td></tr>
+    <tr><td>odom</td><td>忽略全局定位漂移，看相对里程</td><td>检查里程计平滑度</td></tr>
+    <tr><td>base_link / base_laser</td><td>车体钉在原点，环境绕着车动</td><td>检查单传感器安装与标定</td></tr>
+    <tr><td>某个不存在的 frame</td><td>全屏黄 Warning，画面冻结</td><td>不用管——这就是下节诊断台要抓的症状</td></tr>
+  </table>
+  <div class="tip amber">
+    <span class="lab">要点</span>
+    判断"rviz 坏了还是系统坏了"的分界线：<b>能把数据画出来的前提是"变换链通"</b>。任何 Display 变黄先查 TF（Add → TF 看坐标轴在不在），而不是先怀疑 rviz。TF 通了还有问题，才去查话题本身（有没有数据、QoS 配不配）。
+  </div>
+</section>
+
+<!-- 03 动画 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>动画：一条雷达点如何画上屏</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 760 330" width="100%">
+      <defs>
+        <marker id="a15" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#a3e635"/></marker>
+      </defs>
+      <text x="380" y="24" text-anchor="middle" fill="#94a3b8" font-size="13">消息 → 读取 frame_id → 沿 TF 链变换到 Fixed Frame → OGRE 绘制</text>
+      <!-- 数据源 -->
+      <rect x="30" y="60" width="150" height="70" rx="9" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+      <text x="105" y="88" text-anchor="middle" fill="#dbeafe" font-size="13" font-weight="bold">/scan 激光消息</text>
+      <text x="105" y="112" text-anchor="middle" fill="#93c5fd" font-size="11">header.frame_id = laser</text>
+      <line x1="184" y1="95" x2="256" y2="95" stroke="#a3e635" stroke-width="2" marker-end="url(#a15)"/>
+      <text x="220" y="84" text-anchor="middle" fill="#a3e635" font-size="11">订阅</text>
+      <!-- TF 链 -->
+      <rect x="260" y="46" width="240" height="98" rx="9" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 4"/>
+      <text x="380" y="68" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">TF2 变换链（逐级查 tf 缓存）</text>
+      <g font-size="11" fill="#e2e8f0">
+        <rect x="276" y="82" width="64" height="30" rx="6" fill="#1e293b" stroke="#94a3b8"/><text x="308" y="101" text-anchor="middle">laser</text>
+        <rect x="348" y="82" width="64" height="30" rx="6" fill="#1e293b" stroke="#94a3b8"/><text x="380" y="101" text-anchor="middle">base_link</text>
+        <rect x="420" y="82" width="64" height="30" rx="6" fill="#1e293b" stroke="#94a3b8"/><text x="452" y="101" text-anchor="middle">odom</text>
+      </g>
+      <line x1="342" y1="97" x2="346" y2="97" stroke="#a3e635" stroke-width="2" marker-end="url(#a15)"/>
+      <line x1="414" y1="97" x2="418" y2="97" stroke="#a3e635" stroke-width="2" marker-end="url(#a15)"/>
+      <line x1="484" y1="97" x2="489" y2="97" stroke="#a3e635" stroke-width="2" marker-end="url(#a15)"/>
+      <circle r="4" fill="#a3e635"><animateMotion path="M340,97 L486,97" dur="1.5s" repeatCount="indefinite"/></circle>
+      <line x1="500" y1="95" x2="566" y2="95" stroke="#a3e635" stroke-width="2" marker-end="url(#a15)"/>
+      <!-- Fixed Frame + 绘制 -->
+      <rect x="570" y="46" width="164" height="98" rx="9" fill="#052e16" stroke="#a3e635" stroke-width="2"/>
+      <text x="652" y="70" text-anchor="middle" fill="#bef264" font-size="13" font-weight="bold">Fixed Frame: map</text>
+      <text x="652" y="92" text-anchor="middle" fill="#86efac" font-size="11">变换落定 → OGRE 绘点</text>
+      <g fill="#a3e635"><circle cx="612" cy="114" r="3"><animate attributeName="opacity" values="0;1" dur="1.2s" repeatCount="indefinite"/></circle><circle cx="640" cy="122" r="3"><animate attributeName="opacity" values="0;1" begin="0.3s" dur="1.2s" repeatCount="indefinite"/></circle><circle cx="672" cy="110" r="3"><animate attributeName="opacity" values="0;1" begin="0.6s" dur="1.2s" repeatCount="indefinite"/></circle><circle cx="700" cy="124" r="3"><animate attributeName="opacity" values="0;1" begin="0.9s" dur="1.2s" repeatCount="indefinite"/></circle></g>
+      <!-- 断链路径 -->
+      <rect x="260" y="196" width="474" height="70" rx="9" fill="#451a1a" stroke="#f87171" stroke-width="2"/>
+      <text x="497" y="224" text-anchor="middle" fill="#fca5a5" font-size="13" font-weight="bold">断链场景：laser→base_link 这一跳缺失</text>
+      <text x="497" y="250" text-anchor="middle" fill="#fecaca" font-size="12">该 Display 黄字 "Transform [sender=unknown]" · 坐标无从算起 → 拒绝绘制，其余图层照常</text>
+      <text x="380" y="304" text-anchor="middle" fill="#94a3b8" font-size="12">每个 Display 独立订阅、独立变换、独立报错——一个黄屏 ≠ 系统全挂</text>
+    </svg>
+  </div>
+  <p class="anim-cap">动画：正常路径上，/scan 消息携带 frame_id，rviz2 拿它沿 TF 链逐级变换到 Fixed Frame（map）后由 OGRE 绘出点云；下路为断链场景——任一跳缺失，对应 Display 单独报黄并拒绝绘制，其他图层不受影响，这正是"按图层隔离故障"的排查哲学。</p>
+</section>
+
+<!-- 04 Display 精讲 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>原理专题：七大 Display 逐个拆</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">① 地基</div><div class="kt">Grid</div><p>默认就有的网格地面，提供空间标尺。<b>迷失视角时右键 → Reset View</b> 一键回正——这是新手最该记的肌肉记忆。</p></div>
+    <div class="kcard"><div class="kd">② 骨骼</div><div class="kt">TF</div><p>Add → TF 自动订阅 /tf 与 /tf_static，RGB 三轴画出每个坐标系，Show Names 显示名字。断链=某段坐标轴消失，比 <code>view_frames</code> 生成 PDF <b>实时</b>得多——PDF 是快照，TF 图层是直播。</p></div>
+    <div class="kcard"><div class="kd">③ 外形</div><div class="kt">RobotModel</div><p>读 Description Topic（/robot_description）画网格式车体。需要三方协作：<b>URDF 定结构 → robot_state_publisher 按 /joint_states 算各 link 变换 → rviz 渲染</b>。调试可关 Visual 只留 Collision、调 Alpha 半透明看内部。</p></div>
+    <div class="kcard"><div class="kd">④ 感知</div><div class="kt">LaserScan</div><p>Topic 选 /scan，Size 约 0.03。极坐标点变换成 3D 空间点，Color Transformer 按距离映射颜色（近红远绿）。前提：frame_id 必须在 TF 链上，否则黄字。</p></div>
+    <div class="kcard"><div class="kd">⑤ 点云</div><div class="kt">PointCloud2</div><p>深度/视觉相机的点云。fields 描述每点的打包结构，RGB 常按 FLOAT32 打包——结构对不上颜色就乱。数据量大时调降 Point Size、抽稀订阅。</p></div>
+    <div class="kcard"><div class="kd">⑥ 规划</div><div class="kt">Path</div><p>nav_msgs/Path 折线，如正弦的 /plan。<b>算法对不对，曲线一眼定</b>：折角突变=规划抽风，路径穿墙=代价地图有洞——比读坐标数组快两个数量级。</p></div>
+    <div class="kcard"><div class="kd">⑦ 标注</div><div class="kt">Marker</div><p>万能便签：SPHERE/ARROW/TEXT_VIEW_FACING/Cube/LineStrip 形状，action 分 ADD/DELETE/MODIFY，<b>ns+id</b> 定位实例。想在画面里标"目标点 3"？发个文字 Marker 即可，不用给 rviz 写插件。</p></div>
+    <div class="kcard"><div class="kd">配置资产</div><div class="kt">.rviz 文件</div><p>File → Save Config As 导出全部 Display 设置；下次 <code>rviz2 -d xxx.rviz</code> 一键还原。团队共享后，新人开箱即是同款调试视图——配置是工程资产，进 git。</p></div>
+  </table>
+  <div class="tip tealb">
+    <span class="lab">三方协作链</span>
+    RobotModel 不显示时，按数据流逆向查四步：① <code>ros2 topic echo /robot_description --once</code>（URDF 在不在）→ ② <code>ros2 node list | grep state_publisher</code>（rsp 活没活）→ ③ <code>ros2 topic echo /joint_states</code>（关节数据来没来）→ ④ Fixed Frame 是否与 link 树根连通。外加 <code>check_urdf</code> 校验模型语法。
+  </div>
+</section>
+
+<!-- 05 交互 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>交互实验：rviz 黑屏诊断台</h2>
+  <div class="ix-panel">
+    <div class="ix-title">Vision Doctor：选一个症状，按"帧→TF→话题→配置"的顺序给出处置</div>
+    <div class="ctl-row">
+      <label class="ctl">rviz2 症状
+        <select id="sy" onchange="diag()">
+          <option value="black">黑屏，什么都没有</option>
+          <option value="warn">画面全是黄字 Transform 警告</option>
+          <option value="notf">TF 图层不更新，坐标轴冻结</option>
+          <option value="nomodel">RobotModel 不显示</option>
+          <option value="nolaser">LaserScan 点不画</option>
+          <option value="lost">视角转飞了，找不到网格</option>
+        </select>
+      </label>
+    </div>
+    <pre class="io" id="out"></pre>
+  </div>
+</section>
+
+<!-- 06 命令精讲 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>命令精讲：启动与图形环境</h2>
+  <pre><code><span class="c"># 标准启动（默认订阅 /tf，Display 全手动添加）</span>
+<span class="b">$</span> rviz2
+
+<span class="c"># 携带已保存配置启动（团队标准姿势）</span>
+<span class="b">$</span> rviz2 -d <span class="y">~/ros2_ws/src/my_robot/urdf/nav_default.rviz</span>
+
+<span class="c"># 与导航一起跑时，让 rviz 也认仿真时钟（配合 EXP-11 的 --clock 回放）</span>
+<span class="b">$</span> rviz2 --ros-args -p use_sim_time:=true
+
+<span class="c"># 嵌入式/远程：先确认 GPU 驱动支持 OpenGL，再 ssh -X 转发</span>
+<span class="b">$</span> glxinfo | grep <span class="y">"OpenGL renderer"</span>   <span class="g"># 看是不是硬件渲染（如 Mali-G52）</span>
+<span class="b">$</span> ssh -X pi@192.168.1.100 &amp;&amp; rviz2</code></pre>
+  <div class="tip violet">
+    <span class="lab">原理：为什么先查 glxinfo</span>
+    rviz2 依赖 OGRE→OpenGL 渲染，需要驱动提供硬件上下文。板卡（如 RK 系列 Mali-G52）驱动缺失或跑在 llvmpipe 软件渲染上时，轻则卡成幻灯片，重则启动即退。<b>渲染能力是 rviz2 的地基</b>，比任何 Display 设置都更靠前——黑屏第一问永远是"驱动正常吗"。
+  </div>
+</section>
+
+<!-- 07 实操A -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>实操 A：TF 动态演示——看懂坐标树</h2>
+  <p>照实验讲义的 TF demo：三段发布器拼出 map→odom→base_link→laser_frame 完整链，直观看到静态偏置+圆弧运动如何逐级叠加。</p>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>发布链</b><p>运行讲义 TF demo：map→odom 固定偏置 (1.0, 0.5)，odom→base_link 圆弧运动</p></div>
+    <div class="step"><div class="n">2</div><b>添加图层</b><p>rviz2 → Add → TF → 勾 Show Names → Fixed Frame 选 map</p></div>
+    <div class="step"><div class="n">3</div><b>观察运动</b><p>base_link 轴随圆弧走，laser_frame 始终钉在车前方固定位姿——"变换"活了</p></div>
+    <div class="step"><div class="n">4</div><b>破坏实验</b><p>kill 中间段发布器 → 对应坐标轴消失、子树黄字警告——断链症状复现</p></div>
+  </div>
+  <pre><code><span class="c"># 讲义 TF demo 三段发布（示意，完整代码见附带源码）</span>
+<span class="c"># 段1：map→odom 静态偏置  PermanentBroadcaster 发 static</span>
+<span class="c"># 段2：odom→base_link  圆弧：yaw 缓变 + x,y 参数方程，10Hz 填 /tf</span>
+<span class="c"># 段3：base_link→laser_frame  固定 (0.2, 0, 0.15) 前向安装位姿</span>
+<span class="b">$</span> ros2 run tf2_ros static_transform_publisher <span class="y">--frame-id map --child-frame-id odom -x 1.0 -y 0.5</span>
+<span class="b">$</span> rviz2       <span class="g"># Fixed Frame=map，Add→TF，勾 Show Names</span>
+<span class="b">$</span> kill 段2    <span class="g"># 观察 base_link 及其子轴如何"冻结+变黄"</span></code></pre>
+  <div class="tip amber"><span class="lab">观察点</span>static 发布器（_static 后缀）走 /tf_static、只发一次但订阅者缓存永驻；动态走 /tf 持续发。所以"冻结"分两种：动态段被杀是缓存里最后值不再更新，静态段被杀的新订阅者干脆收不到——EXP-16 录包回放 /tf_static 要 <code>--loop</code> 就是同一个原理。</div>
+</section>
+
+<!-- 08 实操B -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操 B：配置保存与团队复现</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>搭视图</b><p>Add 全套：TF + RobotModel + LaserScan(/scan, Size 0.03) + Path(/plan) + Marker</p></div>
+    <div class="step"><div class="n">2</div><b>调属性</b><p>Fixed Frame=map、LaserScan 按距离着色、RobotModel 拉 Alpha 0.8 看穿外壳</p></div>
+    <div class="step"><span class="n">3</span><b>存资产</b><p>File → Save Config As → <code>config/nav_debug.rviz</code>，提交进 git</p></div>
+    <div class="step"><div class="n">4</div><b>一键还原</b><p><code>rviz2 -d config/nav_debug.rviz</code>，队友打开即是同款视图</p></div>
+  </div>
+  <pre><code><span class="c"># .rviz 文件本质是 YAML，可 diff 可 code review</span>
+<span class="b">$</span> cat nav_debug.rviz | head -20    <span class="g"># Panels/Displays/Properties 三段结构清晰</span>
+<span class="b">$</span> git diff config/nav_debug.rviz   <span class="g"># 谁改了共享视图，一目了然</span>
+
+<span class="c"># Marker 标注示例：在 RViz 画面里放一个"目标点 3"</span>
+<span class="b">$</span> ros2 run rviz2 ...  <span class="g"># 或节点内 publish visualization_msgs/msg/Marker:</span>
+<span class="c">#   header.frame_id = map · ns = goals · id = 3</span>
+<span class="c">#   type = TEXT_VIEW_FACING · action = ADD · text = "G3"</span>
+<span class="c">#   pose = 目标位姿 · color = 透明度1的黄色 · scale.z = 0.3</span></code></pre>
+  <table>
+    <tr><th>坑</th><th>症状</th><th>解法</th></tr>
+    <tr><td>驱动缺失黑屏</td><td>启动闪退/纯黑</td><td>glxinfo 查 Mali 等硬件渲染是否就绪，装驱动或换机器</td></tr>
+    <tr><td>Fixed Frame 不存在</td><td>全部 Display 黄 Warning</td><td>Global Options → Fixed Frame 改成当前 TF 树里真实存在的 frame</td></tr>
+    <tr><td>TF 停在过去</td><td>坐标轴冻结</td><td>查 stamp：动态 TF 的时间戳是否用旧值（回放场景配合 --clock + use_sim_time）</td></tr>
+    <tr><td>Marker 修改无效</td><td>改了没反应</td><td>ADD 是创建/覆盖；DELETE 再 ADD 或直接 MODIFY，且 ns+id 必须一致</td></tr>
+    <tr><td>视角迷失</td><td>网格和车都找不到了</td><td>视口右键 → Reset View；仍乱则关掉可疑 Display 逐层二分</td></tr>
+  </table>
+</section>
+
+<!-- 09 注意事项 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>注意事项与验收</h2>
+  <ul class="check">
+    <li>验收 1：能口述"消息 → frame_id → TF 链 → Fixed Frame → 绘制"全链路</li>
+    <li>验收 2：同一系统下切换 map/base_link 两种 Fixed Frame，解释画面差异</li>
+    <li>验收 3：TF 图层实时定位一处断链，并说出与 view_frames PDF 的区别</li>
+    <li>验收 4：RobotModel 不显示时按四步逆向排查出根因</li>
+    <li>验收 5：完成 Marker 文字标注（ADD→MODIFY→DELETE 走一遍）</li>
+    <li>验收 6：保存 .rviz 配置，队友用 -d 参数一键复现同款视图</li>
+    <li>验收 7：鼠标操作熟练——左键旋转、中键平移、滚轮缩放、右键菜单</li>
+  </ul>
+  <div class="tip"><span class="lab">验收口径</span>
+  黄字 Warning 只有两类根因：<b>帧不存在（Fixed Frame 名字错）</b>与<b>链不完整（TF 缺跳）</b>。验收时随机制造一种，要求 30 秒内说出是哪类——能秒判，才算真看懂了本课第 02 节。</div>
+</section>
+
+<!-- 10 总结 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>本课总结</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">定位</div><div class="kt">取景器，不是数据源</div><p>rviz2 只订阅、变换、渲染；异常优先查话题与 TF，而不是怀疑视图工具。</p></div>
+    <div class="kcard"><div class="kd">灵魂</div><div class="kt">Fixed Frame 是观测基准</div><p>一切数据变换到它才绘制；换帧=换视角，地图系看全局、车体系看感知。</p></div>
+    <div class="kcard"><div class="kd">图层</div><div class="kt">七 Display 按需叠加</div><p>Grid/TF/RobotModel/LaserScan/PointCloud2/Path/Marker 各管一维，按图层隔离故障。</p></div>
+    <div class="kcard"><div class="kd">资产</div><div class="kt">.rviz 配置进 git</div><p>团队共享调试视图，与 launch、params 一样属于可复现工程资产。</p></div>
+  </div>
+  <div class="tip violet">
+    <span class="lab">思考题</span>
+    <p>① 车头、车尾各装一台雷达，发布 /scan_front 与 /scan_back（frame 分别为 laser_front、laser_back）。如何设置让两团点云在 rviz 里拼成完整 360°？关键依赖是什么、怎么验证拼得准（提示：把 Fixed Frame 设为 base_link 对比两组安装标定值）？</p>
+    <p>② 巡逻任务要在 rviz 里画：4 个航点球 + 顺序连线 + 方向箭头 + 航点编号文字——分别选什么 Marker type？id 与 ns 怎么设计才能"重算路线时整批替换不残留旧图"？</p>
+  </div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-14-rqt/index.html"><span class="lb">← 上一个实验</span>EXP-14 rqt 可视化工具箱</a>
+  <a class="next" href="../exp-16-rosbag/index.html"><span class="lb">下一个实验 →</span>EXP-16 rosbag2 数据录制</a>
+</nav>
+<footer>
+  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-15 rviz2 三维可视化</span>
+  <span>2 学时 · 验证性 · 基于 ros_practice 实验讲义改编</span>
+</footer>
+</main>
+</div>
+
+<script>
+var SYM = {
+  black: '<span class="bad">地基问题 → 先查渲染环境</span>\n1. ssh -X 或本地显示是否就绪（Could not connect to display）\n2. glxinfo | grep "OpenGL renderer" —— 是硬件渲染还是 llvmpipe 软渲\n3. 板卡驱动（Mali-G52 等）是否安装；软渲染下先降 Frame Rate\n4. 环境 OK 仍黑 → 右键 Reset View + 检查 Fixed Frame 是否写错',
+  warn: '<span class="warn">两类根因，秒判法</span>\n黄字只可能是 —— ① Fixed Frame 名字不存在（Global Options 手滑）\n② TF 链缺一跳（sender=unknown → Add/TF 看哪段坐标轴消失）\n处置：TF 图层开着找断点 → 补 static/dynamic 发布器 → 链通黄字自消。\n记住：先 TF 后话题，黄字阶段查数据内容是白费劲。',
+  notf: '<span class="warn">时间维度的冻结</span>\n1. 动态 /tf 是否还在发：ros2 topic hz /tf\n2. 时间戳问题：回放时节点 now=今天、TF stamp=昨天 → 查 use_sim_time\n   （ros2 bag play --clock + rviz2 -p use_sim_time:=true 双开关）\n3. 静态段（/tf_static）只发一次：新订阅者错过就没有 → 回放加 --loop',
+  nomodel: '<span class="warn">RobotModel 四步逆向排查</span>\n1. ros2 topic echo /robot_description --once —— URDF 内容在不在\n2. ros2 node list | grep state_publisher —— rsp 节点活着吗\n3. ros2 topic echo /joint_states —— 关节数据来了吗\n4. Fixed Frame 与 link 树根（通常 base_link）连通吗\n另：模型语法本身用 check_urdf 包文件校验，解析失败 rsp 起不来。',
+  nolaser: '<span class="warn">点云三查</span>\n1. ros2 topic hz /scan —— 数据在流吗\n2. Display 的 Topic 是否勾选并选对话题（.msg 类型自动匹配字段）\n3. header.frame_id 是否在 TF 链上（黄字即断链）——rviz→TF 图层定位\n补充：Size 调 0.03 左右；远处点颜色淡是 Color Transformer 距离映射，不是故障。',
+  lost: '<span class="ok">一条命令回正</span>\n视口空白处右键 → Reset View（回到默认观察位）\n仍乱：① Grid 图层开着当地平线参考 ② Fixed Frame 换回 map 或 odom\n③ 二分法关 Display：全关再逐个开，找到哪个图层把视角带跑的\n中键平移、左键旋转、滚轮缩放——先练熟三键，再谈调试。'
+};
+function diag(){ document.getElementById('out').innerHTML = SYM[document.getElementById('sy').value]; }
+diag();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

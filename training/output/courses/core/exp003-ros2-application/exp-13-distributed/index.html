@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-13 · ROS2 分布式通讯 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#475569;--theme-deep:#334155;--theme-bg:#f1f5f9;--theme-bd:#cbd5e1}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-13</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：好好的机器人为什么会"串台"</a>
+  <a href="#s2">02 核心原理：一个数字如何隔离整张网</a>
+  <a href="#s3">03 动画：多播发现与域隔离的物理过程</a>
+  <a href="#s4">04 原理专题：两种发现模式与通信安全</a>
+  <a href="#s5">05 交互实验：双机组网诊断台</a>
+  <a href="#s6">06 命令精讲：环境变量的三种给法</a>
+  <a href="#s7">07 实操 A：单机三终端，10 分钟看到隔离效果</a>
+  <a href="#s8">08 实操 B：双机组网四步排查 + 发现服务器部署</a>
+  <a href="#s9">09 注意事项与验收</a>
+  <a href="#s10">10 本课总结</a>
+  <h4>CH3 · 底层机制与分布式</h4>
+  <a href="../exp-11-time/index.html">EXP-11 时间与定时器</a>
+  <a href="../exp-12-dds/index.html">EXP-12 DDS 通信剖析</a>
+  <a href="../exp-13-distributed/index.html" style="color:var(--theme);font-weight:700">EXP-13 分布式通讯</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-13 · 第三章 · 验证性 · 2 学时</span>
+  <h1>ROS2 分布式通讯：域隔离、组网与安全</h1>
+  <p class="desc">同一个教室里三台机器人全用默认配置，A 车的操作命令竟被 B 车执行了——这不是 bug，是"串台"。本课从 DDS 多播发现的底层原理讲清 ROS_DOMAIN_ID 如何划分通信域，掌握双机组网、防火墙排查、DISCOVERY_SERVER 与 SROS2 安全通信。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 DOMAIN_ID · 多播发现 · 组网 · SROS2</span></div>
+</div>
+
+<!-- 01 问题引入 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：好好的机器人为什么会"串台"</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>场景</b><p>同一教室三台 B2 实验车同时开机，全部使用 ROS2 默认配置</p></div>
+    <div class="step"><div class="n">2</div><b>怪事</b><p>给 1 号车发 <code>ros2 topic pub /cmd_vel</code>，2 号车竟然也动了</p></div>
+    <div class="step"><div class="n">3</div><b>排查</b><p>两台车 <code>echo $ROS_DOMAIN_ID</code> 都是空（默认 0），在同一网络里互相"听得见"</p></div>
+    <div class="step"><div class="n">4</div><b>本质</b><p>ROS2 没有中心注册表，靠<b>网络多播</b>互相发现——同域 = 同一个"频道"</p></div>
+  </div>
+  <div class="tip">
+    <span class="lab">定义</span>
+    <b>域（Domain）</b>是 ROS2 的逻辑通信隔离圈：只有 <code>ROS_DOMAIN_ID</code> 相同的节点才能互相发现和通信。ID 取值 0~232，不同域的节点即使插在同一根网线上也"互相看不见"。这是 DDS 层的机制，ROS1 需要换 Master 地址才能做到的事，ROS2 改一个环境变量就行。
+  </div>
+</section>
+
+<!-- 02 原理 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>核心原理：一个数字如何隔离整张网</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">物理层根因</div><div class="kt">多播地址跟着 ID 走</div><p>Fast-DDS 根据域号计算出专属多播地址 <code>239.255.0.N</code> 和端口 <code>7400 + N×250</code>。发往不同域的发现报文在<b>网卡层就被分流</b>，根本不会送到对方协议栈——这就是隔离的第一道防线。</p></div>
+    <div class="kcard"><div class="kd">发现流程</div><div class="kt">SPDP 宣告 → SEDP 交换</div><p>节点启动即向域内多播地址周期发送 SPDP 发现报文；收到回应后双方通过 SEDP 交换"我有哪些话题/服务/动作端点"，才建立点对点的正式传输链。</p></div>
+    <div class="kcard"><div class="kd">对比 ROS1</div><div class="kt">去中心化的天然优势</div><p>ROS1 靠唯一的 ROS_MASTER_URI 注册中心，改域要换 Master 地址、全部节点重启；ROS2 每个节点自主发现，改 DOMAIN_ID 就是各改各的环境变量，Master 单点故障问题也随之消失。</p></div>
+    <div class="kcard"><div class="kd">组网三前提</div><div class="kt">同段、同 ID、多播通</div><p>跨机通信只依赖三件事：① IP 同网段（能互相 ping 通）② 双方 ROS_DOMAIN_ID 相同 ③ 组播没有被防火墙/交换机拦截。没有 Master、没有配置文件，就这三条。</p></div>
+  </div>
+  <table>
+    <tr><th>对比维度</th><th>ROS1</th><th>ROS2（DDS）</th></tr>
+    <tr><td>发现方式</td><td>所有节点向 ROSMaster 注册/查询</td><td>域内多播 SPDP 自主互发现</td></tr>
+    <tr><td>"隔离"手段</td><td>改 Master URI + 全节点重启</td><td>改 ROS_DOMAIN_ID，即时生效</td></tr>
+    <tr><td>取值范围</td><td>无域概念（一台机器一个 Master）</td><td>0~232，共 233 个逻辑隔离域</td></tr>
+    <tr><td>单点故障</td><td>Master 挂了新节点进不来</td><td>无中心，任意节点退出不影响他人</td></tr>
+    <tr><td>隔离层次</td><td>应用层（还能互相 ping）</td><td>直达 DDS 发现层甚至网卡过滤</td></tr>
+  </table>
+  <div class="tip amber">
+    <span class="lab">要点</span>
+    三台机器人要"各自独立"，最简单的规范是：<b>每台机器人烧录不同的 DOMAIN_ID</b>（写进 <code>~/.bashrc</code> 或机器人系统镜像），中央工作站同时开多个终端、用不同 ID 分别接入各车——比给每台车配独立网段省事得多。
+  </div>
+</section>
+
+<!-- 03 动画 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>动画：多播发现与域隔离的物理过程</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 760 330" width="100%">
+      <defs>
+        <marker id="a13" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#34d399"/></marker>
+        <marker id="x13" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#f87171"/></marker>
+      </defs>
+      <text x="380" y="24" text-anchor="middle" fill="#94a3b8" font-size="13">上：同域（ID=0）→ 多播互通　│　下：异域（0 / 5）→ 地址不同物理隔离</text>
+      <!-- 同域 -->
+      <rect x="40" y="46" width="170" height="96" rx="10" fill="none" stroke="#34d399" stroke-width="2"/>
+      <text x="125" y="76" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold">设备 A（笔记本）</text>
+      <text x="125" y="100" text-anchor="middle" fill="#34d399" font-size="12">DOMAIN_ID = 0</text>
+      <text x="125" y="124" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.0 : 7400</text>
+      <rect x="550" y="46" width="170" height="96" rx="10" fill="none" stroke="#34d399" stroke-width="2"/>
+      <text x="635" y="76" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold">设备 B（机器人）</text>
+      <text x="635" y="100" text-anchor="middle" fill="#34d399" font-size="12">DOMAIN_ID = 0</text>
+      <text x="635" y="124" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.0 : 7400</text>
+      <line x1="214" y1="94" x2="546" y2="94" stroke="#34d399" stroke-width="2" marker-end="url(#a13)"/>
+      <circle r="5" fill="#34d399"><animateMotion path="M214,94 L546,94" dur="1.6s" repeatCount="indefinite"/></circle>
+      <text x="380" y="82" text-anchor="middle" fill="#34d399" font-size="12">SPDP 多播宣告（同地址同端口 → 收得到）</text>
+      <rect x="270" y="104" width="220" height="30" rx="6" fill="none" stroke="#38bdf8" stroke-dasharray="5 4"/>
+      <text x="380" y="124" text-anchor="middle" fill="#38bdf8" font-size="12">SEDP 交换端点 → 建立正式链路 ✓</text>
+      <!-- 异域 -->
+      <rect x="40" y="196" width="170" height="96" rx="10" fill="none" stroke="#94a3b8" stroke-width="2"/>
+      <text x="125" y="226" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold">设备 A</text>
+      <text x="125" y="250" text-anchor="middle" fill="#f87171" font-size="12">DOMAIN_ID = 0</text>
+      <text x="125" y="274" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.0 : 7400</text>
+      <rect x="550" y="196" width="170" height="96" rx="10" fill="none" stroke="#94a3b8" stroke-width="2"/>
+      <text x="635" y="226" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold">设备 C</text>
+      <text x="635" y="250" text-anchor="middle" fill="#f87171" font-size="12">DOMAIN_ID = 5</text>
+      <text x="635" y="274" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.5 : 7650</text>
+      <line x1="214" y1="244" x2="546" y2="244" stroke="#f87171" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#x13)" opacity="0.45"/>
+      <line x1="352" y1="212" x2="408" y2="276" stroke="#f87171" stroke-width="4" stroke-linecap="round">
+        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite"/>
+      </line>
+      <line x1="408" y1="212" x2="352" y2="276" stroke="#f87171" stroke-width="4" stroke-linecap="round">
+        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite"/>
+      </line>
+      <text x="380" y="316" text-anchor="middle" fill="#f87171" font-size="12">多播地址 / 端口都不同 → 报文在网卡层就被分流，互不可见</text>
+      <circle r="4" fill="#f87171" opacity="0.8"><animateMotion path="M214,244 L340,244" dur="1.8s" repeatCount="indefinite"/></circle>
+    </svg>
+  </div>
+  <p class="anim-cap">动画：上半为同域两设备，SPDP 多播宣告命中同一地址 239.255.0.0:7400，随后 SEDP 交换端点信息建立正式链路；下半为异域两设备，ID 不同导致多播地址（.0 vs .5）和端口（7400 vs 7650）全不同，隔离发生在网卡分流层，无需任何应用层过滤。</p>
+</section>
+
+<!-- 04 专题 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>原理专题：两种发现模式与通信安全</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">模式一 · 默认</div><div class="kt">多播自主发现</div><p>开局域网、机器人数量少（&lt;50 节点）时的默认选择。零配置、即开即用，但依赖组播——部分企业网/云环境交换机禁用了组播，就全军覆没。</p></div>
+    <div class="kcard"><div class="kd">模式二 · 进阶</div><div class="kt">ROS_DISCOVERY_SERVER 单播</div><p>指定一台"发现服务器"，所有节点改为向它单播注册。不受组播限制，适合 50~500 节点、跨子网、云端混合部署。代价是要先启动并维护 server 进程。</p></div>
+    <div class="kcard"><div class="kd">安全层</div><div class="kt">DDS-Security / SROS2</div><p>DDS 标准定义的安全扩展：governance（哪些域要加密）+ permissions（谁能发/收哪个话题）+ passwords（密钥），ROS2 封装为 sros2 工具包，未授权节点连"看到话题"都做不到。</p></div>
+    <div class="kcard"><div class="kd">成本意识</div><div class="kt">加密是有代价的</div><p>SROS2 Enforce 模式带来约 5~15% CPU 开销。教学小车资源有限，建议：内网实验默认不开，涉及远程遥控/OTA 升级的产品化场景再启用。</p></div>
+  </div>
+  <table>
+    <tr><th>维度</th><th>多播发现（默认）</th><th>DISCOVERY_SERVER</th></tr>
+    <tr><td>传输方式</td><td>组播 239.255.0.N</td><td>单播到指定 IP:11811</td></tr>
+    <tr><td>配置成本</td><td>零（只改域号）</td><td>先跑 fastdds discovery，每终端 export 服务器地址</td></tr>
+    <tr><td>跨子网/云</td><td>组播通常被路由丢弃 → 不通</td><td>单播可路由 → 通</td></tr>
+    <tr><td>适用规模</td><td>单网段、小中型系统</td><td>几十到数百节点、跨网段</td></tr>
+    <tr><td>故障特征</td><td>防火墙/交换机一拦就全挂</td><td>server 挂了新节点发现不了（有单点）</td></tr>
+  </table>
+  <div class="tip tealb">
+    <span class="lab">SROS2 速览</span>
+    三步启用：① <code>sros2 security generate_artifacts -p governance.xml -p permissions.xml -k keystore</code> 生成密钥库 ② 每个节点启动时注入 <code>ROS_SECURITY_ENABLE=true</code>、<code>ROS_SECURITY_STRATEGY=Enforce</code>、<code>ROS_SECURITY_KEYSTORE</code> ③ enclave 名必须与 permissions 声明一致。效果：未授权节点 echo 会直接失败。⚠ 密钥库严禁提交 git。
+  </div>
+</section>
+
+<!-- 05 交互 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>交互实验：双机组网诊断台</h2>
+  <div class="ix-panel">
+    <div class="ix-title">组排 Network Bench：判断两台设备能否互通，说不出原因就是没学透</div>
+    <div class="ctl-row">
+      <label class="ctl">网络场景
+        <select id="sc" onchange="diag()">
+          <option value="base">默认网络 · A=0 B=0 · 防火墙放行</option>
+          <option value="diffid">A=0 · B=5（域隔离生效）</option>
+          <option value="fw">A=0 B=0 · 但防火墙拦截组播</option>
+          <option value="vm">A=0 B=0 · 虚拟机 NAT 模式</option>
+          <option value="fixid">补救：B 切回 0，双方一致</option>
+          <option value="server">组播被禁 · 改用 DISCOVERY_SERVER</option>
+        </select>
+      </label>
+    </div>
+    <pre class="io" id="out"></pre>
+  </div>
+</section>
+
+<!-- 06 命令精讲 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>命令精讲：环境变量的三种给法</h2>
+  <pre><code><span class="c"># 给法一：当前终端会话生效（最常用，调试友好）</span>
+<span class="b">$</span> export ROS_DOMAIN_ID=<span class="y">5</span>
+<span class="b">$</span> ros2 run pkg node        <span class="g"># 该终端启动的节点都进域 5</span>
+
+<span class="c"># 给法二：单条命令临时指定（不污染环境，多人共用一台机必备）</span>
+<span class="b">$</span> ROS_DOMAIN_ID=<span class="y">5</span> ros2 run pkg node
+<span class="b">$</span> echo $ROS_DOMAIN_ID      <span class="g"># 输出仍为空——环境没被改</span>
+
+<span class="c"># 给法三：写进 bashrc 固化（机器人/工控机出厂配置）</span>
+<span class="b">$</span> echo <span class="y">'export ROS_DOMAIN_ID=5'</span> &gt;&gt; ~/.bashrc
+<span class="b">$</span> source ~/.bashrc          <span class="g"># 只影响新开终端；老终端不会变</span>
+
+<span class="c"># 发现服务器模式（组播被禁时的备选）</span>
+<span class="b">$</span> sudo apt install ros-humble-rmw-fastrtps-cpp
+<span class="b">$</span> fastdds discovery --server-id 0 --ip-address 127.0.0.1 --port 11811
+<span class="b">$</span> export ROS_DISCOVERY_SERVER=127.0.0.1:11811   <span class="g"># 每个节点终端都要</span>
+<span class="b">$</span> fastdds discovery -i 0    <span class="g"># 监控面板：列出 Participant / Endpoint</span></code></pre>
+  <div class="tip violet">
+    <span class="lab">原理</span>
+    给法二（前缀式）为什么"不污染环境"？shell 的 <code>VAR=x cmd</code> 语法只在<code>cmd</code> 进程及其子进程的环境里注入该变量，命令返回后当前 shell 的变量表毫发无损。排查串台问题时用它做 A/B 对照，比反复 export/unset 干净得多。
+  </div>
+</section>
+
+<!-- 07 实操A -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>实操 A：单机三终端，10 分钟看到隔离效果</h2>
+  <p>不接第二台设备也能完整验证域机制——开三个终端即可。三个终端都先 <code>cd ~/ros2_ws</code> 并 <code>source install/setup.bash</code>。</p>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>终端1 · 域 42</b><p>export ROS_DOMAIN_ID=42，启动 talker_test 发布话题</p></div>
+    <div class="step"><div class="n">2</div><b>终端2 · 同域</b><p>export 同为 42，ros2 topic echo → <b>能收到</b>，证明同域互通</p></div>
+    <div class="step"><div class="n">3</div><b>终端3 · 异域</b><p>export ROS_DOMAIN_ID=99 后再 echo → <b>收不到</b>，publishers 列表为空</p></div>
+    <div class="step"><div class="n">4</div><b>复现串台</b><p>三终端全部 unset 恢复默认 0 → 终端3 立即能看到终端1 的话题</p></div>
+  </div>
+  <pre><code><span class="c"># 终端 1</span>
+<span class="b">$</span> export ROS_DOMAIN_ID=<span class="y">42</span>
+<span class="b">$</span> ros2 run py_nodes talker_test          <span class="g"># 或任意发布节点</span>
+
+<span class="c"># 终端 2（应通）</span>
+<span class="b">$</span> export ROS_DOMAIN_ID=<span class="y">42</span>
+<span class="b">$</span> ros2 topic list        <span class="g"># 能看到话题</span>
+<span class="b">$</span> ros2 topic echo /chatter
+
+<span class="c"># 终端 3（应不通）</span>
+<span class="b">$</span> export ROS_DOMAIN_ID=<span class="y">99</span>
+<span class="b">$</span> ros2 topic list        <span class="g"># 只有 /parameter_events /rosout（本机默认）</span>
+<span class="b"># 切回 42 后立即看到 chatter → 隔离机制验证完成</span></code></pre>
+  <div class="tip amber"><span class="lab">观察点</span>终端 3 里 <code>ros2 topic list</code> 并非"空"——本机域内公共话题（/parameter_events、/rosout）仍在。判断标准是<b>有没有对端节点的话题</b>，不是列表长度。</div>
+</section>
+
+<!-- 08 实操B -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操 B：双机组网四步排查 + 发现服务器部署</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>查号</b><p>两台设备分别 <code>echo $ROS_DOMAIN_ID</code>，必须一致（决定性因素，先查它）</p></div>
+    <div class="step"><div class="n">2</div><b>查路</b><p><code>ping</code> 对端 IP；不通则查网段/虚拟机桥接模式——NAT 下多播必死</p></div>
+    <div class="step"><div class="n">3</div><b>查墙</b><p><code>sudo ufw status</code>，被拦则放行：ufw allow 7400:8399/udp（域 0-3 的多播端口段）</p></div>
+    <div class="step"><div class="n">4</div><b>终极验证</b><p>跨机 echo 对端话题；仍不通则换 CycloneDDS 排除 Fast-DDS 实现差异</p></div>
+  </div>
+  <pre><code><span class="c"># 单机模拟双机：两个终端同设 DOMAIN_ID=42 即可代表两台设备</span>
+<span class="c"># ——若域名/主机解析有问题，host 文件是隐藏坑 ——</span>
+<span class="b">$</span> ping $(hostname)              <span class="g"># 解析不了就把本机 IP 写进 /etc/hosts</span>
+
+<span class="c"># 组播被禁环境下的替代方案：单播发现服务器</span>
+<span class="b">$</span> fastdds discovery --server-id 0 --ip-address 127.0.0.1 --port 11811
+<span class="c"># 每个节点终端（跨机时写服务器真实 IP，不是 127.0.0.1）</span>
+<span class="b">$</span> export ROS_DISCOVERY_SERVER=<span class="y">127.0.0.1:11811</span>
+<span class="b">$</span> ros2 run pkg node
+<span class="c"># 健康检查：fastdds discovery -i 0 应列出所有 Participant 与 Endpoint</span></code></pre>
+  <div class="tip"><span class="lab">排查心法</span>
+  环境变量"改了没生效"最常见的坑是固化方式问题：source 过的 bashrc 只影响<b>之后新开的</b>终端，当前终端赶紧手动 unset/export；或者临时用 <code>env ROS_DOMAIN_ID=5 ros2 ...</code> 单条验证，确认无误再固化。
+  </div>
+</section>
+
+<!-- 09 注意事项 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>注意事项与验收</h2>
+  <ul class="check">
+    <li>验收 1：单机三终端——同域互通、异域隔离，切换即时可见</li>
+    <li>验收 2：能口述三前提（同网段 / 同 DOMAIN_ID / 多播畅通）并按序排查</li>
+    <li>验证 3：用 <code>env ROS_DOMAIN_ID=x cmd</code> 前缀式启动，能解释为何不污染环境</li>
+    <li>验收 4：能说出多播地址 239.255.0.N 与端口 7400+N×250 的对应关系</li>
+    <li>验收 5：画得出 SPDP→SEDP 发现两阶段流程图</li>
+    <li>验收 6（选做）：演示 DISCOVERY_SERVER 起停前后节点发现行为的差异</li>
+  </ul>
+  <table>
+    <tr><th>坑</th><th>症状</th><th>解法</th></tr>
+    <tr><td>环境变量没生效</td><td>改了 bashrc 但当前终端还是老域号</td><td>source 后开新终端；老终端手动 export；或用 env 前缀式当场验证</td></tr>
+    <tr><td>防火墙拦组播</td><td>域号一致、ping 通，就是互相看不到</td><td>ufw allow 7400:8399/udp；云服务器还要在安全组放行 UDP 多播段</td></tr>
+    <tr><td>虚拟机 NAT 模式</td><td>虚拟机内节点与宿主机互发现失败</td><td>VMware/VirtualBox 改"桥接模式"，让虚拟机拿到同网段真实 IP</td></tr>
+    <tr><td>script 命令被截断</td><td>记录会话时 \ 转义链接失效、话题被硬换行截开</td><td>cmd 写成数组 script -qec "ros2 topic pub -r 1 /a std_msgs/msg/String '{data: hello}'" log</td></tr>
+    <tr><td>fastdds 工具不存在</td><td>command not found: fastdds</td><td>sudo apt install ros-humble-rmw-fastrtps-cpp</td></tr>
+    <tr><td>SROS2 enclave 名不匹配</td><td>开了 Enforce 后节点无法通信</td><td>enclave 名必须与 permissions 定义完全一致；密钥库不进 git</td></tr>
+  </table>
+</section>
+
+<!-- 10 总结 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>本课总结</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">概念</div><div class="kt">域 = DDS 层逻辑隔离圈</div><p>ROS_DOMAIN_ID 0~232，同号互通、异号隔离，对应专属多播地址与端口。</p></div>
+    <div class="kcard"><div class="kd">组网</div><div class="kt">只要三个前提</div><p>同网段、同域号、多播畅通。排查顺序：ID → ping → 防火墙 → 换 RMW。</p></div>
+    <div class="kcard"><div class="kd">进阶</div><div class="kt">两套发现 + 一层安全</div><p>多播发现适合单网段小系统；DISCOVERY_SERVER 跨网大规模；SROS2 产品化加密。</p></div>
+    <div class="kcard"><div class="kd">工程化</div><div class="kt">隔离要落到镜像里</div><p>每台机器人出厂烧录独立域号，中央站多 ID 接入——这是多机车间的标准姿势。</p></div>
+  </div>
+  <div class="tip violet">
+    <span class="lab">思考题</span>
+    <p>① 多播地址 239.255.0.N 与端口 7400+N×250 是如何实现"同一物理网络、多个逻辑隔离域"的？若公司要求"20 个域既要隔离又要两两互通"，你会设计什么桥接方案？</p>
+    <p>② 工厂部署 20 台机器人 + 1 个中央监控站：每台独立 DOMAIN_ID 已定，监控站要同时订阅所有车的 /robot_status，有哪几种可行架构？各自的成本与故障半径如何？</p>
+  </div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-12-dds/index.html"><span class="lb">← 上一个实验</span>EXP-12 DDS 通信剖析</a>
+  <a class="next" href="../exp-14-rqt/index.html"><span class="lb">下一个实验 →</span>EXP-14 rqt 可视化工具箱</a>
+</nav>
+<footer>
+  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-13 ROS2 分布式通讯</span>
+  <span>2 学时 · 验证性 · 基于 ros_practice 实验讲义改编</span>
+</footer>
+</main>
+</div>
+
+<script>
+var NET = {
+  base: '<span class="ok">✅ 互通</span>\nA、B 同为域 0，都监听同一多播地址 239.255.0.0:7400。\nSPDP 宣告互达 → SEDP 交换端点 → echo 正常。\n⚠ 注意：能互通也意味着 <b>cmd_vel 会串台</b>——多机环境应立即分配独立域号。',
+  diffid: '<span class="warn">🚫 不通（隔离生效）</span>\nA 在 239.255.0.0:7400，B 在 239.255.0.5:7650——\n多播地址和端口全都不同，发现报文在<b>网卡分流层</b>就被丢弃。\nros2 topic list 看不到对端话题，epdump/wireshark 也抓不到对端 SPDP。\n这正是"每台机器人独立域号"方案的原理。',
+  fw: '<span class="bad">🚫 不通（防火墙拦组播）</span>\n域号一致但 UDP 多播被 ufw/iptables/交换机 IGMP 过滤丢弃。\n特征：ping 通、echo ROS_DOMAIN_ID 相同，topic list 却为空——"路是通的，频道被掐了"。\n排障：sudo ufw status → ufw allow 7400:8399/udp → 交换机开 IGMP Snooping 放行组播。',
+  vm: '<span class="bad">🚫 不通（虚拟机 NAT）</span>\nNAT 模式下虚拟机收不到宿主机的组播帧：多播不跨 NAT 边界。\n特征：宿主机之间正常，一进虚拟机就"失联"。\n排障：VMware 改桥接模式（Bridge）/ VirtualBox 改桥接并勾选"混杂模式"，让虚拟机拿到同网段真实 IP。',
+  fixid: '<span class="ok">✅ 互通（修复成立）</span>\nB 重新 export ROS_DOMAIN_ID=0 后又回到同一多播地址。\n新节点发起 SPDP → A 应答 → 3 秒内 topic list 恢复。\n<pre>建议同时把域号写进镜像 ~/.bashrc，避免开机又回到各自为政。</pre>',
+  server: '<span class="ok">✅ 通（单播发现接管）</span>\n组播不通时改走发现服务器：\n1. fastdds discovery --server-id 0 --ip-address 192.168.1.100 --port 11811\n2. 每个节点终端 export ROS_DISCOVERY_SERVER=192.168.1.100:11811\n所有注册改为对 11811 的单播，可跨子网、可过禁组播的云网络。\n注意：服务器是新单点，挂了则新节点无法加入（已建链的仍工作）。'
+};
+function diag(){ document.getElementById('out').innerHTML = NET[document.getElementById('sc').value]; }
+diag();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

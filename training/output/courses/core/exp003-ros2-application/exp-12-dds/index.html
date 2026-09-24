@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>实验 12 · DDS 通信中间件剖析（RMW · RTPS · 自动发现）</title>
+<style>
+:root{
+  --bg-base:#f8fafc;--bg-card:#fff;--bg-soft:#f1f5f9;--bg-tint:#eef4ff;
+  --border:#e2e8f0;--border-hover:#94a3b8;
+  --accent-blue:#2563eb;--accent-cyan:#0891b2;--accent-teal:#0d9488;
+  --accent-amber:#d97706;--accent-rose:#e11d48;--accent-violet:#7c3aed;
+  --text-primary:#0f172a;--text-body:#334155;--text-secondary:#64748b;--text-muted:#94a3b8;
+  --shadow-md:0 4px 12px rgba(0,0,0,.05),0 2px 4px rgba(0,0,0,.03);
+  --font-mono:'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:82px}
+body{margin:0;background:var(--bg-base);color:var(--text-body);
+  font-family:"Noto Sans CJK SC","PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% -5%,rgba(37,99,235,.05),transparent),
+    radial-gradient(ellipse 50% 35% at 100% 5%,rgba(124,58,237,.04),transparent);}
+.topbar{position:sticky;top:0;z-index:60;height:60px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--text-primary);font-size:14.5px;text-decoration:none}
+.logo .dot{width:9px;height:9px;border-radius:50%;background:var(--accent-violet);animation:pulse 2.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.crumb{font-size:13px;color:var(--text-muted)}
+.crumb a{color:var(--accent-blue);text-decoration:none}
+.crumb b{color:var(--text-secondary);font-weight:500}
+.menu-btn{display:none;border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer}
+.layout{display:flex;max-width:1340px;margin:0 auto;gap:32px;padding:32px}
+.sidebar{width:252px;flex:none;align-self:flex-start;position:sticky;top:78px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:18px 14px;box-shadow:var(--shadow-md);max-height:calc(100vh - 96px);overflow:auto}
+.sidebar .st{font-size:12px;letter-spacing:.1em;color:var(--text-muted);font-family:var(--font-mono);padding:0 8px 8px}
+.sidebar a{display:flex;gap:10px;align-items:center;padding:9px 10px;margin-bottom:3px;border-radius:8px;
+  font-size:13.5px;color:var(--text-body);text-decoration:none;transition:.28s cubic-bezier(.4,0,.2,1);border:1px solid transparent}
+.sidebar a .n{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);flex:none}
+.sidebar a:hover{background:var(--bg-soft)}
+.sidebar a.active{background:var(--bg-tint);border-color:#ede9fe;color:var(--accent-violet);font-weight:600}
+.sidebar a.active .n{color:var(--accent-violet)}
+.sidebar hr{border:none;border-top:1px solid var(--border);margin:12px 4px}
+.sidebar .other{font-size:12px;color:var(--text-muted);padding:2px 8px 8px}
+.sidebar .other a{display:block;padding:5px 10px;font-size:12.5px;color:var(--text-secondary)}
+.sidebar .other a:hover{color:var(--accent-violet)}
+.main{flex:1;min-width:0;max-width:920px}
+.exp-head{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:30px 34px;box-shadow:var(--shadow-md)}
+.exp-head .code{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--accent-violet);
+  background:#f5f3ff;border:1px solid #ede9fe;border-radius:6px;padding:3px 9px}
+.exp-head h1{margin:16px 0 10px;font-size:27px;color:var(--text-primary);line-height:1.35}
+.exp-head .desc{font-size:15px;line-height:1.85;color:var(--text-secondary);margin:0}
+.meta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.tag{font-size:12px;padding:4px 11px;border-radius:100px;background:var(--bg-soft);border:1px solid var(--border);color:var(--text-secondary)}
+.tag.teal{color:var(--accent-teal);border-color:#ccfbf1;background:#f0fdfa}
+.tag.violet{color:var(--accent-violet);border-color:#ede9fe;background:#f5f3ff}
+section.blk{margin-top:34px;scroll-margin-top:82px}
+section.blk>h2{font-size:21px;color:var(--text-primary);margin:0 0 6px;display:flex;align-items:center;gap:10px}
+section.blk>h2 .sn{font-family:var(--font-mono);font-size:13px;font-weight:700;color:#fff;background:var(--accent-violet);
+  border-radius:7px;padding:3px 9px}
+section.blk>h2 .sn.teal{background:var(--accent-teal)}
+section.blk>h2 .sn.blue{background:var(--accent-blue)}
+section.blk>p{font-size:15px;line-height:1.9;margin:10px 0}
+.lead{color:var(--text-secondary)}
+.tip{border-left:3px solid var(--accent-blue);background:rgba(37,99,235,.05);border-radius:0 10px 10px 0;
+  padding:14px 18px;margin:18px 0;font-size:14px;line-height:1.8;color:var(--text-body)}
+.tip b{color:var(--accent-blue)}
+.tip.amber{border-left-color:var(--accent-amber);background:rgba(217,119,6,.05)}
+.tip.amber b{color:var(--accent-amber)}
+.tip.violet{border-left-color:var(--accent-violet);background:rgba(124,58,237,.05)}
+.tip.violet b{color:var(--accent-violet)}
+pre{background:#0f172a;color:#e2e8f0;font-family:var(--font-mono);font-size:13px;line-height:1.7;
+  border-radius:12px;padding:18px 20px;overflow-x:auto;margin:16px 0}
+pre .c{color:#64748b}pre .g{color:#4ade80}pre .b{color:#60a5fa}pre .y{color:#fbbf24}
+code.inline{font-family:var(--font-mono);font-size:13px;color:var(--accent-violet);background:var(--bg-tint);
+  border-radius:5px;padding:2px 7px}
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:20px 0}
+.flow .step{flex:1;min-width:140px;background:var(--bg-soft);border:1px solid var(--border);border-radius:11px;
+  padding:14px 12px;text-align:center;transition:.28s}
+.flow .step:hover{border-color:var(--accent-violet);box-shadow:0 6px 18px rgba(124,58,237,.12);transform:translateY(-3px)}
+.flow .step .t{font-size:14px;font-weight:700;color:var(--text-primary)}
+.flow .step .d{font-size:12px;color:var(--text-muted);margin-top:5px;font-family:var(--font-mono)}
+.flow .ar{align-self:center;color:var(--border-hover);padding:0 8px;font-size:18px;flex:none}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:18px 0}
+.kcard{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;transition:.28s}
+.kcard:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:var(--border-hover)}
+.kcard .kt{font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:6px}
+.kcard .kd{font-size:12.8px;line-height:1.7;color:var(--text-secondary)}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:12px;overflow:hidden}
+th{background:var(--bg-soft);color:var(--text-primary);font-size:13px;padding:11px 14px;text-align:left;border-bottom:1px solid var(--border)}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-body)}
+tr:last-child td{border-bottom:none}
+td code{font-family:var(--font-mono);font-size:12.5px;color:var(--accent-teal)}
+.check{list-style:none;padding:0;margin:16px 0}
+.check li{position:relative;padding:11px 14px 11px 42px;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:10px;margin-bottom:9px;font-size:14px;transition:.28s}
+.check li:hover{border-color:var(--accent-violet)}
+.check li::before{content:"✓";position:absolute;left:14px;top:11px;width:20px;height:20px;border-radius:6px;
+  background:#f5f3ff;border:1px solid #ddd6fe;color:var(--accent-violet);font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center}
+.check li b{color:var(--text-primary)}
+.check .out{font-family:var(--font-mono);font-size:12.5px;color:var(--accent-blue)}
+figure{margin:0}
+.anim2d-block{margin:26px 0;text-align:center}
+.anim2d-block .anim2d{width:100%;max-width:680px;height:auto;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(15,23,42,.07)}
+.anim2d-block figcaption{margin-top:10px;font-size:13.5px;color:var(--text-secondary)}
+.ix-block{margin:26px 0;text-align:center}
+.ix-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow-md);text-align:left}
+.ix-caption{margin-top:10px;font-size:13.5px;color:var(--text-secondary);text-align:center}
+.disco-stage{position:relative;height:270px;background:var(--bg-base);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.pt{position:absolute;width:150px;background:#fff;border:2px solid var(--accent-violet);border-radius:10px;padding:8px 10px;text-align:center;transition:.4s}
+.pt b{display:block;font-size:13px;color:#5b21b6}
+.pt span{font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono)}
+.pt.p1{left:16px;top:24px}
+.pt.p2{right:16px;top:24px}
+.pt.p3{left:50%;transform:translateX(-50%);bottom:20px}
+.pt.discovered{border-color:var(--accent-teal);background:#f0fdfa;box-shadow:0 0 0 4px rgba(13,148,136,.12)}
+.pt.matched{border-color:#16a34a;background:#f0fdf4;box-shadow:0 0 0 6px rgba(22,163,74,.16)}
+.stage-status{position:absolute;left:12px;top:10px;font-size:12.5px;font-weight:700;font-family:var(--font-mono);color:var(--text-secondary)}
+.pulse{position:absolute;width:14px;height:14px;border-radius:50%;background:#7c3aed;opacity:0;pointer-events:none}
+.btn{display:inline-block;border:none;background:var(--accent-violet);color:#fff;font-size:13.5px;font-weight:600;
+  padding:9px 20px;border-radius:9px;cursor:pointer;transition:.25s;font-family:inherit}
+.btn:hover{background:#6d28d9;transform:translateY(-1px)}
+.btn.ghost{background:#fff;color:var(--accent-violet);border:1px solid #ddd6fe}
+.levels{display:flex;flex-direction:column;gap:0;margin:18px 0}
+.lv{display:flex;align-items:center;gap:14px;background:var(--bg-card);border:1px solid var(--border);
+  padding:12px 18px;transition:.25s;position:relative}
+.lv:first-child{border-radius:12px 12px 0 0}
+.lv:last-child{border-radius:0 0 12px 12px}
+.lv:hover{background:var(--bg-tint);border-color:var(--accent-violet);z-index:1}
+.lv .ln{font-family:var(--font-mono);font-size:13.5px;font-weight:700;color:var(--accent-violet);min-width:180px}
+.lv .ld{font-size:13.5px;color:var(--text-secondary)}
+.lv.indent1{padding-left:46px}
+.lv.indent2{padding-left:74px}
+.lv.indent3{padding-left:102px}
+.expnav{display:flex;justify-content:space-between;gap:14px;margin-top:44px;padding-top:22px;border-top:1px solid var(--border)}
+.expnav a{flex:1;text-decoration:none;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
+  padding:15px 18px;transition:.28s}
+.expnav a:hover{border-color:var(--accent-violet);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.expnav .dir{font-size:11.5px;color:var(--text-muted);font-family:var(--font-mono)}
+.expnav .t{font-size:14.5px;color:var(--text-primary);font-weight:600;margin-top:4px}
+.expnav .r{text-align:right}
+footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px solid var(--border);
+  text-align:center;font-size:12.5px;color:var(--text-muted)}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .5s,transform .5s}
+.reveal.visible{opacity:1;transform:none}
+@media (max-width:1000px){
+  .sidebar{position:fixed;left:0;top:60px;bottom:0;z-index:55;border-radius:0;transform:translateX(-110%);transition:transform .3s;overflow:auto;max-height:none}
+  .sidebar.open{transform:none}
+  .menu-btn{display:block}
+  .layout{padding:20px;gap:0}
+  .exp-head{padding:22px}
+}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="logo" href="../index.html"><span class="dot"></span>具身智能课程 · 教程首页</a>
+  <button class="menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰ 目录</button>
+  <div class="crumb"><a href="../index.html">ROS2 应用开发</a> / <b>实验 12 DDS 剖析</b></div>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="st">本实验章节</div>
+    <a href="#s1" class="active"><span class="n">01</span>DDS 是什么：ROS2 换底座的原因</a>
+    <a href="#s2"><span class="n">02</span>核心原理：RMW——DDS 的"万能适配器"</a>
+    <a href="#s3"><span class="n">03</span>域模型：RTPS 协议的四层嵌套</a>
+    <a href="#s4"><span class="n">04</span>原理动画：从进程到网络的四层封装</a>
+    <a href="#s5"><span class="n">05</span>自动发现两阶段：为什么不用写"连接代码"</a>
+    <a href="#s6"><span class="n">06</span>互动沙盘：亲手推进两阶段发现</a>
+    <a href="#s7"><span class="n">07</span>QoS 决策表：按数据特性选策略</a>
+    <a href="#s8"><span class="n">08</span>实操流程</a>
+    <a href="#s9"><span class="n">09</span>注意事项与验收清单</a>
+    <a href="#s10"><span class="n">10</span>实验总结与思考题</a>
+    <hr>
+    <div class="other">本课程其它实验</div>
+    <div class="other">
+      <a href="../exp-06-topic/index.html">▷ 06 · 话题通讯（QoS 初见）</a>
+      <a href="../exp-13-distributed/index.html">▷ 13 · 分布式通讯</a>
+      <a href="../exp-05-node/index.html">▷ 05 · 节点</a>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div class="exp-head reveal">
+      <span class="code">EXP-12 · 2 学时 · 难度 ⭐⭐⭐</span>
+      <h1>DDS 通信中间件剖析：RMW · RTPS · 自动发现</h1>
+      <p class="desc">你已经会写 Publisher/Subscriber 了，但 "<b>没写一行连接代码，两个节点为什么就能通？</b>"——答案藏在 ROS2 的底座 DDS 里。本实验拆开这层黑盒：RMW 抽象层如何让 DDS 实现可热插拔，RTPS 协议的 Participant→Endpoint 域模型长什么样，SPDP+SEDP 两阶段自动发现如何让节点"开机即互通"。</p>
+      <div class="meta-row">
+        <span class="tag violet">DDS / RTPS</span><span class="tag violet">RMW</span>
+        <span class="tag">Fast-DDS</span><span class="tag">CycloneDDS</span><span class="tag teal">SPDP / SEDP</span>
+        <span class="tag">纯软件实验</span>
+      </div>
+    </div>
+
+    <!-- 01 -->
+    <section class="blk reveal" id="s1">
+      <h2><span class="sn">01</span>DDS 是什么：ROS2 换底座的原因</h2>
+      <p class="lead">ROS1 的通信依赖一个叫 <b>Master</b> 的中心注册服务器：所有节点先去 Master 报到才能互相找到——Master 一挂，全网瘫痪。ROS2 直接换成了 OMG 组织的工业标准 <b>DDS</b>（Data Distribution Service），把"注册中心"下放到每个进程自带的能力里。</p>
+      <div class="flow">
+        <div class="step"><div class="t">ROS1 时代</div><div class="d">Master 中心注册</div></div>
+        <div class="ar">✕</div>
+        <div class="step"><div class="t">单点故障</div><div class="d">Master 挂 = 全网盲</div></div>
+        <div class="ar">→</div>
+        <div class="step"><div class="t">ROS2 / DDS</div><div class="d">去中心化 P2P</div></div>
+        <div class="ar">→</div>
+        <div class="step"><div class="t">自带能力</div><div class="d">发现 · QoS · 安全</div></div>
+      </div>
+      <div class="tip">💡 <b>DDS 给 ROS2 带来了什么</b>：① <b>自动发现</b>——无需任何注册服务器；② <b>细粒度 QoS</b>——可靠性/持久性/存活检测全部可配；③ <b>实时传输</b>——RTPS 协议基于 UDP 多播，延迟可控；④ <b>厂商生态</b>——Fast-DDS、CycloneDDS、Connext 多家实现可互换。</div>
+    </section>
+
+    <!-- 02 -->
+    <section class="blk reveal" id="s2">
+      <h2><span class="sn teal">02</span>核心原理：RMW——DDS 的"万能适配器"</h2>
+      <p>你写的 <code class="inline">rclpy</code> 代码从来不直接碰 DDS。中间隔着两层：<code class="inline">rcl</code>（C API，定义"节点、发布、订阅该怎么做"）和 <code class="inline">rmw</code>（统一 C 接口，规定"DDS 厂商该提供哪些函数"）。各家 DDS 按这份"接口说明书"实现成共享库，运行时通过环境变量插拔。</p>
+      <div class="levels">
+        <div class="lv"><span class="ln">rclpy / rclcpp</span><span class="ld">开发者 API 层 —— Python / C++ 节点代码</span></div>
+        <div class="lv indent1"><span class="ln">rcl（C API）</span><span class="ld">统一逻辑层 —— 参数、命名空间、QoS 默认值</span></div>
+        <div class="lv indent2"><span class="ln">rmw（抽象层）</span><span class="ld">一张"接口说明书" —— 节点/发布/订阅/发现的标准 C 函数集</span></div>
+        <div class="lv indent3"><span class="ln">rmw_fastrtps_cpp</span><span class="ld">默认实现 · eProsima Fast-DDS</span></div>
+        <div class="lv indent3"><span class="ln">rmw_cyclonedds_cpp</span><span class="ld">备选 · Eclipse CycloneDDS</span></div>
+        <div class="lv indent3"><span class="ln">rmw_connextdds</span><span class="ld">商用 · RTI Connext</span></div>
+        <div class="lv indent3"><span class="ln">RTPS over UDP</span><span class="ld">网络线级协议 —— 序列化 · 寻址 · 多播传输</span></div>
+      </div>
+      <div class="kgrid">
+        <div class="kcard"><div class="kt">可替换性</div><div class="kd"><code class="inline">export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp</code> 一行切换底层实现，<b>代码零改动、无需重编译</b>。</div></div>
+        <div class="kcard"><div class="kt">竞争促进</div><span class="kd"></span><div class="kd">厂商在延迟、吞吐、CPU 占用上互相竞争，ROS2 社区始终能用到"最优实现"。</div></div>
+        <div class="kcard"><div class="kt">隔离变更</div><div class="kd">DDS 库升级或打安全补丁，上层 rcl API 完全无感——改底层不动应用。</div></div>
+        <div class="kcard"><div class="kt">红线约束</div><div class="kd">同一 <code class="inline">ROS_DOMAIN_ID</code> 下必须使用<b>同一种 RMW 实现</b>——不同实现说的话彼此听不懂。</div></div>
+      </div>
+      <div class="tip violet">🔧 <b>验证位置</b>：<code class="inline">echo $RMW_IMPLEMENTATION</code> 为空即默认 Fast-DDS；<code class="inline">ros2 doctor --report | grep -i middleware</code> 可确认当前生效的实现。</div>
+    </section>
+
+    <!-- 03 -->
+    <section class="blk reveal" id="s3">
+      <h2><span class="sn">03</span>域模型：RTPS 协议的四层嵌套</h2>
+      <p>RTPS（Real-Time Publish-Subscribe）是 DDS 的线上协议，规定了消息如何序列化、寻址和传输。它的世界按四层组织——正是 EXP-06 里 QoS 队列真正待的地方：</p>
+      <div class="levels">
+        <div class="lv"><span class="ln">Domain 通信域</span><span class="ld">由 Domain ID 隔离（即 ROS_DOMAIN_ID）——不同域互相"看不见"</span></div>
+        <div class="lv indent1"><span class="ln">Participant 参与者</span><span class="ld">对应一个 ROS2 进程——进程启动即创建，携带全局唯一 GUID</span></div>
+        <div class="lv indent2"><span class="ln">Publisher / Subscriber</span><span class="ld">话题的发送方向 / 接收方向</span></div>
+        <div class="lv indent3"><span class="ln">DataWriter / DataReader</span><span class="ld">端点 Endpoint——真正收发数据的地方，QoS 挂在这一层匹配</span></div>
+        <div class="lv indent3"><span class="ln">HistoryCache 历史缓存</span><span class="ld">KEEP_LAST(N) / KEEP_ALL 保留的消息就存在这里</span></div>
+      </div>
+      <div class="tip">💡 <b>对上号</b>：<code class="inline">ros2 node list</code> 里的每个节点 ≈ 进程里的 Participant；<code class="inline">ros2 topic info --verbose</code> 打出的 "GID" 就是 DataWriter 的 GUID 十六进制形式。CLI 看到的一切都能在 RTPS 概念里找到位置。</div>
+    </section>
+
+    <!-- 04 动画 -->
+    <section class="blk reveal" id="s4">
+      <h2><span class="sn">04</span>原理动画：从进程到网络的四层封装</h2>
+      <p class="lead">动画演示一条消息的"下楼"过程：应用调用 publish → rcl 打包 → rmw 翻译 → RTPS 序列化后从 UDP 发出；对端四层"上楼"解包后回调给订阅者。</p>
+      <figure class="anim2d-block">
+        <svg class="anim2d" viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" role="img"
+             aria-label="RMW 分层数据流动画：消息经 rcl、rmw、RTPS 四层下楼抵达对端">
+          <rect width="680" height="320" rx="12" fill="#f8fafc"/>
+          <!-- 左侧四层 -->
+          <g font-family="Cascadia Code,Consolas,monospace" font-size="12">
+            <rect x="40" y="30" width="220" height="46" rx="9" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+            <text x="150" y="50" text-anchor="middle" font-weight="700" fill="#5b21b6">rclpy · publish(msg)</text>
+            <text x="150" y="68" text-anchor="middle" font-size="10.5" fill="#64748b">应用层：Float32 消息</text>
+            <rect x="40" y="94" width="220" height="46" rx="9" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+            <text x="150" y="114" text-anchor="middle" font-weight="700" fill="#5b21b6">rcl（C API）</text>
+            <text x="150" y="132" text-anchor="middle" font-size="10.5" fill="#64748b">统一逻辑：QoS / 命名空间</text>
+            <rect x="40" y="158" width="220" height="46" rx="9" fill="#fff" stroke="#0891b2" stroke-width="2"/>
+            <text x="150" y="178" text-anchor="middle" font-weight="700" fill="#0e7490">rmw（适配器）</text>
+            <text x="150" y="196" text-anchor="middle" font-size="10.5" fill="#64748b">翻译成厂商函数调用</text>
+            <rect x="40" y="222" width="220" height="46" rx="9" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+            <text x="150" y="242" text-anchor="middle" font-weight="700" fill="#1e40af">RTPS / UDP 多播</text>
+            <text x="150" y="260" text-anchor="middle" font-size="10.5" fill="#64748b">序列化 · 寻址 · 239.255.0.1</text>
+          </g>
+          <!-- 右侧四层 -->
+          <g font-family="Cascadia Code,Consolas,monospace" font-size="12">
+            <rect x="420" y="30" width="220" height="46" rx="9" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+            <text x="530" y="50" text-anchor="middle" font-weight="700" fill="#5b21b6">callback(msg)</text>
+            <text x="530" y="68" text-anchor="middle" font-size="10.5" fill="#64748b">订阅者的定时器/回调被调度</text>
+            <rect x="420" y="94" width="220" height="46" rx="9" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+            <text x="530" y="114" text-anchor="middle" font-weight="700" fill="#5b21b6">rcl · Executor</text>
+            <text x="530" y="132" text-anchor="middle" font-size="10.5" fill="#64748b">事件队列取出就绪回调</text>
+            <rect x="420" y="158" width="220" height="46" rx="9" fill="#fff" stroke="#0891b2" stroke-width="2"/>
+            <text x="530" y="178" text-anchor="middle" font-weight="700" fill="#0e7490">rmw / DataReader</text>
+            <text x="530" y="196" text-anchor="middle" font-size="10.5" fill="#64748b">QoS 队列 HistoryCache</text>
+            <rect x="420" y="222" width="220" height="46" rx="9" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+            <text x="530" y="242" text-anchor="middle" font-weight="700" fill="#1e40af">RTPS / UDP 接收</text>
+            <text x="530" y="260" text-anchor="middle" font-size="10.5" fill="#64748b">反序列化 · GUID 匹配</text>
+          </g>
+          <!-- 中间网络 -->
+          <ellipse cx="340" cy="245" rx="60" ry="34" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" stroke-dasharray="6 4"/>
+          <text x="340" y="242" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb">UDP</text>
+          <text x="340" y="258" text-anchor="middle" font-size="10" fill="#64748b">多播组</text>
+          <!-- 飞行粒子：下楼→网络→上楼 -->
+          <circle r="7" fill="#7c3aed">
+            <animate attributeName="cx" values="150;150;150;150;340;530;530;530;530" keyTimes="0;0.12;0.32;0.52;0.62;0.72;0.82;0.92;1" dur="3.4s" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="53;53;117;181;245;245;181;117;53" keyTimes="0;0.12;0.32;0.52;0.62;0.72;0.82;0.92;1" dur="3.4s" repeatCount="indefinite"/>
+          </circle>
+          <text x="340" y="302" text-anchor="middle" font-size="11" fill="#94a3b8">同一条消息走完 "左楼下 → 网络 → 右楼上" 四层封装的旅程（3.4 秒循环）</text>
+        </svg>
+        <figcaption>动画 12-1｜publish 的四层下楼与 callback 的四层上楼——rmw 层是两侧唯一"可换零件"的位置</figcaption>
+      </figure>
+    </section>
+
+    <!-- 05 -->
+    <section class="blk reveal" id="s5">
+      <h2><span class="sn blue">05</span>自动发现两阶段：为什么不用写"连接代码"</h2>
+      <p>回到开头的问题。DDS 用两阶段协议在后台默默完成一切：</p>
+      <div class="kgrid">
+        <div class="kcard"><div class="kt">阶段一 · SPDP 找人</div><div class="kd">Participant 启动后，向多播地址 <code class="inline">239.255.0.1</code> 周期性广播"我来了"（GUID + Domain ID）。收到的参与者把彼此记入花名册。这一步只要求 <b>Best Effort</b>——丢一两条没关系，下个周期还会发。</div></div>
+        <div class="kcard"><div class="kt">阶段二 · SEDP 找端点</div><div class="kd">互相认识后，双方通过内置端点交换各自的 DataWriter/DataReader 清单与 QoS。只有<b>话题名相同 + 类型相同 + QoS 兼容</b>的两端才会正式"结对"，建立应用级数据链路。</div></div>
+      </div>
+      <table>
+        <thead><tr><th>阶段</th><th>解决的问题</th><th>类比</th></tr></thead>
+        <tbody>
+          <tr><td>SPDP</td><td>网络里有<span style="font-family:var(--font-mono)">谁</span>、在哪个 Domain</td><td>加工作群先看群成员列表</td></tr>
+          <tr><td>SEDP</td><td>每个人提供/消费<span style="font-family:var(--font-mono)">什么话题</span>、QoS 是否匹配</td><td>群里发公告对暗号，对上才加好友</td></tr>
+        </tbody>
+      </table>
+      <div class="tip amber">⚠️ <b>这就是"订阅端没输出"的头号排查方向</b>：三道门——① 同 Domain 吗？② 话题名/类型一致吗？③ QoS 请求 ≤ 提供吗（EXP-06 互动沙盒练过）？任何一道不通，SEDP 都不会撮合这对端点。</div>
+    </section>
+
+    <!-- 06 互动 -->
+    <section class="blk reveal" id="s6">
+      <h2><span class="sn">06</span>互动沙盘：亲手推进两阶段发现</h2>
+      <p class="lead">点击按钮按真实时序推进：三个 Participant 上线 → SPDP 互播建立花名册 → SEDP 交换端点 → 按话题与 QoS 撮合成功：</p>
+      <div class="ix-block">
+        <div class="ix-panel">
+          <div class="disco-stage" id="stage">
+            <div class="stage-status" id="stageStatus">状态：IDLE —— 三个 Participant 还没启动</div>
+            <div class="pt p1" id="pt1"><b>Participant A</b><span>pub /gas_sensor</span></div>
+            <div class="pt p2" id="pt2"><b>Participant B</b><span>sub /gas_sensor</span></div>
+            <div class="pt p3" id="pt3"><b>Participant C</b><span>sub /gas_sensor</span></div>
+            <div class="pulse" id="pulseA"></div>
+            <div class="pulse" id="pulseB"></div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn" onclick="advance()">▶ 推进一步</button>
+            <button class="btn ghost" onclick="resetDisco()">↺ 重置</button>
+          </div>
+        </div>
+        <p class="ix-caption">互动 12-1｜推进 4 步：① 启动 → ② SPDP 多播互播（浅紫描边=已发现）→ ③ SEDP 交换端点清单 → ④ 撮合成功（绿色=数据链路建立）</p>
+      </div>
+      <div class="tip">💡 <b>观察点</b>：第 ② 步只有"人被发现"，还没有数据流动——这就是为什么两个节点都启动后 <code class="inline">ros2 topic list</code> 秒级可见，但 <code class="inline">echo</code> 出数据还要再等撮合完成。</div>
+    </section>
+
+    <!-- 07 QoS 决策 -->
+    <section class="blk reveal" id="s7">
+      <h2><span class="sn teal">07</span>QoS 决策表：按数据特性选策略</h2>
+      <p>EXP-06 你练过兼容规则，这里升级到<b>选型能力</b>——不同数据天生想要不同 QoS：</p>
+      <table>
+        <thead><tr><th>QoS 策略</th><th>可选值</th><th>语义</th><th>典型场景</th></tr></thead>
+        <tbody>
+          <tr><td>Reliability</td><td><code>RELIABLE</code> / <code>BEST_EFFORT</code></td><td>丢包重传 vs 尽力而为</td><td>控制指令 → RELIABLE；激光点云/图像 → BEST_EFFORT（丢帧可容忍、要低延迟）</td></tr>
+          <tr><td>Durability</td><td><code>VOLATILE</code> / <code>TRANSIENT_LOCAL</code></td><td>晚来的订阅者收不收历史</td><td>实时流 → VOLATILE；地图、机器人状态 → TRANSIENT_LOCAL</td></tr>
+          <tr><td>History</td><td><code>KEEP_LAST(n)</code> / <code>KEEP_ALL</code></td><td>缓存几条</td><td>状态量 → KEEP_LAST(1)；录制回放 → KEEP_LAST(1000)</td></tr>
+          <tr><td>Liveliness</td><td><code>AUTOMATIC</code> / <code>MANUAL_BY_TOPIC</code></td><td>谁负责证明"我还活着"</td><td>安全关键节点 → MANUAL（代码显式心跳）</td></tr>
+        </tbody>
+      </table>
+      <pre><span class="c"># 查看任一话题当前生效的完整 QoS 档案</span>
+<span class="g">ros2</span> topic info /chatter --verbose
+<span class="c"># 输出含：Reliability: RELIABLE / Durability: VOLATILE / GID: 01.0f...</span>
+
+<span class="c"># 你的 QoS 代码里对应的声明（EXP-06 复习）</span>
+qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=<span class="b">10</span>,
+                 reliability=ReliabilityPolicy.RELIABLE)</pre>
+    </section>
+
+    <!-- 08 实操 -->
+    <section class="blk reveal" id="s8">
+      <h2><span class="sn">08</span>实操流程</h2>
+      <div class="flow">
+        <div class="step"><div class="t">步骤 1</div><div class="d">理解 RMW 分层</div></div>
+        <div class="ar">→</div>
+        <div class="step"><div class="t">步骤 2</div><div class="d">切换 DDS 实现</div></div>
+        <div class="ar">→</div>
+        <div class="step"><div class="t">步骤 3</div><div class="d">理解 RTPS 与发现</div></div>
+        <div class="ar">→</div>
+        <div class="step"><div class="t">步骤 4</div><div class="d">QoS 对比实验</div></div>
+        <div class="ar">→</div>
+        <div class="step"><div class="t">步骤 5</div><div class="d">CLI 观察 GUID/QoS</div></div>
+        <div class="ar">→</div>
+        <div class="step"><div class="t">步骤 6</div><div class="d">完整 demo 总结</div></div>
+      </div>
+      <pre><span class="c"># 步骤 1-2：确认并切换 DDS 实现（需要联网安装 CycloneDDS）</span>
+<span class="g">echo</span> $RMW_IMPLEMENTATION                <span class="c"># 空 = 默认 Fast-DDS</span>
+<span class="g">sudo</span> apt install ros-humble-rmw-cyclonedds-cpp
+
+<span class="g">export</span> RMW_IMPLEMENTATION=rmw_cyclonedds_cpp   <span class="c"># 同一份代码零改动运行</span>
+<span class="g">ros2</span> run demo_nodes_cpp talker &amp;
+<span class="g">ros2</span> run demo_nodes_cpp listener &amp;
+
+<span class="c"># 步骤 5：观察发现结果与端点身份</span>
+<span class="g">ros2</span> topic info /chatter --verbose     <span class="c"># GID（GUID）+ QoS 档案</span>
+<span class="g">ros2</span> node info /talker                 <span class="c"># 该 Participant 的端点清单</span>
+<span class="g">ros2</span> doctor --report | grep -i middleware
+
+<span class="c"># 收尾：切回默认实现</span>
+<span class="g">export</span> RMW_IMPLEMENTATION=rmw_fastrtps_cpp</pre>
+      <div class="tip amber">⚠️ <b>易错点</b>：设置 <code class="inline">RMW_IMPLEMENTATION</code> 后节点起不来 → 先确认 <code class="inline">ros-humble-rmw-&lt;vendor&gt;-cpp</code> 已安装；一个 Domain 内混用两种 RMW 实现的节点会<b>互相看不见</b>——不是故障，是协议不通。</div>
+    </section>
+
+    <!-- 09 -->
+    <section class="blk reveal" id="s9">
+      <h2><span class="sn">09</span>注意事项与验收清单</h2>
+      <table>
+        <thead><tr><th>⚠️ 注意项</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>纯软件实验</td><td>本实验不依赖传感器硬件，建议在纯软件环境专注理解通信机制</td></tr>
+          <tr><td>RMW 一致性</td><td>同一 ROS_DOMAIN_ID 下所有节点必须使用同一种 RMW 实现</td></tr>
+          <tr><td>网络权限</td><td>SPDP 依赖 UDP 多播——虚拟机/容器若关闭多播将导致发现失败</td></tr>
+          <tr><td>Durability 三态</td><td>VOLATILE / TRANSIENT_LOCAL / TRANSIENT，第三种需 DDS 持久化存储支持，课程默认前两者</td></tr>
+        </tbody>
+      </table>
+      <ul class="check">
+        <li><span class="out">export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp</span> 后 talker/listener <b>零改动</b>互通</li>
+        <li><span class="out">ros2 topic info /chatter --verbose</span> 能指出 GID 与 QoS 档案</li>
+        <li>能对照解释 SPDP（找人）与 SEDP（找端点）各自职责</li>
+        <li>RELIABLE vs BEST_EFFORT 高频+慢订阅场景对比，观察到丢帧差异</li>
+        <li>TRANSIENT_LOCAL 订阅端<b>晚启动</b>仍能收到历史消息，VOLATILE 收不到</li>
+        <li>能为"激光点云"与"导航指令"分别推荐合适的 QoS 组合并说明理由</li>
+      </ul>
+    </section>
+
+    <!-- 10 -->
+    <section class="blk reveal" id="s10">
+      <h2><span class="sn teal">10</span>实验总结与思考题</h2>
+      <div class="kgrid">
+        <div class="kcard"><div class="kt">✅ 完成成果</div><div class="kd">会切换 RMW 实现、会用 <code class="inline">--verbose</code> 读 QoS/GID、跑通 RELIABLE/BEST_EFFORT 与 VOLATILE/TRANSIENT_LOCAL 对比实验。</div></div>
+        <div class="kcard"><div class="kt">🧠 原理收获</div><div class="kd">rcl→rmw→DDS 三层抽象的工程价值；RTPS 四层域模型；SPDP+SEDP 两阶段自动发现的完整因果链。</div></div>
+        <div class="kcard"><div class="kt">🛠 技能收获</div><div class="kd">能读懂 <code class="inline">ros2 topic info --verbose</code> 的 QoS 输出；能按数据特性（延迟敏感/不能丢帧/要存量）做 QoS 选型。</div></div>
+        <div class="kcard"><div class="kt">❓ 排障方法</div><div class="kd">节点不通按三道门排查：同 Domain？话题名与类型一致？QoS 请求 ≤ 提供？再查 RMW 是否统一。</div></div>
+      </div>
+      <div class="tip">📝 <b>思考题 1</b>：如果让你设计一个"ROS3 通信层"，会继续沿用 DDS 的去中心化设计吗？请从实时性、安全、车规合规三个角度各举一条支持或反对的理由。</div>
+      <div class="tip">📝 <b>思考题 2</b>：SPDP 使用 Best Effort 而应用话题可以用 Reliable——为什么"发现阶段"反而允许丢包？（提示：周期重播 + 花名册幂等）</div>
+    </section>
+
+    <nav class="expnav reveal">
+      <a href="../exp-11-time/index.html"><div class="dir">← 上一个实验</div><div class="t">EXP-11 时间 API</div></a>
+      <a class="r" href="../exp-13-distributed/index.html"><div class="dir">下一个实验 →</div><div class="t">EXP-13 分布式通讯</div></a>
+    </nav>
+
+  </main>
+</div>
+
+<footer>CORE-01 · 机器人 ROS2 应用与开发 · 实验 12 DDS 通信中间件剖析 · 基于 ros_practice 实验讲义改编 · 样式：clean-tech-ui</footer>
+
+<script>
+// 发现过程沙盘：4 步状态机
+var discoStep=0;
+function setStatus(t){document.getElementById('stageStatus').textContent='状态：'+t;}
+function advance(){
+  var ids=['pt1','pt2','pt3'];
+  discoStep++;
+  if(discoStep===1){
+    setStatus('BOOT —— 三个 Participant 启动，创建 GUID，加入 Domain 0');
+    ids.forEach(function(i){document.getElementById(i).className='pt '+i==='x';});
+    document.getElementById('pt1').className='pt p1';
+    document.getElementById('pt2').className='pt p2';
+    document.getElementById('pt3').className='pt p3';
+    setStatus('BOOT —— 三个 Participant 启动，创建 GUID，加入 Domain 0');
+  }else if(discoStep===2){
+    document.getElementById('pt1').className='pt p1 discovered';
+    document.getElementById('pt2').className='pt p2 discovered';
+    document.getElementById('pt3').className='pt p3 discovered';
+    setStatus('SPDP —— 向 239.255.0.1 周期多播，互记花名册（人已互相发现）');
+  }else if(discoStep===3){
+    setStatus('SEDP —— 交换 DataWriter/DataReader 清单：A 提供 /gas_sensor，B/C 消费 /gas_sensor');
+    ['pt1','pt2','pt3'].forEach(function(i,k){
+      document.getElementById(i).className='pt '+['p1','p2','p3'][k]+' discovered';
+      document.getElementById(i).style.borderColor='#2563eb';
+    });
+  }else if(discoStep===4){
+    document.getElementById('pt1').className='pt p1 matched';
+    document.getElementById('pt2').className='pt p2 matched';
+    document.getElementById('pt3').className='pt p3 matched';
+    ['pt1','pt2','pt3'].forEach(function(i){document.getElementById(i).style.borderColor='';});
+    setStatus('MATCHED ✔ —— 话题名/类型/QoS 三项吻合，数据链路建立，开始分发消息');
+  }else{
+    setStatus('MATCHED ✔ —— 数据链路已建立（可点重置再来一遍）');
+    discoStep=4;
+  }
+}
+function resetDisco(){
+  discoStep=0;
+  document.getElementById('pt1').className='pt p1';
+  document.getElementById('pt2').className='pt p2';
+  document.getElementById('pt3').className='pt p3';
+  ['pt1','pt2','pt3'].forEach(function(i){document.getElementById(i).style.borderColor='';});
+  setStatus('IDLE —— 三个 Participant 还没启动');
+}
+// 侧边栏高亮 + reveal
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+  var targets = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = scrollY + 120, idx = 0;
+    targets.forEach(function(t,i){ if(t && t.offsetTop <= y) idx = i; });
+    links.forEach(function(a,i){ a.classList.toggle('active', i === idx); });
+  }
+  addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+  links.forEach(function(a){ a.addEventListener('click', function(){
+    document.querySelector('.sidebar').classList.remove('open');
+  });});
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('visible'); io.unobserve(e.target);} });
+  },{threshold:.10});
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+</script>
+</body>
+</html>

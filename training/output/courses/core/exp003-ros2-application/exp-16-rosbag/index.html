@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-16 · rosbag2 数据录制与回放 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#c2410c;--theme-deep:#9a3412;--theme-bg:#ffedd5;--theme-bd:#fed7aa}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-16</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：只会来一次的现场故障</a>
+  <a href="#s2">02 核心原理：一个 .db3 文件里到底有什么</a>
+  <a href="#s3">03 动画：录包保真、回放复活</a>
+  <a href="#s4">04 原理专题：record 与 play 的参数族</a>
+  <a href="#s5">05 交互实验：录放命令构建器</a>
+  <a href="#s6">06 命令精讲：info 定量体检 + SQL 直查</a>
+  <a href="#s7">07 实操 A：录一段 → 定量分析 → 回放验证</a>
+  <a href="#s8">08 实操 B：离线回放 + rviz2 联调数据流</a>
+  <a href="#s9">09 注意事项与验收</a>
+  <a href="#s10">10 本课总结</a>
+  <h4>CH4 · 工具链</h4>
+  <a href="../exp-14-rqt/index.html">EXP-14 rqt 工具箱</a>
+  <a href="../exp-15-rviz2/index.html">EXP-15 rviz2 可视化</a>
+  <a href="../exp-16-rosbag/index.html" style="color:var(--theme);font-weight:700">EXP-16 rosbag2 数据录制</a>
+  <a href="../exp-17-launch/index.html">EXP-17 Launch 启动系统</a>
+  <a href="../exp-18-metapackage/index.html">EXP-18 元功能包集成</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-16 · 第四章 · 验证性 · 2 学时</span>
+  <h1>rosbag2 数据录制与回放：把现场带回实验室</h1>
+  <p class="desc">最难的 bug 往往只在客户现场出现一次：车到了特定角落才定位漂移，回来怎么调都正常。rosbag2 把整条话题的时间序列原样录进文件，回到实验室"时光倒流"反复重放——本课讲清 SQLite 存储与 CDR 序列化的原理，掌握 record/play 参数族与带时钟的离线回放流。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 rosbag2 · record · play · --clock</span></div>
+</div>
+
+<!-- 01 问题引入 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：只会来一次的现场故障</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>偶发</b><p>仓库小车在 3 号货架角落必现定位跳变，开回调试室就永远复现不了</p></div>
+    <div class="step"><div class="n">2</div><b>代价</b><p>一次现场复查：出差 + 布置笔记本 + 人守着——每次以"小时"计费</p></div>
+    <div class="step"><div class="n">3</div><b>本质</b><p>故障 = 某时刻某组消息的特定内容，现场没录下来就永久丢失</p></div>
+    <div class="step"><div class="n">4</div><b>正解</b><p>ros2 bag record 现场录 5 分钟 → 带回工位 ros2 bag play 想放几遍放几遍</p></div>
+  </div>
+  <div class="tip">
+    <span class="lab">定义</span>
+    <b>rosbag2</b> 是 ROS2 的数据记录与回放框架：record 把指定话题的每条消息连同时间戳写进文件；play 按原时序（或加速/减速）重新发布出来——订阅节点"感觉不到"这些消息是历史还是现场。<b>调试成本从"去现场"变成"回工位"</b>，硬件依赖型调试工作量可压缩 80% → 20%。
+  </div>
+</section>
+
+<!-- 02 原理 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>核心原理：一个 .db3 文件里到底有什么</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">存储结构</div><div class="kt">SQLite3 双表 + 元数据</div><p>一个 bag = 目录：<code>*.db3</code> 数据库 + <code>metadata.yaml</code> 清单。库里两张表——<b>topics</b>（话题ID→名称/类型/QoS）与 <b>messages</b>（时间戳+话题ID+CDR 字节流）。YAML 记录时长/条数/相对路径，删除它 bag 就"失忆"。</p></div>
+    <div class="kcard"><div class="kd">为什么选 SQLite</div><div class="kt">四条硬理由</div><p>① 自带索引→任意时间点随机访问；② 事务机制→写到一半断电最多损坏最后一笔；③ SQL 直接聚合分析（频率=Count/Duration）；④ 单文件好搬运好上传。</p></div>
+    <div class="kcard"><div class="kd">序列化</div><div class="kt">CDR：和 DDS 同一种字节</div><p>存的就是 DDS 线上传输的 CDR 序列化结果——回放时零转换直接发出，语义 100% 保真。这也是为什么 rosbag2 不需要每种消息写专用适配器：只要类型支持接口定义，就能录能放。</p></div>
+    <div class="kcard"><div class="kd">两个缓冲别混</div><div class="kt">max-cache ≠ max-size</div><p><code>--max-bag-size</code>：单文件写满自动切分新 .db3（控制磁盘文件粒度）；<code>--max-cache-size</code>：内存写盘缓冲（调小→高频消息排队溢出<b>丢数据</b>，默认 100MB 够用，4K 相机再加大）。</p></div>
+  </div>
+  <table>
+    <tr><th>决策点</th><th>选择</th><th>理由</th></tr>
+    <tr><td>录全部还是选话题</td><td><b>选话题</b>（生产标准）</td><td>1080p 相机 30Hz 单话题约 178MB/s，-a 全录磁盘秒爆还混入系统噪音</td></tr>
+    <tr><td>要不要压缩</td><td>看 CPU 余量</td><td>-c file/message 省盘 30-60%，代价 RK3576 级 SoC 约 +10-20% CPU</td></tr>
+    <tr><td>哪些话题必录</td><td>感知+定位+控制闭环</td><td>scan/imu/camera + odom/tf + cmd_vel + 关节——修复故障的最小证据链</td></tr>
+    <tr><td>QoS</td><td>录时声明，放时匹配</td><td>best_effort 的传感器话题要用 --qos-profile 重声明，否则回放对不上（见坑表）</td></tr>
+  </table>
+  <div class="tip amber">
+    <span class="lab">要点</span>
+    bag 的时间戳有<b>双来源</b>：bag 里的排序时间是 record 节点<b>本地接收时刻</b>，消息内部 header.stamp 是<b>传感器采集时刻</b>。两者在传输延迟大时会差异明显——录包只录"开始之后"，1 秒钟的短录可能直接 0 字节，先看 metadata 再走人。
+  </div>
+</section>
+
+<!-- 03 动画 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>动画：录包保真、回放复活</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 760 340" width="100%">
+      <defs>
+        <marker id="a16" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#fdba74"/></marker>
+        <marker id="b16" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#7dd3fc"/></marker>
+      </defs>
+      <text x="380" y="24" text-anchor="middle" fill="#94a3b8" font-size="13">① 现场录制（写入）　→　② SQLite 时间序列　→　③ 工位回放（再生发布）</text>
+      <!-- 录制侧 -->
+      <rect x="30" y="66" width="180" height="60" rx="9" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+      <text x="120" y="92" text-anchor="middle" fill="#dbeafe" font-size="13" font-weight="bold">/scan /imu /odom</text>
+      <text x="120" y="114" text-anchor="middle" fill="#93c5fd" font-size="11">话题实时数据流</text>
+      <line x1="214" y1="96" x2="256" y2="96" stroke="#fdba74" stroke-width="2" marker-end="url(#a16)"/>
+      <rect x="260" y="60" width="150" height="72" rx="9" fill="#431407" stroke="#fb923c" stroke-width="2"/>
+      <text x="335" y="88" text-anchor="middle" fill="#ffedd5" font-size="13" font-weight="bold">ros2 bag record</text>
+      <text x="335" y="112" text-anchor="middle" fill="#fed7aa" font-size="11">CDR 原样落盘 · 事务写</text>
+      <circle r="4" fill="#fdba74"><animateMotion path="M214,96 L256,96" dur="1.2s" repeatCount="indefinite"/></circle>
+      <!-- 文件 -->
+      <rect x="470" y="46" width="260" height="104" rx="9" fill="#1c1917" stroke="#a8a29e" stroke-width="2"/>
+      <text x="600" y="70" text-anchor="middle" fill="#e7e5e4" font-size="13" font-weight="bold">my_bag/ （SQLite3 + YAML）</text>
+      <g font-size="11" fill="#fdba74" font-family="monospace">
+        <text x="488" y="94">t=10.002  /scan    [CDR]</text>
+        <text x="488" y="114">t=10.018  /odom    [CDR]</text>
+        <text x="488" y="134">t=10.035  /imu     [CDR] …</text>
+      </g>
+      <line x1="414" y1="96" x2="466" y2="96" stroke="#fdba74" stroke-width="2" marker-end="url(#a16)"/>
+      <circle r="4" fill="#fdba74"><animateMotion path="M414,96 L466,96" dur="1.2s" repeatCount="indefinite"/></circle>
+      <!-- 回放 -->
+      <rect x="470" y="196" width="120" height="60" rx="9" fill="#082f49" stroke="#38bdf8" stroke-width="2"/>
+      <text x="530" y="222" text-anchor="middle" fill="#dbeafe" font-size="13" font-weight="bold">ros2 bag play</text>
+      <text x="530" y="242" text-anchor="middle" fill="#93c5fd" font-size="10">按原时序再生 · -r 调速</text>
+      <rect x="612" y="196" width="118" height="60" rx="9" fill="#052e16" stroke="#4ade80" stroke-width="2"/>
+      <text x="671" y="222" text-anchor="middle" fill="#dcfce7" font-size="13" font-weight="bold">算法节点</text>
+      <text x="671" y="242" text-anchor="middle" fill="#86efac" font-size="10">分不清现场还是历史</text>
+      <line x1="594" y1="226" x2="608" y2="226" stroke="#7dd3fc" stroke-width="2" marker-end="url(#b16)"/>
+      <line x1="600" y1="154" x2="530" y2="192" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#b16)"/>
+      <text x="470" y="176" fill="#7dd3fc" font-size="11">读取索引，随机跳到任意时刻</text>
+      <!-- 时钟开关 -->
+      <rect x="40" y="200" width="380" height="94" rx="9" fill="#422006" stroke="#fbbf24" stroke-width="2"/>
+      <text x="230" y="226" text-anchor="middle" fill="#fde68a" font-size="13" font-weight="bold">时钟开关（配合 EXP-11 use_sim_time）</text>
+      <text x="56" y="252" fill="#fef3c7" font-size="11.5">play --clock → 1Hz 再生 /clock 消息 → 订阅节点感知"回到 10.0s"</text>
+      <text x="56" y="276" fill="#fca5a5" font-size="11.5">不开：节点 now=今天 · stamp=昨天 → TF LookupException 满屏</text>
+      <text x="380" y="326" text-anchor="middle" fill="#94a3b8" font-size="12">SQLite 索引 = 时间旅行的"跳转按钮"，CDR = 不掉帧的"原片"</text>
+    </svg>
+  </div>
+  <p class="anim-cap">动画：录制端把话题 CDR 字节连时间戳经事务写入 SQLite；回放端从索引读取、按原时序（或 -r 调速）再生发布，算法节点无法区分新旧。底部黄色提示 --clock 开关：它让历史时间跟随回放流逝，是 TF/定时器正常工作的前提。</p>
+</section>
+
+<!-- 04 参数族 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>原理专题：record 与 play 的参数族</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">record · 范围</div><div class="kt">-a 全量 vs 点名</div><p><code>-a</code> 录所有（含系统话题，磁盘杀手）；<code>ros2 bag record /t1 /t2</code> 点名录——生产标准永远是点名 + <code>-e</code> 正则（如 <code>-e "scan|odom"</code>）圈最小证据集。</p></div>
+    <div class="kcard"><div class="kd">record · 切片</div><div class="kt">-d 启动延迟 · -e 正则 · -u 限时</div><p><code>-d 5</code> 等 5 秒再录（跳开初始化噪声）；<code>-u 10</code> 只录 10 秒自动停；<code>-o run_01</code> 指定输出目录名（默认按时间戳，难找）。</p></div>
+    <div class="kcard"><div class="kd">record · 保命参数</div><div class="kt">--max-bag-size / --max-cache-size</div><p>前者控制单文件切分（<code>--max-bag-size 2147483648</code> = 2GB/文件，防超大文件难搬运）；后者控制内存缓冲（默认 100MB，写不及会丢消息）。</p></div>
+    <div class="kcard"><div class="kd">record · 压缩</div><div class="kt">-c message / -c file</div><p>message：逐条 per-message 压缩，兼容性最好；file：整库压缩省空间最多。RK3576 级 SoC 约 +10-20% CPU——录摄像头时先跑 top 看余量，CPU 打满丢的是更多数据。</p></div>
+    <div class="kcard"><div class="kd">play · 节奏</div><div class="kt">-r 倍速 · --loop · --start-offset</div><p><code>-r 2.0</code> 二倍速快进、<code>-r 0.5</code> 慢放细看——<b>只改发布节奏，不动消息内时间戳</b>；<code>--loop</code> 循环（tf_static 必备）；<code>--start-offset 30</code> 从第 30 秒起播。</p></div>
+    <div class="kcard"><div class="kd">play · 时钟与话题</div><div class="kt">--clock · -t / --topics · -q</div><p><code>--clock</code> 发 /clock（use_sim_time 节点必开）；<code>-t /chatter</code> 只放某话题；暂停/单步（空格/→）逐帧审；<code>-q</code> 静默重复警告。</p></div>
+  </div>
+  <table>
+    <tr><th>参数易混对</th><th>第一个</th><th>第二个</th></tr>
+    <tr><td>切分 vs 缓冲</td><td>--max-bag-size：文件写满换新 .db3</td><td>--max-cache-size：内存攒批写盘，小了丢消息</td></tr>
+    <tr><td>调速 vs 改时间</td><td>-r 2.0：消息来得快一倍</td><td>消息内部 stamp 原封不动（仿真时间另走 --clock）</td></tr>
+    <tr><td>-9 停录 vs Ctrl+C</td><td>kill -9：事务回滚最后一笔，数据安全</td><td>不当停止可能导致 YAML 清单未更新，先 bag info 校验</td></tr>
+    <tr><td>-a vs 点名/-e</td><td>-a：省事，磁盘和噪声都爆</td><td>点名+正则：生产标准，最小证据链</td></tr>
+  </table>
+</section>
+
+<!-- 05 交互 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>交互实验：录放命令构建器</h2>
+  <div class="ix-panel">
+    <div class="ix-title">Bag Commander：选场景，生成带参数解释的完整命令</div>
+    <div class="ctl-row">
+      <label class="ctl">任务场景
+        <select id="md" onchange="build()">
+          <option value="quick">快速抓包：录全部话题 10 秒</option>
+          <option value="prod">生产标准：选话题 + 正则 + 2GB 切分</option>
+          <option value="slow">慢放排障：0.5 倍速 + 循环 + 从 30s 起</option>
+          <option value="sim">离线仿真：--clock 回放喂给 use_sim_time 节点</option>
+          <option value="cam">摄像头专项：大缓冲 + 压缩 + 延迟避噪声</option>
+        </select>
+      </label>
+    </div>
+    <pre class="io" id="out"></pre>
+  </div>
+</section>
+
+<!-- 06 命令精讲 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>命令精讲：info 定量体检 + SQL 直查</h2>
+  <pre><code><span class="c"># bag 定量体检：三行数据决定这个包能不能用</span>
+<span class="b">$</span> ros2 bag info run_01
+<span class="c">#   Duration: 12.4s · Messages: 35230 · Size: 41MB</span>
+<span class="c">#   频率心算 = Count / Duration：scan 1020/12.4 ≈ 82Hz ✓（应=激光标称值）</span>
+<span class="c">#   某话题 Count 异常低 → 录漏了；Duration=0 → 空包重录</span>
+
+<span class="c"># SQLite 直接聚合——索引存在的意义，秒出统计</span>
+<span class="b">$</span> sqlite3 run_01_0.db3 <span class="y">"SELECT topics.name, COUNT(*) FROM messages</span>
+<span class="y">  JOIN topics ON messages.topic_id=topics.id GROUP BY 1;"</span>
+<span class="c">#   直接导出 JSON/CSV 的思路同理：SELECT * WHERE timestamp BETWEEN ...</span>
+
+<span class="c"># 回放三板斧</span>
+<span class="b">$</span> ros2 bag play run_01 -r <span class="y">0.5</span> --loop          <span class="g"># 慢放细看 + 循环</span>
+<span class="b">$</span> ros2 bag play run_01 -t <span class="y">/scan</span> --start-offset <span class="y">30</span>  <span class="g"># 只放雷达，跳过开头</span>
+<span class="b">$</span> ros2 bag play run_01 --clock                  <span class="g"># 再生 /clock，供下游对时</span>
+
+<span class="c"># 只看字段值？从 bag 里挑一条直接反序列化</span>
+<span class="b">$</span> sqlite3 run_01_0.db3 "SELECT substr(data,1,40) FROM messages LIMIT 1;" | xxd | head</code></pre>
+  <div class="tip tealb">
+    <span class="lab">原理</span>
+    <b>回放为什么能骗过算法节点</b>：ROS2 里订阅关系是动态的——play 起来后会以真实节点身份加入当前域、宣布"我有这些话题"。QoS 需匹配：record 时按话题原生 QoS 存进 topics 表，play 默认以 compatible 档发布；若订阅端要求 RELIABLE 而包里存的是 BEST_EFFORT，回放方需 <code>--qos-profile-overrides-path</code> 显式声明（坑表第 1 条）。
+  </div>
+</section>
+
+<!-- 07 实操A -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>实操 A：录一段 → 定量分析 → 回放验证</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>录制</b><p>起示例系统，record 点名录 3 个话题、限时 15 秒自停：-d 3 -u 15 -o run_01</p></div>
+    <div class="step"><div class="n">2</div><b>体检</b><p>ros2 bag info：确认 Duration≈15s、每话题 Count/Duration ≈ 标称频率</p></div>
+    <div class="step"><div class="n">3</div><b>回放</b><p>先 kill 原发布源，再 play → 下游订阅者正常收到"历史数据"</p></div>
+    <div class="step"><div class="n">4</div><b>调速</b><p>切换 -r 2.0 / -r 0.5 重放，观察 stamp 不变、节奏变——理解"只改流速"</p></div>
+  </div>
+  <pre><code><span class="b">$</span> ros2 run sine_wave sine_wave_node        <span class="g"># 终端1：现场数据源</span>
+<span class="b">$</span> ros2 bag record /sine_wave -d <span class="y">3</span> -u <span class="y">15</span> -o <span class="y">run_01</span>   <span class="g"># 终端2：3秒后开始录15秒</span>
+<span class="b">$</span> ros2 bag info run_01                     <span class="g"># 终端2：体检</span>
+<span class="c">#   预期 Duration≈15s，Count/15 ≈ 发布频率</span>
+<span class="b">$</span> ros2 topic echo /sine_wave               <span class="g"># 终端3：先把订阅端跑起来</span>
+<span class="b">$</span> kill 数据源                               <span class="g"># 终端1：断掉现场</span>
+<span class="c">#   终端3 echo 停止 —— 故障已"复现"</span>
+<span class="b">$</span> ros2 bag play run_01                     <span class="g"># 终端1：时间倒流</span>
+<span class="c">#   终端3 恢复滚动 —— 故障源锁定并可无限次重放</span>
+<span class="b">$</span> ros2 bag play run_01 -r <span class="y">0.5</span> --loop       <span class="c"># 慢放 50% + 循环盯着看</span></code></pre>
+  <div class="tip amber"><span class="lab">观察点</span>record 结束后<b>先 info 再走人</b>：Duration 为 0 或 Count 明显偏少的包是废包（录晚了/缓冲丢了）。一句 <code>ros2 bag info</code> 十秒钟，省掉的是明天重跑现场的一整天。</div>
+</section>
+
+<!-- 08 实操B -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操 B：离线回放 + rviz2 联调数据流</h2>
+  <p>上节回放"能收到消息"，但只要下游节点用到 TF 或定时器，就必须让<b>时间一起回到过去</b>——这就是 --clock 与 use_sim_time 的双开关。</p>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>起消费者</b><p>起一个 use_sim_time:=true、订阅 /scan 并查 TF 的节点（时间冻结态，等 /clock）</p></div>
+    <div class="step"><div class="n">2</div><b>带钟回放</b><p>ros2 bag play run_01 --clock --loop：1Hz 再生 /clock，节点时钟开始流动</p></div>
+    <div class="step"><div class="n">3</div><b>可视化同步</b><p>rviz2 --ros-args -p use_sim_time:=true，数据与视图同处"历史时空"</p></div>
+    <div class="step"><div class="n">4</div><b>验证对时</b><p>Panels→Time 加时间面板：Sim Time 随回放增长、与消息 stamp 0 偏差</p></div>
+  </div>
+  <pre><code><span class="c"># 离线调试铁三角：--clock + use_sim_time + Time 面板</span>
+<span class="b">$</span> ros2 bag play my_bag --clock --loop       <span class="g"># 终端1：数据 + 时间双再生</span>
+<span class="b">$</span> rviz2 --ros-args -p use_sim_time:=true     <span class="g"># 终端2：视图进入历史时空</span>
+<span class="b">$</span> ros2 run my_pkg nav_node --ros-args -p use_sim_time:=true
+<span class="c">#   任一环节漏开关：STAMP=昨天 vs now=今天 → TF LookupException</span>
+<span class="c">#   （原因见 EXP-07/19：查 TF 必须指定 time，时间为历史积累 → 不匹配即拒）</span>
+<span class="b">$</span> ros2 topic delay /scan                     <span class="g"># 防御：负值=时钟没对齐</span></code></pre>
+  <table>
+    <tr><th>坑</th><th>症状</th><th>解法</th></tr>
+    <tr><td>回放后 listener 收不到</td><td>订阅方全程静默</td><td>QoS 不匹配：查原生 profile，用 --qos-profile-overrides-path 重声明同档</td></tr>
+    <tr><td>tf_static 只发一次</td><td>节点 late-join 错过静态变换</td><td>play 加 --loop（首轮之后每圈重播），或订阅端已缓存过再连</td></tr>
+    <tr><td>/clock 没开或没认</td><td>Time 面板不动、STAMP 错位</td><td>play --clock + 节点/rviz use_sim_time:=true，<b>两个开关缺一不可</b></td></tr>
+    <tr><td>话题名大小写</td><td>-t 指定了却"没这话题"</td><td>与 list 输出逐字比对，ROS2 话题名大小写敏感</td></tr>
+    <tr><td>录成空包</td><td>Duration=0 / 极小</td><td>record 启动比数据晚：-d 3 延迟开录；finite 任务用 -u 别靠手速</td></tr>
+    <tr><td>丢消息</td><td>高频话题 Count 低于预期</td><td>调大 --max-cache-size（默认100MB）、关无关话题、查 CPU 打满</td></tr>
+  </table>
+</section>
+
+<!-- 09 注意事项 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>注意事项与验收</h2>
+  <ul class="check">
+    <li>验收 1：独立完成"录定查放"四步，并用 info 验证时长与频率</li>
+    <li>验收 2：会算 Count/Duration 频率并对照标称值判断数据完整性</li>
+    <li>验收 3：分别用 -r 2.0 / -r 0.5 / --start-offset / -t 控制回放</li>
+    <li>验收 4：--clock + use_sim_time 双开关跑通带 TF 的离线流，Time 面板同步</li>
+    <li>验收 5：复现一次 QoS 不匹配的"收不到"，并用 overrides 修复</li>
+    <li>验收 6：能说出 record 与 play 各 4 个参数的作用与一个易混对</li>
+    <li>验收 7（选做）：sqlite3 直接查出各话题消息数</li>
+  </ul>
+  <div class="tip"><span class="lab">时间戳去哪了</span>
+  bag 唯一保证的是<b>相对时序</b>：回放把录制时的间隔原样（按 -r 缩放）还原，但绝对时刻可以被 --clock 重映射。因此判断"延迟多少毫秒"要用消息 header.stamp 相减，而不是看 bag 播放墙钟——header 才是传感器时间的原始证据。</div>
+</section>
+
+<!-- 10 总结 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>本课总结</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">结构</div><div class="kt">SQLite 双表 + YAML 清单</div><p>topics/messages 两表 + CDR 原始字节，索引支撑随机访问，事务保断电不损。</p></div>
+    <div class="kcard"><div class="kd">录制</div><div class="kt">点名 + 正则是生产标准</div><p>-a 磁盘秒爆；范围（-d/-u/-e）+ 切分（--max-bag-size）+ 缓冲/压缩按硬件取舍。</p></div>
+    <div class="kcard"><div class="kd">回放</div><div class="kt">捿节奏不改时间戳</div><p>-r 倍速、--loop 循环、--start-offset 跳段、-t 选话题；TF 静态必 loop。</p></div>
+    <div class="kcard"><div class="kd">离线流</div><div class="kt">--clock + use_sim_time 铁三角</div><p>play 带钟、节点与 rviz 认钟、Time 面板验钟——三步跑通"把现场带回工位"。</p></div>
+  </div>
+  <div class="tip violet">
+    <span class="lab">思考题</span>
+    <p>① 一条消息的"时间"有两个候选：bag 记录的本地接收时刻与消息内部 header.stamp。什么场景下两者会明显不同？给一套方案判断某条 bag 是"按哪个时间戳排序回放"的。</p>
+    <p>② 现场录了 15 个话题共 10 分钟的 bag，现在要在 3 版导航算法上做回归测试——从"录好的数据"到"每次改完自动跑一轮"，中间缺哪些环节？试设计一套不接硬件、可重复的标准化回归流程（提示：离线回放 + 自动判定 + 结果留存）。</p>
+  </div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-15-rviz2/index.html"><span class="lb">← 上一个实验</span>EXP-15 rviz2 三维可视化</a>
+  <a class="next" href="../exp-17-launch/index.html"><span class="lb">下一个实验 →</span>EXP-17 Launch 启动系统</a>
+</nav>
+<footer>
+  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-16 rosbag2 数据录制与回放</span>
+  <span>2 学时 · 验证性 · 基于 ros_practice 实验讲义改编</span>
+</footer>
+</main>
+</div>
+
+<script>
+var CMD = {
+  quick: '<span class="ok">快速抓包（调试期，快字当头）</span>\n$ ros2 bag record -a -d 3 -u 10\n参数解释：\n  -a        全量话题（含系统话题，请备足磁盘）\n  -d 3      启动后延迟 3 秒开录，避开初始化噪声\n  -u 10     只录 10 秒自动停，不用守着 Ctrl+C\n⚠ 正式排查请收敛话题，全量包只用于"先抓到再说"。',
+  prod: '<span class="ok">生产标准（最小证据链）</span>\n$ ros2 bag record scan imu odom tf /cmd_vel \\\n    -e "scan|odom|imu" -o run_01 \\\n    --max-bag-size 2147483648 --max-cache-size 209715200\n参数解释：\n  点名 + -e 正则     只录感知+定位+控制闭环，剔除无关话题\n  -o run_01          可读的目录名，告别时间戳文件名考古\n  --max-bag-size 2G  单库写满自动换新 .db3，防超大文件\n  --max-cache-size 200M  高频话题双倍缓冲，降低丢消息概率',
+  slow: '<span class="ok">慢放排障（细看跳变瞬间）</span>\n$ ros2 bag play run_01 -r 0.5 --loop --start-offset 30\n参数解释：\n  -r 0.5            0.5倍速：数据流变慢一倍，人眼跟得上\n  --loop            循环播放，跳变点附近反复看\n  --start-offset 30  跳过前 30 秒稳定段，直奔故障高发区\n提示：暂停(空格) + 单步(→) 可逐帧审——配合 rviz2 同开 use_sim_time 效果最佳。',
+  sim: '<span class="ok">离线仿真（时间也要回溯）</span>\n$ # 终端1\n$ ros2 bag play run_01 --clock -r 1.0 --loop\n$ # 终端2（算法节点必须认钟）\n$ ros2 run my_pkg nav_node --ros-args -p use_sim_time:=true\n$ # 终端3（视图同步）\n$ rviz2 --ros-args -p use_sim_time:=true\n铁三角：play --clock ＋ 节点 use_sim_time ＋ rviz use_sim_time。\n漏一个的典型症状：TF LookupException / STAMP=昨天 vs now=今天 / Time 面板不动。',
+  cam: '<span class="ok">摄像头专项（带宽与 CPU 的平衡术）</span>\n$ ros2 bag record /camera/image_raw \\\n    -d 5 --max-cache-size 419430400 -c message -o cam_run\n参数解释：\n  -d 5                  避开相机 auto-exposure 稳定期\n  --max-cache-size 400M 1080p@30Hz 约 178MB/s，缓冲加倍防溢出\n  -c message            逐条压缩省 30-60% 磁盘（CPU +10-20%%，先看 top）\n⚠ 或者索性不录图：只录 /tf /odom 关键帧，图像话题回放时由 bag 换分辨率策略另议。'
+};
+function build(){ document.getElementById('out').innerHTML = CMD[document.getElementById('md').value]; }
+build();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

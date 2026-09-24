@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-01 · ROS2 简介 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{--theme:#d97706;--theme-deep:#b45309;--theme-bg:#fef3c7;--theme-bd:#fde68a}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-01</div>
+</div>
+
+<div class="wrap">
+
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：机器人软件为什么需要中间件</a>
+  <a href="#s2">02 核心原理：ROS2 的三大设计支柱</a>
+  <a href="#s3">03 原理动画：Master 宕机 vs DDS 组网</a>
+  <a href="#s4">04 专题：RMW 抽象层与 Humble 发行版</a>
+  <a href="#s5">05 互动实验台：亲手触发"单点故障"</a>
+  <a href="#s6">06 命令精讲：环境验证三板斧</a>
+  <a href="#s7">07 实操 1 · ROS2 的 Hello World：talker</a>
+  <a href="#s8">08 实操 2 · 零配置互联：listener 与系统监控</a>
+  <a href="#s9">09 注意事项与验收清单</a>
+  <a href="#s10">10 实验总结与思考题</a>
+  <h4>CH1 · ROS2 基础</h4>
+  <a href="../exp-01-ros2-intro/index.html">EXP-01 ROS2 简介</a>
+  <a href="../exp-02-cli-tools/index.html">EXP-02 命令工具</a>
+  <a href="../exp-03-workspace/index.html">EXP-03 工作空间</a>
+  <a href="../exp-04-package/index.html">EXP-04 功能包</a>
+</aside>
+
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-01 · 第 1 章 · 验证性 · 2 学时</span>
+  <h1>ROS2 简介：机器人软件的操作系统</h1>
+  <p class="desc">ROS 是什么？为什么机器人需要"中间件"？本实验从<b>机器人软件的协作之痛</b>出发，讲清 ROS2 的三大设计支柱，用动画拆解 <b>ROS1 中心化 Master</b> 与 <b>ROS2 去中心化 DDS</b> 的架构跃迁，再通过 talker / listener 第一次跑通你自己的 ROS2 通信系统。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐ · 2 学时</span>
+    <span class="tag">ROS2 Humble</span><span class="tag">DDS 中间件</span>
+    <span class="tag">turtlesim</span><span class="tag">talker · listener</span>
+  </div>
+</div>
+
+<!-- 01 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：机器人软件为什么需要中间件</h2>
+  <p>一台服务机器人身上有激光雷达、摄像头、底盘、机械臂、语音模块——由<b>不同厂商、不同语言、不同进程</b>开发。如果没有统一的通信层，你会遇到：</p>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>每个模块一种私有协议，两两对接要写 N×(N−1)/2 转接代码</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span>进程发现、断线重连、丢包重传全部手写，一改全崩</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span>ROS 用<b>中间件</b>统一只说一种语言：节点 / 话题 / 服务 / 动作</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span>上层算法变成可插拔积木：换雷达 = 换一个发布同一话题的节点</div>
+  </div>
+  <div class="tip amber"><span class="lab">💡 一句话定义</span>ROS（Robot Operating System）<b>不是操作系统</b>：不管理硬件，它是一个<b>通信框架 + 工具集 + 包生态</b>，运行在 Linux 之上，为机器人软件提供"进程之间如何说话"的标准答案。</div>
+</section>
+
+<!-- 02 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>核心原理：ROS2 的三大设计支柱</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">支柱一</div><div class="kt">去中心化的分布式图</div><p>没有 Master 单点。每个节点自带 DDS 参与者身份，通过<b>多播自动发现</b>彼此，组成一张"节点-话题"关系图。</p></div>
+    <div class="kcard"><div class="kd">支柱二</div><div class="kt">语言与框架无关</div><p>Python（rclpy）、C++（rclcpp）乃至 Swift/Java 都能发声——接口由 <b>IDL 消息定义</b>统一约束，与实现语言解耦。</p></div>
+    <div class="kcard"><div class="kd">支柱三</div><div class="kt">工具生态开箱即用</div><p>ros2 CLI、rqt、rviz2、rosbag2、launch——同一套图信息喂给全部工具，"看不见的系统"随时可自省。</p></div>
+  </div>
+  <table>
+    <thead><tr><th>对比维度</th><th>ROS1（Melodic 及以前）</th><th>ROS2（Foxy / Humble / …）</th></tr></thead>
+    <tbody>
+      <tr><td>通信架构</td><td>中心化：<code>Master(rosmaster)</code> 统一注册</td><td>去中心化：DDS 点对点，无中心进程</td></tr>
+      <tr><td>底层协议</td><td>TCPROS（自研 TCP 长连接）</td><td>RTPS（DDS 标准，UDP + 多播发现）</td></tr>
+      <tr><td>节点发现</td><td>启动必须先起 Master，向它注册</td><td>多播自动发现，谁先谁后无所谓</td></tr>
+      <tr><td>编译系统</td><td>catkin_make 单一 CMake 大工程</td><td>colcon 每包独立构建，支持混合语言</td></tr>
+      <tr><td>生命周期</td><td>节点崩了只能重启整个进程</td><td>Managed Node 四状态，可"待机-激活"恢复</td></tr>
+      <tr><td>服务质量</td><td>无 QoS，可靠性不可配</td><td>QoS 三要素（可靠性/持久性/历史）可按话题配置</td></tr>
+    </tbody>
+  </table>
+  <div class="tip tealb"><span class="lab">🔍 关键跃迁</span>ROS1 的 Master 是"电话总机"——总机不在，全网瘫痪；ROS2 的 DDS 是"群聊"——任何两个人先加上好友（发现），之后直接私聊（P2P 传输）。<b>这决定了 ROS2 天生适合多机、车载与机器人集群场景。</b></div>
+</section>
+
+<!-- 03 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>原理动画：Master 宕机 vs DDS 组网</h2>
+  <p class="lead">左图：ROS1 所有节点都要经 Master 注册，Master 一倒，<b>新节点找不到彼此</b>；右图：ROS2 节点间直接多播出一张网，任意单节点下线<b>不影响其余节点通信</b>。</p>
+  <div class="anim-box">
+    <svg viewBox="0 0 720 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ROS1 中心化 Master 与 ROS2 去中心化 DDS 对比动画">
+      <rect x="8" y="8" width="344" height="294" rx="12" fill="#111827" stroke="#334155"/>
+      <rect x="368" y="8" width="344" height="294" rx="12" fill="#111827" stroke="#334155"/>
+      <text x="180" y="36" text-anchor="middle" font-size="14" font-weight="700" fill="#f87171">ROS 1 · 中心化 Master</text>
+      <text x="540" y="36" text-anchor="middle" font-size="14" font-weight="700" fill="#4ade80">ROS 2 · DDS 去中心化</text>
+
+      <!-- 左：Master -->
+      <rect x="130" y="130" width="100" height="46" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="2"/>
+      <text x="180" y="158" text-anchor="middle" font-size="13" font-weight="700" fill="#fca5a5">Master</text>
+      <g stroke="#64748b" stroke-width="1.6" stroke-dasharray="6 5">
+        <line x1="70" y1="80" x2="150" y2="132"><animate attributeName="stroke-dashoffset" values="0;-22" dur="1.1s" repeatCount="indefinite"/></line>
+        <line x1="290" y1="80" x2="212" y2="132"><animate attributeName="stroke-dashoffset" values="0;-22" dur="1.1s" repeatCount="indefinite"/></line>
+        <line x1="70" y1="248" x2="150" y2="178"><animate attributeName="stroke-dashoffset" values="0;-22" dur="1.1s" repeatCount="indefinite"/></line>
+        <line x1="290" y1="248" x2="212" y2="178"><animate attributeName="stroke-dashoffset" values="0;-22" dur="1.1s" repeatCount="indefinite"/></line>
+      </g>
+      <g fill="#1e293b" stroke="#94a3b8">
+        <rect x="30" y="58" width="82" height="40" rx="8"/><rect x="248" y="58" width="82" height="40" rx="8"/>
+        <rect x="30" y="226" width="82" height="40" rx="8"/><rect x="248" y="226" width="82" height="40" rx="8"/>
+      </g>
+      <g font-size="11.5" fill="#cbd5e1" text-anchor="middle">
+        <text x="71" y="83">激光节点</text><text x="289" y="83">视觉节点</text>
+        <text x="71" y="251">底盘节点</text><text x="289" y="251">规划节点</text>
+      </g>
+      <g opacity="0">
+        <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.45;0.55;0.95;1" dur="6s" repeatCount="indefinite"/>
+        <line x1="152" y1="136" x2="208" y2="174" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/>
+        <line x1="208" y1="136" x2="152" y2="174" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/>
+        <text x="180" y="212" text-anchor="middle" font-size="12" fill="#fca5a5">Master 宕机 → 全网停止发现</text>
+      </g>
+      <text x="180" y="288" text-anchor="middle" font-size="11" fill="#64748b">注册 / 寻址全部经总机 · 单点故障</text>
+
+      <!-- 右：DDS mesh -->
+      <g fill="#1e293b" stroke="#4ade80" stroke-width="1.6">
+        <rect x="410" y="70" width="90" height="42" rx="9"/><rect x="580" y="70" width="90" height="42" rx="9"/>
+        <rect x="410" y="216" width="90" height="42" rx="9"/><rect x="580" y="216" width="90" height="42" rx="9"/>
+      </g>
+      <g font-size="11.5" fill="#cbd5e1" text-anchor="middle">
+        <text x="455" y="96">激光节点</text><text x="625" y="96">视觉节点</text>
+        <text x="455" y="242">底盘节点</text><text x="625" y="242">规划节点</text>
+      </g>
+      <g stroke="#334155" stroke-width="1.5">
+        <line x1="500" y1="91" x2="580" y2="91"/><line x1="455" y1="112" x2="455" y2="216"/>
+        <line x1="625" y1="112" x2="625" y2="216"/><line x1="500" y1="237" x2="580" y2="237"/>
+        <line x1="500" y1="112" x2="580" y2="216"/><line x1="580" y1="112" x2="500" y2="216" stroke-dasharray="4 4"/>
+      </g>
+      <g fill="#4ade80">
+        <circle r="4.5"><animate attributeName="cx" values="500;580" dur="1.8s" repeatCount="indefinite"/><animate attributeName="cy" values="91;91" dur="1.8s" repeatCount="indefinite"/></circle>
+        <circle r="4.5"><animate attributeName="cx" values="455;455" dur="1.8s" begin=".5s" repeatCount="indefinite"/><animate attributeName="cy" values="112;216" dur="1.8s" begin=".5s" repeatCount="indefinite"/></circle>
+        <circle r="4.5"><animate attributeName="cx" values="500;580" dur="1.8s" begin="1s" repeatCount="indefinite"/><animate attributeName="cy" values="112;216" dur="1.8s" begin="1s" repeatCount="indefinite"/></circle>
+        <circle r="4.5" fill="#60a5fa"><animate attributeName="cx" values="580;500" dur="1.8s" begin="1.4s" repeatCount="indefinite"/><animate attributeName="cy" values="237;237" dur="1.8s" begin="1.4s" repeatCount="indefinite"/></circle>
+      </g>
+      <text x="540" y="272" text-anchor="middle" font-size="12" fill="#86efac">SPDP 多播发现 → RTPS 点对点传输</text>
+      <text x="540" y="288" text-anchor="middle" font-size="11" fill="#64748b">节点直接互连 · 无单点故障</text>
+    </svg>
+  </div>
+  <div class="anim-cap">动画 1-1｜左：Master 一倒全网失联；右：消息在网状直连中持续流动（6 秒循环）</div>
+</section>
+
+<!-- 04 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>专题：RMW 抽象层与 Humble 发行版</h2>
+  <p>ROS2 在应用与 DDS 实现之间插入了 <b>RMW（ROS MiddleWare）抽象层</b>，同一份代码可以运行在不同 DDS 实现上：</p>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><b>rcl 语言客户端层</b>：rclpy（Python）/ rclcpp（C++），API 完全一致</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span><b>rmw 抽象接口层</b>：统一的发布/订阅/服务接口定义</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span><b>dds 具体实现</b>：rmw_fastrtps（默认）/ rmw_cyclonedds / rmw_connextdds</div>
+  </div>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">发行版字母表</div><div class="kt">Humble Hawksbill（本课程）</div><p>2022.05 发布的 <b>LTS 版本，支持至 2027.05</b>；此前 Foxy（2020）、Galactic（2021），此后 Iron、Jazzy。配套 Ubuntu 22.04。</p></div>
+    <div class="kcard"><div class="kd">切换 DDS 实现</div><div class="kt">一个环境变量完成</div><p><code>RMW_IMPLEMENTATION=rmw_cyclonedds_cpp</code>——排障时用来隔离"是不是 DDS 实现的锅"，无需改一行代码。</p></div>
+    <div class="kcard"><div class="kd">生命周期管理</div><div class="kt">Managed Node 四状态</div><p>Unconfigured → Inactive → Active → Finalized：节点可"待机而不退出"，故障后原地恢复（EXP-10 深入）。</p></div>
+  </div>
+</section>
+
+<!-- 05 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>互动实验台：亲手触发"单点故障"</h2>
+  <p class="lead">点击下方按钮，对比两种架构在<b>关键进程退出</b>时的表现，并读出系统诊断：</p>
+  <div class="ix-panel">
+    <div class="ix-title">单点故障对照台 · SPoF Lab</div>
+    <div class="ctl-row">
+      <button class="btn" onclick="killMaster()">💥 让 ROS1 Master 宕机</button>
+      <button class="btn ghost" onclick="killRos2Node()">🔌 让 ROS2 某节点下线</button>
+      <button class="btn ghost" onclick="resetLab()">↺ 复位</button>
+    </div>
+    <div class="io" id="spofIo"><span class="dim">// 点击上方按钮，观察两个架构家族的故障扩散范围</span>
+<span class="ok">ROS1: 四节点已向 Master 注册，全网可互相寻址。</span>
+<span class="ok">ROS2: 四节点 SPDP 多播已互相发现，RTPS 连接就绪。</span></div>
+  </div>
+  <div class="tip"><span class="lab">💡 换个角度想</span>ROS2 里"某个节点下线"只是图上少了一个顶点——这正是机器人软件微服务化的基础：<b>允许局部失败，不允许全局瘫痪</b>。</div>
+</section>
+
+<!-- 06 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>命令精讲：环境验证三板斧</h2>
+  <pre><span class="c"># ① 确认发行版（预期输出 humble）</span>
+<span class="g">echo</span> $ROS_DISTRO
+<span class="y">humble</span>
+
+<span class="c"># ② 加载 ROS2 环境（每个新开终端都要执行！）</span>
+<span class="g">source</span> /opt/ros/humble/setup.bash
+
+<span class="c"># ③ 看 ros2 命令认识自己的能力清单</span>
+<span class="g">ros2</span> --help
+<span class="c"># ... verbs: action bag interface launch node param pkg run service topic ...</span>
+<span class="c">#            ↑ 八大动词组，EXP-02 逐一拆解</span></pre>
+  <div class="tip amber"><span class="lab">⚠️ 为什么 source 是"三板斧"之一</span>ROS2 的一切命令都靠 <code>setup.bash</code> 注入的环境变量找到：不 source，<code>ros2</code> 直接 command not found；换了工作空间不 source <code>install/setup.bash</code>，你编译的包就"不存在"。<b>这是新手第一大坑，贯穿全课程。</b></div>
+</section>
+
+<!-- 07 -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>实操 1 · ROS2 的 Hello World：talker</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>开终端 A：source 环境后运行 <code>ros2 run demo_nodes_cpp talker</code></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span>观察输出：<code>[INFO] ... Publishing: 'Hello World: N'</code> 每秒刷新</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span>后台发生的事：DDS 发现 → 节点创建 → 在 /chatter 注册 Publisher → 定时器驱动发消息</div>
+  </div>
+  <pre><span class="c"># 终端 A</span>
+<span class="g">source</span> /opt/ros/humble/setup.bash
+<span class="g">ros2</span> run demo_nodes_cpp talker
+<span class="c"># [INFO] [1712...]: Publishing: 'Hello World: 1'</span>
+<span class="c"># [INFO] [1712...]: Publishing: 'Hello World: 2'</span></pre>
+  <div class="tip tealb"><span class="lab">🔍 run 命令解剖</span><code>ros2 run &lt;包名&gt; &lt;可执行文件&gt;</code>——它只做一件事：去 <b>ament 索引</b>里按包名找到 install 目录，启动其中的可执行文件。找不到包？99% 是没 source 或没编译。</div>
+</section>
+
+<!-- 08 -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操 2 · 零配置互联：listener 与系统监控</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>另开终端 B：<code>ros2 run demo_nodes_cpp listener</code>——无需任何"连接配置"</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span>DDS 多播自动发现 /chatter 的发布端，开始打印 <code>[INFO]: I heard: [Hello World: N]</code></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span>终端 C 四连自省：node list → topic list → topic info → topic echo / hz</div>
+  </div>
+  <pre><span class="c"># 终端 C：以第三方身份俯瞰整个系统</span>
+<span class="g">ros2</span> node list
+<span class="c"># /listener  /talker</span>
+<span class="g">ros2</span> topic list
+<span class="c"># /chatter  /parameter_events  /rosout</span>
+<span class="g">ros2</span> topic info /chatter
+<span class="c"># Type: std_msgs/msg/String   Publisher count: 1   Subscription count: 1</span>
+<span class="g">ros2</span> topic echo /chatter        <span class="c"># 第三方"匿名"订阅，实时看到 data</span>
+<span class="g">ros2</span> topic hz /chatter          <span class="c"># average rate: 1.000</span></pre>
+  <div class="tip"><span class="lab">💡 弹性验证（试一下）</span>① 先启动 listener 再启动 talker——照样通（发现无顺序）；② Ctrl+C 杀掉 talker 重启——listener 自动恢复接收。<b>把 Master 概念从脑子里删掉，这就是 DDS。</b></div>
+</section>
+
+<!-- 09 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>注意事项与验收清单</h2>
+  <ul class="check">
+    <li><b>每个新终端</b>都执行过 <code>source /opt/ros/humble/setup.bash</code>，<code>echo $ROS_DISTRO</code> 输出 <span class="ok">humble</span></li>
+    <li>talker 输出 <span class="ok">Publishing: 'Hello World: N'</span>，序列号持续递增</li>
+    <li>listener 输出 <span class="ok">I heard: [Hello World: N]</span>，与 talker 同步</li>
+    <li><code>ros2 node list</code> 同时看到 <span class="ok">/talker /listener</span>；<code>ros2 topic hz /chatter</code> ≈ <span class="ok">1.000 Hz</span></li>
+    <li>能口头解释：ROS1 Master 和 ROS2 DDS 在"节点发现"上的本质区别</li>
+  </ul>
+  <table>
+    <thead><tr><th>⚠️ 常见坑</th><th>现象 → 解法</th></tr></thead>
+    <tbody>
+      <tr><td>未 source 环境</td><td><code>ros2: command not found</code> → <code>source /opt/ros/humble/setup.bash</code></td></tr>
+      <tr><td>包未安装</td><td><code>Package 'demo_nodes_cpp' not found</code> → <code>sudo apt install ros-humble-demo-nodes-cpp</code></td></tr>
+      <tr><td>多播被阻断</td><td>虚拟机/容器内两终端互看不见 → 桥接网络放开多播，或临时用 <code>ROS_DOMAIN_ID=0</code> 统一域</td></tr>
+      <tr><td>域 ID 不一致</td><td>一边 <code>ROS_DOMAIN_ID=42</code> 一边默认 0 → 互相"隐身"，对齐环境变量</td></tr>
+      <tr><td>GUI 无显示</td><td>turtlesim 黑屏 → 确认 X11 转发 / <code>echo $DISPLAY</code> 非空</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>实验总结与思考题</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">跑通 talker / listener 双节点</div><p>用 node / topic 四件套俯瞰系统，完成第一次 ROS2 Hello World。</p></div>
+    <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">三大支柱 + 架构跃迁</div><p>去中心化、语言无关、工具生态；六维理解 ROS1 → ROS2 的必然性。</p></div>
+    <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">环境验证与自省命令</div><p>source 三板斧、ros2 run、node/topic list · info · echo · hz。</p></div>
+    <div class="kcard"><div class="kd">❓ 排障思路</div><div class="kt">command not found 家族</div><p>先查 source → 再查 apt 安装 → 再查 DOMAIN_ID 与多播。</p></div>
+  </div>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>订阅端默认拿不到"自己上线之前"发布的消息。若想让<b>晚启动的订阅者补收历史消息</b>，应调 QoS 的哪个要素？把你的答案带到 EXP-06 话题通讯去验证。</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>假如要"匿名"观察一个正在运行的机器人系统（不改任何代码），本实验的哪些命令已经足够？这样做有什么安全隐患？（提示：第 08 节终端 C；与 DDS-Security / SROS2 相关）</div>
+</section>
+
+<nav class="expnav">
+  <a href="../index.html"><span class="lb">← 返回</span>课程目录 · ROS2 应用与开发</a>
+  <a class="next" href="../exp-02-cli-tools/index.html"><span class="lb">下一个实验 →</span>EXP-02 ROS2 常用命令工具</a>
+</nav>
+
+<footer>
+  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-01 ROS2 简介</span>
+  <span>2 学时 · 验证性 · 基于 ros_practice 实验讲义改编</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// 单点故障实验台
+function killMaster(){
+  document.getElementById('spofIo').innerHTML =
+'<span class="dim">// ROS1：向 Master 注册 / 寻址</span>\n' +
+'<span class="bad">💥 Master 进程退出（exit code 1）</span>\n' +
+'<span class="bad">✘ 新节点 rosnewbot 无法注册 —— 启动失败</span>\n' +
+'<span class="warn">⚠ 既有节点存量连接尚在，但任何"新发现"全部失效：加话题 = 全网瘫</span>\n' +
+'<span class="bad">故障等级：全局（Global outage）</span>\n\n' +
+'<span class="ok">ROS2 对照：无 Master，本操作不存在对应故障面。</span>';
+}
+function killRos2Node(){
+  document.getElementById('spofIo').innerHTML =
+'<span class="dim">// ROS2：kill -9 底盘节点</span>\n' +
+'<span class="warn">⚠ /odom 话题发布者消失，订阅方收到断线事件</span>\n' +
+'<span class="ok">✔ 其余三节点 SPDP 会话不受影响，/scan /cmd_vel 正常收发</span>\n' +
+'<span class="ok">✔ 新节点上线仍可被多播发现并加入网络</span>\n' +
+'<span class="ok">故障等级：局部（Isolated loss）—— 允许局部失败，不允许全局瘫痪</span>';
+}
+function resetLab(){
+  document.getElementById('spofIo').innerHTML =
+'<span class="dim">// 已复位。点击按钮重新实验</span>\n' +
+'<span class="ok">ROS1: 四节点已向 Master 注册，全网可互相寻址。</span>\n' +
+'<span class="ok">ROS2: 四节点 SPDP 多播已互相发现，RTPS 连接就绪。</span>';
+}
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

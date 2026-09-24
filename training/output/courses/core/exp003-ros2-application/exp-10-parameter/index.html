@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-10 · 参数服务 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#dc2626;--theme-deep:#b91c1c;--theme-bg:#fee2e2;--theme-bd:#fecaca}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-10</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：改一个数字为什么这么贵</a>
+  <a href="#s2">02 核心原理：声明 → 读取 → 设置的生命周期</a>
+  <a href="#s3">03 动画：ros2 param set 的完整数据流</a>
+  <a href="#s4">04 专题：ParameterDescriptor 与两层约束</a>
+  <a href="#s5">05 交互：参数校验台</a>
+  <a href="#s6">06 动态回调代码精讲</a>
+  <a href="#s7">07 实操 A：三参数节点与基础读写</a>
+  <a href="#s8">08 实操 B：CLI 九步联调 + 持久化</a>
+  <a href="#s9">09 注意事项与验收清单</a>
+  <a href="#s10">10 本课总结与思考题</a>
+  <h4>CH2 · 通信机制</h4>
+  <a href="../exp-05-node/index.html">EXP-05 节点</a>
+  <a href="../exp-06-topic/index.html">EXP-06 话题</a>
+  <a href="../exp-07-service/index.html">EXP-07 服务</a>
+  <a href="../exp-08-action/index.html">EXP-08 动作</a>
+  <a href="../exp-09-custom-msg/index.html">EXP-09 自定义接口</a>
+  <a href="../exp-10-parameter/index.html">EXP-10 参数</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-10 · 第 2 章 · 设计性 · 2 学时</span>
+  <h1>参数服务：把"旋钮"拉出代码</h1>
+  <p class="desc">PID 系数、采样率、报警阈值——硬编码意味着"改参 = 改码 → 编译 → 部署"。本课讲清参数作为"运行时可读写配置层"的原理、declare/get/set 生命周期与动态回调闭环。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">设计性</span><span class="tag">关键词 Parameter · Descriptor · YAML</span></div>
+</div>
+
+<section class="blk" id="s1">
+<h2><span class="no">01</span>问题引入：改一个数字为什么这么贵</h2>
+<div class="flow">
+  <div class="step"><div class="n">1</div>巡线小车的 PID 三个系数、MQ5 采样率、报警阈值 500 ppm——都写死在源码里。</div>
+  <div class="step"><div class="n">2</div>现场调参要走完整链：<b>改源码 → 重新编译 → 重新部署 → 重启节点</b>，一轮几分钟，一天调不了几组。</div>
+  <div class="step"><div class="n">3</div>更糟的是：不同场地要用不同阈值，难道维护 N 个代码分支？</div>
+  <div class="step"><div class="n">4</div>ROS2 的答案：<b>参数系统</b>——把可调值从代码里"拉出来"，运行时用一条命令修改，节点立即按新值工作。</div>
+</div>
+<div class="tip"><span class="lab">参数 = 旋钮</span>参数是节点内部状态的<b>运行时可读写配置层</b>：不定义通信通道、没有消息类型流转，直接读写节点内存变量——这与话题（异步数据流）、服务（同步 RPC 操作）有本质区别。</div>
+</section>
+
+<section class="blk" id="s2">
+<h2><span class="no">02</span>核心原理：声明 → 读取 → 设置的生命周期</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">声明 declare</div><div class="kt">登记存在 + 默认值 + 类型</div><p><code>declare_parameter('sample_rate_hz', 1.0)</code> 在 __init__ 执行一次；<b>默认值同时决定类型</b>（1.0→float，1→int）。参数服务将声明注册，使 CLI / rqt 能发现它。</p></div>
+  <div class="kcard"><div class="kd">读取 get</div><div class="kt">任意时刻取当前值</div><p><code>self.get_parameter('name').value</code>——启动时读一次缓存进成员变量，或在每次回调里现取，都不受限制。</p></div>
+  <div class="kcard"><div class="kd">设置 set</div><div class="kt">外部写入并触发回调</div><p>CLI <code>ros2 param set</code> 或代码 <code>set_parameter()</code> 修改后，不是直接覆盖：<b>先触发 set_parameters_callback</b>，校验通过才算成功。</p></div>
+  <div class="kcard"><div class="kd">声明 vs 读取</div><div class="kt">一次 vs 任意次</div><p>declare 只能在 __init__ 里执行一次（重复声明报 already declared）；get 可在任何地方、任何次数调用。</p></div>
+</div>
+<table>
+  <tr><th>通信方式</th><th>本质</th><th>典型用途</th></tr>
+  <tr><td>话题 Topic</td><td>异步数据流，多对多</td><td>传感器 50Hz 连续读数</td></tr>
+  <tr><td>服务 Service</td><td>同步一问一答 RPC</td><td>"验证指纹"一次性操作</td></tr>
+  <tr><td><b>参数 Parameter</b></td><td>节点内存变量的外部读写口</td><td>采样率 / 阈值 / 使能开关</td></tr>
+</table>
+<div class="tip amber"><span class="lab">为什么没有网络开销</span>参数读写本质是"经参数服务转发的内存访问"，不存在持续数据流；参数值只活在运行时内存——<b>节点重启即恢复默认值</b>，持久化要靠 dump 出 YAML 再加载。</div>
+</section>
+
+<section class="blk" id="s3">
+<h2><span class="no">03</span>动画：ros2 param set 的完整数据流</h2>
+<div class="anim-box">
+<svg viewBox="0 0 760 235" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <g>
+    <rect x="16" y="46" width="132" height="72" rx="10" fill="#1e293b" stroke="#dc2626" stroke-width="2"/>
+    <text x="82" y="74" fill="#fff" font-size="13.5" text-anchor="middle" font-weight="bold">外部 CLI / rqt</text>
+    <text x="82" y="95" fill="#fca5a5" font-size="11" text-anchor="middle">ros2 param set 5.0</text>
+    <text x="82" y="111" fill="#64748b" font-size="10" text-anchor="middle">（另一终端）</text>
+    <rect x="204" y="46" width="150" height="72" rx="10" fill="#1e293b" stroke="#dc2626" stroke-width="2"/>
+    <text x="279" y="74" fill="#fff" font-size="13.5" text-anchor="middle" font-weight="bold">节点参数服务</text>
+    <text x="279" y="95" fill="#fca5a5" font-size="11" text-anchor="middle">parameter_server</text>
+    <text x="279" y="111" fill="#64748b" font-size="10" text-anchor="middle">（节点内部注册表）</text>
+    <rect x="410" y="46" width="152" height="72" rx="10" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
+    <text x="486" y="72" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">set_parameters</text>
+    <text x="486" y="91" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">callback</text>
+    <text x="486" y="111" fill="#fcd34d" font-size="10.5" text-anchor="middle">校验范围 / 应用行为</text>
+    <rect x="618" y="46" width="126" height="72" rx="10" fill="#1e293b" stroke="#22c55e" stroke-width="2"/>
+    <text x="681" y="72" fill="#fff" font-size="13.5" text-anchor="middle" font-weight="bold">业务逻辑</text>
+    <text x="681" y="93" fill="#86efac" font-size="10.5" text-anchor="middle">重建定时器 →</text>
+    <text x="681" y="110" fill="#86efac" font-size="10.5" text-anchor="middle">5Hz 采样生效</text>
+  </g>
+  <path d="M148 82 H204" stroke="#334155" stroke-width="3"/>
+  <path d="M354 82 H410" stroke="#334155" stroke-width="3"/>
+  <path d="M562 82 H618" stroke="#334155" stroke-width="3"/>
+  <circle r="6" fill="#f87171" cx="148" cy="82"><animate attributeName="cx" values="148;204" dur="1.2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.2s" repeatCount="indefinite"/></circle>
+  <circle r="6" fill="#f87171" cx="354" cy="82"><animate attributeName="cx" values="354;410" dur="1.2s" begin="0.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.2s" begin="0.4s" repeatCount="indefinite"/></circle>
+  <circle r="6" fill="#4ade80" cx="562" cy="82"><animate attributeName="cx" values="562;618" dur="1.2s" begin="0.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.2s" begin="0.8s" repeatCount="indefinite"/></circle>
+  <!-- 返回路径 -->
+  <path d="M486 118 V168 H82 V118" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5 4" fill="none"/>
+  <rect x="228" y="154" width="240" height="28" rx="6" fill="#3f1d1d" stroke="#b91c1c"/>
+  <text x="348" y="173" fill="#fca5a5" font-size="11.5" text-anchor="middle">校验失败 → successful=False + reason</text>
+  <text x="486" y="212" fill="#94a3b8" font-size="12">成功路径回执 SetParametersResult(successful=True) → CLI 显示 Set parameter successful</text>
+</svg>
+</div>
+<p class="anim-cap">set 不是直接写内存：先过回调这道"闸门"——校验、应用、回执三件事决定这次修改是成功还是被拒绝。</p>
+</section>
+
+<section class="blk" id="s4">
+<h2><span class="no">04</span>专题：ParameterDescriptor 与两层约束</h2>
+<pre><span class="c"># 声明时附带描述符：自描述 + 可视化元数据</span>
+from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
+
+sample_rate_desc = ParameterDescriptor(
+    description=<span class="s">'气体传感器采样频率（Hz）。值越高数据越密集，CPU 占用越大。'</span>,
+    floating_point_range=[
+        FloatingPointRange(from_value=0.1, to_value=50.0, step=0.1)
+    ]
+)
+self.declare_parameter('sample_rate_hz', 1.0, sample_rate_desc)   <span class="y"># 第三参即描述符</span></pre>
+<table>
+  <tr><th>约束层</th><th>在哪里生效</th><th>谁来执行</th><th>用途</th></tr>
+  <tr><td><b>ParameterDescriptor</b></td><td>声明时登记的元数据</td><td>describe 命令展示；rqt_reconfigure 据此渲染滑块/下拉</td><td>文档化 + UI 生成，不做强制拦截</td></tr>
+  <tr><td><b>回调手动校验</b></td><td>set_parameters_callback 内</td><td>你的代码：越界即返回 successful=False</td><td>业务规则的真正闸门</td></tr>
+</table>
+<div class="tip tealb"><span class="lab">两层不冲突</span>描述符是"说明书"，回调是"门卫"——CLI 尝试越界值时，<b>先触发的是回调</b>（参数服务直接调用回调做业务校验）；描述符范围用于工具展示与提示。省掉回调 = 越界值畅通无阻。</div>
+</section>
+
+<section class="blk" id="s5">
+<h2><span class="no">05</span>交互：参数校验台</h2>
+<div class="ix-panel">
+  <div class="ix-title">Param Guard · 这条 ros2 param set 会被接受吗</div>
+  <div class="ctl-row">
+    <label class="ctl">即将执行的命令
+      <select id="cmd" onchange="checkParam()">
+        <option value="rate5">ros2 param set /param_sensor sample_rate_hz 5.0</option>
+        <option value="rate100">ros2 param set /param_sensor sample_rate_hz 100.0</option>
+        <option value="rate0">ros2 param set /param_sensor sample_rate_hz 0</option>
+        <option value="thr600">ros2 param set /param_sensor alarm_threshold_ppm 600.0</option>
+        <option value="thrNeg">ros2 param set /param_sensor alarm_threshold_ppm -100.0</option>
+        <option value="enFalse">ros2 param set /param_sensor sensor_enabled false</option>
+        <option value="typeInt">ros2 param set /param_sensor sample_rate_hz 5</option>
+      </select>
+    </label>
+  </div>
+  <div class="io" id="pgIo">// 选择命令，输出回调判定、CLI 回执与节点侧行为…</div>
+</div>
+</section>
+
+<section class="blk" id="s6">
+<h2><span class="no">06</span>动态回调代码精讲</h2>
+<pre><span class="c"># __init__ 中注册（可注册多个，按 LIFO 触发）</span>
+self.add_on_set_parameters_callback(self._on_param_changed)
+
+def _on_param_changed(self, params):
+    <span class="s">"""params: 本次被修改的参数列表（可能一次多个）"""</span>
+    from rcl_interfaces.msg import SetParametersResult
+    for param in params:
+        if param.name == <span class="s">'sample_rate_hz'</span>:
+            if param.value &lt; 0.1 or param.value &gt; 50.0:
+                <span class="c"># 一票否决：立即拒绝并给出 reason</span>
+                return SetParametersResult(
+                    successful=False,
+                    reason=f<span class="s">'采样率必须在[0.1, 50.0]内，收到: {param.value}'</span>)
+            self.sample_rate = param.value      <span class="y"># ① 更新内部变量</span>
+            self._update_timer()                <span class="y"># ② 应用！destroy 旧定时器 → 按新周期重建</span>
+    <span class="c"># 必须返回 SetParametersResult —— 返回 None 会被视为设置失败</span>
+    return SetParametersResult(successful=True, reason=<span class="s">'参数更新成功'</span>)</pre>
+<div class="tip"><span class="lab">关键在"应用"</span>很多同学回调里只改了变量值，频率却不变——因为定时器周期在 <code>create_timer</code> 时已固定。参数生效的完整链 = <b>校验 → 更新变量 → 触发后续行为</b>（重建定时器 / 切换开关 / 预加载模型），缺一步都叫"改了没用"。</div>
+</section>
+
+<section class="blk" id="s7">
+<h2><span class="no">07</span>实操 A：三参数节点与基础读写</h2>
+<pre><span class="b">cd</span> ~/ros2_ws &amp;&amp; source install/setup.bash
+<span class="c"># 把讲义 param_sensor_node.py 落盘（declare 三参数 + 回调 + _update_timer）</span>
+python3 param_sensor_node.py        <span class="c"># 终端A</span>
+<span class="g"># [INFO] 节点已启动，采样率: 1.0 Hz, 传感器: True, 报警阈值: 500.0 ppm</span>
+
+<span class="c"># 终端B：观察已登记的参数</span>
+ros2 param list
+<span class="g"># /param_sensor: use_sim_time, sample_rate_hz, sensor_enabled, alarm_threshold_ppm</span>
+ros2 param get /param_sensor sample_rate_hz
+<span class="g"># Double value is: 1.0</span>
+ros2 param set /param_sensor alarm_threshold_ppm 600.0
+<span class="g"># Set parameter successful   ← 终端A 同步输出 [INFO] 报警阈值已更新: 600.0 ppm</span></pre>
+</section>
+
+<section class="blk" id="s8">
+<h2><span class="no">08</span>实操 B：CLI 九步联调 + 持久化</h2>
+<pre><span class="c"># ①-③ 列表 / 描述 / 读值（描述验证 Descriptor 已生效）</span>
+ros2 param describe /param_sensor sample_rate_hz
+ros2 param get /param_sensor sample_rate_hz
+<span class="c"># ④ 有效改频：终端A 日志明显加快</span>
+ros2 param set /param_sensor sample_rate_hz 5.0
+<span class="c"># ⑤ 越界被拒：CLI 显示失败，终端A 打印 WARN 拒绝原因</span>
+ros2 param set /param_sensor sample_rate_hz 100.0
+<span class="c"># ⑥-⑦ 开关传感器：false 后日志停，true 后恢复</span>
+ros2 param set /param_sensor sensor_enabled false
+ros2 param set /param_sensor sensor_enabled true
+<span class="c"># ⑧ 导出全部参数为 YAML（配置即代码）</span>
+ros2 param dump /param_sensor      <span class="g"># 生成 param_sensor.yaml</span>
+<span class="c"># ⑨ 用 YAML 预加载启动新节点（持久化的正确姿势）</span>
+python3 param_sensor_node.py --ros-args --params-file param_sensor.yaml</pre>
+<div class="tip amber"><span class="lab">持久化链路</span>内存参数活不过重启：dump 出 YAML → 提交进仓库 → 启动/launch 用 <code>--params-file</code> 加载——这是"拿手调好的参数当代码管"的标准流程。</div>
+</section>
+
+<section class="blk" id="s9">
+<h2><span class="no">09</span>注意事项与验收清单</h2>
+<div class="check">
+  <ul>
+    <li>默画参数生命周期：声明（一次）→ 读取（任意）→ 外部 set → 回调 → 应用</li>
+    <li>说出回调返回值的硬性格式：SetParametersResult(successful, reason)</li>
+    <li>解释"更新了变量但行为没变"的原因：定时器等行为载体未重建</li>
+    <li>独立跑通 CLI 九步：list / describe / get / set 成功 / set 被拒 / 开关 / dump / params-file</li>
+    <li>说清 Descriptor 与回调校验两层的分工（说明书 vs 门卫）</li>
+    <li>知道参数不持久化及 YAML 落盘的正确姿势</li>
+  </ul>
+</div>
+<table>
+  <tr><th>坑</th><th>症状</th><th>解法</th></tr>
+  <tr><td>重复声明同名参数</td><td>报 "already declared" 运行时错误</td><td>声明前 <code>if not self.has_parameter('name')</code> 判断</td></tr>
+  <tr><td>类型不匹配</td><td>set 报 Type mismatch（1.0 声明成 1 设）</td><td>默认值定类型：float 写 1.0、int 写 1，set 时同型</td></tr>
+  <tr><td>回调只改变量不改行为</td><td>CLI 显示成功，采样频率却不变</td><td>回调里补 _update_timer()：destroy 旧定时器再重建</td></tr>
+  <tr><td>回调返回 None</td><td>参数服务判定设置失败但报错含糊</td><td>每个出口都 return SetParametersResult(...)</td></tr>
+  <tr><td>回调线程直接动定时器崩溃</td><td>偶发崩溃/未定义行为</td><td>回调存 _pending_rate，主循环定时器里检查并安全应用；共享状态加 threading.Lock</td></tr>
+  <tr><td>重启后参数"丢了"</td><td>一切恢复默认值</td><td>这不是 bug：dump → YAML → --params-file 加载</td></tr>
+</table>
+</section>
+
+<section class="blk" id="s10">
+<h2><span class="no">10</span>本课总结与思考题</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">定位</div><div class="kt">运行时配置层</div><p>不走数据流、不走 RPC，直接门卫式读写节点内存——与话题/服务三足鼎立。</p></div>
+  <div class="kcard"><div class="kd">生命周期</div><div class="kt">declare → get → set</div><p>声明一次定型定类；get 随取；set 必过回调。</p></div>
+  <div class="kcard"><div class="kd">动态闭环</div><div class="kt">callback 三件事</div><p>校验、应用（重建定时器）、回执 SetParametersResult——缺则"改了没用"。</p></div>
+  <div class="kcard"><div class="kd">工程化</div><div class="kt">Descriptor + YAML</div><p>描述符自描述供 UI 渲染；dump/params-file 让参数配置即代码。</p></div>
+</div>
+<div class="tip violet"><span class="lab">思考题</span>
+① 手动回调校验与 ParameterDescriptor 范围两层约束，CLI 越界时哪一层先触发？设计一个实验（如把两层范围设成不一致）验证你的判断。<br>
+② 巡线小车 PID 三参数相互关联，改 Kp 后需要重置积分累计值防"积分突变"——_on_param_changed 该怎样处理一次 set 两个参数的场景？是否要连带重置 Ki/Kd 的累计？<br>
+③ 参数服务回调在参数服务线程而非主线程执行——这对"回调里做模型加载"这类重活意味着什么？给出两种改造思路。</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-09-custom-msg/index.html"><span class="lb">← 上一个实验</span>EXP-09 自定义接口消息</a>
+  <a class="next" href="../exp-11-time/index.html"><span class="lb">下一个实验 →</span>EXP-11 时间 API</a>
+</nav>
+<footer><span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-10 参数服务</span><span>2 学时 · 设计性 · 基于 ros_practice 实验讲义改编</span></footer>
+</main>
+</div>
+<script>
+var PG={
+  rate5:'<span class="dim">// 评估 sample_rate_hz = 5.0 …</span>\n<span class="ok">✓ 接受</span> Set parameter successful\n<span class="dim">回调流程：范围 [0.1,50.0] 内 → self.sample_rate=5.0 → _update_timer() 销毁旧定时器</span>\n<span class="y">终端A: [INFO] 采样率已更新: 5.0 Hz → 新定时器: 周期=0.200s</span>\n<span class="dim">现象：采样日志从每秒 1 条变为每秒 5 条。</span>',
+  rate100:'<span class="dim">// 评估 sample_rate_hz = 100.0 …</span>\n<span class="bad">✗ 拒绝</span> Setting parameter failed\n<span class="dim">回调流程：100.0 &gt; 50.0 → 立即 return successful=False</span>\n<span class="y">终端A: [WARN] 拒绝采样率: 100.0（有效范围 [0.1, 50.0]）</span>\n<span class="dim">注意：CLI 收到 reason 会原样显示——写清楚 reason 是给使用者的第一线索。</span>',
+  rate0:'<span class="dim">// 评估 sample_rate_hz = 0 …</span>\n<span class="bad">✗ 拒绝</span> Setting parameter failed\n<span class="dim">双重拦截：0 &lt; 0.1 越界；即使没有范围校验，0 Hz 意味着 1/0 ——除零守护在 _update_timer 的 sample_rate&gt;0 判断里兜底。</span>\n<span class="y">设计启示：范围约束把运行期风险提前到设置时暴露。</span>',
+  thr600:'<span class="dim">// 评估 alarm_threshold_ppm = 600.0 …</span>\n<span class="ok">✓ 接受</span> Set parameter successful\n<span class="dim">回调流程：非负校验通过 → self.alarm_threshold=600.0</span>\n<span class="y">终端A: [INFO] 报警阈值已更新: 600.0 ppm</span>\n<span class="dim">现象：原本 520 ppm 会报警的读数，现在不再触发 WARN —— 热生效，无需重启。</span>',
+  thrNeg:'<span class="dim">// 评估 alarm_threshold_ppm = -100.0 …</span>\n<span class="bad">✗ 拒绝</span> Setting parameter failed\n<span class="dim">回调流程：param.value &lt; 0 → successful=False, reason=\'报警阈值必须为非负数\'</span>\n<span class="y">负阈值 = 一切读数都超限 → 报警永久刷屏。业务荒谬值就该在门口拦下。</span>',
+  enFalse:'<span class="dim">// 评估 sensor_enabled = false …</span>\n<span class="ok">✓ 接受</span> Set parameter successful\n<span class="dim">回调流程：bool 开关无需范围 → 更新 self.sensor_enabled=False</span>\n<span class="y">终端A: [INFO] 传感器已关闭 → _timer_callback 首行判断直接 return，日志停止</span>\n<span class="dim">提示：定时器仍按节拍触发，只是回调即刻返回——功耗极低。</span>',
+  typeInt:'<span class="dim">// 评估 sample_rate_hz = 5（int 字面量）…</span>\n<span class="bad">✗ 拒绝</span> 甚至到不了回调\n<span class="dim">参数服务在参数本身做类型检查：声明默认值 1.0 → 类型 float；set 传 int → Type mismatch 直接失败。</span>\n<span class="y">my_rule：float 写 5.0、int 写 5；get 返回 "Integer value is" 还是 "Double value is" 即可诊断。</span>'
+};
+function checkParam(){document.getElementById('pgIo').innerHTML=PG[document.getElementById('cmd').value];}
+checkParam();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

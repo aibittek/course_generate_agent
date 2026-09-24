@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-14 · rqt 可视化工具箱 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#0d9488;--theme-deep:#0f766e;--theme-bg:#ccfbf1;--theme-bd:#99f6e4}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-14</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：黑盒调试的困局</a>
+  <a href="#s2">02 核心原理：插件化架构为什么好用</a>
+  <a href="#s3">03 动画：同一系统，四双眼睛</a>
+  <a href="#s4">04 原理专题：六大核心插件逐个拆</a>
+  <a href="#s5">05 交互实验：故障场景 → 插件选择器</a>
+  <a href="#s6">06 命令精讲：启动方式三连</a>
+  <a href="#s7">07 实操 A：graph + plot 三分钟联调</a>
+  <a href="#s8">08 实操 B：console 多维过滤 + reconfigure 秒级调参</a>
+  <a href="#s9">09 注意事项与验收</a>
+  <a href="#s10">10 本课总结</a>
+  <h4>CH4 · 工具链</h4>
+  <a href="../exp-14-rqt/index.html" style="color:var(--theme);font-weight:700">EXP-14 rqt 工具箱</a>
+  <a href="../exp-15-rviz2/index.html">EXP-15 rviz2 可视化</a>
+  <a href="../exp-16-rosbag/index.html">EXP-16 rosbag2 数据录制</a>
+  <a href="../exp-17-launch/index.html">EXP-17 Launch 启动系统</a>
+  <a href="../exp-18-metapackage/index.html">EXP-18 元功能包集成</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-14 · 第四章 · 验证性 · 2 学时</span>
+  <h1>rqt 可视化工具箱：GUI 调试六件套</h1>
+  <p class="desc">对着终端敲 echo、grep、awk，是命令行侠的浪漫，但效率有天花板。rqt 是 Qt 插件化调试工作台：图形看拓扑、曲线看波形、滑块改参数——把"查/看/调"三件事从终端搬进 GUI。本课讲清插件架构原理，实战六大核心插件。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 rqt_graph · rqt_plot · rqt_console · rqt_reconfigure</span></div>
+</div>
+
+<!-- 01 问题引入 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：黑盒调试的困局</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>故障</b><p>小车导航突然停了，报错只有一句 "no feedback from controller"</p></div>
+    <div class="step"><div class="n">2</div><b>盲查</b><p>开 5 个终端分别 echo 各话题、grep 日志——10 分钟过去还没看清链路</p></div>
+    <div class="step"><div class="n">3</div><b>核心问题</b><p>节点关系是什么？哪条话题断了？波形哪里跳变了？终端很难一眼回答</p></div>
+    <div class="step"><div class="n">4</div><b>换武器</b><p>rqt_graph 一张图看拓扑，rqt_plot 一条曲线看跳变，3 定位断点</p></div>
+  </div>
+  <div class="tip">
+    <span class="lab">定义</span>
+    <b>rqt</b> 是基于 Qt 的插件化调试工作台：本体只提供菜单、停靠窗口和插件管理，所有功能（画图、过滤、调参……）都是可热插拔的插件。你看到的 rqt_graph、rqt_plot 等不是六个软件，是<b>同一个容器里的六个窗口</b>——可以按需拼装、保存成布局（Perspective）一键还原。
+  </div>
+</section>
+
+<!-- 02 原理 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>核心原理：插件化架构为什么好用</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">容器层</div><div class="kt">Qt 主窗口 + 插件发现</div><p>rqt 启动时扫描 <code>/opt/ros/humble/share/rqt_*</code> 下声明的插件入口，动态加载进菜单。写一个自己的 rqt 插件，就能把私有调试界面挂进官方工具箱。</p></div>
+    <div class="kcard"><div class="kd">数据层</div><div class="kt">共享同一个 ROS 上下文</div><p>所有插件共用 rqt 进程内的 ROS 节点——你在 rqt_graph 里看到的图，和 rqt_plot 订阅的是同一套话题系统，无需逐个工具重新连接。</p></div>
+    <div class="kcard"><div class="kd">组合层</div><div class="kt">Perspectives 布局保存</div><p>窗格停靠、插件组合、参数设置可整体存成 Perspective。排查导航问题存一个、调试串口存一个，切换工作场景一键还原，团队共享布局文件保持排查口径一致。</p></div>
+    <div class="kcard"><div class="kd">分层哲学</div><div class="kt">GUI 预览，CLI 定案</div><p>rqt 定位是"快速看"：graph 3 秒找断点、plot 秒级看趋势。脚本化/CI 场景仍回 CLI（ros2 topic echo / ros2 param）。GUI 提效率，CLI 保可复现，别二选一，要各司其职。</p></div>
+  </div>
+  <table>
+    <tr><th>任务</th><th>命令行做法</th><th>rqt 做法</th><th>效率差距</th></tr>
+    <tr><td>找断流话题</td><td>逐个 topic echo + 人肉比对</td><td>rqt_graph 看箭头有无，右上刷新</td><td>秒级 vs 分钟级</td></tr>
+    <tr><td>看正弦波形</td><td>echo 刷屏心算</td><td>rqt_plot 输入 /topic/field 直接画线</td><td>直观 vs 不可行</td></tr>
+    <tr><td>改运行参数</td><td>ros2 param set 每次敲键盘</td><td>rqt_reconfigure 拖滑块实时生效</td><td>连续调 vs 单点改</td></tr>
+    <tr><td>过滤 WARN 日志</td><td>grep 关键字，丢失上下文</td><td>rqt_console 按级别/节点/内容多维过滤</td><td>多维 vs 单维</td></tr>
+  </table>
+  <div class="tip amber">
+    <span class="lab">要点</span>
+    rqt_plot 的纵轴是自适应的：波形小幅抖动会被放大成"剧烈震荡"，判断幅值优劣时务必看左侧刻度，不要只看形状——这是新手把正常噪声误判为故障的高发坑。
+  </div>
+</section>
+
+<!-- 03 动画 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>动画：同一系统，四双眼睛</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 760 340" width="100%">
+      <defs>
+        <marker id="a14" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5eead4"/></marker>
+      </defs>
+      <!-- 中央系统 -->
+      <text x="380" y="22" text-anchor="middle" fill="#94a3b8" font-size="13">rqt 插件 = 同一个 ROS 系统的不同"投影"</text>
+      <rect x="280" y="86" width="200" height="64" rx="10" fill="#0f172a" stroke="#5eead4" stroke-width="2"/>
+      <text x="380" y="112" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold">运行中的 ROS2 系统</text>
+      <text x="380" y="136" text-anchor="middle" fill="#94a3b8" font-size="11">nodes · topics · params · logs</text>
+      <!-- 四个插件 -->
+      <g font-size="13">
+        <rect x="40" y="44" width="170" height="70" rx="9" fill="#134e4a" stroke="#2dd4bf" stroke-width="2"/>
+        <text x="125" y="72" text-anchor="middle" fill="#ccfbf1" font-weight="bold">rqt_graph</text>
+        <text x="125" y="96" text-anchor="middle" fill="#99f6e4" font-size="11">拓扑：谁在跟谁说话</text>
+        <line x1="214" y1="88" x2="276" y2="106" stroke="#5eead4" stroke-width="1.6" marker-end="url(#a14)"/>
+        <rect x="550" y="44" width="170" height="70" rx="9" fill="#1e3a5f" stroke="#60a5fa" stroke-width="2"/>
+        <text x="635" y="72" text-anchor="middle" fill="#dbeafe" font-weight="bold">rqt_plot</text>
+        <text x="635" y="96" text-anchor="middle" fill="#bfdbfe" font-size="11">波形：数值随时间变化</text>
+        <line x1="546" y1="106" x2="484" y2="118" stroke="#5eead4" stroke-width="1.6" marker-end="url(#a14)"/>
+        <rect x="40" y="234" width="170" height="70" rx="9" fill="#3b2f63" stroke="#a78bfa" stroke-width="2"/>
+        <text x="125" y="262" text-anchor="middle" fill="#ede9fe" font-weight="bold">rqt_console</text>
+        <text x="125" y="286" text-anchor="middle" fill="#ddd6fe" font-size="11">日志：五级过滤分色</text>
+        <line x1="214" y1="256" x2="276" y2="152" stroke="#5eead4" stroke-width="1.6" marker-end="url(#a14)"/>
+        <rect x="550" y="234" width="170" height="70" rx="9" fill="#4a3728" stroke="#f59e0b" stroke-width="2"/>
+        <text x="635" y="262" text-anchor="middle" fill="#fef3c7" font-weight="bold">rqt_reconfigure</text>
+        <text x="635" y="286" text-anchor="middle" fill="#fde68a" font-size="11">参数：滑块实时下发</text>
+        <line x1="546" y1="252" x2="484" y2="156" stroke="#5eead4" stroke-width="1.6" marker-end="url(#a14)"/>
+      </g>
+      <!-- rosbag 曲线动画 -->
+      <path id="wave14" d="M566,84 q12,-20 24,0 t24,0 t24,0 t24,0 t24,0" fill="none" stroke="#93c5fd" stroke-width="2"/>
+      <circle r="4" fill="#93c5fd"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#wave14"/></animateMotion></circle>
+      <!-- graph 动画节点 -->
+      <circle cx="76" cy="100" r="5" fill="#2dd4bf"><animate attributeName="opacity" values="0.4;1;0.4" dur="1.4s" repeatCount="indefinite"/></circle>
+      <circle cx="106" cy="100" r="5" fill="#2dd4bf"><animate attributeName="opacity" values="1;0.4;1" dur="1.4s" repeatCount="indefinite"/></circle>
+      <!-- reconfigure 滑块动画 -->
+      <rect x="576" y="278" width="120" height="5" rx="2" fill="#78350f"/>
+      <rect x="576" y="278" width="70" height="5" rx="2" fill="#f59e0b"><animate attributeName="width" values="20;120;20" dur="2.6s" repeatCount="indefinite"/></rect>
+      <text x="380" y="332" text-anchor="middle" fill="#94a3b8" font-size="12">四插件订阅同一节点上下文——切换工具不需重连系统</text>
+    </svg>
+  </div>
+  <p class="anim-cap">动画：中央是运行中的 ROS2 系统，rqt_graph（拓扑）、rqt_plot（波形）、rqt_console（日志）、rqt_reconfigure（参数）四个插件像四台投影仪，把同一套节点/话题/参数数据各自投射成不同视图，共享同一 ROS 上下文。</p>
+</section>
+
+<!-- 04 插件精讲 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>原理专题：六大核心插件逐个拆</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">① 拓扑</div><div class="kt">rqt_graph</div><p>Plugins → Introspection → Node Graph。椭圆=节点、矩形=话题、箭头=数据流。<b>Hide Debug</b> 勾上，/parameter_events、/rosout 消失，主链路一目了然。右上 Refresh 手动刷新——节点动态变化时不会自动重绘。</p></div>
+    <div class="kcard"><div class="kd">② 波形</div><div class="kt">rqt_plot</div><p>Visualization → Plot。路径必须写全 <b>/topic/field</b>，如 <code>/sine_wave/data</code>（String 消息不可绘）。"加号"按钮从话题树选字段最稳；还支持数学表达式 <code>/a/data + /b/data</code> 合成曲线。</p></div>
+    <div class="kcard"><div class="kd">③ 日志</div><div class="kt">rqt_console</div><p>Logging → Console，汇总订阅 /rosout。DEBUG/INFO/WARN/ERROR/FATAL 五级分色，Filter 支持级别+节点+内容多条件（默认 AND）。配合 rqt_logger_level 可<b>运行中</b>动态提级，不用重启节点。</p></div>
+    <div class="kcard"><div class="kd">④ 调参</div><div class="kt">rqt_reconfigure</div><p>Configuration → Dynamic Reconfigure. 滑块/下拉/复选直接下发参数。前提：节点用 API 声明参数并注册了 set 回调（见 EXP-10）。把"改参→编译→重启"从分钟级压到<b>拖一下滑块的秒级</b>。</p></div>
+    <div class="kcard"><div class="kd">⑤ 数据</div><div class="kt">rqt_topic</div><p>echo 的 GUI 版：话题列表带频率/类型，点开分层展示消息字段，位姿/多传感器嵌套结构不用在刷屏流里对齐看。适合"看一眼就走"的快速检查。</p></div>
+    <div class="kcard"><div class="kd">⑥ 回放</div><div class="kt">rqt_bag</div><p>Logging → Bag。时间轴拖动、勾选话题、字段绘图、导出 CSV——录包数据分析的 GUI 入口，与 CLI 的 ros2 bag info/play 互补（详见 EXP-16）。</p></div>
+  </table>
+  <div class="tip tealb">
+    <span class="lab">奈奎斯特提醒</span>
+    rqt_plot 画采样信号时，采样频率至少是信号频率的 2 倍才能还原波形（奈奎斯特采样定理）。1Hz 正弦波用 0.5Hz 采样画出来会变成一条"低频假波"——GUI 不会替你报警，请自己心里有这根弦。这也正是 EXP-11 讲 <code>ros2 topic hz</code> 的意义：先确认采样率，再信波形。
+  </div>
+</section>
+
+<!-- 05 交互 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>交互实验：故障场景 → 插件选择器</h2>
+  <div class="ix-panel">
+    <div class="ix-title">Plugin Chooser：描述你的故障，选出对的插件组合与操作路径</div>
+    <div class="ctl-row">
+      <label class="ctl">你要排查什么
+        <select id="ts" onchange="pick()">
+          <option value="断流">话题没数据了（链路断流）</option>
+          <option value="抖动">cmd_vel 数值抖动/跳变</option>
+          <option value="报警">日志里 ERROR 太多刷不过来</option>
+          <option value="调参">PID 参数要连续拖着调</option>
+          <option value="录播">要从半小时的录包里截取片段</option>
+          <option value="多条件">只看 planner 节点的 WARN 以上日志</option>
+        </select>
+      </label>
+    </div>
+    <pre class="io" id="out"></pre>
+  </div>
+</section>
+
+<!-- 06 命令精讲 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>命令精讲：启动方式三连</h2>
+  <pre><code><span class="c"># 方式一：启动完整工作台（自带菜单可再开任意插件）</span>
+<span class="b">$</span> rqt
+
+<span class="c"># 方式二：直启单个插件（省去菜单导航，脚本常用）</span>
+<span class="b">$</span> rqt_graph
+<span class="b">$</span> rqt_plot
+<span class="b">$</span> rqt_console
+<span class="b">$</span> rqt_reconfigure
+
+<span class="c"># 方式三：带参数启动（指定绘图话题，省手打）</span>
+<span class="b">$</span> rqt_plot --args <span class="y">/sine_wave/data</span>
+<span class="b">$</span> rqt_logger_level set logger:=my_node level:=debug   <span class="g"># 动态提级</span>
+
+<span class="c"># 远程无显示器的机器人（ssh 图形转发）</span>
+<span class="b">$</span> ssh -X pi@192.168.1.100
+<span class="b">$</span> rqt        <span class="g"># 图形界面经 X11 转发到本地；失败见下表"无显示"</span></code></pre>
+  <div class="tip violet">
+    <span class="lab">原理：为什么 ssh -X 能弹窗</span>
+    Qt 程序通过 X11 协议"画"窗口——X 架构天然把"计算"（机器人上的 rqt）与"显示"（你笔记本的屏幕）分离，<code>ssh -X</code> 把远端的 X11 流量加密隧道转发回本地 X Server 显示。Wayland/纯 headless 环境此路不通，改用 VNC 或在有显示器的机器上跑。
+  </div>
+</section>
+
+<!-- 07 实操A -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>实操 A：graph + plot 三分钟联调</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>起系统</b><p>跑一个带正弦话题的示例包：ros2 run sine_wave sine_wave_node</p></div>
+    <div class="step"><div class="n">2</div><b>看拓扑</b><p>rqt_graph → 勾 Hide Debug → 确认正弦节点→话题→订阅者的箭头连通</p></div>
+    <div class="step"><div class="n">3</div><b>画波形</b><p>rqt_plot 输入 <code>/sine_wave/data</code> → 应看到平滑正弦滚动</p></div>
+    <div class="step"><div class="n">4</div><b>制造故障</b><p>kill 掉发布节点 → graph 箭头消失，plot 曲线冻结——两种视图交叉印证</p></div>
+  </div>
+  <pre><code><span class="b">$</span> ros2 run sine_wave sine_wave_node        <span class="g"># 终端1：发布节点</span>
+<span class="b">$</span> rqt_graph                                <span class="g"># 终端2：先看图</span>
+<span class="c">#   确认 /sine_wave (std_msgs/Float32) 的发布-订阅关系存在</span>
+<span class="b">$</span> rqt_plot --args <span class="y">/sine_wave/data</span>          <span class="g"># 再画线</span>
+<span class="c">#   字段路径只写 /sine_wave 会报"不能绘图"——消息不是标量</span>
+<span class="b">$</span> kill %1                                  <span class="g"># 杀发布者，观察两视图反应</span></code></pre>
+  <div class="tip amber"><span class="lab">观察点</span>plot 冻结不代表"崩溃"，是<b>没有新消息到来</b>——横轴还停在最后时刻。判断节点死活回到 graph/CLI（ros2 node list），多视图交叉验证是 rqt 的正确打开方式。</div>
+</section>
+
+<!-- 08 实操B -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操 B：console 多维过滤 + reconfigure 秒级调参</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>日志洪水</b><p>rqt_console 打开，跑一个带 WARN/ERROR 的节点，默认全量涌入</p></div>
+    <div class="step"><div class="n">2</div><b>设过滤器</b><p>Minimum Sev erity=WARNING + 关键字 Contains=timeout → 只剩高价值条目</p></div>
+    <div class="step"><div class="n">3</div><b>动态提级</b><p>rqt_logger_level 把目标节点提到 DEBUG，抓到隐藏上下文后调回</p></div>
+    <div class="step"><div class="n">4</div><b>滑块调参</b><p>rqt_reconfigure 拖 sample_rate_hz 滑块，调速节点波形即时响应</p></div>
+  </div>
+  <pre><code><span class="c"># 日志端：节点需注册了参数回调才能被 reconfigure 支持（见 EXP-10）</span>
+<span class="b">$</span> rqt_console          <span class="g"># Filter: Node=my_node AND Severity≥WARN</span>
+<span class="b">$</span> rqt_reconfigure       <span class="g"># 左树选节点 → 出现声明过的参数控件</span>
+<span class="c"># 关键前提：参数写在声明处而非硬编码，回调里真正改了行为</span>
+<span class="b">$</span> rqt                  <span class="g"># 调完满意 → Perspectives → Save As 存布局</span></code></pre>
+  <table>
+    <tr><th>坑</th><th>症状</th><th>解法</th></tr>
+    <tr><td>无显示环境</td><td>Could not connect to display</td><td>用 ssh -X 重连；Wayland 机器改 VNC</td></tr>
+    <tr><td>graph 图是空的</td><td>一个节点椭圆都没有</td><td>右上 Refresh；确认 rqt 与系统同源（都 source 了 humble）</td></tr>
+    <tr><td>plot 曲线出不来</td><td>提示不能绘制</td><td>路径写到字段级 /topic/field；String 类型换话题</td></tr>
+    <tr><td>reconfigure 无控件</td><td>左侧列表是空的</td><td>节点没声明参数或没注册 set 参数回调——补 EXP-10 的骨架</td></tr>
+    <tr><td>布局每次重配</td><td>窗口仍回老样子</td><td>Perspectives → Save As 存盘，启动时选择预设</td></tr>
+  </table>
+</section>
+
+<!-- 09 注意事项 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>注意事项与验收</h2>
+  <ul class="check">
+    <li>验收 1：rqt_graph 勾 Hide Debug 后能一眼报出主链路的发布/订阅关系</li>
+    <li>验收 2：rqt_plot 正确画出 /topic/field 曲线，并解释"字段级路径"的原因</li>
+    <li>验收 3：rqt_console 完成"级别+节点+关键字"三条件过滤</li>
+    <li>验收 4：rqt_reconfigure 拖动滑块，被调节点行为实时变化</li>
+    <li>验收 5：布局存成 Perspective 并重启 rqt 还原成功</li>
+    <li>验收 6：能说出 GUI 与 CLI 各自的适用边界（快速看 vs 可复现）</li>
+  </ul>
+  <div class="tip"><span class="lab">多维过滤的一个技巧</span>
+  只筛 WARN 往往还会被海量 INFO 之外的同级 WARN 淹没——叠加第二个条件（节点名或关键字）做 AND；反过来若怀疑"问题起因在 INFO 里"，就先把最小级别放到 INFO、按关键字 Contains 缩小，再顺时间线往上游找。</div>
+</section>
+
+<!-- 10 总结 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>本课总结</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">架构</div><div class="kt">容器 + 可插拔插件</div><p>rqt 本体只是 Qt 工作台，六个核心插件共享同一 ROS 上下文，Perspectives 保存布局。</p></div>
+    <div class="kcard"><div class="kd">分工</div><div class="kt">六插件各管一维</div><p>graph 看结构、plot 看波形、console 看日志、reconfigure 调参数、topic 看数据、bag 看回放。</p></div>
+    <div class="kcard"><div class="kd">心法</div><div class="kt">交叉验证</div><p>曲线冻结别只信 plot，拓扑断流回 graph——GUI 给速度，CLI 给确定性，两边互相印证。</p></div>
+    <div class="kcard"><div class="kd">前提</div><div class="kt">工具强依赖代码规范</div><p>reconfigure 有控件的前提是"正确声明参数+回调"——工具是果，EXP-10 的参数规范才是因。</p></div>
+  </div>
+  <div class="tip violet">
+    <span class="lab">思考题</span>
+    <p>① 想在 console 只看"planner 只能输出 WARN 以上日志"，Filter 该怎么组合？若 WARN 被 INFO 淹没，除了级别过滤还有哪些策略？</p>
+    <p>② 要在 rqt_plot 里画小车的 XY 轨迹（不是"x随时间"曲线），数据源是 /odom 的 position.x 和 position.y——路径该怎么填？（提示：plot 支持表达式，想想两条曲线怎么合成坐标平面上的点。）</p>
+  </div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-13-distributed/index.html"><span class="lb">← 上一个实验</span>EXP-13 ROS2 分布式通讯</a>
+  <a class="next" href="../exp-15-rviz2/index.html"><span class="lb">下一个实验 →</span>EXP-15 rviz2 可视化</a>
+</nav>
+<footer>
+  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-14 rqt 可视化工具箱</span>
+  <span>2 学时 · 验证性 · 基于 ros_practice 实验讲义改编</span>
+</footer>
+</main>
+</div>
+
+<script>
+var PICK = {
+  '断流': '<span class="ok">首选组合</span>\nrqt_graph（主） + ros2 topic hz（辅）\n1. Hide Debug 后看哪个话题箭头消失/变灰\n2. 右上 Refresh 强制重绘（动态系统不自动刷新）\n3. 分段定位：上游没发 → 查发布节点；发了没传 → 查域号/网络（EXP-13）',
+  '抖动': '<span class="ok">首选组合</span>\nrqt_plot（主） + rqt_topic（辅）\n1. rqt_plot 输入完整字段路径，如 /cmd_vel/linear.x\n2. 看左侧刻度——纵轴自适应会放大抖动，先确认真实幅值\n3. 怀疑毛刺来自传感器 → 画原始值与滤波值对比（支持 /a/x - /b/x 表达式）',
+  '报警': '<span class="ok">首选组合</span>\nrqt_console（主）\n1. Filter 设 Minimum Severity=ERROR 批量缩小\n2. 再加节点名条件（AND），锁定肇事节点\n3. 顺时间线找第一条 ERROR——它是根因候选，后面的多半是连锁反应\n4. 需要上下文时用 rqt_logger_level 动态提 DEBUG，重启免了',
+  '调参': '<span class="ok">首选组合</span>\nrqt_reconfigure（主） + rqt_plot（看效果）\n1. 前提检查：节点已 declare_parameter + 注册 set 回调（EXP-10 骨架）\n2. 左树选节点 → 滑块拖动即时下发\n3. 右窗 plot 盯着响应曲线调，满意后记下数值 → 回写代码/params 文件\n4. ⚠ 滑块调出的好参数断电即忘，最终一定要固化',
+  '录播': '<span class="ok">首选组合</span>\nrqt_bag（主）：时间轴拖动 + 勾选话题 + 字段绘图 + 导出 CSV\n分检细节交给 CLI：ros2 bag info 查概况 → ros2 bag play -s 偏移截取 → see truth in EXP-16\n判断准则：探索性浏览用 GUI，精确截取/批量处理用 CLI',
+  '多条件': '<span class="ok">首选组合</span>\nrqt_console 的 Filter 面板：\n1. 操作符选 AND：Node == "planner" AND Severity ≥ WARN\n2. Level 设为 WARNING，节点名精确匹配（区分大小写）\n3. 仍嫌吵 → Contains 再叠关键字\n4. 模板可存 Perspective 复用，下次开箱即用'
+};
+function pick(){ document.getElementById('out').innerHTML = PICK[document.getElementById('ts').value]; }
+pick();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

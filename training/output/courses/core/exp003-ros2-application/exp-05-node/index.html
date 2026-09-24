@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-05 · 节点：最小可执行单元 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#0891b2;--theme-deep:#0e7490;--theme-bg:#cffafe;--theme-bd:#a5f3fc}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-05</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：单体程序为什么不够</a>
+  <a href="#s2">02 核心原理：节点的四个关联概念</a>
+  <a href="#s3">03 动画：两个节点如何发现并建连</a>
+  <a href="#s4">04 专题：生命周期与主循环</a>
+  <a href="#s5">05 交互：计算图搭建器</a>
+  <a href="#s6">06 节点 API 与命名精讲</a>
+  <a href="#s7">07 实操 A：写一个并跑通最小节点</a>
+  <a href="#s8">08 实操 B：三节点组网与身份切换</a>
+  <a href="#s9">09 注意事项与验收清单</a>
+  <a href="#s10">10 本课总结与思考题</a>
+  <h4>CH2 · 通信机制</h4>
+  <a href="../exp-05-node/index.html">EXP-05 节点</a>
+  <a href="../exp-06-topic/index.html">EXP-06 话题</a>
+  <a href="../exp-07-service/index.html">EXP-07 服务</a>
+  <a href="../exp-08-action/index.html">EXP-08 动作</a>
+  <a href="../exp-09-custom-msg/index.html">EXP-09 自定义接口</a>
+  <a href="../exp-10-parameter/index.html">EXP-10 参数</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-05 · 第 2 章 · 验证性 · 2 学时</span>
+  <h1>节点：ROS2 的最小可执行单元</h1>
+  <p class="desc">节点是一段带 ROS2 能力的可执行程序——它通过话题、服务、动作与外界对话。理解节点的发现机制与生命周期，就拿到了计算图的钥匙。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 node · rclpy · 计算图</span></div>
+</div>
+
+<section class="blk" id="s1">
+<h2><span class="no">01</span>问题引入：单体程序为什么不够</h2>
+<div class="flow">
+  <div class="step"><div class="n">1</div>把感知、规划、控制写进一个进程：任何一处崩溃，<b>全车趴窝</b>。</div>
+  <div class="step"><div class="n">2</div>相机 30Hz、底盘 100Hz、导航 1Hz——<b>节奏不同</b>，塞进同一个循环互相拖累。</div>
+  <div class="step"><div class="n">3</div>有人想用 C++ 写算法、Python 写业务——单进程语言也被锁死。</div>
+  <div class="step"><div class="n">4</div>ROS2 的答案：拆成多个<b>进程级节点</b>，各自独立崩溃域与执行节奏，用标准接口对话。</div>
+</div>
+<div class="tip"><span class="lab">定义 Node</span>负责某一细分功能的<b>可执行进程</b>（C++ 或 Python），创建时向网络声明自己的存在，通过 DDS 与其它节点点对点通信。系统里所有活跃节点构成<b>计算图（Computation Graph）</b>。</div>
+</section>
+
+<section class="blk" id="s2">
+<h2><span class="no">02</span>核心原理：节点的四个关联概念</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">Node</div><div class="kt">执行单元</div><p>rclpy.Node("名字") 即完成注册。名字在同一图内应唯一，重名会产生警告。</p></div>
+  <div class="kcard"><div class="kd">Executor</div><div class="kt">执行器</div><p>决定"谁的回调先跑"：单线程顺序执行，多线程可并行处理回调。</p></div>
+  <div class="kcard"><div class="kd">Callback Group</div><div class="kt">回调分组</div><p>控制回调并发边界：Reentrant 可重入、MutuallyExclusive 组内互斥。</p></div>
+  <div class="kcard"><div class="kd">Composable Node</div><div class="kt">组合式节点</div><p>多节点装进同一进程减少序列化开销；Managed 节点带标准生命周期。</p></div>
+</div>
+<table>
+  <tr><th>一个节点"有脸面"的六件事</th><th>对应能力</th></tr>
+  <tr><td>名字与命名空间</td><td><code>/ns/node_name</code> 全局唯一寻址（见 s6 参数）</td></tr>
+  <tr><td>自我介绍</td><td>向图里声明名字、可执行的服务/话题端点</td></tr>
+  <tr><td>长循环</td><td>timer 回调 + 主循环 spin，保证进程活着处理消息</td></tr>
+  <tr><td>优雅退出</td><td>Ctrl+C → SIGINT → rclpy 关闭上下文 → 静默离场</td></tr>
+  <tr><td>可被观测</td><td>ros2 node list / info 随时可查</td></tr>
+  <tr><td>参数化</td><td>启动即读参，行为可调（EXP-10）</td></tr>
+</table>
+</section>
+
+<section class="blk" id="s3">
+<h2><span class="no">03</span>动画：两个节点如何发现并建连</h2>
+<div class="anim-box">
+<svg viewBox="0 0 760 240" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <!-- 两个节点 -->
+  <rect x="60" y="80" width="140" height="80" rx="12" fill="#1e293b" stroke="#0891b2" stroke-width="2.5"/>
+  <text x="130" y="112" fill="#fff" font-size="15" text-anchor="middle" font-weight="bold">node_A</text>
+  <text x="130" y="136" fill="#67e8f9" font-size="12" text-anchor="middle">publisher</text>
+  <rect x="560" y="80" width="140" height="80" rx="12" fill="#1e293b" stroke="#0891b2" stroke-width="2.5"/>
+  <text x="630" y="112" fill="#fff" font-size="15" text-anchor="middle" font-weight="bold">node_B</text>
+  <text x="630" y="136" fill="#67e8f9" font-size="12" text-anchor="middle">subscription</text>
+  <!-- 中间的 DDS 发现云 -->
+  <ellipse cx="380" cy="120" rx="105" ry="52" fill="#0b1220" stroke="#334155" stroke-width="2" stroke-dasharray="6 5"/>
+  <text x="380" y="112" fill="#cbd5e1" font-size="13.5" text-anchor="middle">DDS 发现层</text>
+  <text x="380" y="134" fill="#64748b" font-size="11.5" text-anchor="middle">Participant 互相告知名字</text>
+  <!-- 发现广播波 -->
+  <circle cx="245" cy="120" r="8" fill="none" stroke="#22d3ee" stroke-width="2">
+    <animate attributeName="cx" values="200;380" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="r" values="4;14" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="515" cy="120" r="8" fill="none" stroke="#22d3ee" stroke-width="2">
+    <animate attributeName="cx" values="560;380" dur="2s" begin="1s" repeatCount="indefinite"/>
+    <animate attributeName="r" values="4;14" dur="2s" begin="1s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0" dur="2s" begin="1s" repeatCount="indefinite"/>
+  </circle>
+  <!-- 建连路径 -->
+  <line x1="200" y1="95" x2="560" y2="95" stroke="#155e75" stroke-width="2.5" stroke-dasharray="8 6"/>
+  <text x="380" y="72" fill="#67e8f9" font-size="12.5" text-anchor="middle">QoS 协商通过 → 点对点直连（不经任何中间服务器）</text>
+  <circle r="6" fill="#22d3ee" cx="200" cy="95">
+    <animate attributeName="cx" values="200;560" dur="1.6s" begin="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;1;1;0" dur="1.6s" begin="2s" repeatCount="indefinite"/>
+  </circle>
+  <!-- 底部说明 -->
+  <text x="380" y="195" fill="#94a3b8" font-size="12.5" text-anchor="middle">① 双方创建 Participant 广播身份</text>
+  <text x="380" y="215" fill="#94a3b8" font-size="12.5" text-anchor="middle">② 匹配话题名 + QoS → ③ 直接交换用户数据（没有 Master，没有单点）</text>
+</svg>
+</div>
+<p class="anim-cap">ROS2 没有"注册中心"：发现由 DDS Peer/Simple Discovery 完成，之后数据直连——这正是 EXP-01 单点故障实验的底层原因。</p>
+</section>
+
+<section class="blk" id="s4">
+<h2><span class="no">04</span>专题：生命周期与主循环</h2>
+<div class="flow">
+  <div class="step"><div class="n">1</div><b>创建</b>：rclpy.init() 初始化上下文 → Node("name") 完成发现注册。</div>
+  <div class="step"><div class="n">2</div><b>就绪</b>：创建 publisher/subscription/timer/server 等端点，等待匹配。</div>
+  <div class="step"><div class="n">3</div><b>spin</b>：执行器循环等待事件，有消息/定时到点就唤起回调——<b>节点活着的标志</b>。</div>
+  <div class="step"><div class="n">4</div><b>销毁</b>：SIGINT → rclpy.shutdown() → 上下文关闭，端点从图中消失。</div>
+</div>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">默认状态机</div><div class="kt">Unconfigured → Inactive → Active → Finalized</div><p>Managed Node 四状态；驱动类节点常在 Active 前等待硬件就绪。</p></div>
+  <div class="kcard"><div class="kd">不 spin 的后果</div><div class="kt">回调永不触发</div><p>通信线程收得到数据，但没有执行器调度回调——现象是"发布了却没反应"。</p></div>
+  <div class="kcard"><div class="kd">重名后果</div><div class="kt">WARN: already registered</div><p>同名节点共存但话题会串线，launch 里用 namespace 隔离。</p></div>
+</div>
+</section>
+
+<section class="blk" id="s5">
+<h2><span class="no">05</span>交互：计算图搭建器</h2>
+<div class="ix-panel">
+  <div class="ix-title">Graph Builder · 起几个节点，看图怎么长出来</div>
+  <div class="ctl-row">
+    <label class="ctl">启动节点组合
+      <select id="combo" onchange="buildGraph()">
+        <option value="none">空图（什么都没启动）</option>
+        <option value="one">只启动 talker（发布端孤零零）</option>
+        <option value="pair">talker + listener（配对成功）</option>
+        <option value="full">talker + listener + 参数节点（完整小系统）</option>
+      </select>
+    </label>
+  </div>
+  <div class="io" id="graphIo">// 选择组合，观察 ros2 node list / topic info 的差异…</div>
+</div>
+</section>
+
+<section class="blk" id="s6">
+<h2><span class="no">06</span>节点 API 与命名精讲</h2>
+<pre><span class="b">import</span> rclpy
+<span class="b">from</span> rclpy.node <span class="b">import</span> Node
+
+rclpy.init()
+node = Node(<span class="y">'minimal_node'</span>)        <span class="c"># 自动向 DDS 图注册</span>
+node.get_name()                     <span class="g"># 'minimal_node'</span>
+node.get_namespace()                <span class="g"># '/'</span>
+node.get_fully_qualified_name()     <span class="g"># '/minimal_node'</span>
+node.get_node_names_and_namespaces() <span class="c"># 图里所有邻居（含自己）</span>
+rclpy.spin(node)                    <span class="c"># 进入主循环，Ctrl+C 退出</span></pre>
+<table>
+  <tr><th>命名规则</th><th>写法</th><th>含义</th></tr>
+  <tr><td>私有名</td><td><code>~/param</code></td><td>展开为 /ns/node/param，节点内部参数最常用</td></tr>
+  <tr><td>相对名</td><td><code>cmd_vel</code></td><td>挂在当前命名空间下 → /cmd_vel</td></tr>
+  <tr><td>全局名</td><td><code>/robot1/cmd_vel</code></td><td>从根开始，跨命名空间引用</td></tr>
+  <tr><td>命名空间</td><td><code>--ros-args -r __ns:=/r1</code></td><td>多机同名功能的关键隔离手段</td></tr>
+</table>
+<div class="tip amber"><span class="lab">为什么相对名最重要</span>同一套代码不改一行就能部署到 /r1、/r2 两台机器人上——所有话题写相对名，进什么命名空间就自动挂哪里。这是多机器人系统的基石。</div>
+</section>
+
+<section class="blk" id="s7">
+<h2><span class="no">07</span>实操 A：写一个并跑通最小节点</h2>
+<pre><span class="b">cd</span> ~/ros2_ws/src &amp;&amp; ros2 pkg create --build-type ament_python \
+  --node-name my_min_node --dependencies rclpy min_ws_demo
+<span class="b">cd</span> ~/ros2_ws &amp;&amp; colcon build &amp;&amp; source install/setup.bash
+
+<span class="c"># 终端 1：启动</span>
+ros2 run min_ws_demo my_min_node
+<span class="c"># 终端 2：验证它"存在于图中"</span>
+ros2 node list                  <span class="g"># /my_min_node</span>
+ros2 node info /my_min_node     <span class="g"># 看它挂了哪些端点</span></pre>
+</section>
+
+<section class="blk" id="s8">
+<h2><span class="no">08</span>实操 B：三节点组网与身份切换</h2>
+<pre><span class="c"># 终端 1–3 同时起三个节点</span>
+ros2 run demo_nodes_cpp talker
+ros2 run demo_nodes_py listener
+ros2 run demo_nodes_cpp parameter_server
+
+<span class="c"># 全景观察</span>
+ros2 node list
+ros2 node info /listener
+<span class="g">#  Subscriber /parameter_events: [rcl_interfaces/msg/ParameterEvent]</span>
+<span class="g">#  Service /listener/get_parameters: [rcl_interfaces/srv/GetParameters]</span>
+
+<span class="c"># 用命名空间再造一个"平行世界"</span>
+ros2 run demo_nodes_cpp talker --ros-args -r __ns:=/r2
+ros2 node list   <span class="g"># 共存：/talker 与 /r2/talker，互不串线</span></pre>
+<p>观察要点：<code>/parameter_events</code> 是每个节点都天然订阅的<b>系统话题</b>——这就是"节点天生带参数能力"的证据。</p>
+</section>
+
+<section class="blk" id="s9">
+<h2><span class="no">09</span>注意事项与验收清单</h2>
+<div class="check">
+  <ul>
+    <li>能画出节点、话题、服务三种图元并说出关系</li>
+    <li>解释"没有 Master"后，系统靠什么发现彼此（DDS Participant 广播）</li>
+    <li>node list / node info / node exe 四件套操作熟练</li>
+    <li>写出读取全名、命名空间、邻居列表的三个 API</li>
+    <li>演示同名节点的串线现象与 namespace 隔离方法</li>
+    <li>能解释不调 spin 时"发布了却收不到回调"的原因</li>
+  </ul>
+</div>
+<table>
+  <tr><th>坑</th><th>症状</th><th>解法</th></tr>
+  <tr><td>忘了 spin</td><td>程序秒退或回调不执行</td><td>末尾加 <code>rclpy.spin(node)</code>；GUI 节点改 spin_once 循环</td></tr>
+  <tr><td>节点重名</td><td>WARN + 话题串线</td><td>launch 里加 namespace 或改名；调试期就发现</td></tr>
+  <tr><td>命名空间起点写错</td><td>期望的话题没出现</td><td>相对名挂 ns 下；对照 <code>ros2 topic list</code> 实际路径</td></tr>
+  <tr><td>Ctrl+C 后僵尸进程</td><td>端点仍挂在图里几秒</td><td>DDS 有租约（lease）超时，短暂残留正常；常驻则查是否 trap 了信号</td></tr>
+</table>
+</section>
+
+<section class="blk" id="s10">
+<h2><span class="no">10</span>本课总结与思考题</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">定位</div><div class="kt">节点 = 独立进程的能力单元</div><p>崩溃域、节奏、语言三重解耦，是机器人软件工程化的起点。</p></div>
+  <div class="kcard"><div class="kd">发现</div><div class="kt">DDS 广告 → 匹配 → 直连</div><p>无注册中心，QoS 匹配成功即建点对点通路。</p></div>
+  <div class="kcard"><div class="kd">存活</div><div class="kt">init → 就绪 → spin → shutdown</div><p>spin 是回调被调度的唯一引擎，缺它一切静默失效。</p></div>
+  <div class="kcard"><div class="kd">身份</div><div class="kt">相对名 + 命名空间</div><p>一套代码多处部署的核心手段。</p></div>
+</div>
+<div class="tip violet"><span class="lab">思考题</span>
+① talker 发布得热火朝天，listener 却毫无输出——按"发现/QoS/spin/命名空间"四个方向列出排查顺序与每步命令。<br>
+② 参数服务是"每节点自带"的，那 parameter_server 节点本身有什么用？它与私有 ~/param 有什么关系？</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-04-package/index.html"><span class="lb">← 上一个实验</span>EXP-04 功能包与依赖管理</a>
+  <a class="next" href="../exp-06-topic/index.html"><span class="lb">下一个实验 →</span>EXP-06 话题通信 · MQ5 传感器</a>
+</nav>
+<footer><span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-05 节点：最小可执行单元</span><span>2 学时 · 验证性 · 基于 ros_practice 实验讲义改编</span></footer>
+</main>
+</div>
+<script>
+var GRAPHS={
+  none:'<span class="dim">$ ros2 node list</span>\n<span class="warn">(空)——计算图里没有任何节点，topic 自然也无从谈起。</span>',
+  one:'<span class="dim">$ ros2 node list</span>\n/talker\n<span class="dim">$ ros2 topic info /chatter</span>\nPublisher count: 1\nSubscriber count: 0\n<span class="warn">⚠ 发布端孤悬：QoS 无人匹配，消息"发出即丢"（无人接收）。</span>',
+  pair:'<span class="dim">$ ros2 node list</span>\n/listener\n/talker\n<span class="dim">$ ros2 topic info /chatter</span>\nPublisher count: 1\nSubscriber count: 1\n<span class="ok">✓ 端点匹配成功，点对点直连建立——listener 开始打印。</span>',
+  full:'<span class="dim">$ ros2 node list</span>\n/listener\n/parameter_server\n/talker\n<span class="ok">✓ 三角齐备；所有节点还共同订阅 /parameter_events。</span>\n<span class="dim">$ ros2 topic list</span>\n/chatter  /parameter_events  /rosout</span>'
+};
+function buildGraph(){document.getElementById('graphIo').innerHTML=GRAPHS[document.getElementById('combo').value];}
+buildGraph();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-20 · URDF 与 Xacro 机器人建模 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#a16207;--theme-deep:#854d0e;--theme-bg:#fefce8;--theme-bd:#fde68a}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-20</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：屏幕里的小车，是谁画的</a>
+  <a href="#s2">02 核心原理：link 三重属性 × joint 六类型</a>
+  <a href="#s3">03 动画：两个发布者如何合力把车"画"出来</a>
+  <a href="#s4">04 原理专题：惯性矩阵——从魔法数字到物理公式</a>
+  <a href="#s5">05 交互演练：URDF Doctor 症状诊断</a>
+  <a href="#s6">06 命令精讲：检验工具三件套</a>
+  <a href="#s7">07 实操 A：手写完整差分车 URDF（设计性任务）</a>
+  <a href="#s8">08 实操 B：Xacro 参数化重构（复用压缩到 80 行）</a>
+  <a href="#s9">09 注意事项与避坑清单</a>
+  <a href="#s10">10 本课总结与思考</a>
+  <h4>CH5 · 建模基础</h4>
+  <a href="../exp-19-tf2/index.html">EXP-19 TF2 坐标变换</a>
+  <a href="../exp-20-urdf/index.html" style="color:var(--theme);font-weight:700">EXP-20 URDF 机器人建模</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-20 · 第 5 章 · 设计性 · 4 学时</span>
+  <h1>URDF 与 Xacro：给机器人造一份数字骨架</h1>
+  <p class="desc">rviz2 里那台蓝底盘黑轮的小车，源头是一份 XML——URDF。它是 Rviz2/Gazebo/TF2/运动规划的唯一模型输入。本实验讲透 link 三重属性与 joint 六类型的原理，用 Xacro 宏语言把 150 行模型压缩到 80 行，并让惯性矩阵从"魔法数字"变成公式推导。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐⭐⭐</span><span class="tag">4 学时</span><span class="tag">设计性</span><span class="tag">关键词 URDF · link · joint · Xacro · 惯性矩阵</span></div>
+</div>
+
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：屏幕里的小车，是谁画的</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>echo /scan 只看到一堆浮点数——数据有了，"车"在哪？</div>
+    <div class="step"><span class="n">2</span>rviz2 勾选 RobotModel 后，一台蓝底盘、黑驱动轮、白万向轮的小车瞬间出现</div>
+    <div class="step"><span class="n">3</span>模型形状、颜色、轮轴位置全部来自参数 <code>robot_description</code>——它的内容就是一份 URDF 文件</div>
+    <div class="step"><span class="n">4</span>拖动 joint 滑块，轮子绕轴旋转：几何 + 运动约束 + 物理属性，一份 XML 全定义</div>
+  </div>
+  <div class="tip amber"><span class="lab">定义</span><b>URDF</b>（Unified Robot Description Format，统一机器人描述格式）是一种 XML 语言，用来描述机器人的<b>几何结构</b>（长什么样）、<b>运动学约束</b>（怎么动）与<b>动力学参数</b>（多沉、惯性多大）。它是 Rviz2、Gazebo、TF2、MoveIt 运动规划的<b>唯一模型输入源</b>——写好一份 URDF，整条工具链共享同一台"数字孪生"。</div>
+</section>
+
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>核心原理：link 三重属性 × joint 六类型</h2>
+  <table>
+    <tr><th>link 属性</th><th>作用</th><th>取值/几何体</th><th>何时必须</th></tr>
+    <tr><td><code>&lt;visual&gt;</code></td><td>渲染外观（给 Rviz2 看）</td><td>box / cylinder / sphere / mesh（数万三角形也行）</td><td>只想可视化时——<b>可单独存在</b></td></tr>
+    <tr><td><code>&lt;collision&gt;</code></td><td>物理碰撞检测（给 Gazebo 看）</td><td>同上，但应<b>简化为包围盒</b>以降低实时计算量</td><td>仿真必须</td></tr>
+    <tr><td><code>&lt;inertial&gt;</code></td><td>动力学：mass + 3×3 惯性矩阵</td><td>ixx iyy izz ixy ixz iyz</td><td>仿真必须（否则模型飞走）</td></tr>
+  </table>
+  <div class="tip teal"><span class="lab">三属性为何分离</span>① 视觉模型数万三角形、碰撞模型要实时求交——解耦才能各自优化；② 同一个空心盒与实心铁块外观相同但惯性不同——独立声明才不撒谎；③ 纯可视化场景可只写 visual，省掉物理开销；④ Gazebo 要求三者齐全，缺 inertial 模型会乱飞、缺 collision 穿地不碰撞。</div>
+  <table>
+    <tr><th>joint 类型</th><th>自由度</th><th>典型场景</th><th>关键子标签</th></tr>
+    <tr><td><code>fixed</code></td><td>0</td><td>传感器底座、万向轮脚轮</td><td>origin</td></tr>
+    <tr><td><code>revolute</code></td><td>1（限位）</td><td>机械臂肘/肩关节</td><td><b>必须</b> limit lower/upper + axis</td></tr>
+    <tr><td><code>continuous</code></td><td>1（无限转）</td><td><b>驱动轮</b>、履带</td><td>axis</td></tr>
+    <tr><td><code>prismatic</code></td><td>1（滑轨）</td><td>升降柱、滑动平台</td><td>limit + axis</td></tr>
+    <tr><td><code>floating</code></td><td>6</td><td>自由漂浮体（<b>不推荐手写</b>）</td><td>—</td></tr>
+    <tr><td><code>planar</code></td><td>3</td><td>平面运动体（<b>不推荐</b>）</td><td>—</td></tr>
+  </table>
+  <div class="tip violet"><span class="lab">最容易混淆的两种 origin</span><b>link 内的 origin</b>（visual/collision/inertial 之下）= 该几何体相对<b>自己 link 原点</b>的偏移；<b>joint 里的 origin</b> = <b>子 link 相对父 link</b>的初始位姿。语义完全不同——把轮子的偏移写进 visual origin 而不是 joint origin，轮子会在原地转圈却装不到车轴上。<br><span style="color:var(--theme-deep)">另注：URDF 坐标系遵循 REP-103 —— X 前、Y 左、Z 上；origin 的求值顺序是<b>先 rpy 旋转、再 xyz 平移</b>。</span></div>
+</section>
+
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>动画：两个发布者如何合力把车"画"出来</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 760 320" width="100%" style="max-height:320px">
+      <defs>
+        <marker id="a20" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#facc15"/></marker>
+      </defs>
+      <!-- 源头 -->
+      <rect x="16" y="128" width="128" height="64" rx="8" fill="none" stroke="#facc15" stroke-width="2"/>
+      <text x="80" y="154" text-anchor="middle" fill="#fef9c3" font-size="13.5" font-weight="bold">URDF 模型</text>
+      <text x="80" y="174" text-anchor="middle" fill="#fde68a" font-size="11"> robot_description</text>
+      <!-- 分发 -->
+      <line x1="144" y1="160" x2="230" y2="90" stroke="#facc15" stroke-width="2" marker-end="url(#a20)"/>
+      <line x1="144" y1="160" x2="230" y2="230" stroke="#facc15" stroke-width="2" marker-end="url(#a20)"/>
+      <!-- joint_state_gui -->
+      <rect x="236" y="52" width="196" height="66" rx="8" fill="#1e1b2e" stroke="#a16207" stroke-width="2"/>
+      <text x="334" y="78" text-anchor="middle" fill="#fde68a" font-size="13" font-weight="bold">joint_state_publisher_gui</text>
+      <text x="334" y="98" text-anchor="middle" fill="#cbd5b8" font-size="11">滑块 → /joint_states（关节角）</text>
+      <!-- robot_state_pub -->
+      <rect x="236" y="196" width="196" height="66" rx="8" fill="#1e1b2e" stroke="#a16207" stroke-width="2"/>
+      <text x="334" y="222" text-anchor="middle" fill="#fde68a" font-size="13" font-weight="bold">robot_state_publisher</text>
+      <text x="334" y="242" text-anchor="middle" fill="#cbd5b8" font-size="11">URDF + 关节角 → 算 TF</text>
+      <!-- joint_states 流线 GUI→RSP -->
+      <path d="M334,118 L334,192" stroke="none"/>
+      <path d="M334,118 C 260,140 260,166 334,192" fill="none" stroke="#facc15" stroke-width="2" stroke-dasharray="10 8">
+        <animate attributeName="stroke-dashoffset" values="36;0" dur="1s" repeatCount="indefinite"/>
+      </path>
+      <text x="242" y="158" fill="#fde68a" font-size="11" font-family="monospace">/joint_states</text>
+      <!-- 到 rviz 的两路 -->
+      <path d="M432,86 C 540,90 540,130 600,146" fill="none" stroke="#facc15" stroke-width="2" stroke-dasharray="10 8">
+        <animate attributeName="stroke-dashoffset" values="36;0" dur="1s" repeatCount="indefinite"/>
+      </path>
+      <text x="472" y="104" fill="#fde68a" font-size="11" font-family="monospace">滑块事件</text>
+      <path d="M432,230 C 540,226 540,190 600,172" fill="none" stroke="#facc15" stroke-width="2" stroke-dasharray="10 8">
+        <animate attributeName="stroke-dashoffset" values="36;0" dur="1s" repeatCount="indefinite"/>
+      </path>
+      <text x="466" y="222" fill="#fde68a" font-size="11" font-family="monospace">/tf · /tf_static</text>
+      <!-- rviz -->
+      <rect x="606" y="112" width="140" height="96" rx="8" fill="#1e1b2e" stroke="#facc15" stroke-width="2.5"/>
+      <text x="676" y="140" text-anchor="middle" fill="#fefce8" font-size="14" font-weight="bold">Rviz2</text>
+      <text x="676" y="162" text-anchor="middle" fill="#fde68a" font-size="11.5">RobotModel 着色</text>
+      <text x="676" y="180" text-anchor="middle" fill="#fde68a" font-size="11.5">TF Display 画轴</text>
+      <text x="676" y="198" text-anchor="middle" fill="#94a3b8" font-size="10.5">Fixed Frame: chassis</text>
+      <!-- 车轮旋转小示意 -->
+      <g transform="translate(80,258)">
+        <rect x="-64" y="-24" width="128" height="48" rx="6" fill="none" stroke="#64748b" stroke-dasharray="4 3"/>
+        <text x="0" y="-34" text-anchor="middle" fill="#94a3b8" font-size="11">底盘 → wheel_joint(continuous) → 车轮</text>
+        <circle cx="-34" cy="24" r="13" fill="none" stroke="#facc15" stroke-width="2">
+          <animateTransform attributeName="transform" type="rotate" values="0 -34 24;360 -34 24" dur="2.4s" repeatCount="indefinite"/>
+          <line x1="-34" y1="24" x2="-34" y2="12" stroke="#facc15" stroke-width="2"/>
+        </circle>
+        <text x="0" y="14" fill="#cbd5b8" font-size="11">左轮随 joint_states 旋转</text>
+      </g>
+    </svg>
+  </div>
+  <div class="anim-cap">图 20-1　两发布者协作数据流：GUI 把滑块值发到 /joint_states，robot_state_publisher 结合 URDF 解出各 link 的 TF 并发布，Rviz2 依据 Fixed Frame 逐帧重绘。断了任何一环，车都会"散架"。</div>
+</section>
+
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>原理专题：惯性矩阵——从魔法数字到物理公式</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">长方体 · 底盘</div><div class="kt">Ixx=m/12·(y²+z²)　Iyy=m/12·(x²+z²)　Izz=m/12·(x²+y²)</div><p>例：底盘 0.40×0.25×0.08 m、质量 3.0 kg → ixx=0.017、iyy=0.042、izz=0.053。沿某轴的惯量 = 质量对该轴分布的"转动惰性"，垂直于该轴的边长平方贡献最大。</p></div>
+    <div class="kcard"><div class="kd">圆柱体 · 车轮</div><div class="kt">Ixx=Iyy=m/12·(3r²+h²)　Izz=m/2·r²</div><p>轮轴沿 Y：绕轴（Y）转动惯量小、绕直径大时看 h 贡献。r=0.05、L=0.03、m=0.2 代入即可，杜绝拍脑袋的 0.01。</p></div>
+    <div class="kcard"><div class="kd">数学红线</div><div class="kt">矩阵必须对称正定</div><p>ixx、iyy、izz 全部 &gt; 0，且满足三角不等式 ixx+iyy≥izz 等。非法值会让 Gazebo 求解器发散——模型原地爆炸或瞬间飞出场景。</p></div>
+    <div class="kcard"><div class="kd">工程护栏</div><div class="kt">初学用 1e-3 占位</div><p>只做 Rviz2 可视化时惯性可省；进 Gazebo 前若懒得算，统一写 ixx=iyy=izz=1e-3（对角等值必正定），先跑通再精算。Xacro 则用公式自动算（见 08 节）。</p></div>
+  </div>
+  <div class="tip teal"><span class="lab">为什么是"两个发布者"分工</span>URDF 是<b>静态</b>结构（轮子装在哪），/joint_states 是<b>动态</b>状态（此刻转了多少度）。robot_state_publisher 把两者相乘得到每帧 TF——这正是"模型"与"状态"分离的设计哲学，同一份 URDF 可复用于全车队。</div>
+</section>
+
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>交互演练：URDF Doctor 症状诊断</h2>
+  <div class="ix-panel">
+    <div class="ix-title">URDF Doctor — 看到症状，定位 XML 病灶</div>
+    <div class="ctl-row">
+      <label class="ctl">选择症状
+        <select id="sel" onchange="fix()">
+          <option value="parse">check_urdf 报 "Error parsing XML"</option>
+          <option value="notrans">Rviz2 报 "No transform from [left_wheel] to [chassis]"</option>
+          <option value="static">拖滑块，轮子纹丝不动</option>
+          <option value="fly">Gazebo 里模型起飞/爆炸</option>
+          <option value="black">Rviz2 一片黑，什么都不显示</option>
+          <option value="mismatch">Visual 与 Collision 线框明显错位</option>
+        </select>
+      </label>
+      <label class="ctl">诊断处方
+        <span style="display:block;height:8px"></span>
+        <button class="btn" onclick="fix()">开始诊断</button>
+      </label>
+    </div>
+    <div class="io" id="o"></div>
+  </div>
+</section>
+
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>命令精讲：检验工具三件套</h2>
+  <pre><span class="c"># ① 语法+结构验证（输出根 link 与子链接数）</span>
+$ check_urdf diff_drive_robot.urdf
+robot name is: diff_drive_robot
+---------- Successfully Parsed XML ---------------
+root Link: chassis has 3 child(ren)
+
+<span class="c"># ② 生成 link-joint 拓扑图（需 liburdfdom-tools）</span>
+$ sudo apt install liburdfdom-tools -y
+$ urdf_to_graphiz diff_drive_robot.urdf
+<span class="g"># → 生成 PDF：chassis 三叉连 left_wheel / right_wheel / front_caster</span>
+
+<span class="c"># ③ Xacro 展开为标准 URDF（验证宏语法+生成文件）</span>
+$ sudo apt install ros-humble-xacro -y
+$ xacro ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot.urdf.xacro \
+    &gt; ~/exp20_ws/src/urdf_demo/urdf/diff_drive_robot_expanded.urdf
+$ head -80 diff_drive_robot_expanded.urdf
+<span class="g"># 观察：左右轮已被完整展开为独立 link/joint；Xacro 版约 80 行，展开约 150 行</span>
+<span class="g"># 4 轮/6 轮车压缩比更高（4×~6×）——宏复用的复利</span></pre>
+  <div class="tip amber"><span class="lab">RViz2 RobotModel 调试开关</span><b>Visual Enabled</b> 看外观渲染、<b>Collision Enabled</b> 看橙色碰撞线框、<b>Alpha</b> 调透明度透视内部、同时开 <b>TF Display</b> 显示每根坐标轴（红绿蓝→XYZ），验证 origin 偏移是否指对方向。</div>
+</section>
+
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>实操 A：手写完整差分车 URDF（设计性任务）</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>建工作空间与目录：<code>ros2 pkg create urdf_demo --build-type ament_cmake</code> 后建 urdf/ 子目录</div>
+    <div class="step"><span class="n">2</span>写 4 种材质 + 底盘 link（box 0.40×0.25×0.08，mass 3.0，惯性 0.017/0.042/0.053）</div>
+    <div class="step"><span class="n">3</span>写左右驱动轮（cylinder r=0.05 L=0.03，continuous，axis 0 1 0，xyz ±0.15 / -0.03）</div>
+    <div class="step"><span class="n">4</span>写前万向轮（sphere r=0.025，<b>fixed</b>）→ check_urdf 验证 "3 child(ren)"</div>
+  </div>
+  <pre><span class="c">&lt;!-- 核心三关节（完整文件见讲义） --&gt;</span>
+&lt;material name="black"&gt;&lt;color rgba="0.2 0.2 0.2 1.0"/&gt;&lt;/material&gt;
+<span class="g">&lt;!-- .... link chassis: box + mass 3.0 + ixx0.017 iyy0.042 izz0.053 .... --&gt;</span>
+
+&lt;joint name="left_wheel_joint" type="continuous"&gt;
+  <span class="b">&lt;origin xyz="0.0 -0.15 -0.03" rpy="0.0 0.0 0.0"/&gt;</span>
+  &lt;parent link="chassis"/&gt;
+  &lt;child link="left_wheel"/&gt;
+  &lt;axis xyz="0 1 0"/&gt;<span class="g">&lt;!-- 绕 Y 轴转，与 REP-103 车体横向一致 --&gt;</span>
+&lt;/joint&gt;
+
+&lt;joint name="right_wheel_joint" type="continuous"&gt;
+  &lt;origin xyz="0.0 0.15 -0.03" rpy="0.0 0.0 0.0"/&gt;
+  &lt;parent link="chassis"/&gt;&lt;child link="right_wheel"/&gt;
+  &lt;axis xyz="0 1 0"/&gt;
+&lt;/joint&gt;
+
+&lt;joint name="front_caster_joint" type="fixed"&gt;
+  &lt;origin xyz="0.18 0.0 -0.055" rpy="0.0 0.0 0.0"/&gt;
+  &lt;parent link="chassis"/&gt;&lt;child link="front_caster"/&gt;
+&lt;/joint&gt;</pre>
+  <pre><span class="c"># urdf_demo 包三处配置（RViz 可视化最小骨架）</span>
+<span class="c"># package.xml 加 exec_depend：robot_state_publisher、joint_state_publisher_gui、rviz2、urdf</span>
+<span class="c"># CMakeLists.txt：模型目录必须 install 到 share</span>
+install(DIRECTORY urdf launch rviz DESTINATION share/${PROJECT_NAME})
+
+<span class="c"># display.launch.py 关键三节点（参数注入用 open().read()）</span>
+robot_description = open(
+  os.path.join(pkg_share, <span class="y">'urdf'</span>, <span class="y">'diff_drive_robot.urdf'</span>)).read()
+
+Node(package=<span class="y">'joint_state_publisher_gui'</span>, ...),
+Node(package=<span class="y">'robot_state_publisher'</span>, parameters=[{<span class="y">'robot_description'</span>: robot_description}]),
+Node(package=<span class="y">'rviz2'</span>, arguments=[<span class="y">'-d'</span>, rviz_config]),
+
+$ ros2 launch urdf_demo display.launch.py
+<span class="g"># → RViz 出现小车：蓝底盘、黑轮、白万向轮；拖滑块，轮绕 Y 轴转动即通过</span></pre>
+  <table>
+    <tr><th>联动检查</th><th>预期</th><th>不满足时</th></tr>
+    <tr><td>Fixed Frame = chassis</td><td>模型居中显示</td><td>Global Status 报错、黑屏</td></tr>
+    <tr><td>RobotModel → Description Topic/Param 有值</td><td>外形出现</td><td>参数未注入或未 source install</td></tr>
+    <tr><td>拖 left_wheel_joint 滑块</td><td>左轮绕 Y 旋转</td><td>joint type 写成 fixed 或 GUI 没启动</td></tr>
+  </table>
+</section>
+
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操 B：Xacro 参数化重构（复用压缩到 80 行）</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>property 收编魔法尺寸：chassis_length/width/height、wheel_radius/length、wheel_mass……</div>
+    <div class="step"><span class="n">2</span>推导量用表达式：wheel_y_offset=${chassis_width/2 - 0.02}、wheel_z_offset=${-chassis_height/2 + wheel_radius}——改车宽轮距自动跟</div>
+    <div class="step"><span class="n">3</span>box_inertia / cylinder_inertia 宏套公式；wheel 宏以 x_reflect=±1 镜像出左右轮</div>
+    <div class="step"><span class="n">4</span>xacro 展开 → check_urdf 复验 → 移动 launch 指向 .xacro 再进 RViz</div>
+  </div>
+  <pre><span class="c">&lt;!-- ① 属性层：尺寸/质量/推导量全部参数化 --&gt;</span>
+&lt;robot name="diff_drive_robot" <span class="b">xmlns:xacro="http://www.ros.org/wiki/xacro"</span>&gt;
+  &lt;xacro:property name="chassis_length" value="0.40"/&gt;
+  &lt;xacro:property name="chassis_width"  value="0.25"/&gt;
+  &lt;xacro:property name="chassis_height" value="0.08"/&gt;
+  &lt;xacro:property name="chassis_mass"   value="3.0"/&gt;
+  &lt;xacro:property name="wheel_radius" value="0.05"/&gt;
+  &lt;xacro:property name="wheel_length" value="0.03"/&gt;
+  &lt;xacro:property name="wheel_mass"   value="0.2"/&gt;
+  &lt;xacro:property name="wheel_y_offset" value="${chassis_width/2 - 0.02}"/&gt;
+  &lt;xacro:property name="wheel_z_offset" value="${-chassis_height/2 + wheel_radius}"/&gt;
+
+  <span class="c">&lt;!-- ② 惯性宏：公式即代码，Gazebo 永不爆炸 --&gt;</span>
+  &lt;xacro:macro name="box_inertia" params="mass x y z"&gt;
+    &lt;inertial&gt;&lt;mass value="${mass}"/&gt;
+      &lt;inertia ixx="${mass/12 * (y*y + z*z)}" ixy="0.0" ixz="0.0"
+               iyy="${mass/12 * (x*x + z*z)}" iyz="0.0"
+               izz="${mass/12 * (x*x + y*y)}"/&gt;
+    &lt;/inertial&gt;
+  &lt;/xacro:macro&gt;
+  &lt;xacro:macro name="cylinder_inertia" params="mass radius length"&gt;
+    &lt;inertial&gt;&lt;mass value="${mass}"/&gt;
+      &lt;inertia ixx="${mass/12 * (3*radius*radius + length*length)}" ixy="0.0" ixz="0.0"
+               iyy="${mass/12 * (3*radius*radius + length*length)}" iyz="0.0"
+               izz="${mass/2 * radius*radius}"/&gt;
+    &lt;/inertial&gt;
+  &lt;/xacro:macro&gt;
+
+  <span class="c">&lt;!-- ③ 车轮宏：一个模板 + 反射因子 = 左右两轮 --&gt;</span>
+  &lt;xacro:macro name="wheel" params="name parent x_reflect"&gt;
+    &lt;link name="${name}"&gt;
+      &lt;visual&gt;&lt;geometry&gt;
+        &lt;cylinder radius="${wheel_radius}" length="${wheel_length}"/&gt;
+      &lt;/geometry&gt;&lt;material name="black"/&gt;&lt;/visual&gt;
+      &lt;collision&gt;&lt;geometry&gt;
+        &lt;cylinder radius="${wheel_radius}" length="${wheel_length}"/&gt;
+      &lt;/geometry&gt;&lt;/collision&gt;
+      &lt;xacro:cylinder_inertia mass="${wheel_mass}" radius="${wheel_radius}" length="${wheel_length}"/&gt;
+    &lt;/link&gt;
+    &lt;joint name="${name}_joint" type="continuous"&gt;
+      &lt;origin xyz="0.0 ${x_reflect * wheel_y_offset} ${wheel_z_offset}" rpy="0.0 0.0 0.0"/&gt;
+      &lt;parent link="${parent}"/&gt;&lt;child link="${name}"/&gt;
+      &lt;axis xyz="0 1 0"/&gt;
+    &lt;/joint&gt;
+  &lt;/xacro:macro&gt;
+
+  <span class="c">&lt;!-- ④ 两行调用，左右轮齐活 --&gt;</span>
+  &lt;xacro:wheel name="left_wheel"  parent="chassis" x_reflect="-1"/&gt;
+  &lt;xacro:wheel name="right_wheel" parent="chassis" x_reflect="1"/&gt;
+&lt;/robot&gt;</pre>
+  <table>
+    <tr><th>坑</th><th>症状</th><th>解法</th></tr>
+    <tr><td>xmlns:xacro 未声明</td><td>xacro 不识别 &lt;xacro:macro&gt; 标签</td><td>robot 根标签加 xmlns:xacro="http://www.ros.org/wiki/xacro"</td></tr>
+    <tr><td>宏调用 name 参数撞车</td><td>展开后重复 link/joint 名，解析失败</td><td>左右轮必须传不同 name；宏内用 ${name}_joint 拼接</td></tr>
+    <tr><td>rgba 写成 0~255</td><td>颜色全白/报错</td><td>URDF 颜色值域是 [0,1]，CSS 习惯要改</td></tr>
+    <tr><td>continuous 与 revolute 混用</td><td>轮子被 limit 卡在 360° 内</td><td>轮子用 continuous；revolute 必须写 limit lower/upper</td></tr>
+    <tr><td>宏定义与调用不在同一 robot 标签内</td><td>"unknown macro name"</td><td>定义必须先于调用且都在同一 &lt;robot&gt; 下</td></tr>
+    <tr><td>launch 里硬编码 src/ 绝对路径</td><td>install 后找不到模型</td><td>用 get_package_share_directory()——share 在 install/&lt;pkg&gt;/share/&lt;pkg&gt;/</td></tr>
+  </table>
+</section>
+
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>注意事项与避坑清单</h2>
+  <div class="check">
+    <ul>
+      <li><b>origin 求值顺序</b>：先 rpy 旋转、再 xyz 平移——顺序颠倒视觉全变；开 TF Display 查坐标轴方向。</li>
+      <li><b>惯性矩阵对称正定</b>：ixx/iyy/izz&gt;0 且满足三角不等式，非法值 = Gazebo 爆炸；初学 1e-3 占位。</li>
+      <li><b>joint 类型不可混</b>：轮子 continuous（无限转）、肘关节 revolute + limit；给轮子设 revolute 会限死角度。</li>
+      <li><b>Xacro 声明命名空间</b>：xmlns:xacro 缺失则所有宏标签失效。</li>
+      <li><b>Fixed Frame 用根 link</b>：必须是 URDF 中真实存在的 link 名（通常为 chassis/base_link），否则 RobotModel 拒绝渲染。</li>
+      <li><b>路径用包索引</b>：get_package_share_directory() 取路径，绝不要硬编码 src/ 下的绝对路径。</li>
+      <li><b>三种验证手段分工</b>：check_urdf 查语法结构、urdf_to_graphiz 查拓扑外观、RViz 查几何与坐标。</li>
+    </ul>
+  </div>
+  <table>
+    <tr><th>工具</th><th>作用</th><th>命令</th></tr>
+    <tr><td><code>check_urdf</code></td><td>语法+结构验证</td><td><code>check_urdf model.urdf</code></td></tr>
+    <tr><td><code>urdf_to_graphiz</code></td><td>生成链接拓扑图 PDF</td><td><code>urdf_to_graphiz model.urdf</code></td></tr>
+    <tr><td>Rviz2 RobotModel</td><td>外观/碰撞可视化</td><td>Visual / Collision Enabled 开关</td></tr>
+    <tr><td>Rviz2 TF Display</td><td>验证各坐标系位置</td><td>观察 RGB 轴箭头方向</td></tr>
+    <tr><td><code>xacro</code></td><td>宏展开与表达式求值</td><td><code>xacro model.xacro &gt; out.urdf</code></td></tr>
+  </table>
+</section>
+
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>本课总结与思考</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">概念</div><div class="kt">URDF = 数字孪生的唯一入口</div><p>XML 描述几何结构、运动学约束与动力学参数，Rviz2/Gazebo/TF2/运动规划共享同一模型源。</p></div>
+    <div class="kcard"><div class="kd">结构</div><div class="kt">link 三属性 × joint 六类型</div><p>visual/collision/inertial 按用途分离，各场景只声明所需；fixed/revolute/continuous/prismatic 按自由度选型，两种 origin 语义严格区分。</p></div>
+    <div class="kcard"><div class="kd">协作</div><div class="kt">两发布者数据流</div><p>joint_state_publisher 给关节角，robot_state_publisher 用 URDF 解算 TF，Rviz2 依据 Fixed Frame 绘制——状态与模型解耦。</p></div>
+    <div class="kcard"><div class="kd">进阶</div><div class="kt">Xacro 参数化三板斧</div><p>property 收编尺寸、${} 表达式推导联动量、macro + 惯性公式消灭复制粘贴——80 行管住 150 行模型，6 轮再翻倍。</p></div>
+  </div>
+  <div class="tip violet"><span class="lab">思考题</span>
+  ① 底盘是 L 形（两个长方体拼成），它的惯性矩阵怎么求？（提示：平行轴定理 I = I_cm + m·d²，d 为部件质心到整体质心的距离——先分别算两块、再平移相加。）<br>
+  ② B2 实验箱机械臂 6 个旋转关节，手写 URDF 约 300 行；请设计一套 Xacro 宏方案把它压到 50 行以内——给出宏的划分思路（建议按"连杆段"抽象一个 macro：含尺寸参数、惯性参数、上下关节），并说明如何集中管理各关节的 limit 与关节类型。</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-19-tf2/index.html"><span class="lb">← 上一个实验</span>EXP-19 TF2 坐标变换</a>
+  <a class="next" href="../index.html"><span class="lb">返回课程目录 →</span>ROS2 应用与开发 · 20 实验总览</a>
+</nav>
+<footer>
+  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-20 URDF 与 Xacro 机器人建模</span>
+  <span>4 学时 · 设计性 · 基于 ros_practice 实验讲义改编</span>
+</footer>
+</main>
+</div>
+<script>
+var SYM2={
+parse:'<span class="bad">✗ Error parsing XML → 标签没有成对闭合</span>\n\n定位三步：\n1. 检查每对 &lt;link&gt;...&lt;/link&gt; 与 &lt;joint&gt;...&lt;/joint&gt;\n2. 属性引号必须成对（双引号）\n3. <span class="ok">用 check_urdf 逐段二分</span>：把后半截删掉再跑，能过就是后半截的问题\n<span class="dim">── XML 对拼写零容忍，大小写敏感。</span>',
+notrans:'<span class="bad">✗ No transform → TF 链断了，两个嫌疑</span>\n\n1. <span class="bad">robot_state_publisher 没跑</span> → 查 launch 是否启动该节点、robot_description 参数是否注入\n2. <span class="bad">/joint_states 无数据</span> → 没启动 joint_state_publisher(_gui)，或手写脚本没发关节角\n<span class="ok">自查：</span>ros2 topic hz /joint_states + ros2 node list | grep robot_state\n<span class="dim">── Rviz2 TF 面板里若 chassis→left_wheel 条目直接缺失，就是这一层的问题。</span>',
+static:'<span class="warn">⚠ 滑块动、轮不动 → joint 类型或连接问题</span>\n\n1. <span class="bad">joint type 写成了 fixed</span> → 驱动轮必须 type="continuous"（fixed 是零自由度，焊死了）\n2. <span class="bad">joint_state_publisher_gui 没连上</span> → 确认它在 launch 中运行且话题名一致\n3. 检查 &lt;axis xyz="0 1 0"/&gt; 是否存在——没轴，绕什么转？\n<span class="dim">── 区分：continuous 无限转（轮）vs revolute 限位转（肘，必须写 limit）。</span>',
+fly:'<span class="bad">✗ 模型起飞/爆炸 → 惯性矩阵非法</span>\n\n病灶：&lt;inertia&gt; 不满足对称正定——\n· ixx/iyy/izz 出现 0 或负数\n· 三角不等式不成立（ixx+iyy &lt; izz）\n\n处置：\n1. 初学护栏：<span class="ok">ixx=iyy=izz=1e-3 占位</span>先跑通\n2. 正式计算：长方体 m/12(y²+z²)，圆柱 m/12(3r²+h²) / m/2·r²\n3. 或用 Xacro box_inertia / cylinder_inertia 宏<span class="ok">公式即代码</span>\n<span class="dim">── mass 为 0 或缺失同样致命。</span>',
+black:'<span class="warn">⚠ 黑屏 → 按顺序查三处</span>\n\n1. <span class="bad">Fixed Frame</span> 必须是 URDF 中真实存在的 link 名（如 chassis/base_link）\n2. <span class="bad">RobotModel 的 Description</span> 参数/话题有无内容——launch 里是否用 open().read() 注入了 robot_description\n3. 忘了 source install/setup.bash → 包索引里根本没有 urdf_demo\n<span class="ok">全绿判据：</span>Global Status OK + 模型出现蓝底盘黑轮白脚轮。',
+mismatch:'<span class="warn">⚠ Visual 与 Collision 错位 → 两处 origin 不一致</span>\n\n· 分别展开 visual 与 collision 下的 &lt;origin&gt;：两者写 xyz/rpy 必须相同（除非故意简化碰撞盒）\n· 若碰撞盒有简化偏移，<span class="warn">这是设计意图，不是 bug</span>——但要在注释里写明\n· 在 Rviz2 勾选 <span class="ok">Collision Enabled（橙框）</span>对照 Visual 即可肉眼验收\n<span class="dim">── 记住求值顺序：先 rpy 旋转、再 xyz 平移。</span>'
+};
+function fix(){document.getElementById('o').innerHTML=SYM2[document.getElementById('sel').value];}
+fix();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

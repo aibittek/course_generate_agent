@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-17 · Launch 启动文件 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#0284c7;--theme-deep:#0369a1;--theme-bg:#e0f2fe;--theme-bd:#bae6fd}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-17</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：五个终端的手忙脚乱</a>
+  <a href="#s2">02 核心原理：ROS2 为什么把启动语言换成 Python</a>
+  <a href="#s3">03 动画：解析、拉起、优雅退出的全过程</a>
+  <a href="#s4">04 原理专题：remap、条件、事件三件套</a>
+  <a href="#s5">05 交互实验：Launch 结构生成器</a>
+  <a href="#s6">06 代码精讲：第一个 Launch 文件</a>
+  <a href="#s7">07 实操 A：基础启动 + remap 三节点对照</a>
+  <a href="#s8">08 实操 B：参数化 + 条件启动 + 事件触发</a>
+  <a href="#s9">09 注意事项与验收</a>
+  <a href="#s10">10 本课总结</a>
+  <h4>CH4 · 工具链</h4>
+  <a href="../exp-14-rqt/index.html">EXP-14 rqt 工具箱</a>
+  <a href="../exp-15-rviz2/index.html">EXP-15 rviz2 可视化</a>
+  <a href="../exp-16-rosbag/index.html">EXP-16 rosbag2 数据录制</a>
+  <a href="../exp-17-launch/index.html" style="color:var(--theme);font-weight:700">EXP-17 Launch 启动系统</a>
+  <a href="../exp-18-metapackage/index.html">EXP-18 元功能包集成</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-17 · 第四章 · 设计性 · 2 学时</span>
+  <h1>ROS2 Launch 启动文件：一键编排多节点系统</h1>
+  <p class="desc">系统有 5 个节点，开机要开 5 个终端、按顺序 source、一个个敲 run——漏一个就是"话题没数据"的灵异现场。Launch 文件把整个系统声明成一份"启动剧本"：一条命令起全部，一次 Ctrl+C 停全部。本课讲清 ROS2 为什么把启动语言换成 Python，掌握 remap、条件启动与事件触发三大编排能力。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">设计性</span><span class="tag">关键词 LaunchDescription · remap · IfCondition · OnProcessExit</span></div>
+</div>
+
+<!-- 01 问题引入 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：五个终端的手忙脚乱</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>现状</b><p>雷达驱动、定位、规划、控制、可视化 = 5 个终端，每个都要 source、按序启动</p></div>
+    <div class="step"><div class="n">2</div><b>事故</b><p>新同学少 source 了一步，规划器收不到 /scan，排查一下午发现是"没起步"</p></div>
+    <div class="step"><div class="n">3</div><b>更糟</b><p>关机时逐个 Ctrl+C，漏关的僵尸节点还在发 cmd_vel——车突然自己动了</p></div>
+    <div class="step"><div class="n">4</div><b>正解</b><p>把 5 个节点写进一份 Launch 文件：<code>ros2 launch</code> 一条命令全起，Ctrl+C 一次全停</p></div>
+  </div>
+  <div class="tip">
+    <span class="lab">定义</span>
+    <b>Launch 文件</b>（.launch.py / .launch.xml / .launch.yaml）声明：启动哪些节点、各自带什么参数、话题怎么重映射、按什么顺序和条件编排。<code>ros2 launch</code> 解析这份声明并执行——它是从"手工业"到"一键部署"的关键一跃，也是后续 EXP-18 元功能包、EXP-19/20 模型加载的统一入口。
+  </div>
+</section>
+
+<!-- 02 原理 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>核心原理：ROS2 为什么把启动语言换成 Python</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">架构演进</div><div class="kt">从 XML-only 到 Python-first</div><p>ROS1 的 roslaunch 只支持 XML，"A 退出后等 3 秒再启 B"这类逻辑要么写不出来、要么嵌套到没人看得懂。ROS2 把启动编排升级为<b>图灵完备的 Python API</b>——if/for/函数/模块随便用，复杂编排变成普通编程。</p></div>
+    <div class="kcard"><div class="kd">核心产物</div><div class="kt">LaunchDescription = Action 列表</div><p>入口函数 <code>generate_launch_description()</code> 返回一个 LaunchDescription，里面装一组 Action（Node、LogInfo、DeclareLaunchArgument……）。ros2 launch 读它、按序执行——这就是"剧本"的实体。</p></div>
+    <div class="kcard"><div class="kd">事件驱动</div><div class="kt">不止是顺序执行</div><p>Action 之间还有<b>条件依赖与事件触发</b>（OnProcessExit/OnProcessStart/TimerAction）：节点退出可引发连锁动作、可以定时注入步骤——这是 XML 静态声明给不了的动态编排能力。</p></div>
+    <div class="kcard"><div class="kd">运行时变量</div><div class="kt">LaunchConfiguration</div><p>"声明参数 + 引用取值 + 命令行 <code>key:=value</code> 传入"三件套，让<b>一份文件适配多场景</b>：调试模式多起一个 rqt、仿真模式把 use_sim_time置 true——全靠传参，不复制文件。</p></div>
+  </div>
+  <table>
+    <tr><th>格式</th><th>表达力</th><th>适用</th><th>建议</th></tr>
+    <tr><td>Python（.launch.py）</td><td>图灵完备：条件/循环/事件/动态计算</td><td>复杂编排、生产系统</td><td><b>推荐首选</b></td></tr>
+    <tr><td>XML（.launch.xml）</td><td>静态声明，与 ROS1 语法接近</td><td>固定节点组、迁移旧配方</td><td>简单场景可用</td></tr>
+    <tr><td>YAML（.launch.yaml）</td><td>特性支持最少</td><td>极简清单</td><td>一般不推荐用于生产</td></tr>
+  </table>
+  <div class="tip amber">
+    <span class="lab">要点</span>
+    Launch 是<b>编排层不是运行时</b>：它负责起进程、注参数、建重映射，起完之后自己还活着做"监管员"（收信号、管退出）。所以节点崩了日志里会看到 <code>[talker-1] process has died</code>——这行监管日志就是 Launch 身份的最好证明。
+  </div>
+</section>
+
+<!-- 03 动画 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>动画：解析、拉起、优雅退出的全过程</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 760 330" width="100%">
+      <defs>
+        <marker id="a17" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#7dd3fc"/></marker>
+      </defs>
+      <text x="380" y="24" text-anchor="middle" fill="#94a3b8" font-size="13">ros2 launch：读剧本 → 逐 Action 执行 → 拉起子进程并监管 → Ctrl+C 级联清理</text>
+      <!-- 剧本 -->
+      <rect x="34" y="60" width="200" height="120" rx="9" fill="#0c4a6e" stroke="#38bdf8" stroke-width="2"/>
+      <text x="134" y="86" text-anchor="middle" fill="#e0f2fe" font-size="13" font-weight="bold">my.launch.py</text>
+      <g font-size="11" fill="#bae6fd" font-family="monospace">
+        <text x="50" y="110">Node(A)     → Action 1</text>
+        <text x="50" y="132">Node(B)     → Action 2</text>
+        <text x="50" y="154">If(C) Node(D)</text>
+        <text x="50" y="176">OnExit(A)→cleanup</text>
+      </g>
+      <line x1="240" y1="120" x2="300" y2="120" stroke="#7dd3fc" stroke-width="2" marker-end="url(#a17)"/>
+      <text x="270" y="108" text-anchor="middle" fill="#7dd3fc" font-size="11">解析</text>
+      <!-- runner -->
+      <rect x="304" y="72" width="150" height="96" rx="9" fill="#164e63" stroke="#22d3ee" stroke-width="2"/>
+      <text x="379" y="100" text-anchor="middle" fill="#cffafe" font-size="13" font-weight="bold">Launch Runner</text>
+      <text x="379" y="124" text-anchor="middle" fill="#a5f3fc" font-size="11">按序执行 Action</text>
+      <text x="379" y="146" text-anchor="middle" fill="#a5f3fc" font-size="11">评估 condition</text>
+      <!-- 进程 -->
+      <rect x="510" y="46" width="216" height="56" rx="8" fill="#0f172a" stroke="#34d399" stroke-width="2"/>
+      <text x="618" y="70" text-anchor="middle" fill="#d1fae5" font-size="12" font-weight="bold">[talker-1] pid 4242</text>
+      <text x="618" y="90" text-anchor="middle" fill="#6ee7b7" font-size="11">Publishing: 'Hello World 1'</text>
+      <rect x="510" y="116" width="216" height="56" rx="8" fill="#0f172a" stroke="#34d399" stroke-width="2"/>
+      <text x="618" y="140" text-anchor="middle" fill="#d1fae5" font-size="12" font-weight="bold">[listener-2] pid 4243</text>
+      <text x="618" y="160" text-anchor="middle" fill="#6ee7b7" font-size="11">I heard: [Hello World 1]</text>
+      <line x1="458" y1="96" x2="506" y2="76" stroke="#7dd3fc" stroke-width="2" marker-end="url(#a17)"/>
+      <line x1="458" y1="144" x2="506" y2="148" stroke="#7dd3fc" stroke-width="2" marker-end="url(#a17)"/>
+      <line x1="458" y1="132" x2="506" y2="192" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a17)"/>
+      <rect x="510" y="186" width="216" height="48" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5 4"/>
+      <text x="618" y="206" text-anchor="middle" fill="#fde68a" font-size="11.5">listener_debug-3（条件成立才启动）</text>
+      <text x="618" y="224" text-anchor="middle" fill="#fbbf24" font-size="10.5">condition=IfCondition(mode==debug)</text>
+      <!-- 退出级联 -->
+      <rect x="34" y="226" width="420" height="72" rx="9" fill="#450a0a" stroke="#f87171" stroke-width="2"/>
+      <text x="244" y="252" text-anchor="middle" fill="#fecaca" font-size="12.5" font-weight="bold">Ctrl+C → Runner 向全部子进程广播 SIGINT</text>
+      <text x="244" y="274" text-anchor="middle" fill="#fca5a5" font-size="11.5">talker-1 exited cleanly · listener-2 exited cleanly · 无僵尸残留</text>
+      <text x="244" y="292" text-anchor="middle" fill="#94a3b8" font-size="11">退出事件同样可被利用：OnProcessExit(A) → 自动启动 cleanup 节点</text>
+      <circle r="4" fill="#7dd3fc"><animateMotion path="M458,96 L506,76" dur="1.6s" repeatCount="indefinite"/></circle>
+      <circle r="4" fill="#7dd3fc"><animateMotion path="M458,144 L506,148" dur="1.6s" begin="0.5s" repeatCount="indefinite"/></circle>
+    </svg>
+  </div>
+  <p class="anim-cap">动画：ros2 launch 解析 .launch.py 得到 Action 列表，Runner 按序拉起 talker/listener 子进程并做日志前缀标记，条件节点仅在表达式成立时启动；按下 Ctrl+C 后 Runner 向所有子进程广播 SIGINT 干净收场——"一次性起全、一次性停全"与"退出可触发连锁"是同一事件机制的两面。</p>
+</section>
+
+<!-- 04 专题 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>原理专题：remap、条件、事件三件套</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">解耦利器</div><div class="kt">remap：逻辑名 → 物理名</div><p>节点代码写的是"逻辑话题"（激光车都发 /scan），Launch 在启动时把它改道到 /scan_front。<b>不改源码完成适配</b>——多实例、第三方节点硬编码、命名规范统一，全靠它。</p></div>
+    <div class="kcard"><div class="kd">两个方向</div><div class="kt">内→外 最常用，外→内 也行</div><p><code>remappings=[(A, B)]</code> 永远是"把 A 映射到 B"，A 是节点代码里的名字。外→内则让外部数据流进节点的内部名——搞反顺序是 remap 失灵的第一大原因。</p></div>
+    <div class="kcard"><div class="kd">作用域放大</div><div class="kt">namespace 前缀</div><p><code>namespace='robot1'</code> 让节点变 /robot1/talker、话题变 /robot1/chatter——同机跑两台机器人模型互不干扰；与 remap 组合可表达任意拓扑。</p></div>
+    <div class="kcard"><div class="kd">条件守卫</div><div class="kt">IfCondition / UnlessCondition</div><p>附着在任何 Action 上的开关：If(expr) 真才执行，Unless(expr) 假才执行。配合 LaunchConfiguration——真机起传感器驱动、仿真不起，一个文件两套行为。</p></div>
+    <div class="kcard"><div class="kd">事件触发</div><div class="kt">OnProcessExit：A 走，B 来</div><p>A 节点退出时自动启动 B——数据采集结束→自动起分析脚本；标定节点退出→自动录包收尾。Launch 的"事件驱动"就体现在这类回调绑定上。</p></div>
+    <div class="kcard"><div class="kd">参数注入</div><div class="kt">Declare + Configuration + key:=value</div><p>声明带默认值 → 引用 → 命令行覆盖。<code>ros2 launch pkg file.py mode:=debug enable_debug:=true</code>，零复制切换场景。</p></div>
+  </div>
+  <table>
+    <tr><th>需求</th><th>用什么</th><th>一句话</th></tr>
+    <tr><td>同一节点跑两个实例</td><td>remap + namespace</td><td>/scan_front 与 /scan_rear，源码零改动</td></tr>
+    <tr><td>真机/仿真两套行为</td><td>IfCondition + LaunchConfiguration</td><td>use_sim_time:=true 切换</td></tr>
+    <tr><td>采完数据自动分析</td><td>OnProcessExit</td><td>record 退出 → 自动跑 report.py</td></tr>
+    <tr><td>延时等设备就绪</td><td>TimerAction（延伸）</td><td>雷达开电 3 秒后再启驱动</td></tr>
+  </table>
+  <div class="tip tealb">
+    <span class="lab">Why Python：一道题看清</span>
+    需求——"debug 模式起 3 个节点并把日志设 DEBUG；normal 模式只起 2 个；production 模式还要换发现服务器地址"。XML 需要复制多个文件 + 属性魔法；Python 里就是两个 if 加一个字典。这就是启动语言演进背后的设计逻辑：<b>编排复杂度随系统规模增长，语言表达力必须跟上</b>。
+  </div>
+</section>
+
+<!-- 05 交互 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>交互实验：Launch 结构生成器</h2>
+  <div class="ix-panel">
+    <div class="ix-title">Launch Crafter：选编排需求，生成对应的 Launch 代码骨架并解释每个 Action</div>
+    <div class="ctl-row">
+      <label class="ctl">编排场景
+        <select id="tp" onchange="craft()">
+          <option value="basic">基础：一键启动 talker + listener</option>
+          <option value="remap">多实例：一台车两个雷达 remap</option>
+          <option value="cond">双模式：debug 开关条件启动</option>
+          <option value="event">接续：采集结束后自动分析</option>
+          <option value="param">参数化：一行切换 use_sim_time</option>
+        </select>
+      </label>
+    </div>
+    <pre class="io" id="out"></pre>
+  </div>
+</section>
+
+<!-- 06 代码精讲 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>代码精讲：第一个 Launch 文件</h2>
+  <pre><code><span class="c"># basic_launch.py —— 最小可用模板（入口函数名一个字符都不能错）</span>
+<span class="b">from</span> launch <span class="b">import</span> LaunchDescription
+<span class="b">from</span> launch_ros.actions <span class="b">import</span> Node
+
+<span class="b">def</span> generate_launch_description():        <span class="g"># ← 必须叫这个名字</span>
+    <span class="b">return</span> LaunchDescription([
+        Node(
+            package=<span class="y">'demo_nodes_cpp'</span>,
+            executable=<span class="y">'talker'</span>,
+            name=<span class="y">'my_talker'</span>,
+            output=<span class="y">'screen'</span>,            <span class="g"># 日志汇入 launch 终端，带 [my_talker-1] 前缀</span>
+            remappings=[(<span class="y">'/chatter'</span>, <span class="y">'/my_chatter'</span>)],
+            parameters=[{<span class="y">'use_sim_time'</span>: <span class="b">True</span>}],
+        ),
+        Node(package=<span class="y">'demo_nodes_cpp'</span>, executable=<span class="y">'listener'</span>,
+             name=<span class="y">'my_listener'</span>, output=<span class="y">'screen'</span>),
+    ])
+
+<span class="c"># 运行（包内 launch/ 目录需 install 到 share，见 07 节 CMakeLists）</span>
+<span class="b">$</span> ros2 launch launch_demo_pkg basic_launch.py
+<span class="c"># Ctrl+C 一次 → 全部子进程收 SIGINT 优雅退出</span></code></pre>
+  <pre><code><span class="c"># 参数化 + 条件启动骨架（步骤 3/4 的核心结构）</span>
+<span class="b">from</span> launch.actions <span class="b">import</span> DeclareLaunchArgument, LogInfo
+<span class="b">from</span> launch.substitutions <span class="b">import</span> LaunchConfiguration, PythonExpression
+<span class="b">from</span> launch.conditions <span class="b">import</span> IfCondition
+
+<span class="b">def</span> generate_launch_description():
+    dbg = LaunchConfiguration(<span class="y">'enable_debug_node'</span>)
+    <span class="b">return</span> LaunchDescription([
+        DeclareLaunchArgument(<span class="y">'enable_debug_node'</span>, default_value=<span class="y">'false'</span>),
+        LogInfo(msg=[<span class="y">'debug='</span>, dbg]),
+        Node(..., name=<span class="y">'listener_core'</span>),                        <span class="g"># 恒启动</span>
+        Node(..., name=<span class="y">'listener_debug'</span>,                        <span class="g"># 条件启动</span>
+             condition=IfCondition(PythonExpression([<span class="y">'"'</span>, dbg, <span class="y">'" == "true"'</span>]))),
+    ])</code></pre>
+  <div class="tip violet">
+    <span class="lab">原理：PythonExpression 为什么要包引号</span>
+    LaunchConfiguration 取出来是字符串 "true"，PythonExpression 拼成的表达式要能被 <code>eval</code>——<code>"true" == "true"</code> 比较两个字符串为真；写成 <code>true == true</code> 会把 true 当变量名，未定义直接抛异常。字符串比较必须自带引号，或者干脆改用更稳的 <code>EqualsSubstitution</code>。
+  </div>
+</section>
+
+<!-- 07 实操A -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>实操 A：基础启动 + remap 三节点对照</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>建包</b><p>建 launch_demo_pkg：package.xml + CMakeLists（install 三件套）+ colcon build</p></div>
+    <div class="step"><div class="n">2</div><b>基础版</b><p>basic_launch.py 起 talker+listener，验证日志前缀与一次性退出</p></div>
+    <div class="step"><div class="n">3</div><b>remap 版</b><p>remap_launch.py 三节点：talker 改道 /my_chatter + 两个 listener 对照</p></div>
+    <div class="step"><div class="n">4</div><b>验证</b><p>topic list 看实际名；node info 看"内外不一致"的透明重映射</p></div>
+  </div>
+  <pre><code><span class="c"># 安装规则（CMakeLists.txt 核心三行——launch 找不到就查这里）</span>
+find_package(ament_cmake REQUIRED)
+install(DIRECTORY launch DESTINATION share/<span class="y">${PROJECT_NAME}</span>)
+ament_package()
+
+<span class="c"># remap_launch.py 关键：talker 改道，listener 一个配平一个不配平</span>
+Node(package=<span class="y">'demo_nodes_cpp'</span>, executable=<span class="y">'talker'</span>, name=<span class="y">'talker_remapped'</span>,
+     remappings=[(<span class="y">'/chatter'</span>, <span class="y">'/my_chatter'</span>)], output=<span class="y">'screen'</span>),
+Node(..., name=<span class="y">'listener_default'</span>, output=<span class="y">'screen'</span>),          <span class="g"># 订 /chatter → 沉默</span>
+Node(..., name=<span class="y">'listener_remapped'</span>,
+     remappings=[(<span class="y">'/chatter'</span>, <span class="y">'/my_chatter'</span>)], output=<span class="y">'screen'</span>), <span class="g"># 收到消息 ✓</span>
+
+<span class="c"># 验证"remap 对节点是透明的"</span>
+<span class="b">$</span> ros2 topic list                        <span class="g"># 有 /my_chatter；/chatter 无发布者</span>
+<span class="b">$</span> ros2 node info /talker_remapped        <span class="g"># Publishers 显示 /my_chatter —— 外部视角</span>
+<span class="c">#   节点代码里以为自己在发 /chatter，外界看到的却是 /my_chatter</span></code></pre>
+  <div class="tip amber"><span class="lab">观察点</span>listener_default 不是"卡死"，是<b>订阅了一个没有发布者的话题</b>——同进程内两个 listener 一个有输出一个没有，这个对照就是 remap 生效的最直观证据。remap 只影响列出的名字，/parameter_events 等公共话题不受它管辖。</div>
+</section>
+
+<!-- 08 实操B -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操 B：参数化 + 条件启动 + 事件触发</h2>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>默认跑</b><p>param_launch.py 不带参：ros2 node list 应为 2 个节点（核心组）</p></div>
+    <div class="step"><div class="n">2</div><b>传参跑</b><p>enable_debug_node:=true log_level:=debug → 3 个节点，日志变 DEBUG</p></div>
+    <div class="step"><div class="n">3</div><b>事件编排</b><p>OnProcessExit：talker 退出 → 自动拉起 cleanup 节点打印统计</p></div>
+    <div class="step"><div class="n">4</div><b>迁移</b><p>为 EXP-06 MQ5 采集 + 订阅者写一键 launch，四终端 → 一条命令</p></div>
+  </div>
+  <pre><code><span class="c"># 同一份文件，两种运行时人格</span>
+<span class="b">$</span> ros2 launch launch_demo_pkg param_launch.py
+<span class="c">#   → talker_param + listener_core（normal，2 节点）</span>
+<span class="b">$</span> ros2 launch launch_demo_pkg param_launch.py \
+     enable_debug_node:=true log_level:=debug
+<span class="c">#   → 多出 listener_debug，且日志级别经 arguments 注入为 DEBUG（3 节点）</span>
+
+<span class="c"># 事件触发骨架：A 退出 → B 自动接管</span>
+<span class="b">from</span> launch.actions <span class="b">import</span> RegisterEventHandler
+<span class="b">from</span> launch.event_handlers <span class="b">import</span> OnProcessExit
+Node(..., name=<span class="y">'recorder'</span>, executable=<span class="y">'ros2_bag_record_stub'</span>),
+RegisterEventHandler(OnProcessExit(
+    target_action=recorder,
+    on_exit=[Node(package=<span class="y">'my_pkg'</span>, executable=<span class="y">'analyze'</span>, output=<span class="y">'screen'</span>)],
+)),
+<span class="c"># 录包进程一结束，分析脚本自动开工——"采集→分析"流水线零手工</span></code></pre>
+  <table>
+    <tr><th>坑</th><th>症状</th><th>解法</th></tr>
+    <tr><td>入口函数名写错</td><td>module has no attribute 'generate_launch_description'</td><td>全小写 + 下划线逐字核对，一个字符都不能差</td></tr>
+    <tr><td>No launch file found</td><td>包明明存在却找不到文件</td><td>三查：build 过没有 → source 了没有 → CMakeLists 有没有 install(DIRECTORY launch ...)</td></tr>
+    <tr><td>remap 方向反了</td><td>配了却收不到</td><td>(A,B)="代码里的名, 实际要的名"；topic list 核对实际名</td></tr>
+    <tr><td>表达式类型不匹配</td><td>PythonExpression 返回 False 或报错</td><td>字符串比较自带引号 <code>"true"=="true"</code>，或用 EqualsSubstitution</td></tr>
+    <tr><td>节点名冲突</td><td>条件为 False 也报 name 重复</td><td>每个 Node 的 name 唯一——声明即占号，条件只决定起不起进程</td></tr>
+  </table>
+</section>
+
+<!-- 09 注意事项 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>注意事项与验收</h2>
+  <ul class="check">
+    <li>验收 1：独立写出 basic Launch，一键启动两节点、一次 Ctrl+C 全停</li>
+    <li>验收 2：remap 后用 topic list + node info 双证据解释"内外不一致"</li>
+    <li>验收 3：command line 传入参数，节点数在 2/3 之间随开关切换</li>
+    <li>验收 4：条件表达式取 false 时节点不启动且不报名字冲突</li>
+    <li>验收 5：OnProcessExit 演示 A 退出 → B 自动启动的完整链</li>
+    <li>验收 6：能说出三种格式差异与推荐 Python 的两条理由</li>
+    <li>验收 7：为之前实验的双节点系统写出一键 launch（迁移任务）</li>
+  </ul>
+  <div class="tip"><span class="lab">验收口径</span>
+  "找不到 launch 文件"是最常见的验收障碍，按固定顺序排查只需 30 秒：<b>build 有没有成功 → source install/setup.bash 了没有 → CMakeLists 是否 install 了 launch 目录</b>。口述得出这个三连，本身就是对"launch 文件如何从源码走到可执行"这条链路的理解证明。</div>
+</section>
+
+<!-- 10 总结 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>本课总结</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">架构</div><div class="kt">Python-first 事件驱动</div><p>LaunchDescription 装 Action 列表，条件与事件让编排从静态声明升级为动态剧本。</p></div>
+    <div class="kcard"><div class="kd">三件套</div><div class="kt">remap / 条件 / 事件</div><p>remap 不改码适配多实例；If/Unless 一文件多场景；OnProcessExit 串起流程自动化。</p></div>
+    <div class="kcard"><div class="kd">参数化</div><div class="kt">Declare + Config + := </div><p>命令行 key:=value 运行时覆盖默认值，一份文件服务调试/生产/仿真。</p></div>
+    <div class="kcard"><div class="kd">工程闭环</div><div class="kt">launch 是部署资产</div><p>install 规则 + 一键启动 + 全量退出——与 params、.rviz、bag 一样进 git。</p></div>
+  </div>
+  <div class="tip violet">
+    <span class="lab">思考题</span>
+    <p>① 把 EXP-06（MQ5 传感器发布者 + 订阅者）与 EXP-07（指纹服务端 + 客户端）整合成一个 bringup.launch.py：要表达"先服务端后客户端"的顺序，除了 OnProcessExit 还能想到什么机制？（提示：TimerAction / RegisterEventHandler 之外，想想 ROS2 图通信本身需不需要真的"顺序"。）</p>
+    <p>② 会议室部署需求：同一份 launch，normal 模式走默认多播发现，cloud 模式切 ROS_DISCOVERY_SERVER。用本课的三件套设计实现方案——参数怎么声明、条件怎么判断、环境变量在哪注入？</p>
+  </div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-16-rosbag/index.html"><span class="lb">← 上一个实验</span>EXP-16 rosbag2 数据录制与回放</a>
+  <a class="next" href="../exp-18-metapackage/index.html"><span class="lb">下一个实验 →</span>EXP-18 元功能包集成</a>
+</nav>
+<footer>
+  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-17 Launch 启动文件</span>
+  <span>2 学时 · 设计性 · 基于 ros_practice 实验讲义改编</span>
+</footer>
+</main>
+</div>
+
+<script>
+var LCH = {
+  basic: '<span class="ok">basic_launch.py 骨架</span>\nfrom launch import LaunchDescription\nfrom launch_ros.actions import Node\n\ndef generate_launch_description():\n    return LaunchDescription([\n        Node(package="demo_nodes_cpp", executable="talker",\n             name="my_talker", output="screen"),\n        Node(package="demo_nodes_cpp", executable="listener",\n             name="my_listener", output="screen"),\n    ])\n要点：入口函数名必须精确；output="screen" 让日志带 [name-N] 前缀汇入 launch 终端。\n运行：ros2 launch launch_demo_pkg basic_launch.py',
+  remap: '<span class="ok">双雷达 remap 骨架</span>\nNode(package="my_pkg", executable="lidar_driver", name="lidar_front",\n     namespace="robot1",\n     parameters=[{"frame_id": "laser_front"}],\n     remappings=[("/scan", "/scan_front")], output="screen"),\nNode(package="my_pkg", executable="lidar_driver", name="lidar_rear",\n     parameters=[{"frame_id": "laser_rear"}],\n     remappings=[("/scan", "/scan_rear")], output="screen"),\n要点：(A,B) —— A 是代码里的 /scan，B 是实际物理话题。\n驱动源码完全不改，两个实例各发各的——remap + 唯一 name 的组合拳。',
+  cond: '<span class="ok">条件启动骨架</span>\nmode = LaunchConfiguration("mode")\nDeclareLaunchArgument("mode", default_value="normal"),\nNode(..., name="sensor_driver",\n     condition=IfCondition(PythonExpression([\'"\', mode, \'" != "production"\']))),\nNode(..., name="debug_visualizer",\n     condition=IfCondition(PythonExpression([\'"\', mode, \'" == "debug"\'])))\n要点：PythonExpression 整体是合法 Python 字符串——变量部分用引号包住拼接。\n备选：EqualsSubstitution 更不易错；UnlessCondition 表达"非"语义更直白。\n运行：ros2 launch pkg f.py mode:=debug',
+  event: '<span class="ok">OnProcessExit 接续骨架</span>\nfrom launch.actions import RegisterEventHandler\nfrom launch.event_handlers import OnProcessExit\n\nrecorder = Node(package="my_pkg", executable="record_task", name="recorder", output="screen")\nanalyzer  = Node(package="my_pkg", executable="analyze", name="analyzer", output="screen")\n\nLaunchDescription([\n    recorder,\n    RegisterEventHandler(OnProcessExit(target_action=recorder,\n                                       on_exit=[analyzer])),\n])\n链路：recorder 进程退出（正常结束/被杀都算）→ 事件发射 → analyzer 自动拉起。\n应用：采集结束自动出报告、标定完成自动关设备——流程自动化不写 shell 守护。',
+  param: '<span class="ok">use_sim_time 参数化</span>\nuse_sim_arg = DeclareLaunchArgument(\n    "use_sim_time", default_value="false",\n    description="仿真/回放时设 true，订阅 /clock")\n\nLaunchDescription([\n    use_sim_arg,\n    Node(package="robot_state_publisher", executable="robot_state_publisher",\n         parameters=[{"use_sim_time": LaunchConfiguration("use_sim_time")}]),\n    Node(package="rviz2", executable="rviz2",\n         arguments=["-d", rviz_config],\n         parameters=[{"use_sim_time": LaunchConfiguration("use_sim_time")}]),\n])\n一键切换：ros2 launch pkg display.launch.py use_sim_time:=true\n与 EXP-16 回放铁三角直接对接——所有认钟节点在同一次 launch 里统一翻转。'
+};
+function craft(){ document.getElementById('out').innerHTML = LCH[document.getElementById('tp').value]; }
+craft();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

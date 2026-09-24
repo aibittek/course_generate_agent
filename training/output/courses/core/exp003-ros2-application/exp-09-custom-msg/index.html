@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-09 · 自定义接口消息 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#4f46e5;--theme-deep:#4338ca;--theme-bg:#e0e7ff;--theme-bd:#c7d2fe}</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-09</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：单值消息装不下传感器</a>
+  <a href="#s2">02 核心原理：三种接口文件结构</a>
+  <a href="#s3">03 动画：接口文件如何变成可 import 的类</a>
+  <a href="#s4">04 专题：CMakeLists 与依赖声明</a>
+  <a href="#s5">05 交互：接口分类器</a>
+  <a href="#s6">06 ros2 interface 命令精讲</a>
+  <a href="#s7">07 实操 A：通览既有接口包</a>
+  <a href="#s8">08 实操 B：为新传感器定义接口</a>
+  <a href="#s9">09 注意事项与验收清单</a>
+  <a href="#s10">10 本课总结与思考题</a>
+  <h4>CH2 · 通信机制</h4>
+  <a href="../exp-05-node/index.html">EXP-05 节点</a>
+  <a href="../exp-06-topic/index.html">EXP-06 话题</a>
+  <a href="../exp-07-service/index.html">EXP-07 服务</a>
+  <a href="../exp-08-action/index.html">EXP-08 动作</a>
+  <a href="../exp-09-custom-msg/index.html">EXP-09 自定义接口</a>
+  <a href="../exp-10-parameter/index.html">EXP-10 参数</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-09 · 第 2 章 · 设计性 · 2 学时</span>
+  <h1>自定义接口消息：给数据定一份契约</h1>
+  <p class="desc">标准 Float32 装不下"温度+湿度+有效位"。本课回看实验 6-8 用过的全部接口，讲清 .msg/.srv/.action 三种文件结构、rosidl 编译链与接口包分离哲学。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">设计性</span><span class="tag">关键词 rosidl · 接口包 · 契约</span></div>
+</div>
+
+<section class="blk" id="s1">
+<h2><span class="no">01</span>问题引入：单值消息装不下传感器</h2>
+<div class="flow">
+  <div class="step"><div class="n">1</div>EXP-06 的 MQ5 用标准 <code>Float32</code> 发 ppm——一个值，够了。</div>
+  <div class="step"><div class="n">2</div>但 DHT11 要报<b>温度 + 湿度</b>，MAX30102 要报<b>心率 + 血氧 + 读数是否有效</b>——单值消息只能开三个话题各自为政，订阅方还得自己对时间戳配对。</div>
+  <div class="step"><div class="n">3</div>指纹验证要回 <b>bool + int + string</b> 三字段——没有结构化类型，通信无从谈起。</div>
+  <div class="step"><div class="n">4</div>ROS2 的答案：<b>自定义接口</b>——用几行文本定义数据结构，编译生成 Python/C++ 双端消息类。</div>
+</div>
+<div class="tip"><span class="lab">接口 = 契约</span>接口定义是收发双方共同遵守的<b>数据契约</b>：字段名、类型、顺序一旦编译固化，任何一端擅自改动都会破坏兼容——所以它要独立成包、版本化管理。</div>
+</section>
+
+<section class="blk" id="s2">
+<h2><span class="no">02</span>核心原理：三种接口文件结构</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">.msg · 零个分隔符</div><div class="kt">单段字段表</div><p>每行 <code>类型 字段名 # 注释</code>。TemperatureHumidity：float32 temperature / float32 humidity——一对多持续流的数据载体。</p></div>
+  <div class="kcard"><div class="kd">.srv · 一个 ---</div><div class="kt">请求 | 响应</div><p>VerifyFingerprint：请求段<b>空</b>（直接 --- 开头）| 响应 bool success + int32 user_id + string message。可空请求是合法的。</p></div>
+  <div class="kcard"><div class="kd">.action · 两个 ---</div><div class="kt">Goal | Result | Feedback</div><p>RfidScan：int32 timeout_sec | success/uid/type/msg | status——三段对应三通道，编译生成三个类。</p></div>
+  <div class="kcard"><div class="kd">生成物</div><div class="kt">X.Request / X.Response、X.Goal/Result/Feedback</div><p>编译后固定子类名（不是 .Req！），节点直接 import 实例化使用。</p></div>
+</div>
+<table>
+  <tr><th>接口类型</th><th>分隔符</th><th>编译生成的类</th><th>实验对应</th></tr>
+  <tr><td><code>.msg</code></td><td>无</td><td>消息类本身（如 TemperatureHumidity()）</td><td>EXP-06 气体可继续用 Float32，结构化才自定义</td></tr>
+  <tr><td><code>.srv</code></td><td>1 个 <code>---</code></td><td>VerifyFingerprint.Request / .Response</td><td>EXP-07 指纹验证</td></tr>
+  <tr><td><code>.action</code></td><td>2 个 <code>---</code></td><td>RfidScan.Goal / .Result / .Feedback</td><td>EXP-08 RFID 读卡</td></tr>
+</table>
+<div class="tip amber"><span class="lab">字段类型用定长</span>写 <code>int32</code> 而不是 C 风格 <code>int</code>——跨语言/跨平台必须宽度确定。另外传感器消息常加 <code>bool valid</code>：MAX30102 未接触皮肤时心率恒为 0，没有有效位的话，0 是"读数"还是"没测"根本无法区分。</div>
+</section>
+
+<section class="blk" id="s3">
+<h2><span class="no">03</span>动画：接口文件如何变成可 import 的类</h2>
+<div class="anim-box">
+<svg viewBox="0 0 760 235" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <g>
+    <rect x="20" y="44" width="150" height="76" rx="10" fill="#1e293b" stroke="#4f46e5" stroke-width="2"/>
+    <text x="95" y="72" fill="#fff" font-size="14" text-anchor="middle" font-weight="bold">msg/srv/action</text>
+    <text x="95" y="93" fill="#a5b4fc" font-size="11.5" text-anchor="middle">.msg / .srv / .action</text>
+    <text x="95" y="110" fill="#64748b" font-size="10.5" text-anchor="middle">（src 内手写契约）</text>
+    <rect x="220" y="44" width="160" height="76" rx="10" fill="#1e293b" stroke="#4f46e5" stroke-width="2"/>
+    <text x="300" y="70" fill="#fff" font-size="14" text-anchor="middle" font-weight="bold">rosidl_generate</text>
+    <text x="300" y="89" fill="#fff" font-size="14" text-anchor="middle" font-weight="bold">_interfaces</text>
+    <text x="300" y="110" fill="#a5b4fc" font-size="11" text-anchor="middle">CMake 编译入口</text>
+    <rect x="430" y="44" width="150" height="76" rx="10" fill="#1e293b" stroke="#4f46e5" stroke-width="2"/>
+    <text x="505" y="72" fill="#fff" font-size="14" text-anchor="middle" font-weight="bold">生成代码</text>
+    <text x="505" y="93" fill="#a5b4fc" font-size="11.5" text-anchor="middle">Python 类 + C++ 头</text>
+    <text x="505" y="110" fill="#64748b" font-size="10.5" text-anchor="middle">（install/ 交付）</text>
+    <rect x="630" y="44" width="120" height="76" rx="10" fill="#1e293b" stroke="#22c55e" stroke-width="2"/>
+    <text x="690" y="72" fill="#fff" font-size="14" text-anchor="middle" font-weight="bold">节点 import</text>
+    <text x="690" y="95" fill="#86efac" font-size="10.5" text-anchor="middle">from …srv import</text>
+    <text x="690" y="111" fill="#86efac" font-size="10.5" text-anchor="middle">VerifyFingerprint</text>
+  </g>
+  <path d="M170 82 H220" stroke="#334155" stroke-width="3"/>
+  <path d="M380 82 H430" stroke="#334155" stroke-width="3"/>
+  <path d="M580 82 H630" stroke="#334155" stroke-width="3"/>
+  <circle r="6" fill="#818cf8" cx="170" cy="82"><animate attributeName="cx" values="170;220" dur="1.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.5s" repeatCount="indefinite"/></circle>
+  <circle r="6" fill="#818cf8" cx="380" cy="82"><animate attributeName="cx" values="380;430" dur="1.5s" begin="0.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.5s" begin="0.5s" repeatCount="indefinite"/></circle>
+  <circle r="6" fill="#818cf8" cx="580" cy="82"><animate attributeName="cx" values="580;630" dur="1.5s" begin="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.5s" begin="1s" repeatCount="indefinite"/></circle>
+  <!-- 失败分支 -->
+  <rect x="430" y="160" width="290" height="52" rx="8" fill="#3f1d1d" stroke="#b91c1c" stroke-dasharray="5 4"/>
+  <text x="575" y="181" fill="#fca5a5" font-size="12" text-anchor="middle">忘 source / 忘列进 CMake 列表</text>
+  <text x="575" y="200" fill="#fca5a5" font-size="12" text-anchor="middle">→ ModuleNotFoundError / interface list 缺失</text>
+  <path d="M505 120 V160" stroke="#b91c1c" stroke-width="1.6" stroke-dasharray="4 4"/>
+  <text x="95" y="175" fill="#94a3b8" font-size="12">接口独立成包 ⇒</text>
+  <text x="95" y="194" fill="#94a3b8" font-size="12">多节点/C++/Python 共享</text>
+  <text x="95" y="213" fill="#94a3b8" font-size="12">一套无歧义的数据类型</text>
+</svg>
+</div>
+<p class="anim-cap">契约（文本）→ 编译（rosidl）→ 生成物（双语言类）→ 消费（import）；任何一环断掉都会在最后一格报找不到模块。</p>
+</section>
+
+<section class="blk" id="s4">
+<h2><span class="no">04</span>专题：CMakeLists 与依赖声明</h2>
+<pre><span class="c"># 接口包（ament_cmake）CMakeLists.txt 核心段</span>
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/VerifyFingerprint.srv"
+  "srv/TriggerRelay.srv"
+  "action/RfidScan.action"
+  "msg/TemperatureHumidity.msg"
+  "msg/HeartRateSpO2.msg"
+  "msg/PhotoState.msg"
+  DEPENDENCIES std_msgs action_msgs builtin_interfaces   <span class="y"># ← 基础类型从哪来</span>
+)
+ament_package()</pre>
+<table>
+  <tr><th>位置</th><th>声明什么</th><th>作用</th></tr>
+  <tr><td>CMakeLists DEPENDENCIES</td><td>std_msgs / action_msgs / builtin_interfaces</td><td>编译期：告诉 rosidl 去哪找 float32/int32/GoalStatus 等基础类型</td></tr>
+  <tr><td>package.xml（接口包）</td><td>buildtool_depend rosidl_default_generators + exec rosidl_default_runtime + depend std_msgs…</td><td>构建工具与运行时链条</td></tr>
+  <tr><td>package.xml（节点包）</td><td><code>&lt;depend&gt;ros_sensor_interfaces&lt;/depend&gt;</code></td><td>运行期 import 的入场券——EXP-04 依赖标签的实战</td></tr>
+</table>
+<div class="tip tealb"><span class="lab">为什么要独立接口包</span>接口是契约、节点是实现：分离后 C++ 与 Python 节点共享同一类型；改实现不碰契约；接口版本可单独演进。若写死在节点包里，别的包想用这个类型就不得不<b>依赖整个实现包</b>——循环依赖的温床。</div>
+</section>
+
+<section class="blk" id="s5">
+<h2><span class="no">05</span>交互：接口分类器</h2>
+<div class="ix-panel">
+  <div class="ix-title">Interface Router · 这段需求该用哪种接口</div>
+  <div class="ctl-row">
+    <label class="ctl">需求描述
+      <select id="req" onchange="routeIf()">
+        <option value="th">一次发布温度+湿度两个相关联的值</option>
+        <option value="vf">请求"验证手指"，返回成功与否+用户号+说明</option>
+        <option value="rf">下达"读卡"任务：可设超时、过程要报状态、结果含卡号</option>
+        <option value="std">发布单个 ppm 浓度值</option>
+        <option value="relay">请求"3 号继电器吸合 0.5 秒"，回执成败</option>
+      </select>
+    </label>
+  </div>
+  <div class="io" id="ifIo">// 选择需求，输出接口文件形态与字段草案…</div>
+</div>
+</section>
+
+<section class="blk" id="s6">
+<h2><span class="no">06</span>ros2 interface 命令精讲</h2>
+<pre><span class="c"># 列表 + 过滤：确认自己的接口已注册进系统</span>
+ros2 interface list | grep ros_sensor_interfaces
+<span class="g"># msg/HeartRateSpO2  msg/PhotoState  msg/TemperatureHumidity</span>
+<span class="g"># srv/TriggerRelay   srv/VerifyFingerprint   action/RfidScan（共 6 个）</span>
+
+<span class="c"># 逐个检视：打印的字段必须与源文件一字不差（编译生效的证据）</span>
+ros2 interface show ros_sensor_interfaces/srv/VerifyFingerprint
+ros2 interface show ros_sensor_interfaces/action/RfidScan
+ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity
+
+<span class="c"># 新增接口后：接口包 + 消费它的节点包一起重编</span>
+colcon build --symlink-install \
+  --packages-select ros_sensor_interfaces ros_sensor
+source install/setup.bash   <span class="y"># 不 source 则 import 必然失败</span></pre>
+<div class="tip"><span class="lab">口诀</span>接口改动三步走：① 改定义文件 ② 加进 rosidl_generate_interfaces 列表 ③ 重编接口包与所有依赖方并重新 source。<b>接口是连锁的</b>——它是契约，动一下全链路都要重新对齐。</div>
+</section>
+
+<section class="blk" id="s7">
+<h2><span class="no">07</span>实操 A：通览既有接口包</h2>
+<pre><span class="b">cd</span> ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor_interfaces
+ls -R msg srv action    <span class="c"># 3 msg + 2 srv + 1 action = 6 个定义</span>
+
+<span class="c"># 打开定义文件，对照阅读：</span>
+cat msg/TemperatureHumidity.msg     <span class="c"># float32×2，零分隔符</span>
+cat msg/HeartRateSpO2.msg           <span class="c"># 注意 bool valid 的用意</span>
+cat srv/VerifyFingerprint.srv       <span class="c"># 空请求 + 一个 --- + 三字段</span>
+cat action/RfidScan.action         <span class="c"># 三段：timeout | 结果四字段 | status</span>
+
+<span class="c"># 编译后在系统层验证</span>
+ros2 interface show ros_sensor_interfaces/srv/VerifyFingerprint
+<span class="g">#  ---（空请求段）\n bool success\n int32 user_id\n string message</span></pre>
+</section>
+
+<section class="blk" id="s8">
+<h2><span class="no">08</span>实操 B：为新传感器定义接口</h2>
+<p>任务：为光照传感器定义 <code>msg/Illuminance</code>（照度 + 有效位 + 时间戳），并让节点包可见。</p>
+<pre><span class="b">cd</span> ~/ros2_ws/src/.../ros_sensor_interfaces
+cat &gt; msg/Illuminance.msg <span class="b">&lt;&lt;</span> <span class="s">'EOF'</span>
+<span class="c"># 光照度消息：单段，无分隔符</span>
+float32 lux          <span class="c"># 照度(lx)</span>
+bool valid           <span class="c"># 读数有效位（遮挡/超量程时 false）</span>
+builtin_interfaces/Time stamp   <span class="c"># 最近一次采样时刻</span>
+EOF
+
+<span class="c"># ① 列进 CMake（DEPENDENCIES 已含 builtin_interfaces 则无需改）</span>
+<span class="c">#    rosidl_generate_interfaces 列表追加 "msg/Illuminance.msg"</span>
+<span class="b">cd</span> ~/ros2_ws &amp;&amp; colcon build --packages-select ros_sensor_interfaces
+source install/setup.bash
+ros2 interface show ros_sensor_interfaces/msg/Illuminance
+<span class="g"># → 三字段完整打印即成功；节点包内现在可以：</span>
+<span class="g">#   from ros_sensor_interfaces.msg import Illuminance</span></pre>
+</section>
+
+<section class="blk" id="s9">
+<h2><span class="no">09</span>注意事项与验收清单</h2>
+<div class="check">
+  <ul>
+    <li>默画三种接口的分隔符结构：.msg 无、.srv 一个 ---、.action 两个 ---</li>
+    <li>6 个既有接口全部 interface show 成功，字段与源文件一致</li>
+    <li>说出接口包与节点包为何必须分离（契约 vs 实现）</li>
+    <li>解释 DEPENDENCIES 各项分别在支撑哪些字段类型</li>
+    <li>独立完成新消息 Illuminance 的定义 → 编译 → import 三步</li>
+    <li>知道接口改动后"重编接口包+全部消费方"的连锁规则</li>
+  </ul>
+</div>
+<table>
+  <tr><th>坑</th><th>症状</th><th>解法</th></tr>
+  <tr><td>分隔符数量错</td><td>rosidl 编译直接失败</td><td>.srv 数 1 条 ---、.action 数 2 条，缺一即错</td></tr>
+  <tr><td>类型写成 int</td><td>字段类型报错</td><td>改 <code>int32</code>/uint8/float32 等定长类型</td></tr>
+  <tr><td>文件没进 CMake 列表</td><td>interface list 里没有它</td><td>每个接口都要显式列入 rosidl_generate_interfaces</td></tr>
+  <tr><td>没 source / 没重编</td><td>ModuleNotFoundError / 节点读不到新字段</td><td>build + source；接口是契约，改了全链重编</td></tr>
+  <tr><td>接口写进节点包</td><td>别的包要用只能连实现一起依赖</td><td>接口必须独立 ament_cmake 包，节点包 just depend</td></tr>
+</table>
+</section>
+
+<section class="blk" id="s10">
+<h2><span class="no">10</span>本课总结与思考题</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">结构</div><div class="kt">0 / 1 / 2 个分隔符</div><p>msg 单段、srv 请求响应、action 三段——文件结构直接映射通信模型。</p></div>
+  <div class="kcard"><div class="kd">编译</div><div class="kt">rosidl_generate_interfaces</div><p>列表 + DEPENDENCIES 双配置，产出 Python/C++ 双端类。</p></div>
+  <div class="kcard"><div class="kd">组织</div><div class="kt">接口包 / 节点包分离</div><p>契约独立演进，多语言共享，阻断循环依赖。</p></div>
+  <div class="kcard"><div class="kd">自省</div><div class="kt">ros2 interface list/show</div><p>不看源码也能审计系统里全部数据契约。</p></div>
+</div>
+<div class="tip violet"><span class="lab">思考题</span>
+① TemperatureHumidity 若要补"传感器在线状态"和"最近读数时间戳"，给出扩展后的完整 .msg 与每个字段的选型理由（提示：在线用什么时间戳用什么）。<br>
+② MQ5 将来要发 ppm + 电压 + ADC 原始值三个量——改用标准消息组合还是自定义？对比两种方案的耦合度、可读性与维护成本，并给出与 ros_sensor_interfaces 命名风格一致的方案。<br>
+③ 为什么 HeartRateSpO2 需要 valid 而 TemperatureHumidity 没有？什么条件下"有效位"应该是接口设计的默认字段？</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-08-action/index.html"><span class="lb">← 上一个实验</span>EXP-08 动作通信 · RFID</a>
+  <a class="next" href="../exp-10-parameter/index.html"><span class="lb">下一个实验 →</span>EXP-10 参数系统</a>
+</nav>
+<footer><span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-09 自定义接口消息</span><span>2 学时 · 设计性 · 基于 ros_practice 实验讲义改编</span></footer>
+</main>
+</div>
+<script>
+var ROUTES={
+  th:'<span class="dim">// 分类中…</span>\n<span class="ok">✓ 用【.msg 自定义消息】</span>\n<span class="dim">草案 msg/TemperatureHumidity：</span>\n<span class="y">float32 temperature   # 温度(℃)</span>\n<span class="y">float32 humidity      # 湿度(%)</span>\n<span class="dim">理由：两个值语义关联（同一采样周期），拆成两个 Float32 话题会失去原子性。</span>',
+  vf:'<span class="dim">// 分类中…</span>\n<span class="ok">✓ 用【.srv 服务】</span>\n<span class="dim">草案 srv/VerifyFingerprint：</span>\n<span class="y">---              # 请求为空（触发即验证）</span>\n<span class="y">bool success</span>\n<span class="y">int32 user_id</span>\n<span class="y">string message</span>\n<span class="dim">理由：一次性一问一答、需要明确成败、无中间过程 → 同步 RPC。</span>',
+  rf:'<span class="dim">// 分类中…</span>\n<span class="ok">✓ 用【.action 动作】</span>\n<span class="dim">草案 action/RfidScan：</span>\n<span class="y">---\nint32 timeout_sec      # Goal：可配超时</span>\n<span class="y">---\nbool success\nstring card_uid        # Result：四字段</span>\n<span class="y">---\nstring status          # Feedback：状态流</span>\n<span class="dim">理由：耗时不可知 + 要过程反馈 + 可取消——三段结构一一对应。</span>',
+  std:'<span class="dim">// 分类中…</span>\n<span class="ok">✓ 用【标准消息 std_msgs/msg/Float32】</span>\n<span class="dim">单值定长、生态通用（rosbag/rqt 开箱即用），自定义反而增加对接成本。</span>\n<span class="dim">何时升级自定义：ppm+电压+ADC 三值语义绑定时 → msg/GasReading。</span>',
+  relay:'<span class="dim">// 分类中…</span>\n<span class="ok">✓ 用【.srv 服务】</span>\n<span class="dim">草案 srv/TriggerRelay：</span>\n<span class="y">int32 relay_id      # 继电器编号</span>\n<span class="y">float32 duration    # 吸合时长(秒)</span>\n<span class="y">---</span>\n<span class="y">bool success\nstring message</span>\n<span class="dim">理由：短耗时、确定性执行、要回执 → 同步 RPC（对应 EXP-07 relay 控制实为服务场景）。</span>'
+};
+function routeIf(){document.getElementById('ifIo').innerHTML=ROUTES[document.getElementById('req').value];}
+routeIf();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

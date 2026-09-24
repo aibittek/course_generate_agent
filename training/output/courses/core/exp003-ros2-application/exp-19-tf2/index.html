@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-19 · TF2 坐标系变换 — 机器人 ROS2 应用与开发</title>
+<style>
+:root{
+  --bg-base:#f8fafc; --bg-card:#fff; --bg-soft:#f1f5f9; --bg-tint:#fffbeb;
+  --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --head:#1e293b;
+  --accent-blue:#2563eb; --accent-teal:#0d9488; --accent-amber:#d97706;
+  --accent-violet:#7c3aed; --accent-rose:#e11d48; --accent-cyan:#0891b2;
+  --font-mono:'Cascadia Code','JetBrains Mono',Consolas,'Noto Sans Mono CJK SC',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans CJK SC','Microsoft YaHei',sans-serif;background:var(--bg-base);color:var(--text);line-height:1.75;font-size:15.5px}
+a{color:var(--accent-blue);text-decoration:none}
+main a:hover{text-decoration:underline}
+
+/* ---------- topbar ---------- */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-weight:700;font-size:15px;color:var(--head)}
+.logo i{font-style:normal;color:var(--accent-amber)}
+.crumb{font-size:13px;color:var(--muted)}
+.crumb a{color:var(--muted)}
+.crumb a:hover{color:var(--accent-amber)}
+
+/* ---------- layout ---------- */
+.wrap{display:grid;grid-template-columns:240px 1fr;max-width:1280px;margin:0 auto;gap:0}
+.side{position:sticky;top:56px;align-self:start;height:calc(100vh - 56px);overflow-y:auto;padding:24px 16px 40px 24px;border-right:1px solid var(--border);background:#fff}
+.side h4{font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin:18px 0 8px}
+.side h4:first-child{margin-top:0}
+.side a{display:block;font-size:13px;color:#475569;padding:5px 10px;border-radius:8px;margin-bottom:2px}
+.side a:hover{background:var(--bg-soft);text-decoration:none}
+.side a.now{background:#fffbeb;color:#b45309;font-weight:600;border-left:3px solid var(--accent-amber)}
+.content{padding:32px 40px 80px;min-width:0}
+
+/* ---------- exp head ---------- */
+.exp-head{margin-bottom:28px}
+.exp-head .code{display:inline-block;font-family:var(--font-mono);font-size:12px;font-weight:700;color:#b45309;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:2px 10px;letter-spacing:.08em;margin-bottom:10px}
+.exp-head h1{font-size:30px;color:var(--head);line-height:1.3;margin-bottom:8px}
+.exp-head .desc{color:var(--muted);font-size:15px;max-width:760px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.tag{font-size:12px;background:var(--bg-soft);border:1px solid var(--border);border-radius:999px;padding:3px 12px;color:#475569}
+.tag.hl{background:#ecfdf5;border-color:#a7f3d0;color:#047857}
+
+/* ---------- sections ---------- */
+.blk{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:28px 30px;margin-bottom:22px;opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.blk.on{opacity:1;transform:none}
+.blk h2{font-size:20px;color:var(--head);margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.blk h2 .no{font-family:var(--font-mono);font-size:13px;background:var(--head);color:#fff;border-radius:8px;padding:2px 9px;letter-spacing:.05em}
+.blk h3{font-size:16px;color:var(--head);margin:20px 0 10px}
+.blk p{margin-bottom:10px}
+.blk ul,.blk ol{padding-left:22px;margin-bottom:12px}
+.blk li{margin-bottom:6px}
+strong{color:var(--head)}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--bg-soft);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+pre{font-family:var(--font-mono);font-size:13px;line-height:1.7;background:#0f172a;color:#e2e8f0;border-radius:12px;padding:16px 18px;overflow-x:auto;margin:12px 0}
+pre .c{color:#64748b}pre .g{color:#4ade80}pre .b{color:#60a5fa}pre .y{color:#fbbf24}
+code.inline{background:#fef3c7;border-color:#fde68a;color:#92400e;padding:1px 6px}
+
+/* flow */
+.flow{display:flex;flex-direction:column;gap:0;margin:14px 0}
+.step{background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:14px 18px;position:relative}
+.step .n{display:inline-block;font-family:var(--font-mono);font-size:12px;font-weight:700;background:var(--accent-amber);color:#fff;border-radius:999px;width:22px;height:22px;text-align:center;line-height:22px;margin-right:8px}
+.arr{width:2px;height:18px;background:linear-gradient(#fbbf24,#d97706);margin:0 auto;position:relative}
+.arr::after{content:'';position:absolute;bottom:-2px;left:-4px;border:5px solid transparent;border-top-color:#d97706}
+
+/* grids */
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:14px 0}
+.kcard{background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.kcard .kd{font-size:12px;color:var(--accent-amber);font-weight:700;letter-spacing:.06em;margin-bottom:6px}
+.kcard .kt{font-size:14.5px;color:var(--head);font-weight:600;margin-bottom:4px}
+.kcard p{font-size:13.5px;color:#475569;margin:0}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0}
+th{background:var(--bg-soft);color:var(--head);text-align:left;padding:9px 12px;border:1px solid var(--border);font-weight:600}
+td{padding:9px 12px;border:1px solid var(--border);vertical-align:top}
+tr:nth-child(even) td{background:#fcfdfe}
+
+/* tip */
+.tip{border-radius:12px;padding:14px 18px;margin:14px 0;font-size:14.5px;border:1px solid}
+.tip .lab{font-weight:700;display:block;margin-bottom:4px}
+.tip.amber{background:#fffbeb;border-color:#fde68a;color:#78350f}
+.tip.tealb{background:#f0fdfa;border-color:#99f6e4;color:#115e59}
+.tip.violet{background:#f5f3ff;border-color:#ddd6fe;color:#5b21b6}
+
+/* check */
+.check{list-style:none;padding:0}
+.check li{padding:8px 0 8px 30px;position:relative;border-bottom:1px dashed var(--border);margin:0}
+.check li::before{content:'✓';position:absolute;left:4px;top:8px;color:var(--accent-teal);font-weight:700}
+
+/* svg anim block */
+.anim-box{background:linear-gradient(160deg,#0f172a,#1e293b);border-radius:16px;padding:20px;margin:16px 0;overflow-x:auto}
+.anim-box svg{display:block;margin:0 auto;max-width:100%;height:auto}
+.anim-cap{text-align:center;font-size:13px;color:#94a3b8;margin-top:10px}
+
+/* interaction panel */
+.ix-panel{background:#10151f;border:1px solid #1e293b;border-radius:16px;padding:22px 24px;margin:16px 0;color:#e2e8f0;font-family:var(--font-mono),sans-serif}
+.ix-panel .ix-title{font-size:14px;font-weight:700;color:#fbbf24;letter-spacing:.08em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.ix-panel .ix-title::before{content:'⚡';}
+.ctl-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:14px}
+.ctl{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#94a3b8}
+.ctl select,.ctl input[type=range]{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:7px 10px;font-family:var(--font-mono);font-size:13px;min-width:150px}
+.ctl input[type=range]{padding:0;accent-color:#fbbf24;height:26px}
+.btn{background:#d97706;color:#fff;border:none;border-radius:9px;padding:9px 20px;font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.btn:hover{background:#f59e0b}
+.btn.ghost{background:transparent;color:#fbbf24;border:1px solid #92400e}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.io{background:#0b0f17;border:1px solid #1e293b;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.9;white-space:pre-wrap;min-height:60px}
+.io .ok{color:#4ade80}.io .warn{color:#fbbf24}.io .bad{color:#f87171}.io .dim{color:#64748b}
+
+/* quaternion visual */
+.quad-wrap{display:grid;grid-template-columns:1fr 1.2fr;gap:16px;align-items:center}
+@media(max-width:720px){.quad-wrap{grid-template-columns:1fr}}
+
+/* levels */
+.levels{list-style:none;padding-left:0;margin:12px 0;counter-reset:lv}
+.levels li{counter-increment:lv;position:relative;padding:9px 14px 9px 44px;background:var(--bg-soft);border:1px solid var(--border);border-radius:10px;margin-bottom:7px;font-size:14px}
+.levels li::before{content:counter(lv);position:absolute;left:14px;top:9px;font-family:var(--font-mono);font-weight:700;color:var(--accent-amber)}
+.levels li b{font-family:var(--font-mono);font-size:13.5px}
+
+/* expnav */
+.expnav{display:flex;justify-content:space-between;gap:14px;margin-top:30px}
+.expnav a{flex:1;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;color:var(--head);font-size:14px;transition:.2s}
+.expnav a:hover{border-color:var(--accent-amber);box-shadow:0 6px 18px rgba(217,119,6,.10);text-decoration:none}
+.expnav a .lb{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.08em;margin-bottom:4px}
+.expnav a.next{text-align:right}
+
+footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+@media(max-width:960px){.wrap{grid-template-columns:1fr}.side{display:none}.content{padding:24px 18px 70px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🧠 具身智能课程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-19</div>
+</div>
+
+<div class="wrap">
+
+<!-- ============ SIDEBAR ============ -->
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 引例：这束激光该画在哪</a>
+  <a href="#s2">02 原理：TF2 树为什么长成一棵树</a>
+  <a href="#s3">03 动画：一次 TF 查询的全过程</a>
+  <a href="#s4">04 原理专题：旋转为什么要用四元数</a>
+  <a href="#s5">05 交互实验台：四元数换算 + TF 链查询</a>
+  <a href="#s6">06 代码精讲：发布者与查询者</a>
+  <a href="#s7">07 实操 1 · 创建 tf2_demo 包并发布静态变换</a>
+  <a href="#s8">08 实操 2 · 三种手段验证 TF 树</a>
+  <a href="#s9">09 注意事项与验收</a>
+  <a href="#s10">10 实验总结与思考</a>
+  <h4>CH3 · 建模进阶</h4>
+  <a href="../exp-19-tf2/index.html">EXP-19 TF2 坐标系变换</a>
+  <a href="../exp-20-urdf/index.html">EXP-20 URDF 机器人建模</a>
+  <h4>其它篇章</h4>
+  <a href="../exp-01-ros2-intro/index.html">EXP-01 ROS2 简介</a>
+  <a href="../exp-06-topic/index.html">EXP-06 话题通信 · MQ5</a>
+  <a href="../exp-08-action/index.html">EXP-08 动作通信 · RFID</a>
+  <a href="../exp-12-dds/index.html">EXP-12 DDS 底层原理</a>
+  <a href="../exp-17-launch/index.html">EXP-17 Launch 启动文件</a>
+</aside>
+
+<!-- ============ CONTENT ============ -->
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-19 · ⭐⭐ · 2 学时</span>
+  <h1>TF2 坐标系变换：让机器人知道自己"在哪、朝哪"</h1>
+  <p class="desc">雷达一帧有 360 个点、摄像头一张图有几万个像素，但它们各自活在自己的坐标系里。本实验吃透 TF2 的树状变换原理与四元数表示，实现静态/动态坐标发布，并用 tf2_echo / view_frames 完成可视化验证。</p>
+  <div class="meta">
+    <span class="tag hl">话题通信实战</span>
+    <span class="tag">tf2_ros</span>
+    <span class="tag">四元数</span>
+    <span class="tag">view_frames</span>
+    <span class="tag">前置：EXP-06 话题通信</span>
+    <span class="tag">硬件：实验箱 B2 / 小车 C1</span>
+  </div>
+</div>
+
+<!-- ===== 01 ===== -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span> 引例：这束激光该画在哪</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><strong>场景</strong>：小车顶部装了一台 2D 激光雷达，正前方 30cm 处有一个障碍物——这是<strong>相对雷达自己</strong>的说法（活在 <code>laser_frame</code>）。</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span><strong>问题</strong>：建图算法、导航算法、机械臂抓取……它们需要的都是<strong>相对车体中心</strong>（<code>base_link</code>）甚至<strong>相对世界原点</strong>（<code>map</code>）的坐标。30cm 的雷达读数，直接丢给建图节点，地图就歪了。</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span><strong>需求</strong>：必须有一个"翻译官"，随时回答——<em>"雷达系里的点 (30, 0)，换算到车体系是多少？换算到地图系又是多少？"</em></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span><strong>答案</strong>：ROS2 的 <strong>TF2（Transform Library）</strong>。它把机器人身上的每个部件定义为一个坐标系，维护一张<strong>"坐标系变换树"</strong>，任何两个坐标系之间都能算出变换关系。</div>
+  </div>
+  <div class="tip amber"><span class="lab">💡 核心定位</span>TF2 不是可有可无的辅助库——<strong>没有 TF2，多传感器融合、SLAM、导航、机械臂抓取全部无从谈起</strong>。它是"多坐标系数据能对齐"的地基。</div>
+</section>
+
+<!-- ===== 02 ===== -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span> 原理：TF2 树为什么长成一棵树</h2>
+
+  <h3>2.1 树状结构：只记"直接父子"，路径唯一</h3>
+  <p>TF2 把所有坐标系组织成一棵<strong>有根树（严格说是 DAG 的树形约束）</strong>：每个坐标系最多一个父坐标系。机器人上的典型结构：</p>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">ROOT · 世界</div><div class="kt">map</div><p>全局地图原点，由 SLAM / 定位节点维护，漂移会被不断修正。</p></div>
+    <div class="kcard"><div class="kd">里程计系</div><div class="kt">odom</div><p>轮式里程计原点，短时间平滑但会长期漂移。</p></div>
+    <div class="kcard"><div class="kd">车体系</div><div class="kt">base_link</div><p>机器人本体中心，一切传感器都最终挂到它身上。</p></div>
+    <div class="kcard"><div class="kd">传感器系</div><div class="kt">laser_frame / camera_link</div><p>雷达、相机各自的测量原点，安装位置即静态变换。</p></div>
+  </div>
+
+  <h3>2.2 查询算法：沿树上溯，O(深度)</h3>
+  <ol>
+    <li>要算 <code>A → B</code>，先沿树向上回溯，把 A 到<strong>根</strong>路径上所有变换收集起来；</li>
+    <li>再从 B 沿树回溯到根；</li>
+    <li>找到两条路径的<strong>汇合点</strong>，沿途变换按逆序 / 顺序连乘，即得 A→B 的合成变换。</li>
+  </ol>
+  <div class="tip tealb"><span class="lab">✦ 为什么禁止成环？</span>如果 A→B、B→C、C→A 构成环，汇合点算法将<strong>永远找不到终止</strong>，查询陷入死循环。所以 TF2 强制<strong>树形结构、每个 frame 只能有一个 parent</strong>——这是查询能在有限步内完成的前提。（发布两个节点抢同一个 child frame 的 parent， actively 报错警告。）</div>
+
+  <h3>2.3 两条话题，两种更新策略</h3>
+  <table>
+    <tr><th>话题</th><th>内容</th><th>QoS / 频率</th><th>设计意图</th></tr>
+    <tr><td><code>/tf</code></td><td><strong>动态</strong>变换（odom→base_link、机械臂关节角…）</td><td>10 ~ 100 Hz 普通 Reliable + KeepLast(100)</td><td>量大、值一直在变，<strong>新订阅者只需拿到"最新值"</strong>，历史旧值没有意义 → KeepLast 限深</td></tr>
+    <tr><td><code>/tf_static</code></td><td><strong>静态</strong>变换（雷达到车体的安装位姿…）</td><td><strong>一次性发布</strong>，QoS = <strong>Transient Local</strong>（latch）</td><td>装好就不变；<strong>后启动的节点也必须能拿到</strong> → 靠 Transient Local "重放"最后一条给新订阅者（同 ROS2 参数的 <code>transient_local</code> 语义）</td></tr>
+  </table>
+  <div class="tip violet"><span class="lab">🔁 和 EXP-10 参数的呼应</span><code>/tf_static</code> 的 latch 语义与"参数默认值能被后加入节点读到"是同一套 QoS 机制。这就是"原理可迁移"——学透 QoS，这里的Latch行为一看就懂。</div>
+
+  <h3>2.4 谁来发布？</h3>
+  <ul>
+    <li><strong>静态</strong>：自己写死的安装位姿 → 用 <code>StaticTransformBroadcaster</code> 发一次即可（驱动包通常已经发好）；</li>
+    <li><strong>动态</strong>：里程计节点发 <code>odom→base_link</code>，SLAM 发 <code>map→odom</code>，URDF 关节状态发 <code>base_link→各 link</code>——<strong>你不需要自己算全树，只需发布"你负责的那一段边"</strong>，其余由系统自动合成。</li>
+  </ul>
+</section>
+
+<!-- ===== 03 ANIM ===== -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span> 动画：一次 TF 查询的全过程</h2>
+  <p>下面动画演示：<strong>激光点 (0.3, 0) m 位于 laser_frame</strong>，如何沿树两级跳，换算到 map 系。粒子代表"坐标数据在树上的合成流向"。</p>
+
+  <div class="anim-box">
+    <svg viewBox="0 0 760 340" width="760" height="340" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f59e0b"/><stop offset="1" stop-color="#7c3aed"/>
+        </linearGradient>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#fbbf24"/>
+        </marker>
+      </defs>
+      <!-- edges -->
+      <line x1="660" y1="70" x2="660" y2="140" stroke="url(#edge)" stroke-width="2.5" marker-end="url(#arr)"/>
+      <line x1="660" y1="195" x2="660" y2="265" stroke="url(#edge)" stroke-width="2.5" marker-end="url(#arr)"/>
+      <line x1="615" y1="167" x2="330" y2="167" stroke="#334155" stroke-width="2" stroke-dasharray="6 5"/>
+      <!-- transform labels on edges -->
+      <rect x="452" y="78" width="176" height="26" rx="7" fill="#1e293b" stroke="#f59e0b" stroke-opacity=".5"/>
+      <text x="540" y="96" fill="#fbbf24" font-size="12.5" text-anchor="middle" font-family="Consolas,monospace">T_map←base (定位输出)</text>
+      <rect x="452" y="205" width="176" height="26" rx="7" fill="#1e293b" stroke="#7c3aed" stroke-opacity=".6"/>
+      <text x="540" y="223" fill="#c4b5fd" font-size="12.5" text-anchor="middle" font-family="Consolas,monospace">T_base←laser (静态标定)</text>
+      <!-- nodes -->
+      <g>
+        <rect x="590" y="30" width="140" height="46" rx="10" fill="#0f172a" stroke="#f59e0b" stroke-width="1.6"/>
+        <text x="660" y="52" fill="#fff" font-size="15" text-anchor="middle" font-weight="bold">map</text>
+        <text x="660" y="68" fill="#94a3b8" font-size="10.5" text-anchor="middle">世界原点</text>
+      </g>
+      <g>
+        <rect x="590" y="146" width="140" height="46" rx="10" fill="#0f172a" stroke="#fb923c" stroke-width="1.6"/>
+        <text x="660" y="168" fill="#fff" font-size="15" text-anchor="middle" font-weight="bold">base_link</text>
+        <text x="660" y="184" fill="#94a3b8" font-size="10.5" text-anchor="middle">车体中心</text>
+      </g>
+      <g>
+        <rect x="590" y="270" width="140" height="46" rx="10" fill="#0f172a" stroke="#7c3aed" stroke-width="1.6"/>
+        <text x="660" y="292" fill="#fff" font-size="15" text-anchor="middle" font-weight="bold">laser_frame</text>
+        <text x="660" y="308" fill="#94a3b8" font-size="10.5" text-anchor="middle">雷达系 · 静态</text>
+      </g>
+      <!-- point cloud sample -->
+      <rect x="60" y="128" width="250" height="78" rx="12" fill="#0b0f17" stroke="#334155"/>
+      <text x="185" y="152" fill="#94a3b8" font-size="12" text-anchor="middle">laser_frame 里测到的障碍点</text>
+      <text x="185" y="180" fill="#4ade80" font-size="17" text-anchor="middle" font-family="Consolas,monospace">p = (0.30, 0.00)</text>
+
+      <!-- particle: laser -> base -->
+      <circle r="7" fill="#fbbf24">
+        <animate attributeName="cx" values="330;615" dur="3.4s" repeatCount="indefinite" keyTimes="0;1" calcMode="spline" keySplines=".4 0 .6 1"/>
+        <animate attributeName="cy" values="167;182" dur="3.4s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0;1;1;0" dur="3.4s" repeatCount="indefinite" keyTimes="0;.15;.85;1"/>
+      </circle>
+      <!-- particle: base -> map -->
+      <circle r="7" fill="#f472b6">
+        <animate attributeName="cx" values="660;660" dur="3.4s" repeatCount="indefinite"/>
+        <animate attributeName="cy" values="265;70" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines=".4 0 .6 1"/>
+        <animate attributeName="opacity" values="0;0;1;1;0" dur="3.4s" repeatCount="indefinite" keyTimes="0;.3;.45;.9;1"/>
+      </circle>
+      <!-- result flash -->
+      <rect x="60" y="240" width="330" height="58" rx="12" fill="#0b0f17" stroke="#f59e0b" stroke-opacity=".6">
+        <animate attributeName="stroke-opacity" values="0;.8;.8;0" dur="3.4s" repeatCount="indefinite"/>
+      </rect>
+      <text x="225" y="266" fill="#fbbf24" font-size="12.5" text-anchor="middle">合成变换 buffer.lookup_transform() 结果</text>
+      <text x="225" y="288" fill="#fff" font-size="15" text-anchor="middle" font-family="Consolas,monospace">p_map ≈ (x, y) ← 两级连乘</text>
+      <!-- cycle caption -->
+      <text x="380" y="330" fill="#64748b" font-size="11.5" text-anchor="middle">3.4s / 轮：laser_frame 上溯 → base_link 上溯 → 合成 → 输出到 map 系</text>
+    </svg>
+    <div class="anim-cap">图 19-1　TF 查询 = 沿树收集"父子边"再连乘；任意两个框之间只有一条唯一路径</div>
+  </div>
+
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">静态边</div><div class="kt">base_link → laser_frame</div><p>出厂安装决定，一次发布，靠 /tf_static 的 Transient Local 让后加入节点也能读到。</p></div>
+    <div class="kcard"><div class="kd">动态边</div><div class="kt">map → odom → base_link</div><p>定位/里程计 10-100Hz 持续刷新，新订阅者只取最新一条（KeepLast）。</p></div>
+    <div class="kcard"><div class="kd">合成责任</div><div class="kt">谁都不用管全树</div><p>每个节点只发布自己那一段边，跨 4 层的变换交给 TF2 自动连乘。</p></div>
+    <div class="kcard"><div class="kd">时效对齐</div><div class="kt">时间戳插值</div><p>查询带时间戳 t 时，对两条动态边在 t 附近做插值/外推，保证"同一时刻"的几何一致。</p></div>
+  </div>
+</section>
+
+<!-- ===== 04 四元数 ===== -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span> 原理专题：旋转为什么要用四元数</h2>
+
+  <h3>4.1 欧拉角的三宗罪</h3>
+  <table>
+    <tr><th>表示法</th><th>表达</th><th>问题</th></tr>
+    <tr><td>欧拉角 (roll, pitch, yaw)</td><td>直观，人眼能理解"偏航 30°"</td><td>① <strong>万向节死锁</strong>：俯仰 ±90° 时丢失一个自由度；② 插值不均匀，动画打结；③ 顺序敏感（ZYX vs XYZ 结果不同）</td></tr>
+    <tr><td>旋转矩阵 3×3</td><td>9 个数，乘法直接复合</td><td>冗余（只有 3 个自由度却用 9 个数），累积浮点误差后可能不再正交，需周期性重新正交化</td></tr>
+    <tr><td><strong>四元数 q=(x,y,z,w)</strong></td><td>4 个数，无奇点</td><td><strong>ROS2 的标准选择</strong>：万向节死锁不存在、插值用 Slerp 均匀平滑、复合只要哈密顿乘法</td></tr>
+  </table>
+
+  <h3>4.2 2D 平面旋转的半角公式（本实验只需 yaw）</h3>
+  <p>机器人在地面打转，本质是绕 Z 轴转 <strong>yaw</strong> 角。此时四元数退化为两个非零分量：</p>
+<pre><span class="c"># 绕 Z 轴旋转 yaw：四元数只有 z、w 两个分量非零</span>
+z = sin(yaw / 2)
+w = cos(yaw / 2)<span class="c">   # x = y = 0</span>
+
+<span class="c"># yaw = 90°  ⇒  z = sin45° = 0.7071,  w = cos45° = 0.7071</span>
+<span class="c"># yaw = 180° ⇒  z = sin90° = 1.0,     w = cos90° = 0.0</span>
+<span class="c"># 反解：yaw = 2·atan2(z, w)   ← 看代码时反过来算角度就用它</span></pre>
+  <div class="tip amber"><span class="lab">💡 记忆锚点</span>"<strong>半角</strong>"是关键：四元数存的是 yaw/<strong>2</strong> 的三角函数。验证：yaw=180° 时 w=0、z=1，正好是"转满半圈的信息被编码在半角空间里"。看别人的代码看到 <code>atan2(z, w) * 2</code> 就是在从四元数反求偏航角。</div>
+
+  <h3>4.3 在 ROS2 消息里长什么样</h3>
+  <p><code>geometry_msgs/msg/Transform</code> = <code>translation(x,y,z)</code> + <code>rotation(x,y,z,w)</code>；<code>Quaternion</code> 四个字段顺序固定为 <strong>x, y, z, w</strong>（不是 w,x,y,z！阅读时留心）。</p>
+</section>
+
+<!-- ===== 05 INTERACTIVE ===== -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span> 交互实验台：四元数换算 + TF 链查询</h2>
+  <p>上面两块原理，直接上手玩：①拖动偏航角，观察四元数分量与朝向实时变化；②自选两端坐标系，看 TF2 如何拼出查询路径。</p>
+
+  <div class="ix-panel">
+    <div class="ix-title">IX-19A · 四元数 ↔ 偏航角 实时换算台</div>
+    <div class="quad-wrap">
+      <div>
+        <svg viewBox="0 0 240 240" width="240" height="240">
+          <circle cx="120" cy="120" r="96" fill="#0b0f17" stroke="#334155" stroke-width="1.5"/>
+          <circle cx="120" cy="120" r="72" fill="none" stroke="#1e293b" stroke-dasharray="3 6"/>
+          <line x1="24" y1="120" x2="216" y2="120" stroke="#334155"/>
+          <line x1="120" y1="24" x2="120" y2="216" stroke="#334155"/>
+          <text x="206" y="112" fill="#64748b" font-size="11">x</text>
+          <text x="126" y="34" fill="#64748b" font-size="11">y</text>
+          <text x="128" y="210" fill="#4ade80" font-size="11">yaw 正方向</text>
+          <!-- heading arrow -->
+          <g id="hdgArrow">
+            <line x1="120" y1="120" x2="210" y2="120" stroke="#fbbf24" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M210,120 l-12,-6 l0,12 Z" fill="#fbbf24"/>
+            <circle cx="120" cy="120" r="5.5" fill="#fbbf24"/>
+          </g>
+          <text x="120" y="176" fill="#94a3b8" font-size="12.5" text-anchor="middle" font-family="Consolas,monospace" id="yawArcTxt">yaw = 0°</text>
+        </svg>
+      </div>
+      <div>
+        <div class="ctl-row">
+          <label class="ctl">yaw 偏航角（°）<br><input type="range" id="yawR" min="-180" max="180" value="30" step="1" style="min-width:210px"></label>
+          <span class="ctl" style="min-width:66px;font-size:19px;color:#fbbf24;font-weight:700" id="yawV">30</span>
+        </div>
+        <div class="ctl-row">
+          <span class="ctl">预设</span>
+          <button class="btn ghost" onclick="setYaw(0)">0°</button>
+          <button class="btn ghost" onclick="setYaw(90)">90°</button>
+          <button class="btn ghost" onclick="setYaw(180)">180°</button>
+          <button class="btn ghost" onclick="setYaw(-90)">-90°</button>
+        </div>
+        <div class="io" id="quadOut"></div>
+      </div>
+    </div>
+    <div style="margin-top:14px;font-size:12px;color:#64748b">观察点：yaw=180° 时 w 变为 0、|z| 最大 = 1 —— 正是半角公式在编码"转了半圈"；反解验证 yaw = 2·atan2(z,w)。</div>
+  </div>
+
+  <div class="ix-panel">
+    <div class="ix-title">IX-19B · TF 链查询沙盘（选两端 · 看拼接路径）</div>
+    <div class="ctl-row">
+      <label class="ctl">起点坐标系 source<br>
+        <select id="tfSrc">
+          <option value="map">map（世界）</option>
+          <option value="odom">odom（里程计）</option>
+          <option value="base_link" selected>base_link（车体）</option>
+          <option value="laser">laser_frame（雷达）</option>
+          <option value="camera">camera_link（相机）</option>
+        </select></label>
+      <label class="ctl">目标坐标系 target<br>
+        <select id="tfTgt">
+          <option value="map">map（世界）</option>
+          <option value="odom">odom（里程计）</option>
+          <option value="base_link">base_link（车体）</option>
+          <option value="laser" selected>laser_frame（雷达）</option>
+          <option value="camera">camera_link（相机）</option>
+        </select></label>
+      <button class="btn" onclick="tfLookup()">lookup_transform()</button>
+    </div>
+    <div class="io" id="tfOut"><span class="dim">两坐标系相同或选择无效时也可尝试——TF2 会告诉你"同一坐标系，恒等变换"。</span></div>
+  </div>
+</section>
+
+<!-- ===== 06 代码精讲 ===== -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span> 代码精讲：发布者与查询者</h2>
+
+  <h3>6.1 发布静态变换（实操 1 要写的）</h3>
+<pre><span class="b">import</span> rclpy
+<span class="b">from</span> rclpy.node <span class="b">import</span> Node
+<span class="b">from</span> geometry_msgs.msg <span class="b">import</span> TransformStamped
+<span class="b">from</span> tf2_ros <span class="b">import</span> StaticTransformBroadcaster
+
+<span class="b">class</span> StaticTfPub(Node):
+    <span class="b">def</span> <span class="g">__init__</span>(self):
+        <span class="g">super</span>().__init__(<span class="y">'static_tf_pub'</span>)
+        <span class="c"># ① StaticTransformBroadcaster —— 内部自动用 /tf_static + TransientLocal</span>
+        self.pub = StaticTransformBroadcaster(self)
+        self.send()
+
+    <span class="b">def</span> <span class="g">send</span>(self):
+        t = TransformStamped()
+        t.header.stamp = self.get_clock().now().to_msg()
+        t.header.frame_id  = <span class="y">'base_link'</span>   <span class="c"># 父</span>
+        t.child_frame_id   = <span class="y">'laser_frame'</span>  <span class="c"># 子（只能有一个父！）</span>
+        t.transform.translation.x = <span class="y">0.10</span>    <span class="c"># 雷达在车体前方 10cm</span>
+        t.transform.translation.z = <span class="y">0.20</span>    <span class="c"># 高度 20cm（TF2 支持 3D）</span>
+        <span class="c"># 无旋转 ⇒ 单位四元数 (x=0, y=0, z=0, w=1)</span>
+        t.transform.rotation.w = <span class="y">1.0</span>
+        self.pub.sendTransform(t)   <span class="c"># 只发这一次，后加入的订阅者也能收到</span></pre>
+
+  <h3>6.2 查询变换（下游节点的标准姿势）</h3>
+<pre><span class="b">from</span> tf2_ros <span class="b">import</span> Buffer, TransformListener
+
+self.buffer = Buffer()
+self.listener = TransformListener(self.buffer, self)   <span class="c"># 监听 /tf + /tf_static 填充 buffer</span>
+
+<span class="c"># 查询 laser_frame 的数据 → map 系；超时 1.0s（树还没齐时阻塞等待）</span>
+t = self.buffer.lookup_transform(
+    <span class="y">'map'</span>, <span class="y">'laser_frame'</span>,
+    rclpy.time.Time(),      <span class="c"># Time()=最新时刻；传具体时间则做历史插值</span>
+    timeout=rclpy.duration.Duration(seconds=<span class="y">1.0</span>))
+tx = t.transform.translation.x
+qz, qw = t.transform.rotation.z, t.transform.rotation.w
+yaw = <span class="y">2.0</span> * math.atan2(qz, qw)   <span class="c"># 第 4 节半角公式反解</span></pre>
+  <div class="tip tealb"><span class="lab">✦ 设计看点</span>① 查不到时不是崩溃而是<strong>超时等待</strong>——因为发布者可能后启动；② <code>TransformListener</code> 就是普通的订阅节点，把两条话题的值缓存进 <code>Buffer</code>；③ 发布者只发一条静态边，查询者却能跨整棵树——<strong>解耦靠的就是 /tf 这对公共话题</strong>，和 EXP-06 的话题解耦完全同构。</div>
+</section>
+
+<!-- ===== 07 实操1 ===== -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span> 实操 1 · 创建 tf2_demo 包并发布静态变换</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>进入工作空间并创建包（依赖 <code>tf2_ros</code> 负责发布/监听，<code>tf2_tools</code> 提供 view_frames 等调试工具）：<pre>cd ~/ros2_ws/src
+ros2 pkg create tf2_demo \
+  --build-type ament_python \
+  --dependencies rclpy tf2_ros tf2_tools geometry_msgs \
+  --destination-directory .</pre></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span>把 <strong>6.1 的 StaticTfPub</strong> 写入 <code>tf2_demo/static_tf_pub.py</code>，加执行权限；在 <code>setup.py</code> 的 <code>entry_points</code> 注册 <code>static_tf_pub = tf2_demo.static_tf_pub:main</code>（同 EXP-05 要求）。</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span>补一个 <code>main()</code>：<pre><span class="b">def</span> <span class="g">main</span>(args=<span class="b">None</span>):
+    rclpy.init(args=args)
+    node = StaticTfPub()
+    rclpy.spin(node)      <span class="c"># spin 保持节点存活，静态消息靠 QoS 重放</span>
+    node.destroy_node()
+    rclpy.shutdown()</pre></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span>构建并 source，启动发布者：<pre>cd ~/ros2_ws &amp;&amp; colcon build --packages-select tf2_demo
+<span class="b">.</span> install/setup.bash
+ros2 run tf2_demo static_tf_pub</pre></div>
+  </div>
+</section>
+
+<!-- ===== 08 实操2 ===== -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span> 实操 2 · 三种手段验证 TF 树</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><strong>命令行直查</strong>——对应第 3 节动画的一次 lookup：<pre>ros2 run tf2_ros tf2_echo base_link laser_frame
+<span class="c"># 输出 Translation: [0.1, 0.0, 0.2]  Rotation: [0,0,0] (x,y,z,w)</span>
+<span class="c"># 至 Ctrl+C 前会持续刷新（动态边场景下数值会变）</span></pre>能打印出变换矩阵 = 链路可用。</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span><strong>导出整棵树</strong>——生成 PDF 树状图（离线图片在 <code>~/.ros</code> 下，名为 <code>frames.pdf</code>）：<pre>ros2 run tf2_tools view_frames
+<span class="c"># 订阅 /tf、/tf_static 5 秒 → 打印每个 frame 的发布频率与超时告警 → 生成 frames.pdf</span></pre>检查：是否为<strong>合法树形</strong>（无环、每个 child 只有一个 parent）。</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span><strong>RViz 可视化</strong>——启动 <code>rv2</code>，<code>Add → By display type → TF</code>，勾选 <strong>Frames / Names / Arrows</strong>；若同时播传感器数据（如选用真实小车则执行 <code>ros2 launch car_common car_bringup.launch.py</code>），把 Fixed Frame 设为 <code>map</code>，观察点云/激光是否落在车体与地图的正确相对位置——<strong>对不上 = TF 有问题</strong>。</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span><strong>纯软件自检（可选）</strong>——再写一个 <code>tf2_echo</code> 风格的查询节点（6.2 代码），打印 base_link→laser_frame 的 yaw 反解值，应与发布的平移/零旋转一致。</div>
+  </div>
+  <div class="tip amber"><span class="lab">💡 从"验证"学"调试"</span>排查 TF 的三板斧就是本节顺序：<strong>tf2_echo 查单边 → view_frames 查全树 → RViz 查最终效果</strong>。实际项目里 90% 的"数据对不齐"，用这三步五分钟内能定位到是哪条边断了/错了。</div>
+</section>
+
+<!-- ===== 09 ===== -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span> 注意事项与验收</h2>
+  <h3>⚠️ 注意事项</h3>
+  <table>
+    <tr><th style="width:170px">类别</th><th>说明</th></tr>
+    <tr><td><strong>禁环防空转</strong></td><td>TF2 是有根树，<strong>严禁成环</strong>；同一 child_frame 被两个节点配不同 parent 发布时会报错警告（"frame conflicts"）。</td></tr>
+    <tr><td><strong>时间戳一致</strong></td><td>动态查询默认按<strong>最新时刻</strong>对齐；多源数据融合时显式传时间戳，否则插值错位会出现"点在地图上漂"。</td></tr>
+    <tr><td><strong>静态用对 Broadcaster</strong></td><td>静态变换务必用 <code>StaticTransformBroadcaster</code>（/tf_static + latch）。用普通 TransformBroadcaster 循环重发静态值 → 占带宽、后加入节点仍可能漏。</td></tr>
+    <tr><td><strong>四元数单位化</strong></td><td>rotation 必须满足 x²+y²+z²+w²=1；(0,0,0,1) 表示零旋转；自算角度后记得转四元数再塞进消息。</td></tr>
+    <tr><td><strong>牢记报错就在现场</strong></td><td><code>Lookup would require extrapolation</code> = 时间戳超出缓冲窗口（常见于缓冲太短或时间不同步），先检查各节点 <code>use_sim_time</code> 是否一致。</td></tr>
+  </table>
+
+  <h3>✅ 验收标准</h3>
+  <ul class="check">
+    <li>tf2_demo 包编译通过，<code>ros2 run tf2_demo static_tf_pub</code> 正常启动无异常</li>
+    <li><code>tf2_echo base_link laser_frame</code> 输出平移 [0.1, 0, 0.2]、旋转单位四元数</li>
+    <li><code>view_frames</code> 生成 frames.pdf，肉眼确认树形合法（base_link→laser_frame 单父、无环）</li>
+    <li>独立终端 <code>ros2 topic echo /tf_static --qos-durability transient_local</code> 能读到静态变换消息</li>
+    <li>RViz TF display 显示坐标轴与箭头，各 frame 标签正确</li>
+    <li>页面交互台：拖 yaw 到 180° 能说出 w=0 的原因；链查询能报出跨 3 层的拼接路径</li>
+  </ul>
+</section>
+
+<!-- ===== 10 ===== -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span> 实验总结与思考</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">成果</div><div class="kt">发布并验证了一条静态 TF 边</div><p>tf2_demo 包 + StaticTransformBroadcaster，三级验证手段（echo / view_frames / RViz）全通过。</p></div>
+    <div class="kcard"><div class="kd">原理</div><div class="kt">树 + 连乘 + 缓冲</div><p>TF2 = 有根树（无环保证查询终止）+ 边的连乘合成 + 带时间戳的 Buffer 缓冲插值。</p></div>
+    <div class="kcard"><div class="kd">QoS</div><div class="kt">动态 KeepLast vs 静态 Transient Local</div><p>/tf 要"最新"、/tf_static 要"后到也有"——同一套 QoS 机制的两种业务化用法。</p></div>
+    <div class="kcard"><div class="kd">迁移</div><div class="kt">四元数反解 yaw</div><p>2·atan2(z, w) 是读码必备；机械臂姿态、相机位姿都是同一套四元数。</p></div>
+  </div>
+  <h3>🧠 思考题</h3>
+  <ol>
+    <li>为什么 <code>/tf_static</code> 只需要发一次，而后启动的 <code>view_frames</code> 依然能看到这条边？如果把它改成默认 QoS（KeepLast、Volatile），会出现什么现象？</li>
+    <li>四元数半角公式里，为什么是 yaw/<strong>2</strong>？当 yaw 从 179°转到 181°时，(z, w) 数值发生了什么变化，这对纯数值插值意味着什么？（提示：对照欧拉角插值的跳变问题）</li>
+    <li>如果里程计节点把 <code>odom→base_link</code> 发到了 <code>/tf_static</code> 上，车开动后 TF 树会发生什么？从 QoS 语义解释。</li>
+  </ol>
+</section>
+
+<!-- expnav -->
+<div class="expnav">
+  <a class="prev" href="../exp-18-metapackage/index.html"><span class="lb">← 上一篇</span>EXP-18 · 元功能包与一键部署</a>
+  <a class="next" href="../exp-20-urdf/index.html"><span class="lb">下一篇 →</span>EXP-20 · URDF 机器人建模</a>
+</div>
+
+<footer>
+  <span>具身智能培训课程 · 机器人 ROS2 应用与开发 · EXP-19</span>
+  <span>硬件：实验箱 B2 / 小车 C1 · 参考核 ros_practice_lab_guide.md 实验19</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+/* ---------- scrollspy ---------- */
+const secs=[...document.querySelectorAll('section.blk')];
+const links=[...document.querySelectorAll('.side a[href^="#"]')];
+function spy(){
+  let cur=secs[0].id;
+  for(const s of secs){ if(s.getBoundingClientRect().top<140) cur=s.id; }
+  links.forEach(a=>a.classList.toggle('now', a.getAttribute('href')==='#'+cur));
+}
+window.addEventListener('scroll',spy,{passive:true}); spy();
+
+/* ---------- reveal ---------- */
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target)}}),{threshold:.10});
+document.querySelectorAll('.blk').forEach(el=>io.observe(el));
+
+/* ---------- IX-19A quaternion ---------- */
+const yawR=document.getElementById('yawR'),yawV=document.getElementById('yawV'),
+      arrow=document.getElementById('hdgArrow'),arcTxt=document.getElementById('yawArcTxt'),
+      quadOut=document.getElementById('quadOut');
+function fmt(v){ // avoid -0
+  const s=(Math.abs(v)<1e-9?0:v).toFixed(4);
+  return s;
+}
+function updQuad(){
+  const yaw=parseInt(yawR.value,10);
+  yawV.textContent=yaw;
+  const r=yaw*Math.PI/180;
+  const z=Math.sin(r/2), w=Math.cos(r/2);
+  arrow.setAttribute('transform',`rotate(${-yaw} 120 120)`); // svg y down ⇒ negate
+  arcTxt.textContent=`yaw = ${yaw}°`;
+  const back=2*Math.atan2(z,w)*180/Math.PI;
+  quadOut.innerHTML=
+`geometry_msgs/Quaternion
+  x = 0.0000
+  y = 0.0000
+`+
+`<span class="ok">  z = ${fmt(z)}</span>\n`+
+`<span class="ok">  w = ${fmt(w)}</span>\n`+
+`----------------------------------\n`+
+`半角公式:  z=sin(${yaw}°/2), w:cos(${yaw}°/2)\n`+
+`反解验证:  2·atan2(z,w) = <span class="warn">${back.toFixed(1)}°</span>`+
+(w===0?`\n<span class="bad">▸ w=0：恰好 180°，四元数"转满半圈"的极值点</span>`:``);
+}
+yawR.addEventListener('input',updQuad);
+function setYaw(v){yawR.value=v;updQuad();}
+updQuad();
+
+/* ---------- IX-19B TF chain ---------- */
+/* tree: map->odom->base_link->{laser,camera} */
+const PARENT={map:null,odom:'map',base_link:'odom',laser:'base_link',camera:'base_link'};
+const LABEL={map:'map',odom:'odom',base_link:'base_link',laser:'laser_frame',camera:'camera_link'};
+const EDGE={ 'odom->map':'T_map←odom (SLAM 修正)','base_link->odom':'T_odom←base_link (里程计)',
+             'laser->base_link':'T_base←laser (静态标定)','camera->base_link':'T_base←camera (静态标定)' };
+function pathToRoot(f){const p=[];let cur=f,guard=0;while(cur&&guard++<10){p.push(cur);cur=PARENT[cur];}return p;}
+function tfLookup(){
+  const src=document.getElementById('tfSrc').value,tgt=document.getElementById('tfTgt').value;
+  const out=document.getElementById('tfOut');
+  if(src===tgt){
+    out.innerHTML=`<span class="ok">✓ 源与目标相同 → 恒等变换 I（平移 0,0,0 / 单位四元数）</span>\n<span class="dim">TF2 直接返回，不查树。</span>`;return;
+  }
+  const pa=pathToRoot(src), pb=pathToRoot(tgt);
+  const setB=new Set(pb);
+  let meet=null;
+  for(const f of pa){ if(setB.has(f)){meet=f;break;} }
+  if(!meet){ out.innerHTML=`<span class="bad">✗ 两坐标系不在同一棵树上（孤立子树）</span>`;return; }
+  const up=pa.slice(0,pa.indexOf(meet));      // src … → meet
+  const down=pb.slice(0,pb.indexOf(meet));    // tgt … → meet
+  let html=`<span class="ok">✓ 汇合点 = ${LABEL[meet]}</span>，拼接路径：\n`;
+  html+=`  <span class="warn">${LABEL[src]}</span>`;
+  for(let i=0;i<up.length;i++){
+    const child=up[i];
+    if(i>0||true){
+      const key=`${child}->${PARENT[child]}`;
+      html+=`  ←(${EDGE[key]||('T_'+PARENT[child]+'←'+LABEL[child])})→  <span class="warn">${LABEL[PARENT[child]]}</span>`;
+    }
+    if(PARENT[child]===meet&&i===up.length-1) break;
+  }
+  // simpler display: walk src up to meet
+  html=`<span class="ok">✓ 汇合点 frame = ${LABEL[meet]}</span>\n查询路径（沿树上溯 + 连乘逆序下溯）：\n`;
+  html+=`  <span class="warn">${LABEL[src]}</span>`;
+  let cur=src;
+  while(cur!==meet){
+    const par=PARENT[cur];
+    const key=`${cur}->${par}`;
+    html+=`\n    ↓ ${EDGE[key]||('T_'+LABEL[par]+'←'+LABEL[cur])}`;
+    html+=`\n  <span class="warn">${LABEL[par]}</span>`;
+    cur=par;
+  }
+  cur=tgt;
+  const chain=[];
+  while(cur!==meet){ chain.push(cur); cur=PARENT[cur]; }
+  for(let i=chain.length-1;i>=0;i--){
+    const key=`${chain[i]}->${meet===chain[i]?meet:PARENT[chain[i]]}`;
+    // down-hop: from parent toward tgt — invert edge notation
+    const from=PARENT[chain[i]];
+    html+=`\n    ↓ 取逆 T_${LABEL[chain[i]]}←${LABEL[from]}`;
+    html+=`\n  <span class="warn">${LABEL[chain[i]]}</span>`;
+  }
+  html+=`\n────────────────────────\n`;
+  html+=`深度 = ${up.length}+${down.length} = <span class="warn">${up.length+down.length}</span> 跳`+
+        `<span class="dim">（O(深度) 连乘，树形保证有界）</span>`;
+  out.innerHTML=html;
+}
+</script>
+</body>
+</html>
