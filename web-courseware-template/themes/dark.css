@@ -1,0 +1,24 @@
+/* 深色科技 —— 弱光环境/大屏演示：荧光青 + 网格 */
+:root{
+  --bg-0:#0a0f1c;
+  --bg-1:#101a2e;
+  --bg-2:#16233d;
+  --text:#e8eef7;
+  --text-dim:#8fa3bf;
+  --accent:#00d4ff;
+  --accent-2:#4f8cff;
+  --accent-soft:rgba(0,212,255,.10);
+  --line:rgba(0,212,255,.15);
+  --line-strong:rgba(143,163,191,.30);
+  --card-line:rgba(0,212,255,.14);
+  --grid-line:rgba(79,140,255,.06);
+  --glow-1:rgba(0,212,255,.10);
+  --glow-2:rgba(79,140,255,.10);
+  --shadow:rgba(0,0,0,.45);
+  --bar-bg:rgba(10,15,28,.72);
+  --toc-bg:rgba(13,20,36,.96);
+  --scrim:rgba(4,8,16,.92);
+  --code-bg:#0b1220; --code-text:#cfe3ff; --code-dim:#5b7391; --kw:#ff7ab2; --str:#9dffa5;
+  --ok:#3ddc84; --ok-bg:rgba(61,220,132,.10);
+  --err:#ff5d6c; --err-bg:rgba(255,93,108,.10);
+}

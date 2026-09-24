@@ -1,0 +1,24 @@
+/* 浅蓝渐变 —— 教育风：柔和渐变底 + 白卡，适合长时间授课 */
+:root{
+  --bg-0:linear-gradient(160deg,#eaf2ff 0%,#f6fbff 45%,#eef7fb 100%);
+  --bg-1:#ffffff;
+  --bg-2:#e8f1ff;
+  --text:#132743;
+  --text-dim:#5c7189;
+  --accent:#1f6feb;
+  --accent-2:#3fb9d4;
+  --accent-soft:rgba(31,111,235,.09);
+  --line:rgba(31,111,235,.16);
+  --line-strong:rgba(19,39,67,.15);
+  --card-line:rgba(31,111,235,.18);
+  --grid-line:rgba(31,111,235,.05);
+  --glow-1:rgba(63,185,212,.14);
+  --glow-2:rgba(31,111,235,.12);
+  --shadow:rgba(19,39,67,.13);
+  --bar-bg:rgba(240,247,255,.85);
+  --toc-bg:rgba(240,247,255,.97);
+  --scrim:rgba(14,26,46,.84);
+  --code-bg:#122138; --code-text:#dbe8fb; --code-dim:#7f95b3; --kw:#ff7bb2; --str:#95f0ab;
+  --ok:#0f9d58; --ok-bg:rgba(15,157,88,.12);
+  --err:#e0453f; --err-bg:rgba(224,69,63,.10);
+}

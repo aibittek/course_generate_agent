@@ -363,8 +363,11 @@ if current_time - self.last_wakeup_time > 3.0:
 ### 2.5 实验现象
 
 **快速验证流程**:
-1. 确认 6 麦阵列插入 USB(出现 `/dev/ttyACM0` 和 `plughw:4,0/4,1`)
-2. 启动:`cd tools && python3 asr_test.py --mic-array`
+1. 设备确认
+   - **B2**（具身智能实验箱，含 XFM 6 麦阵列）：`/dev/ttyACM0` 出现，采集设备为 `plughw:4,0`
+     （XFM 声卡**仅提供采集通路**，不存在 `plughw:4,1`；播放由 XFM 套件的独立 USB 音箱卡 `plughw:3,0` 承担）
+   - **C1**（机器人小车，**无 XFM**，ES8388 板载麦克风）：录音/播放均为 `plughw:0,0`
+2. 启动:`cd tools && python3 asr_test.py --mic-array`（**B2**）；**C1** 无 XFM，去掉 `--mic-array`
 3. 唤醒:说"小飞小飞" → 终端打印 `✓ 检测到唤醒! 开始语音识别...`
 4. 说话:说"你好小飞同学" → 终端实时打印 `0:你好小飞同学` 增量结果
 5. 停顿 1.5s → 自动判定端点,打印完整 segment,segment_id 自增
@@ -772,7 +775,8 @@ if is_endpoint:
 > **源码**：`ros2_ws/src/xflz_eai_car1/interaction/car1_speech/tools/tts_test.py`
 > **主命令**：`python3 tts_test.py --text "你好，欢迎使用语音合成"`
 > **播放验证**：`python3 audio_test.py --mic-array --mode play /tmp/tts_output.wav`
-> **平台**：具身智能实验箱 B2（含 XFM 6 麦阵列，**I2S 默认立体声通路**）
+> **平台**：**B2**（具身智能实验箱，含 XFM 6 麦阵列：采集 `plughw:4,0`，播放走 XFM 套件独立 USB 音箱卡 `plughw:3,0`）
+> 　　　　　**C1**（机器人小车，**无 XFM**：ES8388 板载麦克风，录音/播放均为 `plughw:0,0`，不加 `--mic-array`）
 
 ### 3.1 关联知识点
 
@@ -801,7 +805,7 @@ if is_endpoint:
 
 | 类别 | 配置 |
 |------|------|
-| 硬件 | 具身智能实验箱 B2（含 XFM 6 麦阵列，I2S 立体声通路） |
+| 硬件 | **B2**：具身智能实验箱（XFM 6 麦阵列，采集 `plughw:4,0` / 播放 `plughw:3,0`）；**C1**：机器人小车（无 XFM，ES8388 板载 `plughw:0,0`） |
 | OS | Ubuntu 22.04 + ROS2 Humble |
 | Python | 3.10 |
 | 核心库 | sherpa-onnx==1.10.0、numpy、subprocess |
@@ -837,7 +841,8 @@ python3 tts_test.py --text "你好，欢迎使用语音合成"
 
 # 2. 用 XFM 6 麦播放验证
 python3 audio_test.py --mic-array --mode play /tmp/tts_output.wav
-# 输出：[检测设备] 使用播放设备: plughw:4,0
+# B2 输出：[检测设备] 使用播放设备: plughw:3,0
+# C1 输出：[检测设备] 使用播放设备: plughw:0,0   （C1 无 XFM，改用 -D plughw:0,0，见注意事项）
 #       Playing: /tmp/tts_output.wav
 #       device=plughw:4,0
 #       Done.
@@ -1229,7 +1234,8 @@ python3 tts_test.py --text "播放验证测试"
 
 ```bash
 python3 audio_test.py --mic-array --mode play /tmp/tts_output.wav
-# [检测设备] 使用播放设备: plughw:4,0
+# B2: [检测设备] 使用播放设备: plughw:3,0
+# C1: [检测设备] 使用播放设备: plughw:0,0
 # [note] preprocessed: mono→stereo
 # Done.
 ```
@@ -1335,8 +1341,8 @@ python3 audio_test.py --mic-array --mode play /tmp/tts_output.wav
 ### 4.5 实验现象
 
 **快速验证流程**:
-1. 启动本地 RKLLM 服务：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/llm_server.py`
-2. 启动语音交互：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/voice_interaction.py --debug`
+1. 启动本地 RKLLM 服务：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_server.py`（注意 `tools/` 这一层；`voice_interaction.py` 默认已内嵌自动拉起，本步可省略）
+2. 启动语音交互：`python3 ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/voice_interaction.py --debug`（**C1**）；**B2**（含 XFM 6 麦阵列）需加 `--mic-array`
 3. 唤醒"小飞同学"
 4. 说话"现在几点了"
 5. 听到 TTS 播报"现在是下午3点25分"
@@ -1966,7 +1972,7 @@ if __name__ == "__main__":
 | ASR | sherpa-onnx OnlineRecognizer (Transducer) |
 | TTS | sherpa-onnx OfflineTts (Matcha-TTS + Vocos) |
 | LLM | RKLLM Qwen3.5-0.8B w4a16 g128（HTTP OpenAI 兼容 API） |
-| 串口 | /dev/ttyUSB0 @ 1M baud（机械臂控制） |
+| 串口 | **B2**：`/dev/stm32`（平台 udev 软链，指向 ttyUSB1）@ 1M baud；**C1**：`/dev/car1_stm32`（机械臂控制） |
 | 主入口 | `voice_interaction.py`（一般对话）+ `voice_tools_interaction.py`（工具调用） |
 
 ### 5.4 实验难度
@@ -1980,17 +1986,22 @@ if __name__ == "__main__":
 **快速验证流程（一般对话）**：
 
 ```bash
-# 终端 1：启动 RKLLM 服务（如果用 auto_start_llm=False 可省略）
+# 终端 1：启动 RKLLM 服务（voice_interaction.py 默认内嵌自动拉起，本步可省略）
+cd ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/
 python3 llm_server.py
 
-# 终端 2：启动语音交互（带 6 麦阵列）
+# 终端 2：启动语音交互
 cd ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/
+# B2（含 XFM 6 麦阵列）
 python3 voice_interaction.py --mic-array
+# C1（无 XFM，ES8388 板载）
+python3 voice_interaction.py
 # 输出：
 #   [Main] 检测讯飞麦克风阵列设备...
-#   [Main] 找到录音设备: plughw:4,0 (XFMDPV0018)
-#   [Main] 找到播放设备: plughw:4,0 (USB Audio Device)
-#   [Main] 使用麦克风阵列: 录音=plughw:4,0, 播放=plughw:4,0
+#   [Main] 找到录音设备: plughw:4,0 (XFM-DP-V0.0.18)
+#   [Main] 找到播放设备: plughw:3,0            ← B2：XFM 声卡仅采集，播放走套件 USB 音箱卡
+#   [Main] 使用麦克风阵列: 录音=plughw:4,0, 播放=plughw:3,0
+# （C1 无 XFM，不加 --mic-array，改用 ES8388 板载：录音/播放均为 plughw:0,0）
 #   [KWS] 设置唤醒词: 小飞小飞, 小飞同学, 你好小飞
 #   [LLM] 启动 LLM: Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm (端口 8080)
 #   [LLM] LLM 服务就绪
@@ -2018,10 +2029,14 @@ python3 voice_interaction.py --mic-array
 # 终端 1：同上
 # 终端 2：启动工具调用模式
 cd ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/
-python voice_tools_interaction.py --mic-array
+# B2（含 XFM 6 麦阵列）
+python3 voice_tools_interaction.py --mic-array
+# C1（无 XFM，ES8388 板载）
+python3 voice_tools_interaction.py
 # 输出（带 4 个机械臂模式）：
 #   [Main] 已加载 4 个机械臂模式: ['home', 'pick', 'place', 'work']
-#   [Main] 机械臂串口已打开: /dev/ttyUSB0 @ 1000000
+#   [Main] 机械臂串口已打开: /dev/stm32 @ 1000000        ← B2（udev 软链，指向 ttyUSB1）
+#   [Main] 机械臂串口已打开: /dev/car1_stm32 @ 1000000   ← C1
 #   ...
 
 # 唤醒："小飞小飞"
@@ -2553,9 +2568,13 @@ def move_servos(self, positions, duration=2.0):
 
 2. 启动工具调用模式：
    ```bash
-   python voice_tools_interaction.py --mic-array
+   # B2（含 XFM 6 麦阵列）
+   python3 voice_tools_interaction.py --mic-array
+   # C1（无 XFM，ES8388 板载）
+   python3 voice_tools_interaction.py
    # [Main] 已加载 4 个机械臂模式: ['home', 'pick', 'place', 'work']
-   # [Main] 机械臂串口已打开: /dev/ttyUSB0 @ 1000000
+   # [Main] 机械臂串口已打开: /dev/stm32 @ 1000000        ← B2
+   # [Main] 机械臂串口已打开: /dev/car1_stm32 @ 1000000   ← C1
    ```
 
 3. 语音触发（关键词路径）：
@@ -2769,7 +2788,7 @@ python3 demo_voice_interaction.py
 - ⚠️ **打断响应延迟与 KWS 实现相关** → XFM 硬件 < 100ms；sherpa-onnx KWS 约 200~500ms
 - ⚠️ **工具调用模式需配置 config_tools.yaml 中的 system_prompt** → 否则 LLM 不会输出 work/home/pick/place
 - ⚠️ **action.yaml 必须与脚本同目录** → 否则 `_load_tools` 失败，工具模式不可用
-- ⚠️ **机械臂串口默认 /dev/ttyUSB0 @ 1M baud** → 实际硬件可能不同，需修改 `ArmSerialController.__init__` 参数
+- ⚠️ **机械臂串口路径分平台** → B2 用 `/dev/stm32`（平台 udev 软链，指向 ttyUSB1），C1 用 `/dev/car1_stm32`；`ArmSerialController.__init__` 的默认值 `/dev/ttyUSB0` 在两个平台上都不对，需按上表改
 
 ### 5.8 实验总结
 
@@ -2796,7 +2815,7 @@ python3 demo_voice_interaction.py
 | KWS 唤醒不响应 | 唤醒词不在词表 | 检查 `kws.keywords_file` 或 XFM 默认词 |
 | ASR 误触发 KWS | 提示音回声污染 | 双轮 drain + 调大 `wait_time` |
 | 打断无响应 | interrupt_event 未传 worker | 检查 `_llm_tts_worker` 参数列表 |
-| 机械臂不动 | 串口未开/权限 | `chmod 666 /dev/ttyUSB0`；检查 `ArmSerialController.open()` |
+| 机械臂不动 | 串口未开/权限 | B2 `chmod 666 /dev/stm32` / C1 `chmod 666 /dev/car1_stm32`；检查 `ArmSerialController.open()` |
 | 工具模式 LLM 乱输出 | system_prompt 未配置 | 在 `config_tools.yaml` 中加 system_prompt |
 | 关键词误匹配 | 模糊匹配过宽 | 在 `fuzzy_map` 中加排除规则或调整优先级 |
 | 端到端延迟 > 5s | 图片/网络/模型加载 | 启用 `--fix-freq` 锁频；优化 action.yaml duration |

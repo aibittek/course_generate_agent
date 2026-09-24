@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>具身智能课程 · 教程首页</title>
+<style>
+:root{
+  --bg-base:#f8fafc;--bg-card:#fff;--bg-soft:#f1f5f9;--bg-tint:#eef4ff;
+  --border:#e2e8f0;--border-hover:#94a3b8;
+  --accent-blue:#2563eb;--accent-cyan:#0891b2;--accent-teal:#0d9488;
+  --accent-indigo:#4f46e5;--accent-amber:#d97706;--accent-rose:#e11d48;--accent-violet:#7c3aed;
+  --text-primary:#0f172a;--text-body:#334155;--text-secondary:#64748b;--text-muted:#94a3b8;
+  --shadow-glow:0 8px 24px rgba(37,99,235,.10);
+  --font-mono:'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text-body);
+  font-family:"Noto Sans CJK SC","PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% -5%,rgba(37,99,235,.05),transparent),
+    radial-gradient(ellipse 50% 35% at 100% 5%,rgba(13,148,136,.04),transparent);}
+/* Topbar */
+.topbar{position:sticky;top:0;z-index:50;height:60px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 40px;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--text-primary);font-size:15px}
+.logo .dot{width:9px;height:9px;border-radius:50%;background:var(--accent-blue);animation:pulse 2.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.nav a{font-size:13.5px;color:var(--text-secondary);text-decoration:none;margin-left:22px;transition:.28s}
+.nav a:hover{color:var(--accent-blue)}
+/* 产品介绍下拉 */
+.nav .dropdown{position:relative;display:inline-block}
+.nav .dropdown>.dd-toggle{font-size:13.5px;color:var(--text-secondary);text-decoration:none;cursor:pointer;
+  display:inline-flex;align-items:center;gap:4px;transition:.28s;border:none;background:none;font-family:inherit;padding:0}
+.nav .dropdown>.dd-toggle:hover{color:var(--accent-blue)}
+.nav .dropdown>.dd-toggle .arr{font-size:10px;transition:.25s}
+.nav .dropdown:hover>.dd-toggle .arr{transform:rotate(180deg)}
+.dd-menu{position:absolute;top:calc(100% + 14px);left:50%;transform:translateX(-50%) translateY(6px);
+  min-width:250px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 14px 36px rgba(15,23,42,.14);padding:6px;opacity:0;visibility:hidden;transition:.22s;z-index:60}
+.nav .dropdown:hover .dd-menu{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.dd-menu a{display:flex;flex-direction:column;gap:2px;padding:10px 13px;border-radius:8px;
+  font-size:13px;color:var(--text-body);text-decoration:none;transition:.2s;margin-left:0!important}
+.dd-menu a:hover{background:var(--bg-tint);color:var(--accent-blue)}
+.dd-menu a small{font-size:11.5px;color:var(--text-muted);font-weight:400}
+.dd-menu a+a{border-top:1px solid var(--border)}
+/* Hero */
+.hero{max-width:960px;margin:0 auto;padding:56px 40px 8px;text-align:center}
+.hero .eyebrow{display:inline-block;font-size:12.5px;letter-spacing:.14em;color:var(--accent-blue);
+  background:var(--bg-tint);border:1px solid #dbeafe;border-radius:100px;padding:5px 14px;font-family:var(--font-mono)}
+.hero h1{margin:18px 0 14px;font-size:40px;line-height:1.2;color:var(--text-primary);font-weight:800}
+.hero h1 .grad{background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan),var(--accent-teal));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{max-width:740px;margin:0 auto;font-size:16px;line-height:1.8;color:var(--text-secondary)}
+.badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:22px 0 0}
+.badge{font-size:12.5px;padding:5px 12px;border-radius:100px;background:var(--bg-card);
+  border:1px solid var(--border);color:var(--text-secondary)}
+/* Stats */
+.stats{max-width:960px;margin:34px auto 0;padding:0 40px}
+.stats-inner{display:flex;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden}
+.stat{flex:1;text-align:center;padding:20px 8px}
+.stat+.stat{border-left:1px solid var(--border)}
+.stat .num{font-size:34px;font-weight:800;color:var(--accent-blue)}
+.stat .num.c{color:var(--accent-cyan)}.stat .num.t{color:var(--accent-teal)}.stat .num.a{color:var(--accent-amber)}
+.stat .lbl{font-size:13px;color:var(--text-secondary);margin-top:3px}
+/* Section */
+.section{max-width:1200px;margin:0 auto;padding:54px 40px 6px;scroll-margin-top:72px}
+.section-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+.section-head h2{margin:0;font-size:22px;color:var(--text-primary);display:flex;align-items:center;gap:10px}
+.section-head h2 .idx{font-family:var(--font-mono);font-size:12px;font-weight:700;color:#fff;
+  background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border-radius:7px;padding:3px 9px}
+.section-head .sub{font-size:13.5px;color:var(--text-muted)}
+.section .desc{font-size:14px;color:var(--text-secondary);line-height:1.8;margin:8px 0 20px;max-width:860px}
+/* Cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px}
+.card{position:relative;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
+  padding:22px 24px 18px;display:flex;flex-direction:column;overflow:hidden;
+  transition:.28s cubic-bezier(.4,0,.2,1)}
+.card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;transform:scaleX(0);transform-origin:left;
+  background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.card:hover{transform:translateY(-4px);box-shadow:var(--shadow-glow);border-color:var(--border-hover)}
+.card:hover::before{transform:scaleX(1)}
+.card .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card .code{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--accent-blue);
+  background:var(--bg-tint);border-radius:6px;padding:3px 8px}
+.status{font-size:11.5px;padding:3px 10px;border-radius:100px;font-weight:600;border:1px solid}
+.status.dev{color:var(--accent-amber);border-color:#fef3c7;background:#fffbeb}
+.status.ready{color:var(--accent-teal);border-color:#ccfbf1;background:#f0fdfa}
+.status.plan{color:var(--accent-rose);border-color:#ffe4e6;background:#fff1f2}
+.status.live{color:#fff;border:none;background:var(--accent-teal)}
+.card h3{margin:14px 0 8px;font-size:17.5px;color:var(--text-primary);line-height:1.4}
+.card p{margin:0;font-size:13.5px;line-height:1.7;color:var(--text-secondary);flex:1}
+.card .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.tag{font-size:12px;padding:3px 10px;border-radius:100px;background:var(--bg-soft);
+  border:1px solid var(--border);color:var(--text-secondary)}
+.tag.violet{color:var(--accent-violet);border-color:#ede9fe;background:#f5f3ff}
+.tag.teal{color:var(--accent-teal);border-color:#ccfbf1;background:#f0fdfa}
+.tag.amber{color:var(--accent-amber);border-color:#fef3c7;background:#fffbeb}
+/* progress */
+.progs{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);display:grid;gap:8px}
+.prog{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-muted)}
+.prog .name{width:74px;flex:none}
+.prog .bar{flex:1;height:7px;border-radius:100px;background:var(--bg-soft);overflow:hidden}
+.prog .fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));
+  width:0;transition:width 1s cubic-bezier(.4,0,.2,1)}
+.prog.thrade .fill{background:linear-gradient(90deg,#0891b2,#0d9488)}
+.prog .pct{width:36px;text-align:right;flex:none;font-family:var(--font-mono);color:var(--text-secondary)}
+.card .foot{margin-top:13px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--text-muted)}
+.card .foot .go{font-weight:600}
+.card a.enter{color:var(--accent-blue);text-decoration:none;font-weight:600}
+.card.disabled{opacity:.96}
+.card .soon{color:var(--text-muted);font-weight:500}
+/* summary bar per section */
+.sect-summary{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.ss{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:9px 16px;font-size:12.5px;color:var(--text-secondary)}
+.ss b{color:var(--accent-blue);font-family:var(--font-mono)}
+/* Technology */
+.tech{max-width:1200px;margin:0 auto;padding:48px 40px 8px;text-align:center}
+.tech h2{font-size:20px;color:var(--text-primary);margin:0 0 18px}
+.pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.pill{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-secondary);
+  background:var(--bg-card);border:1px solid var(--border);border-radius:100px;padding:7px 15px;transition:.28s}
+.pill i{width:6px;height:6px;border-radius:50%;background:var(--accent-cyan);flex:none}
+.pill:hover{border-color:var(--accent-blue);color:var(--accent-blue)}
+footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px solid var(--border);
+  text-align:center;font-size:12.5px;color:var(--text-muted)}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .5s,transform .5s}
+.reveal.visible{opacity:1;transform:none}
+@media (max-width:760px){
+  .topbar,.hero,.stats,.section,.tech,footer{padding-left:20px;padding-right:20px}
+  .nav{display:none}.hero h1{font-size:29px}
+  .stats-inner{flex-wrap:wrap}.stat{flex:1 1 50%;border-left:none!important}
+}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="dot"></span>具身智能课程</div>
+  <nav class="nav">
+    <div class="dropdown">
+      <a class="dd-toggle" href="javascript:void(0)">产品介绍 <span class="arr">▼</span></a>
+      <div class="dd-menu">
+        <a href="../products/b2-box/index.html">📦 具身智能实验箱B2旗舰版<small>6 TOPS · 双核架构 · 6 门课 / 65 实验</small></a>
+        <a href="../products/c1-car/index.html">🚗 具身智能机器人小车 C1<small>移动导航 · 机械臂作业 · 6 门课 / 55 实验</small></a>
+      </div>
+    </div>
+    <a href="#core">核心课程</a>
+    <a href="#case">综合案例</a>
+    <a href="#ind">行业应用</a>
+    <a href="#tech">技术栈</a>
+  </nav>
+</div>
+
+<header class="hero">
+  <span class="eyebrow">EMBODIED AI · TRAINING PROGRAM</span>
+  <h1>具身智能课程 <span class="grad">教程首页</span></h1>
+  <p>进阶式学习方案，从核心课程到综合项目再到行业应用，14 门课程的完整学习地图，<br>设备适配（实验箱 B2 / 小车 C1 / 聆动 LDT-01 / LeRobot）。</p>
+  <div class="badges">
+    <span class="badge">🧭 3 大方案分类</span>
+    <span class="badge">📚 14 门课程</span>
+    <span class="badge">⏱️ 524 学时</span>
+    </div>
+</header>
+
+<section class="stats reveal">
+  <div class="stats-inner">
+    <div class="stat"><div class="num">14</div><div class="lbl">课程总数</div></div>
+    <div class="stat"><div class="num c">524</div><div class="lbl">总学时</div></div>
+    <div class="stat"><div class="num t">62.7<span style="font-size:18px">%</span></div><div class="lbl">计划评估平均完成度（Excel 15 门）</div></div>
+    <div class="stat"><div class="num a">0</div><div class="lbl">待开发（全部已启动）</div></div>
+  </div>
+</section>
+
+<!-- ============ 分类一：具身智能核心课程（方案1 · 5门） ============ -->
+<section class="section" id="core">
+  <div class="section-head">
+    <h2><span class="idx">CAT 1</span>具身智能核心课程</h2>
+    <span class="sub">方案 1 · 实验箱 B2 + 小车 C1 · 5 门 / 208 学时</span>
+  </div>
+  <p class="desc">打牢地基的五门主干课：ROS2 通信 → 视觉感知 → 语音与大模型 → SLAM 导航 → 机械臂控制。除「SLAM 与自主导航」仅适配小车 C1 外，其余四门同时适配实验箱 B2 与小车 C1。</p>
+  <div class="sect-summary">
+    <div class="ss">平均内容就绪度 <b>72%</b></div>
+    <div class="ss">平均资源完成度 <b>66%</b></div>
+    <div class="ss">状态：全部 <b>开发中</b></div>
+  </div>
+  <div class="grid">
+
+    <article class="card reveal">
+      <div class="top"><span class="code">CORE-01</span><span class="status dev">开发中</span></div>
+      <h3>机器人 ROS2 应用与开发</h3>
+      <p>从话题/服务通信、坐标系到 ros_sensor 传感器实验（MQ5/指纹/RFID），打牢 ROS2 通信与分布式计算地基。</p>
+      <div class="meta"><span class="tag">ROS2</span><span class="tag">话题/服务</span><span class="tag">实验箱 B2 · 小车 C1</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="80"></i></div><span class="pct">80%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="70"></i></div><span class="pct">70%</span></div>
+      </div>
+      <div class="foot"><span>48 学时 · 20 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">CORE-02</span><span class="status dev">开发中</span></div>
+      <h3>机器人视觉应用与开发</h3>
+      <p>调用摄像头完成 HSV 颜色识别、YOLOv8 缺陷检测与 NPU 部署、DeepSORT 多目标跟踪与深度测距。</p>
+      <div class="meta"><span class="tag">OpenCV</span><span class="tag">YOLOv8</span><span class="tag amber">NPU 部署</span><span class="tag">实验箱 B2 · 小车 C1</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="70"></i></div><span class="pct">70%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="65"></i></div><span class="pct">65%</span></div>
+      </div>
+      <div class="foot"><span>48 学时 · 12 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">CORE-03</span><span class="status dev">开发中</span></div>
+      <h3>机器人自然语言交互应用</h3>
+      <p>六麦阵列唤醒、ASR 语音识别、TTS 合成，到端到端对话与 LLM/VLM 意图解析——让机器人"听懂人话"。</p>
+      <div class="meta"><span class="tag violet">LLM/VLM</span><span class="tag">离线语音</span><span class="tag">意图解析</span><span class="tag">实验箱 B2 · 小车 C1</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="65"></i></div><span class="pct">65%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="60"></i></div><span class="pct">60%</span></div>
+      </div>
+      <div class="foot"><span>32 学时 · 6 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">CORE-04</span><span class="status dev">开发中</span></div>
+      <h3>机器人 SLAM 与自主导航</h3>
+      <p>SLAM_Toolbox 激光建图、AMCL 粒子滤波定位、Nav2 路径规划，独立完成 A 点到 B 点自主导航与动态避障。</p>
+      <div class="meta"><span class="tag teal">SLAM</span><span class="tag">Nav2</span><span class="tag">AMCL</span><span class="tag amber">仅小车 C1</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="70"></i></div><span class="pct">70%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="65"></i></div><span class="pct">65%</span></div>
+      </div>
+      <div class="foot"><span>48 学时 · 7 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">CORE-05</span><span class="status dev">开发中</span></div>
+      <h3>机器人机械臂应用与开发</h3>
+      <p>URDF 仿真与 MoveIt2、1Mbps 串口底层协议、FK/IK 运动学，实现零位校准、实机 IK 解算与视觉动态抓取。</p>
+      <div class="meta"><span class="tag">MoveIt2</span><span class="tag">IK 解算</span><span class="tag">串口协议</span><span class="tag">实验箱 B2 · 小车 C1</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="75"></i></div><span class="pct">75%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="70"></i></div><span class="pct">70%</span></div>
+      </div>
+      <div class="foot"><span>32 学时 · 8 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 分类二：具身智能综合案例（方案2 · 4门） ============ -->
+<section class="section" id="case">
+  <div class="section-head">
+    <h2><span class="idx">CAT 2</span>具身智能综合案例</h2>
+    <span class="sub">方案 2 · 智慧工厂 / 监护 / 追踪场景 · 4 门 / 176 学时</span>
+  </div>
+  <p class="desc">四个大型综合案例：智慧工厂装货分拣码垛综合项目（实验箱 B2）、机器人小车智能工厂（小车 C1）、老人跌倒监护（实验箱 B2 + 小车 C1）与通用目标追踪（B2 + C1）。卡片标注各自适配的设备。</p>
+  <div class="sect-summary">
+    <div class="ss">平均内容就绪度 <b>49%</b></div>
+    <div class="ss">平均资源完成度 <b>44%</b></div>
+    <div class="ss">状态：全部 <b>开发中</b></div>
+  </div>
+  <div class="grid">
+
+    <article class="card reveal">
+      <div class="top"><span class="code">CASE-01</span><span class="status dev">开发中</span></div>
+      <h3>智慧工厂装货分拣码垛综合项目</h3>
+      <p>eai_factory 语音 + 大模型驱动智慧工厂：装货 / 分拣 / 码垛闭环，联动雷达急停与安全联锁（原「机器人大模型综合应用」）。</p>
+      <div class="meta"><span class="tag violet">大模型</span><span class="tag amber">安全联锁</span><span class="tag amber">实验箱 B2</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="60"></i></div><span class="pct">60%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="55"></i></div><span class="pct">55%</span></div>
+      </div>
+      <div class="foot"><span>48 学时 · 9 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">CASE-02</span><span class="status dev">开发中</span></div>
+      <h3>机器人小车智能工厂综合项目</h3>
+      <p>以小车 C1 为载体的智能工厂全程实训主线（EXP007）：建图导航、视觉抓取、离线语音大模型到四链路全闭环。</p>
+      <div class="meta"><span class="tag">综合主线</span><span class="tag teal">四链路</span><span class="tag amber">仅小车 C1</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="45"></i></div><span class="pct">45%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="40"></i></div><span class="pct">40%</span></div>
+      </div>
+      <div class="foot"><span>32 学时 · 4 实验</span><a class="enter" href="./cases/exp007-intelligent-factory/index.html">EXP007 项目页 →</a></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">CASE-03</span><span class="status dev">开发中</span></div>
+      <h3>老人跌倒监护综合项目</h3>
+      <p>YOLOv8 人体检测 + BlazePose 关键点 + 六状态机判别跌倒，联动 Qwen3.5 RKLLM 端侧告警，覆盖 9 个完整实验（EXP006a）。</p>
+      <div class="meta"><span class="tag amber">跌倒检测</span><span class="tag violet">RKLLM 告警</span><span class="tag">实验箱 B2 · 小车 C1</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="45"></i></div><span class="pct">45%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="40"></i></div><span class="pct">40%</span></div>
+      </div>
+      <div class="foot"><span>48 学时 · 9 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">CASE-04</span><span class="status dev">开发中</span></div>
+      <h3>通用目标追踪综合项目</h3>
+      <p>LLF 轻量特征 + VLM 语义选靶的通用目标追踪全链路，覆盖相机标定到自主跟拍的 9 个完整实验（EXP006b）。</p>
+      <div class="meta"><span class="tag teal">目标追踪</span><span class="tag violet">VLM 选靶</span><span class="tag">实验箱 B2 · 小车 C1</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="45"></i></div><span class="pct">45%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="40"></i></div><span class="pct">40%</span></div>
+      </div>
+      <div class="foot"><span>48 学时 · 9 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 分类三：具身智能行业应用（方案3 · 5门） ============ -->
+<section class="section" id="ind">
+  <div class="section-head">
+    <h2><span class="idx">CAT 3</span>具身智能行业应用</h2>
+    <span class="sub">方案 3 · 端到端双臂 + 四足巡检 · 5 门 / 160 学时</span>
+  </div>
+  <p class="desc">面向真实行业的端到端落地方向：双臂平台基础与"采集 → 训练 → 推理"全流程，工厂分拣与家庭整理两大场景案例，以及宇树 Go2 Edu 四足工业巡检。</p>
+  <div class="sect-summary">
+    <div class="ss">平均内容就绪度 <b>53%</b></div>
+    <div class="ss">平均资源完成度 <b>48%</b></div>
+    <div class="ss">依据 LZ-XL01 + 聆动 + Unitree 文档补齐</div>
+  </div>
+  <div class="grid">
+
+    <article class="card reveal">
+      <div class="top"><span class="code">IND-01</span><span class="status dev">开发中</span></div>
+      <h3>具身智能端到端平台与基础</h3>
+      <p>主机环境搭建、平台一键启停自检、主从臂校准与遥操作自检——进入端到端世界的第一门课（LZ-XL01）。</p>
+      <div class="meta"><span class="tag teal">主从双臂</span><span class="tag">遥操作</span><span class="tag">LZ-XL01</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="60"></i></div><span class="pct">60%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="55"></i></div><span class="pct">55%</span></div>
+      </div>
+      <div class="foot"><span>32 学时 · 4 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">IND-02</span><span class="status dev">开发中</span></div>
+      <h3>双臂采训推全流程（ACT / VLA）</h3>
+      <p>独立完成遥操作采集 → LeRobot v3 转换 → ACT/VLA 训练 → 真机推理复现闭环，理解两大主流策略差异。</p>
+      <div class="meta"><span class="tag violet">ACT</span><span class="tag violet">VLA</span><span class="tag amber">显存管理</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="60"></i></div><span class="pct">60%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="55"></i></div><span class="pct">55%</span></div>
+      </div>
+      <div class="foot"><span>32 学时 · 4 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">IND-03</span><span class="status dev">开发中</span></div>
+      <h3>物料分拣应用场景</h3>
+      <p>聆动工厂场景：双臂分工采集（左黑件入左格 / 右银件入右格），训练后真机自主分拣复现。</p>
+      <div class="meta"><span class="tag teal">双臂协同</span><span class="tag">工厂分拣</span><span class="tag">LDT-01</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="50"></i></div><span class="pct">50%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="45"></i></div><span class="pct">45%</span></div>
+      </div>
+      <div class="foot"><span>32 学时 · 4 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">IND-04</span><span class="status dev">开发中</span></div>
+      <h3>家庭整理应用场景</h3>
+      <p>聆动家庭场景：左手开盖 → 右手取物入罐 → 左手盖盖，完整收纳闭环 + 摆放偏移鲁棒性评估。</p>
+      <div class="meta"><span class="tag teal">任务闭环</span><span class="tag">鲁棒性</span><span class="tag">LDT-01</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="50"></i></div><span class="pct">50%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="45"></i></div><span class="pct">45%</span></div>
+      </div>
+      <div class="foot"><span>32 学时 · 4 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">IND-05</span><span class="status dev">开发中</span></div>
+      <h3>工业巡检应用场景（宇树 Go2 Edu）</h3>
+      <p>3D 激光建图 → AMCL/Nav2 多点巡检 → YOLOv8 表计识别 → 自主回充与巡检报告的完整四足闭环。</p>
+      <div class="meta"><span class="tag amber">四足巡检</span><span class="tag">YOLOv8</span><span class="tag teal">多点导航</span></div>
+      <div class="progs">
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="45"></i></div><span class="pct">45%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="40"></i></div><span class="pct">40%</span></div>
+      </div>
+      <div class="foot"><span>32 学时 · 4 实验</span><span class="soon">教程建设中</span></div>
+    </article>
+
+  </div>
+</section>
+
+<!-- 技术栈 -->
+<section class="tech reveal" id="tech">
+  <h2>技术栈总览</h2>
+  <div class="pills">
+    <span class="pill"><i></i>ROS 2 Humble</span><span class="pill"><i></i>SLAM Toolbox</span>
+    <span class="pill"><i></i>Nav2</span><span class="pill"><i></i>AMCL</span>
+    <span class="pill"><i></i>OpenCV</span><span class="pill"><i></i>YOLOv8</span>
+    <span class="pill"><i style="background:var(--accent-amber)"></i>RKNN / NPU</span>
+    <span class="pill"><i style="background:var(--accent-violet)"></i>LLM / VLM</span>
+    <span class="pill"><i style="background:var(--accent-teal)"></i>ACT / VLA</span>
+    <span class="pill"><i style="background:var(--accent-teal)"></i>LeRobot v3</span>
+    <span class="pill"><i style="background:var(--accent-amber)"></i>离线语音 KWS/ASR/TTS</span>
+    <span class="pill"><i></i>MoveIt2</span><span class="pill"><i></i>TF2</span>
+    <span class="pill"><i></i>Unitree SDK</span><span class="pill"><i>three.js</i></span>
+    <span class="pill"><i></i>Gazebo / RViz2</span>
+  </div>
+</section>
+
+<footer>
+  具身智能课程 · 3 方案 / 14 课程 / 建图导航样例教程已上线 · 数据源：培训计划.xlsx + sheet1 课程资源包 · 输出于 training/output
+</footer>
+
+<script>
+/* 滚动显现 */
+var io=new IntersectionObserver(function(es){
+  es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('visible'); io.unobserve(e.target);} });
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
+/* 进度条入场动画 */
+var pio=new IntersectionObserver(function(es){
+  es.forEach(function(e){
+    if(e.isIntersecting){
+      e.target.querySelectorAll('.fill').forEach(function(f){
+        setTimeout(function(){ f.style.width=f.dataset.p+'%'; },150);
+      });
+      pio.unobserve(e.target);
+    }
+  });
+},{threshold:.3});
+document.querySelectorAll('.card').forEach(function(el){pio.observe(el)});
+</script>
+</body>
+</html>

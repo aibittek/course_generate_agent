@@ -25,6 +25,11 @@ courses_archive/
 # 课程资源 assets 图片（不排除）
 !courses/**/assets/**/*.png
 !courses/**/assets/**/*.jpg
+# training 目录下的课件视频与 PDF 保留在 git
+!training/**/*.mp4
+!training/**/*.pdf
+# 分享打包 zip 不入库
+*.html.zip
 
 # AI Models
 models/

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器人ROS2应用与开发 | 讯飞聆智·网页课件</title>
+
+<!-- ========== 主题：切换 themes/ 下任一 css 即可换肤，也可点顶栏 🎨 实时切换 ========== -->
+<link id="theme" rel="stylesheet" href="themes/light.css">
+
+<style>
+/* ============================================================
+   讯飞聆智 网页课件模板 v0.2（简约科技风 / 多主题）
+   主题相关颜色全部走 themes/*.css 的变量，本文件不再硬编码颜色
+   ============================================================ */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text);
+  font-family:"PingFang SC","Microsoft YaHei","HarmonyOS Sans SC",sans-serif}
+body::before{ /* 网格科技背景 */
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(var(--grid-line) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+  background-size:44px 44px;
+}
+body::after{ /* 角落光晕 */
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(600px 300px at 85% 8%,var(--glow-1),transparent 65%),
+    radial-gradient(700px 400px at 8% 95%,var(--glow-2),transparent 65%);
+}
+
+/* ---------- 顶栏 ---------- */
+#topbar{
+  position:fixed;top:0;left:0;right:0;height:58px;z-index:20;
+  display:flex;align-items:center;gap:16px;padding:0 22px;
+  background:var(--bar-bg);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+}
+#topbar .logo{height:32px;width:auto;max-width:190px;object-fit:contain;cursor:pointer}
+/* 深色主题下自动把黑色 LOGO 反白（浅色主题无需处理） */
+html[data-dark="1"] #topbar .logo{filter:invert(1) brightness(1.6)}
+#crumb{font-size:13px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#crumb b{color:var(--accent);font-weight:600}
+#topbar .spacer{flex:1}
+.icon-btn{
+  background:transparent;border:1px solid var(--line-strong);color:var(--text-dim);
+  width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;
+  display:inline-flex;align-items:center;justify-content:center;transition:.2s;
+}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 0 12px var(--glow-1)}
+
+/* ---------- 幻灯片舞台 ---------- */
+#stage{position:absolute;inset:58px 0 52px 0;z-index:5}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;
+  padding:34px clamp(28px,5vw,72px) 76px;overflow:auto}
+.slide.active{display:flex;animation:slideIn .45s ease both}
+@keyframes slideIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+.slide.active .rise{opacity:0;animation:rise .55s ease forwards}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.d1{animation-delay:.08s!important}.d2{animation-delay:.18s!important}
+.d3{animation-delay:.28s!important}.d4{animation-delay:.38s!important}.d5{animation-delay:.48s!important}
+
+/* ---------- 通用排版 ---------- */
+h1.title{font-size:clamp(22px,3.2vw,38px);font-weight:700;line-height:1.3}
+h1.title .hl{color:var(--accent)}
+.kicker{font-size:13px;letter-spacing:4px;color:var(--accent-2);text-transform:uppercase;margin-bottom:10px}
+.lead{font-size:clamp(15px,1.6vw,19px);color:var(--text-dim);line-height:1.9}
+.card{background:var(--bg-1);border:1px solid var(--card-line);border-radius:14px;
+  padding:22px 24px;transition:.25s}
+.card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 12px 28px var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1;align-content:start}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;flex:1;align-content:start}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+.tag{display:inline-block;font-size:12px;color:var(--accent);border:1px solid var(--accent);
+  border-radius:99px;padding:3px 12px;margin-right:8px}
+.divider{height:3px;width:64px;border-radius:3px;margin:14px 0 22px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+
+/* ---------- 封面页 ---------- */
+.slide[data-layout="cover"]{justify-content:center;align-items:flex-start}
+.slide[data-layout="cover"] .cover-meta{margin-top:38px;display:flex;gap:14px;flex-wrap:wrap}
+
+/* ---------- 图片页 ---------- */
+.fig{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--card-line);cursor:zoom-in}
+.fig img{width:100%;height:100%;object-fit:cover;display:block;transition:.4s}
+.fig:hover img{transform:scale(1.04)}
+#lightbox{position:fixed;inset:0;background:var(--scrim);z-index:60;display:none;
+  align-items:center;justify-content:center;cursor:zoom-out}
+#lightbox img{max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 20px 60px var(--shadow)}
+#lightbox.show{display:flex;animation:slideIn .25s ease}
+
+/* ---------- 视频页 ---------- */
+.video-wrap{position:relative;width:100%;max-width:980px;border-radius:14px;overflow:hidden;
+  border:1px solid var(--card-line);box-shadow:0 18px 50px var(--shadow)}
+.video-wrap video{width:100%;display:block;background:#000}
+
+/* ---------- 音频旁白 ---------- */
+.narrate{display:flex;align-items:center;gap:14px;margin-top:20px;flex-wrap:wrap}
+.narrate audio{height:36px;flex:1;min-width:260px;max-width:520px}
+.btn{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-weight:600;
+  border:none;border-radius:10px;padding:9px 20px;cursor:pointer;font-size:14px;transition:.2s;
+  font-family:inherit}
+.btn:hover{filter:brightness(1.1);box-shadow:0 0 18px var(--glow-1)}
+
+/* ---------- 代码页 ---------- */
+.codeblock{background:var(--code-bg);border:1px solid var(--card-line);border-radius:12px;overflow:auto;
+  font-family:"JetBrains Mono","Cascadia Code",Consolas,monospace;font-size:14px;line-height:1.75;
+  padding:18px 20px;color:var(--code-text)}
+.codeblock .cm{color:var(--code-dim)}.codeblock .kw{color:var(--kw)}.codeblock .st{color:var(--str)}
+
+/* ---------- 互动：选择题 ---------- */
+.quiz .opt{display:flex;align-items:center;gap:12px;background:var(--bg-1);border:1px solid var(--line-strong);
+  border-radius:12px;padding:14px 18px;margin-top:12px;cursor:pointer;transition:.2s;font-size:16px;user-select:none}
+.quiz .opt:hover{border-color:var(--accent);transform:translateX(6px)}
+.quiz .opt .key{width:28px;height:28px;border-radius:8px;background:var(--bg-2);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.quiz .opt.right{border-color:var(--ok);background:var(--ok-bg)}
+.quiz .opt.wrong{border-color:var(--err);background:var(--err-bg)}
+.quiz .explain{margin-top:16px;padding:14px 18px;border-radius:12px;font-size:14px;line-height:1.8;display:none;
+  border-left:3px solid var(--accent);background:var(--bg-2);color:var(--text-dim)}
+.quiz .explain.show{display:block;animation:rise .4s ease}
+
+/* ---------- 互动：翻转卡片 ---------- */
+.flip{perspective:1000px;cursor:pointer;min-height:150px}
+.flip-inner{position:relative;width:100%;height:100%;min-height:150px;transition:transform .6s;transform-style:preserve-3d}
+.flip.flipped .flip-inner{transform:rotateY(180deg)}
+.flip-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:14px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:18px;text-align:center}
+.flip-front{background:var(--bg-1);border:1px solid var(--card-line)}
+.flip-back{background:var(--accent-soft);border:1px solid var(--accent);
+  transform:rotateY(180deg);font-size:14px;line-height:1.8;color:var(--text-dim)}
+.flip-back b{color:var(--text)}
+
+/* ---------- 步骤时间线 ---------- */
+.steps{display:flex;gap:0;margin-top:26px;overflow-x:auto;padding-bottom:8px}
+.step{flex:1;min-width:150px;position:relative;padding:0 12px;text-align:center}
+.step::before{content:"";position:absolute;top:17px;left:0;right:0;height:2px;background:var(--line-strong)}
+.step:first-child::before{left:50%}.step:last-child::before{right:50%}
+.step .dot{width:36px;height:36px;border-radius:50%;background:var(--bg-1);border:2px solid var(--accent);
+  color:var(--accent);font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
+  position:relative;z-index:1}
+.step h4{font-size:15px;margin-bottom:6px}
+.step p{font-size:12.5px;color:var(--text-dim);line-height:1.7}
+
+/* ---------- 数据大字 ---------- */
+.bignum{font-size:clamp(34px,4.5vw,58px);font-weight:800;
+  background:linear-gradient(120deg,var(--accent),var(--accent-2));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ---------- 底部导航 ---------- */
+#navbar{position:fixed;bottom:0;left:0;right:0;height:52px;z-index:20;
+  display:flex;align-items:center;gap:18px;padding:0 22px;
+  background:var(--bar-bg);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+#navbar .nav-btn{background:transparent;border:1px solid var(--accent);color:var(--accent);
+  border-radius:9px;padding:7px 18px;cursor:pointer;font-size:14px;transition:.2s;font-family:inherit}
+#navbar .nav-btn:hover:not(:disabled){background:var(--accent-soft);box-shadow:0 0 12px var(--glow-1)}
+#navbar .nav-btn:disabled{opacity:.3;cursor:default;border-color:var(--line-strong);color:var(--text-dim)}
+#pageinfo{font-size:13px;color:var(--text-dim);min-width:64px;text-align:center}
+#progress{flex:1;height:4px;border-radius:4px;background:var(--line-strong);overflow:hidden}
+#progress .fill{height:100%;width:0;border-radius:4px;transition:width .35s ease;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+#navbar .hint{font-size:11.5px;color:var(--text-dim);opacity:.7}
+
+/* ---------- 目录侧栏 ---------- */
+#toc{position:fixed;top:58px;bottom:52px;left:0;width:300px;z-index:30;
+  background:var(--toc-bg);backdrop-filter:blur(14px);border-right:1px solid var(--line);
+  transform:translateX(-100%);transition:transform .3s ease;overflow-y:auto;padding:22px 0}
+#toc.show{transform:none}
+#toc h3{font-size:13px;letter-spacing:3px;color:var(--accent);padding:0 22px 14px}
+#toc a{display:flex;gap:10px;align-items:center;padding:11px 22px;color:var(--text-dim);
+  text-decoration:none;font-size:14px;border-left:2px solid transparent;transition:.2s}
+#toc a:hover{color:var(--text);background:var(--accent-soft)}
+#toc a.now{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft)}
+#toc a .no{font-family:"JetBrains Mono",Consolas,monospace;font-size:12px;opacity:.7}
+:fullscreen #navbar .hint{display:none}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <img class="logo" src="assets/logo.png" alt="讯飞聆智" onclick="toggleTOC()" title="点击打开目录">
+  <span id="crumb">机器人ROS2应用与开发 <b>/</b> 封面</span>
+  <span class="spacer"></span>
+  <button class="icon-btn" id="themeBtn" onclick="cycleTheme()" title="切换主题 (C)">🎨</button>
+  <button class="icon-btn" onclick="toggleTOC()" title="课程目录 (G)">☰</button>
+  <button class="icon-btn" onclick="toggleFull()" title="全屏 (F)">⛶</button>
+</header>
+
+<nav id="toc"><h3>课 程 目 录</h3></nav>
+
+<main id="stage">
+
+  <section class="slide" data-layout="cover" data-title="课程封面">
+    <div class="kicker rise">IFLYTEK · LINGZHI 产教融合</div>
+    <h1 class="title rise d1">机器人 <span class="hl">ROS2</span> 应用与开发</h1>
+    <div class="divider rise d2"></div>
+    <p class="lead rise d2" style="max-width:640px">
+      第 1 课 · ROS2 概述与开发环境<br>
+      基于具身智能实验箱 B2 / 机器人小车 C1，从零掌握 ROS2 分布式机器人开发框架。
+    </p>
+    <div class="cover-meta rise d3">
+      <span class="tag">⏱ 20 课时</span><span class="tag">🤖 实验箱 B2 · 小车 C1</span><span class="tag">🎓 方案一 · 核心课程</span>
+    </div>
+  </section>
+
+  <section class="slide" data-layout="cards" data-title="学习目标">
+    <div class="kicker">LEARNING OBJECTIVES</div>
+    <h1 class="title rise">本课学习目标</h1>
+    <div class="divider rise d1"></div>
+    <div class="grid3">
+      <div class="card rise d1"><div style="font-size:30px">🧠</div><h3 style="margin:10px 0 8px">理解 ROS2 架构</h3>
+        <p style="color:var(--text-dim);font-size:14px;line-height:1.8">掌握 DDS 通信机制、节点与话题模型，理解与 ROS1 的核心差异。</p></div>
+      <div class="card rise d2"><div style="font-size:30px">⚙️</div><h3 style="margin:10px 0 8px">搭建开发环境</h3>
+        <p style="color:var(--text-dim);font-size:14px;line-height:1.8">完成 Ubuntu + ROS2 Humble 安装配置，熟悉 colcon 构建工具链。</p></div>
+      <div class="card rise d3"><div style="font-size:30px">📡</div><h3 style="margin:10px 0 8px">跑通第一个节点</h3>
+        <p style="color:var(--text-dim);font-size:14px;line-height:1.8">独立编写发布者/订阅者节点，在小车 C1 上完成话题通信实验。</p></div>
+    </div>
+  </section>
+
+  <section class="slide" data-layout="stats" data-title="为什么是 ROS2">
+    <div class="kicker">WHY ROS2</div>
+    <h1 class="title rise">为什么机器人行业选择 ROS2？</h1>
+    <div class="divider rise d1"></div>
+    <div class="grid3" style="margin-top:26px">
+      <div class="card rise d1" style="text-align:center"><div class="bignum">60%+</div>
+        <p style="margin-top:10px;color:var(--text-dim);font-size:14px">全球新发布科研/教育机器人采用率</p></div>
+      <div class="card rise d2" style="text-align:center"><div class="bignum">μs 级</div>
+        <p style="margin-top:10px;color:var(--text-dim);font-size:14px">DDS 实时通信延迟，满足运动控制要求</p></div>
+      <div class="card rise d3" style="text-align:center"><div class="bignum">3 大</div>
+        <p style="margin-top:10px;color:var(--text-dim);font-size:14px">原生支持：实时 / 安全(SROS2) / 跨平台</p></div>
+    </div>
+  </section>
+
+  <section class="slide" data-layout="image-text" data-title="ROS2 架构图">
+    <div class="kicker">ARCHITECTURE</div>
+    <h1 class="title rise">ROS2 系统架构一览</h1>
+    <div class="divider rise d1"></div>
+    <div class="grid2" style="align-items:center">
+      <div class="fig rise d1" onclick="zoom(this)">
+        <img src="assets/logo.png" style="object-fit:contain;padding:30px" alt="架构图占位">
+      </div>
+      <div class="rise d2">
+        <p class="lead" style="margin-bottom:18px">ROS2 自下而上分为四层，点击左侧图片可放大查看：</p>
+        <div class="card" style="margin-bottom:12px"><b style="color:var(--accent)">应用层</b> · 导航、视觉、语音等业务功能包</div>
+        <div class="card" style="margin-bottom:12px"><b style="color:var(--accent)">rcl / rclcpp</b> · 客户端库，节点编程接口</div>
+        <div class="card" style="margin-bottom:12px"><b style="color:var(--accent)">rmw 抽象层</b> · 中间件接口适配</div>
+        <div class="card"><b style="color:var(--accent)">DDS</b> · 分布式数据分发，通信核心</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-layout="video" data-title="演示视频">
+    <div class="kicker">DEMO VIDEO</div>
+    <h1 class="title rise">实验演示：小车 C1 话题通信</h1>
+    <div class="divider rise d1"></div>
+    <div class="video-wrap rise d2">
+      <video controls preload="metadata" poster="">
+        <source src="assets/demo.mp4" type="video/mp4">
+        您的浏览器不支持视频播放。
+      </video>
+    </div>
+    <p class="lead rise d3" style="margin-top:16px;font-size:14px">💡 观察要点：发布者以 1Hz 发布 /cmd_vel，小车订阅后开始运动。</p>
+  </section>
+
+  <section class="slide" data-layout="code" data-title="第一个节点">
+    <div class="kicker">HANDS-ON CODE</div>
+    <h1 class="title rise">编写第一个发布者节点</h1>
+    <div class="divider rise d1"></div>
+    <div class="codeblock rise d2"><pre><span class="cm"># talker.py — 最小发布者节点</span>
+<span class="kw">import</span> rclpy
+<span class="kw">from</span> rclpy.node <span class="kw">import</span> Node
+<span class="kw">from</span> std_msgs.msg <span class="kw">import</span> String
+
+<span class="kw">class</span> Talker(Node):
+    <span class="kw">def</span> <span class="kw">__init__</span>(self):
+        super().__init__(<span class="st">'talker'</span>)
+        self.pub = self.create_publisher(String, <span class="st">'chatter'</span>, 10)
+        self.timer = self.create_timer(1.0, self.tick)
+
+    <span class="kw">def</span> tick(self):
+        msg = String()
+        msg.data = <span class="st">'Hello from C1!'</span>
+        self.pub.publish(msg)
+
+rclpy.init()
+rclpy.spin(Talker())</pre></div>
+    <div class="narrate rise d3">
+      <!-- 教师录制的讲解音频；无音频时删除此行即可 -->
+      <audio controls src="assets/narration-06.mp3"></audio>
+      <span style="font-size:12.5px;color:var(--text-dim)">教师讲解音频（可选，缺失时不影响页面）</span>
+    </div>
+  </section>
+
+  <section class="slide" data-layout="quiz" data-title="课堂测验">
+    <div class="kicker">CHECK POINT ✦ 互动答题</div>
+    <h1 class="title rise">ROS2 底层通信依赖哪种机制？</h1>
+    <div class="divider rise d1"></div>
+    <div class="quiz rise d2" style="max-width:760px" data-answer="B">
+      <div class="opt" data-k="A"><span class="key">A</span>串口直连通信</div>
+      <div class="opt" data-k="B"><span class="key">B</span>DDS 分布式数据分发</div>
+      <div class="opt" data-k="C"><span class="key">C</span>HTTP 请求轮询</div>
+      <div class="opt" data-k="D"><span class="key">D</span>共享内存互斥锁</div>
+      <div class="explain">✅ 正确答案是 <b>B</b>。ROS2 采用 DDS（Data Distribution Service）作为通信中间件，实现去中心化的节点发现与实时数据分发，无需 ROS1 中的 Master 节点。</div>
+    </div>
+  </section>
+
+  <section class="slide" data-layout="flip" data-title="核心概念自测">
+    <div class="kicker">FLIP CARDS ✦ 点击翻面</div>
+    <h1 class="title rise">核心概念：先想一想，再翻面</h1>
+    <div class="divider rise d1"></div>
+    <div class="grid3">
+      <div class="flip rise d1" onclick="this.classList.toggle('flipped')">
+        <div class="flip-inner">
+          <div class="flip-face flip-front"><div style="font-size:28px">📦</div><h3>什么是 Package？</h3><p style="font-size:12px;color:var(--text-dim)">点击翻面</p></div>
+          <div class="flip-face flip-back"><span><b>功能包</b>：ROS2 软件组织的基本单元，包含源码、配置与 <b>package.xml</b> 清单，用 colcon 构建后生成可安装产物。</span></div>
+        </div>
+      </div>
+      <div class="flip rise d2" onclick="this.classList.toggle('flipped')">
+        <div class="flip-inner">
+          <div class="flip-face flip-front"><div style="font-size:28px">📢</div><h3>什么是 Topic？</h3><p style="font-size:12px;color:var(--text-dim)">点击翻面</p></div>
+          <div class="flip-face flip-back"><span><b>话题</b>：节点间<b>发布/订阅</b>式异步通信通道，适合传感器数据流等持续传输场景。</span></div>
+        </div>
+      </div>
+      <div class="flip rise d3" onclick="this.classList.toggle('flipped')">
+        <div class="flip-inner">
+          <div class="flip-face flip-front"><div style="font-size:28px">🔄</div><h3>什么是 Service？</h3><p style="font-size:12px;color:var(--text-dim)">点击翻面</p></div>
+          <div class="flip-face flip-back"><span><b>服务</b>：<b>请求/响应</b>式同步通信，适合低频的配置查询与触发动作。</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-layout="steps" data-title="实验流程">
+    <div class="kicker">LAB WORKFLOW</div>
+    <h1 class="title rise">本次实验五步走</h1>
+    <div class="divider rise d1"></div>
+    <div class="steps rise d2">
+      <div class="step"><div class="dot">1</div><h4>环境准备</h4><p>连接实验箱 B2，确认 Ubuntu 22.04 与 ROS2 Humble 就绪</p></div>
+      <div class="step"><div class="dot">2</div><h4>创建功能包</h4><p>ros2 pkg create 建立 my_first_pkg</p></div>
+      <div class="step"><div class="dot">3</div><h4>编写节点</h4><p>实现 talker 与 listener 两个节点</p></div>
+      <div class="step"><div class="dot">4</div><h4>编译运行</h4><p>colcon build 后分别启动，观察话题收发</p></div>
+      <div class="step"><div class="dot">5</div><h4>上车验证</h4><p>将节点部署到小车 C1，遥控验证通信链路</p></div>
+    </div>
+  </section>
+
+  <section class="slide" data-layout="summary" data-title="本课小结">
+    <div class="kicker">SUMMARY</div>
+    <h1 class="title rise">本课小结 <span class="hl">&amp; 下节预告</span></h1>
+    <div class="divider rise d1"></div>
+    <div class="grid2">
+      <div class="card rise d1">
+        <h3 style="margin-bottom:14px">✅ 你已掌握</h3>
+        <p class="lead" style="font-size:15px">ROS2 四层架构 · DDS 通信机制 · 节点编写 · 发布/订阅模型</p>
+      </div>
+      <div class="card rise d2">
+        <h3 style="margin-bottom:14px">🔭 下节预告</h3>
+        <p class="lead" style="font-size:15px">服务与动作通信 · launch 文件编排 · 在实验箱上跑通多节点系统</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer id="navbar">
+  <button class="nav-btn" id="prevBtn" onclick="go(-1)">← 上一页</button>
+  <span id="pageinfo">1 / 10</span>
+  <button class="nav-btn" id="nextBtn" onclick="go(1)">下一页 →</button>
+  <div id="progress"><div class="fill"></div></div>
+  <span class="hint">← → 翻页 · F 全屏 · G 目录 · C 换主题</span>
+</footer>
+
+<div id="lightbox" onclick="this.classList.remove('show')"><img src="" alt=""></div>
+
+<script>
+/* ================== 核心逻辑（可复用，无需修改） ================== */
+const slides=[...document.querySelectorAll('.slide')];
+const toc=document.getElementById('toc');
+const lightboxImg=document.querySelector('#lightbox img');
+let cur=0;
+
+/* 主题（浅色科技白 / 浅蓝渐变 / 深色科技） */
+const THEMES=[['light','浅色科技白'],['ocean','浅蓝渐变'],['paper','米白学术'],['dark','深色科技']];
+let themeIdx=0;
+function applyTheme(i,save){
+  themeIdx=(i+THEMES.length)%THEMES.length;
+  const [file]=THEMES[themeIdx];
+  document.getElementById('theme').href='themes/'+file+'.css';
+  document.documentElement.dataset.dark=file==='dark'?'1':'0';
+  if(save!==false) try{localStorage.setItem('cw-theme',themeIdx)}catch(e){}
+}
+function cycleTheme(){applyTheme(themeIdx+1)}
+
+slides.forEach((s,i)=>{
+  const a=document.createElement('a');
+  a.href='javascript:void(0)';
+  a.innerHTML=`<span class="no">${String(i+1).padStart(2,'0')}</span>${s.dataset.title||'第'+(i+1)+'页'}`;
+  a.onclick=()=>{show(i);toggleTOC(false)};
+  toc.appendChild(a);
+});
+
+function show(i){
+  cur=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,k)=>s.classList.toggle('active',k===cur));
+  [...toc.children].forEach((a,k)=>a.classList.toggle('now',k===cur+1));
+  document.getElementById('pageinfo').textContent=(cur+1)+' / '+slides.length;
+  document.querySelector('#progress .fill').style.width=((cur+1)/slides.length*100)+'%';
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').disabled=cur===slides.length-1;
+  document.getElementById('crumb').innerHTML=
+    document.title.split('|')[0].trim()+' <b>/</b> '+(slides[cur].dataset.title||'');
+  slides[cur].querySelectorAll('.rise').forEach(el=>{el.style.animation='none';el.offsetHeight;el.style.animation='';});
+}
+function go(d){show(cur+d)}
+function toggleTOC(force){
+  const willShow=force!==undefined?force:!toc.classList.contains('show');
+  toc.classList.toggle('show',willShow);
+}
+function toggleFull(){
+  if(document.fullscreenElement)document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+}
+function zoom(fig){lightboxImg.src=fig.querySelector('img').src;document.getElementById('lightbox').classList.add('show')}
+
+document.querySelectorAll('.quiz').forEach(q=>{
+  q.querySelectorAll('.opt').forEach(o=>o.onclick=()=>{
+    if(q.dataset.done)return;
+    q.dataset.done='1';
+    const ans=q.dataset.answer;
+    if(o.dataset.k===ans)o.classList.add('right');
+    else{o.classList.add('wrong');q.querySelector(`.opt[data-k="${ans}"]`).classList.add('right')}
+    q.querySelector('.explain').classList.add('show');
+  });
+});
+
+addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ')go(1);
+  else if(e.key==='ArrowLeft'||e.key==='PageUp')go(-1);
+  else if(e.key==='f'||e.key==='F')toggleFull();
+  else if(e.key==='g'||e.key==='G')toggleTOC();
+  else if(e.key==='c'||e.key==='C')cycleTheme();
+  else if(e.key==='Escape')toggleTOC(false);
+});
+let tx=0;
+addEventListener('touchstart',e=>tx=e.touches[0].clientX,{passive:true});
+addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>60)go(dx<0?1:-1)},{passive:true});
+
+try{const saved=localStorage.getItem('cw-theme');themeIdx=saved?+saved:0}catch(e){}
+applyTheme(themeIdx,false);
+show(0);
+</script>
+</body>
+</html>
+
+<!-- ============================================================
+【布局约定】每页一个 section，data-layout 决定排版：
+  cover 封面 | cards 要点卡 | stats 数据大字 | image-text 图文 | video 视频
+  code 代码 | quiz 测验 | flip 翻面卡 | steps 流程 | summary 小结
+新增布局：加一段 CSS + 在此登记，JS 无需改动。
+【主题】themes/{light,ocean,dark}.css 切换；可在顶栏 🎨 或 C 键实时预览。
+============================================================= -->
