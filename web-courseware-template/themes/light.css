@@ -1,0 +1,24 @@
+/* 浅色科技白 —— 默认主题：投影/明亮教室首选 */
+:root{
+  --bg-0:#f4f7fb;          /* 页面底 */
+  --bg-1:#ffffff;          /* 卡片 */
+  --bg-2:#eef4fb;          /* 悬浮/解析块 */
+  --text:#16233a;
+  --text-dim:#5a6b85;
+  --accent:#0a63d8;        /* 科技蓝 */
+  --accent-2:#00a3b5;      /* 青 */
+  --accent-soft:rgba(10,99,216,.08);
+  --line:rgba(10,99,216,.14);
+  --line-strong:rgba(22,35,58,.16);
+  --card-line:rgba(10,99,216,.16);
+  --grid-line:rgba(10,99,216,.055);
+  --glow-1:rgba(10,99,216,.10);
+  --glow-2:rgba(0,163,181,.08);
+  --shadow:rgba(22,35,58,.12);
+  --bar-bg:rgba(244,247,251,.82);
+  --toc-bg:rgba(244,247,251,.97);
+  --scrim:rgba(16,26,46,.86);
+  --code-bg:#0f1a2c; --code-text:#d7e6fb; --code-dim:#7d92ad; --kw:#ff79b0; --str:#8ef2a6;
+  --ok:#12a35a; --ok-bg:rgba(18,163,90,.10);
+  --err:#d63b48; --err-bg:rgba(214,59,72,.10);
+}
