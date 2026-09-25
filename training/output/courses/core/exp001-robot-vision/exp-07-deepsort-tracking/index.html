@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-07 DeepSORT 多目标跟踪 · 机器人视觉应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{
+  --theme:#0d9488;
+  --theme-deep:#0f766e;
+  --theme-bg:#ccfbf1;
+  --theme-bd:#99f6e4;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<aside class="side">
+  <div class="side-title">🤖 CORE-02 · 视觉应用与开发</div>
+  <div class="side-sub">12 个实验 · 48 学时</div>
+
+  <div class="grp">CH1 · 检测与分类</div>
+  <a href="../exp-01-industrial-defect/index.html">EXP-01 工业表面缺陷检测</a>
+  <a href="../exp-02-garbage-classification/index.html">EXP-02 垃圾分类图像分类</a>
+  <a href="../exp-03-lab-color-recognition/index.html">EXP-03 Lab/HSV 色彩空间</a>
+  <a href="../exp-04-qrcode/index.html">EXP-04 二维码识别与解码</a>
+
+  <div class="grp">CH2 · 图像理解</div>
+  <a href="../exp-05-line-following/index.html">EXP-05 多边形轮廓巡线</a>
+  <a href="../exp-06-semantic-segmentation/index.html">EXP-06 图像语义分割</a>
+
+  <div class="grp">CH3 · 跟踪与 3D</div>
+  <a class="now" href="index.html">EXP-07 DeepSORT 多目标跟踪</a>
+  <a href="../exp-08-depth-3d-detection/index.html">EXP-08 深度信息与 3D 检测</a>
+
+  <div class="grp">CH4 · 人体感知</div>
+  <a href="../exp-09-face-landmarks/index.html">EXP-09 人脸关键点检测</a>
+  <a href="../exp-10-pose-landmark/index.html">EXP-10 骨骼关键点检测</a>
+  <a href="../exp-11-pose-control/index.html">EXP-11 肢体动作体感控制</a>
+  <a href="../exp-12-hand-control/index.html">EXP-12 手指动作控制</a>
+</aside>
+
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-07 · 第 3 篇 · 综合性 · 4 学时</span>
+  <h1>DeepSORT 多目标跟踪</h1>
+  <p class="desc">检测只管"这一帧有谁"，跟踪才回答"上一帧那个是不是还是他"。卡尔曼预测 + 马氏门限 + ReID 外观 + 匈牙利匹配，四件套合体让 ID 在遮挡与交错后依然不丢。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐⭐⭐ · 4 学时</span>
+    <span class="tag">YOLOv8 + deepsort.rknn</span>
+    <span class="tag">Kalman + 匈牙利</span>
+    <span class="tag">38 项单元测试</span>
+    <span class="tag">MJPEG :8080/track.mjpg</span>
+  </div>
+</div>
+
+<!-- 1 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：为什么"每帧检测"不等于"跟踪"？</h2>
+  <p>停车场入口的相机每帧都能框出 8 辆车，但管理端要问的是：<b>昨晚 23:01 那辆白色轿车今天又来了吗？</b>如果只做逐帧检测，两辆车交错一分开，编号就可能互换；一辆车被大卡车挡住 2 秒再出现，系统会认为"旧车消失、新车出现"，计数翻倍。</p>
+  <p>跟踪的本质是<b>跨帧的身份维护</b>。难点有三：① 车在动，得先"猜"它这帧大概在哪（预测）；② 猜的和检测的对不上怎么办（关联门限）；③ 两辆车长得一样怎么区分（外观 ReID）。本实验在实验箱 B2 上把 DeepSORT 全链路跑起来，双模型（检测 + ReID）双 RKNN 并行，12~15 FPS 实时输出稳定 ID。</p>
+  <div class="tip tealb"><span class="lab">🎯 综合性实验的"综合"在哪</span>这是全课程信息密度最高的一课：数学（卡尔曼/马氏距离/匈牙利）、深度学习（YOLO 检测 + ReID 嵌入）、工程（双池并行 + 双缓冲 + 配置热管理）三条线交汇，38 项单测逐一守护。</div>
+</section>
+
+<!-- 2 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>原理通俗讲解：一场"点名 + 认脸"的接力</h2>
+  <p><b>把跟踪想象成老师在操场上认学生。</b>学生在跑（运动），偶尔躲到树后（遮挡），还可能两人穿同款校服（外观相似）。DeepSORT 的流程就是一位有经验老师的点名法：</p>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">🏃 卡尔曼预测</div><div class="kt">"他应该跑到这了"</div><p>每个轨迹维护 8 维状态 (cx, cy, a, h 及其速度)。新一帧到来前，先外推位置——像老师提前把目光落在孩子跑动方向的前方。</p></div>
+    <div class="kcard"><div class="kd">📏 马氏距离门限</div><div class="kt">"别点太远的人名"</div><p>预测有不确定性（协方差），马氏距离按"不确定度"归一化量差距。卡方 95% 门限 CHI2INV95=9.4877：超出门限的检测不许和该轨迹配对，防止张冠李戴。</p></div>
+    <div class="kcard"><div class="kd">🎓 级联匹配</div><div class="kt">先点最近最活跃的</div><p>按轨迹"新鲜度"从新到旧依次抢匹配——刚出现的轨迹最需要确认，老而稳定的可稍后处理。这就是 n_init=3 的来历：连续 3 帧匹配上才"转正确认"。</p></div>
+    <div class="kcard"><div class="kd">🧒 ReID 外观特征</div><div class="kt">看脸不只看名字</div><p>把候选框抠成 64×128，过 deepsort.rknn 得到 512 维向量，ImageNet 归一化后与轨迹的外观库算余弦相似度（max_dist=0.2）。遮挡后重逢，靠"长相"把 ID 接回来。</p></div>
+    <div class="kcard"><div class="kd">🔤 匈牙利算法</div><div class="kt">全局最优点名</div><p>相似度矩阵交给匈牙利（scipy linear_sum_assignment）一次性求"总代价最小"的指派，避免贪心造成的连锁错配。</p></div>
+    <div class="kcard"><div class="kd">♻️ 生命周期</div><div class="kt">确认与注销</div><p>n_init=3 转正；连续 max_age=70 帧没匹配上才注销——给长遮挡留足复活窗口。纯 IoU 匹配（IoU 门 0.45/0.8）作为 ReID 缺失时的回退。</p></div>
+  </div>
+  <div class="tip amber"><span class="lab">⚠️ 三种典型失败对应三个环节</span>ID 频频变 → 匹配代价没调好（max_dist/iou_thr）；遮挡后再现 ID 变了 → max_age 太短或 ReID 特征库没留住；两车交错互换 ID → ReID 区分度不足或门限过松。先定位环节，再动参数。</div>
+</section>
+
+<!-- 3 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>关联知识点</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">EXP-01</div><div class="kt">检测为基</div><p>yolov8n.rknn（9 输出、classes=[2] 车）提供每帧候选框，score_thr=0.25。</p></div>
+    <div class="kcard"><div class="kd">EXP-06</div><div class="kt">多 worker</div><p>检测池 3 worker 独立 RKNN 实例 + ReID 池 2 worker，双缓冲取结果，架构一脉相承。</p></div>
+    <div class="kcard"><div class="kd">数学</div><div class="kt">状态估计</div><p>卡尔曼是"最优加权平均"：预测越飘，越信检测；检测越噪，越信预测。</p></div>
+    <div class="kcard"><div class="kd">下游</div><div class="kt">行为分析</div><p>稳定 ID + 帧时序 = 目标轨迹，可做车流统计、徘徊检测、区域入侵（衔接 ROS2 topic 输出）。</p></div>
+  </div>
+  <ul class="check">
+    <li>配置文件：<code>config/track_config.yaml</code>——含 score_thr、iou_thr、classes=[2]、mode=deepsort/sort、ReID 与生命周期全部旋钮。</li>
+    <li>工程位置：<code>ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking/</code>。</li>
+    <li>回退语义：ReID 模型缺失时自动降级 sort 模式并打印告警——这是设计行为，不是崩溃。</li>
+  </ul>
+</section>
+
+<!-- 4 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>实验目标</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div><b>跑通双模型</b>：yolov8n.rknn（9 输出检测）+ deepsort.rknn（[1,3,128,64]→[1,512] ReID）同时加载、并行推理。</div></div>
+    <div class="step"><span class="n">2</span><div><b>理解四环节</b>：跟读代码验证 Kalman → 马氏门限 → 级联匈牙利 → IoU 兜底的完整一次关联循环。</div></div>
+    <div class="step"><span class="n">3</span><div><b>会调参</b>：用 <code>track_config.yaml</code> 调 score_thr / mode / max_dist / max_age，观察 ID 稳定性与轨迹残留的权衡。</div></div>
+    <div class="step"><span class="n">4</span><div><b>双模验证</b>：<code>--video</code> 文件模式与 <code>--ros</code> 相机模式各跑一遍，38 项单测全绿，MJPEG 流 12~15 FPS。</div></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>实验环境与准备</h2>
+  <table>
+    <tr><th>类别</th><th>内容</th></tr>
+    <tr><td>硬件</td><td>实验箱 B2（XFLZ_EAI_B2_PRO）+ HP60C 相机；NPU 双模型并发（检测池 + ReID 池）</td></tr>
+    <tr><td>软件</td><td>ROS2 Humble、rknn 运行时、scipy（linear_sum_assignment）、numpy、OpenCV</td></tr>
+    <tr><td>模型</td><td><code>yolov8n.rknn</code>（9 输出）+ <code>deepsort.rknn</code>（ReID 嵌入 512 维）</td></tr>
+    <tr><td>数据集</td><td>测试视频 test.mp4（车辆场景）+ HP60C 实时流；classes=[2] car 仅跟踪车</td></tr>
+    <tr><td>关键配置</td><td><code>config/track_config.yaml</code>：score_thr=0.25、iou_thr=0.45、mode=deepsort、max_dist=0.2、max_iou_distance=0.8、nn_budget=100、min_confidence=0.6、pool.workers=3、stream_name=track.mjpg</td></tr>
+    <tr><td>ROS 隔离</td><td>相机模式需 <code>export ROS_DOMAIN_ID=2</code>，避免与其他实验的域冲突</td></tr>
+  </table>
+  <div class="tip tealb"><span class="lab">🧪 综合性实验提醒</span>综合性实验 = 多组件联调。务必先 <code>pytest</code> 单模块验证（不依赖相机），再逐个接入模型、视频、相机，最后才调跟踪参数——一次只引入一个变量。</div>
+</section>
+
+<!-- 6 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>动画讲解：交错车辆的 ID 保卫战</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" aria-label="DeepSORT跟踪轨迹与ID动画">
+      <rect x="0" y="0" width="640" height="300" fill="#111827"/>
+      <text x="24" y="30" fill="#94a3b8" font-size="13" font-family="monospace">Kalman predict -> gate -> cascade match -> ReID</text>
+
+      <!-- 时间轴标注 -->
+      <line x1="40" y1="255" x2="600" y2="255" stroke="#334155" stroke-width="2"/>
+      <text x="70" y="276" fill="#64748b" font-size="11" text-anchor="middle">t</text>
+      <text x="300" y="276" fill="#64748b" font-size="11" text-anchor="middle">交叉遮挡带</text>
+      <text x="550" y="276" fill="#64748b" font-size="11" text-anchor="middle">t+4</text>
+
+      <!-- 轨迹 A 蓝色（走 S 线） -->
+      <path id="trajA" d="M50 100 C 160 100, 230 180, 320 180 C 410 180, 470 90, 590 90"
+            fill="none" stroke="#38bdf8" stroke-width="3" stroke-dasharray="620" stroke-dashoffset="620">
+        <animate attributeName="stroke-dashoffset" values="620;0" dur="4s" repeatCount="indefinite"/>
+      </path>
+      <!-- 轨迹 B 橙色（走反 S 线，中段与 A 交叠） -->
+      <path id="trajB" d="M50 200 C 160 200, 230 130, 320 130 C 410 130, 470 210, 590 210"
+            fill="none" stroke="#f59e0b" stroke-width="3" stroke-dasharray="620" stroke-dashoffset="620">
+        <animate attributeName="stroke-dashoffset" values="620;0" dur="4s" repeatCount="indefinite"/>
+      </path>
+
+      <!-- 检测框随时间滑动 -->
+      <g>
+        <rect x="44" y="84" width="34" height="30" fill="none" stroke="#38bdf8" stroke-width="2">
+          <animate attributeName="x" values="44;544" dur="4s" repeatCount="indefinite"/>
+        </rect>
+        <text x="60" y="80" fill="#38bdf8" font-size="11" font-family="monospace" id="lbA">
+          <animate attributeName="x" values="52;552" dur="4s" repeatCount="indefinite"/>ID=7</text>
+        <rect x="44" y="184" width="34" height="30" fill="none" stroke="#f59e0b" stroke-width="2">
+          <animate attributeName="x" values="44;544" dur="4s" repeatCount="indefinite"/>
+        </rect>
+        <text x="60" y="180" fill="#f59e0b" font-size="11" font-family="monospace">
+          <animate attributeName="x" values="52;552" dur="4s" repeatCount="indefinite"/>ID=12</text>
+      </g>
+
+      <!-- 中段遮挡区 + 马氏门限椭圆 -->
+      <rect x="240" y="100" width="160" height="110" fill="#1e293b" opacity="0.55" stroke="#475569" stroke-dasharray="6 4"/>
+      <text x="320" y="196" fill="#94a3b8" font-size="11" text-anchor="middle">occlusion</text>
+      <ellipse cx="320" cy="155" rx="86" ry="56" fill="none" stroke="#a78bfa" stroke-width="2" stroke-dasharray="8 6" opacity="0.9">
+        <animate attributeName="rx" values="96;70;96" dur="4s" repeatCount="indefinite"/>
+        <animate attributeName="ry" values="64;44;64" dur="4s" repeatCount="indefinite"/>
+      </ellipse>
+      <text x="320" y="76" fill="#a78bfa" font-size="11" text-anchor="middle" font-family="monospace">gate CHI2=9.4877</text>
+
+      <!-- 输出状态栏示意 -->
+      <text x="48" y="46" fill="#5eead4" font-size="12" font-family="monospace">tracks: ID7 (n_init✓, age=132)  ID12 (age=138)  lost=0  fps=14</text>
+    </svg>
+    <div class="anim-cap">两辆车（蓝 ID7 / 橙 ID12）沿交叉路线行驶：紫色椭圆是卡尔曼预测的马氏门限（随不确定性张缩），中段遮挡带里检测短暂中断——轨迹靠预测维持并在 max_age=70 帧内等它回来；ReID 外观特征保证两车重见时不互换 ID。ID 标签全程不变，这就是"跟踪"与"逐帧检测"的本质差别。</div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>互动讲解：匹配代价矩阵推演台</h2>
+  <div class="ix-panel">
+    <div class="ix-title">🎛 互动推演台 · 3 轨迹 × 3 检测的匈牙利匹配</div>
+    <div class="ctl-row">
+      <label class="dim">ReID max_dist</label>
+      <input type="range" id="md" min="10" max="60" value="20" oninput="runMatch()">
+      <span class="dim" id="mdv">0.20</span>
+      <label class="dim">&nbsp;&nbsp;外观混淆度（两车相似）</label>
+      <input type="range" id="sim" min="0" max="100" value="35" oninput="runMatch()">
+      <span class="dim" id="simv">35%</span>
+    </div>
+    <div class="ctl-row">
+      <label class="dim">ReID 状态</label>
+      <label class="dim"><input type="radio" name="rid" value="on" checked onchange="runMatch()"> deepsort.rknn 正常</label>
+      <label class="dim"><input type="radio" name="rid" value="off" onchange="runMatch()"> 缺失 → 回退 sort(IoU)</label>
+      <button class="btn" onclick="runMatch()">▶ 计算匹配</button>
+      <button class="btn" onclick="document.getElementById('md').value=20;document.getElementById('sim').value=35;runMatch()">↺ 复位</button>
+    </div>
+    <pre class="io" id="io"></pre>
+  </div>
+  <p>操作建议：把"混淆度"从 35% 拉到 90%——轨迹与检测的外观成本矩阵逐渐趋同，观察正确配对如何塌成"互换（ID switch）"；再切到 sort 回退态，看纯 IoU 匹配在交叉场景的天然短板；最后收窄 max_dist 使门限变严，体会"宁可丢失也不认错"的保守策略。</p>
+</section>
+
+<!-- 8 -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操步骤</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div><b>进入工程并跑 38 项单测（不依赖相机）</b>：
+<pre><span class="g">cd ~/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking</span>
+<span class="g">pytest tests/ -v</span>
+<span class="y">tests/test_kalman.py .....              [ 6/38]</span>
+<span class="y">tests/test_matcher.py ........          [18/38]</span>
+<span class="y">tests/test_tracker.py ...........       [31/38]</span>
+<span class="y">38 passed</span></pre></div></div>
+
+    <div class="step"><span class="n">2</span><div><b>文件模式：先用 test.mp4 验证检测 + 跟踪</b>：
+<pre><span class="g">python src/app.py --video test.mp4</span>
+<span class="y">[app] detect=yolov8n.rknn(9out, classes=[2])  reid=deepsort.rknn(512d)</span>
+<span class="y">[tracker] mode=deepsort score_thr=0.25 iou_thr=0.45</span>
+<span class="y">frame 150: tracks=4  ids=[7, 12, 18, 19]  switches=0</span></pre></div></div>
+
+    <div class="step"><span class="n">3</span><div><b>相机模式：ROS2 + MJPEG 实时流</b>（注意域隔离）：
+<pre><span class="c"># 终端 1：拉起相机</span>
+<span class="g">ros2 launch ascamera hp60c.launch.py</span>
+<span class="c"># 终端 2：切到独立域再启动跟踪</span>
+<span class="g">export ROS_DOMAIN_ID=2</span>
+<span class="g">python src/app.py --ros</span>
+<span class="y">http://&lt;board-ip&gt;:8080/track.mjpg</span>
+<span class="y">fps=14  active=6  lost=1 (waiting, age=12/70)</span></pre></div></div>
+
+    <div class="step"><span class="n">4</span><div><b>读懂配置的四个段落</b>（config/track_config.yaml）：
+<pre><span class="y">detect:   score_thr: 0.25   iou_thr: 0.45   classes: [2]   # 只跟车</span>
+<span class="y">track:    mode: deepsort    max_dist: 0.2    min_confidence: 0.6</span>
+<span class="y">          max_iou_distance: 0.8   nn_budget: 100           # 外观库容量</span>
+<span class="y">pool:     workers: 3                                     # 检测池</span>
+<span class="y">reid:     pool_workers: 2                                # ReID 池</span>
+<span class="y">stream:   stream_name: track.mjpg</span></pre></div></div>
+
+    <div class="step"><span class="n">5</span><div><b>对照实验：mode: deepsort → sort</b>，改完重跑观察同一段视频的 ID 切换次数——这就是 38 项单测之外最直观的"综合性验收"。</div></div>
+
+    <div class="step"><span class="n">6</span><div><b>排查回退告警</b>：若启动日志出现 ReID 缺失告警：
+<pre><span class="y">[warn] deepsort.rknn not found, fallback to SORT (IoU only)</span>
+<span class="c"># 属设计内降级：确认模型文件路径后再切换回 mode: deepsort</span></pre></div></div>
+  </div>
+  <div class="tip violet"><span class="lab">🚀 扩展挑战</span>把 nn_budget 从 100 降到 20 再跑长视频：外观库"失忆"后，长时间遮挡的车还能接回原 ID 吗？再把结果通过 ROS2 topic 发布（照抄 EXP-11 的 publish_cmd_vel 模式），做"区域入侵换 ID 报警"。</div>
+</section>
+
+<!-- 9 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>重点与易错点</h2>
+  <div class="tip amber"><span class="lab">⚠️ 排错从"ID 症状"入手</span>ID 频切 → 先看 mode 是不是悄悄回退成了 sort、max_dist 是否过松；轨迹拖尾不消失 → max_age 过大；新目标确认慢 → n_init 与 min_confidence 联动。<b>禁止一次改三个参数</b>——单变量隔离是跟踪调参第一纪律。</div>
+  <table>
+    <tr><th>现象</th><th>根因</th><th>处理</th></tr>
+    <tr><td>ID 频频更换</td><td>ReID 回退 sort / max_dist 过松过紧</td><td>看告警；max_dist 0.2 起步微调</td></tr>
+    <tr><td>遮挡后再现是新 ID</td><td>max_age 太短或外观库没留住</td><td>max_age ≤70；核查 nn_budget</td></tr>
+    <tr><td>两车交错互换 ID</td><td>外观太像 + 门限过松</td><td>调低混淆源（角度/分辨率），收紧 max_dist</td></tr>
+    <tr><td>轨迹残留"幽灵车"</td><td>max_age70 过长或阈值过低</td><td>降 score_thr 反查误检，缩 max_age</td></tr>
+    <tr><td>启动打印 fallback sort 告警</td><td>deepsort.rknn 缺失/路径错</td><td>恢复模型文件，属设计内降级</td></tr>
+    <tr><td>帧率远低于 12 FPS</td><td>池未并行 / 单实例串行</td><td>pool.workers=3、ReID 池 2、双缓冲</td></tr>
+    <tr><td>--ros 无帧</td><td>未拉相机或 domain 冲突</td><td>hp60c.launch.py + ROS_DOMAIN_ID=2</td></tr>
+    <tr><td>推理随机崩溃</td><td>多个进程共享同一 RKNN 实例</td><td>每 worker 必须独立加载自己的 RKNN</td></tr>
+  </table>
+  <ul class="check">
+    <li>✅ 38 项单测全绿（Kalman 预测、门限、匈牙利、生命周期分支）。</li>
+    <li>✅ test.mp4 上视频模式 + 相机模式各一次，ID 稳定无频切。</li>
+    <li>✅ 至少完成一组 deepsort vs sort 的 ID 切换次数对照表。</li>
+    <li>✅ MJPEG :8080/track.mjpg 稳定 12~15 FPS。</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>总结与思考</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">全链路跟踪器</div><p>双 RKNN + 四环节关联 + 双池并行 + 配置化调参。</p></div>
+    <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">预测与观测的权衡</div><p>卡尔曼给先验，检测给后验，门限决定谁有资格参与融合。</p></div>
+    <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">关联调参方法论</div><p>症状 → 环节 → 单变量，三步定位 ID 类问题。</p></div>
+    <div class="kcard"><div class="kd">🔬 验证方法</div><div class="kt">量化指标</div><p>ID switches 次数、MOTA 直觉、fps 三个数一起看。</p></div>
+  </div>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>级联匹配为什么"从新到旧"处理轨迹？如果反过来从最老的轨迹开始抢匹配，画面里会发生什么？提示从"轨迹不确定性"和"新生轨迹尚未转正"两个角度作答。</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>马氏距离依赖协方差（运动不确定度），ReID 余弦距离与它无关——两者在代价矩阵里如何加权才合理？当一辆车高速转弯（预测失效）且与他车同款（外观失效）时，IoU 匹配为何反而成了最后的救命稻草？</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-06-semantic-segmentation/index.html"><span class="lb">← 上一个</span>EXP-06 图像语义分割</a>
+  <a class="next" href="../exp-08-depth-3d-detection/index.html"><span class="lb">下一个实验 →</span>EXP-08 深度信息与 3D 检测</a>
+</nav>
+
+<footer>
+  <span>CORE-02 · 机器人视觉应用与开发 · EXP-07 DeepSORT 多目标跟踪</span>
+  <span>4 学时 · 综合性 · 基于 robot_vision 实验指导书改编</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// 匹配代价矩阵推演台：3 轨迹 x 3 检测
+function runMatch(){
+  var md = +document.getElementById("md").value / 100;
+  var sim = +document.getElementById("sim").value / 100;
+  var ridOn = document.querySelector("input[name=\"rid\"]:checked").value === "on";
+  document.getElementById("mdv").textContent = md.toFixed(2);
+  document.getElementById("simv").textContent = Math.round(sim * 100) + "%";
+
+  // 底真值：轨迹 0/1/2 对应检测 0/1/2；外观代价随混淆度上升
+  // cost[r][c]：对角=正确配对，非对角=错配代价（混淆度越高代价越低）
+  var off = 0.55 - 0.45 * sim;          // 非对角外观代价：0.55(易区分) -> 0.10(难区分)
+  var cost = [
+    [0.10, off + 0.05, off + 0.18],
+    [off + 0.07, 0.12, off + 0.03],
+    [off + 0.20, off + 0.06, 0.09]
+  ];
+  var iouCost = [[0.15, 0.72, 0.85], [0.75, 0.18, 0.70], [0.88, 0.66, 0.16]];
+  var use = ridOn ? cost : iouCost;
+  var tag = ridOn ? "cosine(appearance)" : "IoU distance (fallback)";
+
+  var t = "";
+  t += "<span class=\"dim\">// gate: CHI2INV95=9.4877, n_init=3, max_age=70</span>\n";
+  if(!ridOn){
+    t += "<span class=\"warn\">[warn ] </span>ReID 缺失 => fallback SORT：仅 IoU 关联，遮挡后无外观可依\n";
+  } else {
+    t += "<span class=\"g\">[reid ] </span>crop 64x128 -> deepsort.rknn -> 512d, clip L2, dist=" + tag + " (max_dist=" + md.toFixed(2) + ")\n";
+  }
+
+  // 贪心演示（匈牙利的简化教学版）：逐行看是否越门限/错配
+  var switches = 0, lines = "";
+  for(var r = 0; r < 3; r++){
+    var best = 0;
+    for(var c = 1; c < 3; c++) if(use[r][c] < use[r][best]) best = c;
+    var correct = best === r;
+    var thrHit = use[r][best] <= md;
+    if(!correct) switches++;
+    lines += "  T" + r + " -> D" + best + "  cost=" + use[r][best].toFixed(2) +
+             (correct ? " <span class=\"ok\">[match]</span>" : (thrHit ? " <span class=\"bad\">[ID SWITCH]</span>" : " <span class=\"dim\">[blocked by gate]</span>")) + "\n";
+  }
+  t += "[cost] " + tag + " matrix (行=轨迹 列=检测):\n" + lines;
+  t += "<span class=\"dim\">// 匈牙利解 minimizes total cost，上表用于直觉演示</span>\n";
+
+  if(ridOn && sim > 0.7 && md > 0.25){
+    t += "<span class=\"bad\">[res  ] </span>switches=" + switches + "：混淆度高 + 门限松 => 交错时 ID 互换\n";
+  } else if(switches > 0){
+    t += "<span class=\"warn\">[res  ] </span>switches=" + switches + "：存在错配，收紧 max_dist 或提升 ReID 区分度\n";
+  } else {
+    t += "<span class=\"ok\">[res  ] </span>switches=0：3 轨迹全部保持原 ID\n";
+  }
+  document.getElementById("io").innerHTML = t;
+}
+
+runMatch();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

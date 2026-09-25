@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-08 深度信息与 3D 检测 · 机器人视觉应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{
+  --theme:#0d9488;
+  --theme-deep:#0f766e;
+  --theme-bg:#ccfbf1;
+  --theme-bd:#99f6e4;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<aside class="side">
+  <div class="side-title">🤖 CORE-02 · 视觉应用与开发</div>
+  <div class="side-sub">12 个实验 · 48 学时</div>
+
+  <div class="grp">CH1 · 检测与分类</div>
+  <a href="../exp-01-industrial-defect/index.html">EXP-01 工业表面缺陷检测</a>
+  <a href="../exp-02-garbage-classification/index.html">EXP-02 垃圾分类图像分类</a>
+  <a href="../exp-03-lab-color-recognition/index.html">EXP-03 Lab/HSV 色彩空间</a>
+  <a href="../exp-04-qrcode/index.html">EXP-04 二维码识别与解码</a>
+
+  <div class="grp">CH2 · 图像理解</div>
+  <a href="../exp-05-line-following/index.html">EXP-05 多边形轮廓巡线</a>
+  <a href="../exp-06-semantic-segmentation/index.html">EXP-06 图像语义分割</a>
+
+  <div class="grp">CH3 · 跟踪与 3D</div>
+  <a href="../exp-07-deepsort-tracking/index.html">EXP-07 DeepSORT 多目标跟踪</a>
+  <a class="now" href="index.html">EXP-08 深度信息与 3D 检测</a>
+
+  <div class="grp">CH4 · 人体感知</div>
+  <a href="../exp-09-face-landmarks/index.html">EXP-09 人脸关键点检测</a>
+  <a href="../exp-10-pose-landmark/index.html">EXP-10 骨骼关键点检测</a>
+  <a href="../exp-11-pose-control/index.html">EXP-11 肢体动作体感控制</a>
+  <a href="../exp-12-hand-control/index.html">EXP-12 手指动作控制</a>
+</aside>
+
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-08 · 第 3 篇 · 设计性 · 4 学时</span>
+  <h1>深度信息与 3D 检测</h1>
+  <p class="desc">平面照片终于长出了"第三只眼"：HP60C 双目相机左右分屏显示 RGB 与深度伪彩，点击任意像素读出真实毫米深度，并反投影成相机坐标系下的 3D 点。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐⭐ · 4 学时</span>
+    <span class="tag">HP60C 双栏深度</span>
+    <span class="tag">uint16 毫米深度</span>
+    <span class="tag">24 项单元测试</span>
+    <span class="tag">:8080/depth.mjpg 纯 CPU</span>
+  </div>
+</div>
+
+<!-- 1 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：照片里的"远"是多远？</h2>
+  <p>前几课里我们框人、抠人、跟踪人，但所有输出都扁平地压在像素平面上——画面里"小孩"比"远处的大人"像素更高，你能判断谁更近吗？人类靠双眼视差本能地感知远近，摄像头却只给颜色。<b>要让机器人避障、量距、抓取，必须把 (u, v) 像素升级成 (x, y, z) 米制坐标。</b></p>
+  <p>HP60C 深度相机直接输出一张与 RGB 对齐的深度图：每个像素存的不再是颜色，而是"该点离镜头多少毫米"。但毛细坑不少：深度值是 uint16 毫米（不是米！）、0 表示无效、读图必须保 16 位、点击坐标还得除以显示缩放——每一步踩错，测距就差着 1000 倍或偏出半米。</p>
+  <div class="tip tealb"><span class="lab">🎯 本实验要建立的空间观</span>① 深度图 = 与 RGB 同尺寸的"距离照片"；② 内参 (fx, fy, cx, cy) 是像素与米之间的桥；③ 一次点击 = 一次针孔反投影。</div>
+</section>
+
+<!-- 2 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>原理通俗讲解：给每张照片配一张"高度成绩单"</h2>
+  <p><b>把深度图想成给场景拍的另一张照片，只不过底片上记的不是颜色，而是距离。</b>近处的物体"分数"低，远处的高；测不到的地方留 0（缺考）。理解它只需要三步常识：</p>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">🌧 单位是毫米</div><div class="kt">309 = 0.309 米</div><p>深度是 uint16 存毫米。工程里统一只在最后一步 <code>z = depth × 0.001</code> 换算——中途混用两种单位，误差是灾难性的 1000 倍。</p></div>
+    <div class="kcard"><div class="kd">🕳 0 是"缺考"</div><div class="gt">invalid_value=0</div><p>反光、太近、超出量程的像素深度为 0。任何统计（min/max 归一化、求均值）必须先剔除 0，否则 0 会被当成"贴在镜头上"参与计算，画面一朵黑花。</p></div>
+    <div class="kcard"><div class="kd">🌈 伪彩 = 人眼代理</div><div class="kt">jet colormap</div><p>深度图人眼看不出远近，先 min-max 归一化到 8bit 再 applyColorMap(jet)：蓝远红近，一眼扫出空间层次。归一化时 0 值被屏蔽。</p></div>
+    <div class="kcard"><div class="kd">🌉 内参是桥</div><div class="kt">fx fy cx cy</div><p>相机就是针孔模型：光线穿过"针孔"落在像素 (u, v)。反过来，已知 z 和 (u, v)，射线方向就唯一确定，除以焦距减主点即得 x, y——这就是<b>反投影</b>。</p></div>
+  </div>
+  <p><b>反投影公式配一次具体数值更好记：</b>点击 (u, v) 读到 z=309mm，内参 cx=328.3、fx=608.4：
+  <code>x = (u − cx) × z / fx = (269 − 328.3) × 0.309 / 608.4 ≈ −0.039 m</code>——一个小小的负号告诉你：这点在镜头中线<b>左侧</b> 3.9 厘米。y 同理（v 减 cy 除 fy），右手系、单位米。</p>
+  <div class="tip amber"><span class="lab">⚠️ 显示坐标 ≠ 传感器坐标</span>为了流畅预览画面被缩到 display_scale=0.666，双栏右屏还要先减去左屏宽度。鼠标事件拿到的是"屏幕坐标"，<b>必须先还原回 640×480 原始坐标</b>才能查深度图——忘了这步，点左上角读右下角的深度。</div>
+</section>
+
+<!-- 3 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>关联知识点</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">数据结构</div><div class="kt">16bit 读图</div><p>必须 <code>cv2.imread(p, IMREAD_UNCHANGED)</code>——默认 8 位读取会把 309mm 截成 53，误差隐蔽致命。</p></div>
+    <div class="kcard"><div class="kd">ROS</div><div class="kt">≈25Hz 话题</div><p>深度流与 RGB 来自 ascamera 同步发布；配置 source.mode=ros / display 本地预览两用。</p></div>
+    <div class="kcard"><div class="kd">前置课</div><div class="kt">EXP-01/06</div><p>检测框中心 + 框内深度中值 = 目标的 3D 定位；人或物的"距离属性"随帧可得。</p></div>
+    <div class="kcard"><div class="kd">出口</div><div class="kt">点云</div><p>全图逐像素反投影即得点云；测距仪、越界告警、机械臂抓取位姿都是直接延伸。</p></div>
+  </div>
+  <ul class="check">
+    <li>配置文件：<code>config/depth3d_config.yaml</code>（depth.scale=0.001、invalid_value=0、colormap=jet、source.mode=ros、stream_name=depth.mjpg）。</li>
+    <li>工程位置：<code>vision/08_depth_3d_detection/</code>；24 项单测覆盖读图、归一化、反投影三段。</li>
+    <li>首帧保护：rgb.mean() &lt; 5 的黑帧会被跳过，避免初始化瞬间污染统计。</li>
+  </ul>
+</section>
+
+<!-- 4 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>实验目标</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div><b>会读深度图</b>：IMREAD_UNCHANGED 保 16bit、剔除 0 值做 min-max 归一化、applyColorMap 出 jet 伪彩。</div></div>
+    <div class="step"><span class="n">2</span><div><b>会显示双栏</b>：左 RGB | 右 Depth 的同屏画面，理解 display_scale=0.666 与"右栏减左栏宽"的坐标还原。</div></div>
+    <div class="step"><span class="n">3</span><div><b>会测距</b>：鼠标点击 → 深度查询 → 针孔反投影输出 (x, y, z) 米制坐标，格式与源讲义输出一致。</div></div>
+    <div class="step"><span class="n">4</span><div><b>会上板</b>：24 项单测全绿，<code>--ros</code> 模式 MJPEG :8080/depth.mjpg 稳定输出，纯 CPU 即可（无 NPU 参与）。</div></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>实验环境与准备</h2>
+  <table>
+    <tr><th>类别</th><th>内容</th></tr>
+    <tr><td>硬件</td><td>实验箱 B2 + HP60C 深度相机（RGB-D 双输出）；本机回放模式可只用样例数据</td></tr>
+    <tr><td>软件</td><td>Python 3、OpenCV（imread 常量 / applyColorMap / mouse 回调）、ROS2（可选，--display 单机即可）</td></tr>
+    <tr><td>数据</td><td>样例 RGB + depth 序列（depth 为 uint16 PNG，单位 mm）；或 HP60C 实时话题 ≈25Hz</td></tr>
+    <tr><td>相机内参</td><td>640×480：fx=608.39958 fy=611.20714 cx=328.30096 cy=226.46483（出厂标定，写在配置里）</td></tr>
+    <tr><td>关键配置</td><td><code>config/depth3d_config.yaml</code>：depth.scale=0.001、invalid_value=0、colormap=jet、source.mode=ros、display_scale≈0.666、stream_name=depth.mjpg</td></tr>
+    <tr><td>无 NPU</td><td>本实验纯 CPU——刻意为之：深度管线的瓶颈在 IO 与显示，不在算力</td></tr>
+  </table>
+  <div class="tip tealb"><span class="lab">🧪 设计性实验提醒</span>相机拉起有两个入口：<code>ros2 launch ascamera hp60c.launch.py</code>（主）与 <code>ros2 launch car1_peripherals depth_camera.launch.py</code>（备）。先确认哪个在你的镜像里存在，再选对应入口设计你的测距交互。</div>
+</section>
+
+<!-- 6 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>动画讲解：一次点击的反投影之旅</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" aria-label="点击反投影到3D点动画">
+      <rect x="0" y="0" width="640" height="300" fill="#111827"/>
+      <text x="24" y="30" fill="#94a3b8" font-size="13" font-family="monospace">click (u,v) + depth z  --&gt;  back-project (x, y, z)</text>
+
+      <!-- 左：像素平面 -->
+      <g>
+        <rect x="40" y="70" width="170" height="130" fill="#1e293b" stroke="#475569"/>
+        <text x="125" y="62" fill="#94a3b8" font-size="11" text-anchor="middle">image plane 640x480</text>
+        <!-- 网格 -->
+        <g stroke="#334155" stroke-width="1">
+          <line x1="40" y1="113" x2="210" y2="113"/><line x1="40" y1="156" x2="210" y2="156"/>
+          <line x1="97" y1="70" x2="97" y2="200"/><line x1="153" y1="70" x2="153" y2="200"/>
+        </g>
+        <!-- 点击点 -->
+        <circle cx="97" cy="113" r="7" fill="none" stroke="#ef4444" stroke-width="2"/>
+        <circle cx="97" cy="113" r="3" fill="#ef4444">
+          <animate attributeName="r" values="3;7;3" dur="1.4s" repeatCount="indefinite"/>
+        </circle>
+        <text x="104" y="102" fill="#fca5a5" font-size="11" font-family="monospace">u=269 v=324</text>
+        <text x="125" y="222" fill="#5eead4" font-size="11" text-anchor="middle" font-family="monospace">z = 309 mm (depth map)</text>
+      </g>
+
+      <!-- 中：针孔 / 内参 -->
+      <path d="M210 113 L300 150 L350 150" stroke="#64748b" stroke-width="2" fill="none" stroke-dasharray="6 5">
+        <animate attributeName="stroke-dashoffset" values="22;0" dur="1.4s" repeatCount="indefinite"/>
+      </path>
+      <g>
+        <rect x="296" y="96" width="8" height="110" fill="#334155"/>
+        <rect x="330" y="96" width="8" height="110" fill="#334155"/>
+        <circle cx="334" cy="151" r="4" fill="#f59e0b"/>
+        <text x="320" y="88" fill="#f59e0b" font-size="11" text-anchor="middle" font-family="monospace">pinhole</text>
+        <text x="320" y="232" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="monospace">fx=608.4 fy=611.2</text>
+        <text x="320" y="248" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="monospace">cx=328.3 cy=226.5</text>
+      </g>
+
+      <!-- 右：3D 坐标系 -->
+      <g transform="translate(470,150)">
+        <line x1="0" y1="0" x2="120" y2="0" stroke="#ef4444" stroke-width="2"/>
+        <polygon points="120,-4 130,0 120,4" fill="#ef4444"/>
+        <line x1="0" y1="0" x2="0" y2="-80" stroke="#34d399" stroke-width="2"/>
+        <polygon points="-4,-80 0,-90 4,-80" fill="#34d399"/>
+        <line x1="0" y1="0" x2="-54" y2="42" stroke="#38bdf8" stroke-width="2"/>
+        <polygon points="-58,38 -60,48 -48,44" fill="#38bdf8"/>
+        <text x="134" y="4" fill="#ef4444" font-size="11">x</text>
+        <text x="-6" y="-96" fill="#34d399" font-size="11">y</text>
+        <text x="-78" y="56" fill="#38bdf8" font-size="11">z</text>
+        <!-- 3D 点沿线飞入 -->
+        <circle cx="-30" cy="24" r="6" fill="#f59e0b" opacity="0">
+          <animate attributeName="cx" values="0;-30" dur="1.6s" repeatCount="indefinite"/>
+          <animate attributeName="cy" values="0;24" dur="1.6s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0;1" dur="1.6s" repeatCount="indefinite"/>
+        </circle>
+        <text x="-92" y="70" fill="#f59e0b" font-size="11" font-family="monospace">(-0.039, 0.046, 0.309)</text>
+      </g>
+
+      <!-- 公式 -->
+      <text x="320" y="286" fill="#5eead4" font-size="13" text-anchor="middle" font-family="monospace">x=(u-cx)*z/fx    y=(v-cy)*z/fy    z=mm*0.001</text>
+    </svg>
+    <div class="anim-cap">点击红色圈选像素 (269, 324) → 从深度图查得 z=309mm（青色标注）→ 穿过针孔（橙点）按内参 fx/fy、cx/cy 解算方向 → 在米制相机坐标系中点亮黄点 (-0.039, 0.046, 0.309)。注意 x 为负：点击位置在光轴左侧。整条链尺子只换一次（mm→m），位置还原靠先除 display_scale 再减左栏宽。</div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>互动讲解：测距仪实验台</h2>
+  <div class="ix-panel">
+    <div class="ix-title">🖱 互动测距台 · 点击图像读深度并反投影</div>
+    <div class="ctl-row">
+      <label class="dim">u</label>
+      <input type="range" id="u" min="0" max="639" value="269" oninput="runProj()">
+      <span class="dim" id="uv">269</span>
+      <label class="dim">&nbsp;&nbsp;v</label>
+      <input type="range" id="v" min="0" max="479" value="324" oninput="runProj()">
+      <span class="dim" id="vv">324</span>
+    </div>
+    <div class="ctl-row">
+      <label class="dim">深度 z (mm)</label>
+      <input type="range" id="z" min="0" max="4000" value="309" oninput="runProj()">
+      <span class="dim" id="zv">309</span>
+      <button class="btn" onclick="document.getElementById('u').value=269;document.getElementById('v').value=324;document.getElementById('z').value=309;runProj()">↺ 复位样例</button>
+      <button class="btn" onclick="runProj()">▶ 反投影</button>
+    </div>
+    <div class="ctl-row">
+      <label class="dim"><input type="checkbox" id="bug8"> 注入坑：忘了坐标还原（display_scale + 右栏偏移）</label>
+      <label class="dim">&nbsp;&nbsp;<input type="checkbox" id="bugmm"> 注入坑：把 mm 当成 m（忘 ×0.001）</label>
+    </div>
+    <pre class="io" id="io"></pre>
+  </div>
+  <p>操作建议：正常态下把 u 拖过 cx=328 观察 x 由负转正——这就是"跨过光轴"；把 z 拖到 0 输出 invalid 警告（0 值陷阱）；再逐个勾选两个"注入坑"，对比同一点击输出的 xyz 差多少个数量级——错误不报异常，只让结果荒谬，这是 3D 代码最有迷惑性的地方。</p>
+</section>
+
+<!-- 8 -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操步骤</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div><b>跑 24 项单测确认三段基线</b>：
+<pre><span class="g">pytest tests/ -v</span>
+<span class="y">tests/test_depth_io.py ......           [ 9/24]</span>
+<span class="y">tests/test_norm_map.py ......           [16/24]</span>
+<span class="y">tests/test_backproj.py ......           [24/24]  passed</span></pre></div></div>
+
+    <div class="step"><span class="n">2</span><div><b>读取并归一化深度图</b>（16bit 三连坑一次讲清）：
+<pre><span class="c"># 必须 IMREAD_UNCHANGED，否则 309mm 被 8bit 截断成 53</span>
+depth = cv2.imread("depth_0001.png", cv2.IMREAD_UNCHANGED)
+assert depth.dtype == np.uint16            <span class="c"># 单位：毫米！</span>
+
+<span class="c"># 0 是无效值，归一化前先屏蔽</span>
+valid = depth &gt; 0
+dmax = depth[valid].max()
+norm = np.zeros_like(depth, np.float32)
+norm[valid] = depth[valid] / dmax           <span class="c"># min-max 归一化(已在0..1)</span>
+u8   = (norm * 255).astype(np.uint8)        <span class="c"># applyColorMap 只吃 8bit</span>
+color = cv2.applyColorMap(u8, cv2.COLORMAP_JET)</pre></div></div>
+
+    <div class="step"><span class="n">3</span><div><b>双栏显示 + 鼠标坐标还原</b>：
+<pre><span class="c"># 拼接：左 RGB | 右 伪彩，display_scale=0.666 缩放预览</span>
+canvas = np.hstack([rgb_s, depth_s])
+
+def on_mouse(evt, x, y, flags, param):
+    if evt == cv2.EVENT_LBUTTONDOWN:
+        half = canvas.shape[1] // 2            <span class="c"># 右栏先减左栏宽</span>
+        if x &gt;= half: x -= half
+        <span class="c"># 屏幕坐标 -> 传感器 640x480 坐标</span>
+        u = int(x / display_scale); v = int(y / display_scale)
+        z_mm = int(depth[v, u])                <span class="c"># 直接查 uint16</span>
+        if z_mm == 0: print("invalid (z=0)"); return
+        z = z_mm * 0.001                        <span class="c"># 只在此处换算成米</span>
+        X = (u - CX) * z / FX; Y = (v - CY) * z / FY
+        print(f"Click ({u}, {v}): z = {z_mm} mm ({z:.3f} m) "
+              f"xyz=({X:.3f}, {Y:.3f}, {z:.3f}) m")</pre></div></div>
+
+    <div class="step"><span class="n">4</span><div><b>本机交互模式验证</b>：
+<pre><span class="g">python src/app.py --config config/depth3d_config.yaml --display</span>
+<span class="y">Click (269, 324): z = 309 mm (0.309 m) xyz=(-0.039, 0.046, 0.309) m</span></pre></div></div>
+
+    <div class="step"><span class="n">5</span><div><b>上板实时流</b>（主备两个 launch 选镜像里有的那个）：
+<pre><span class="c"># 终端 1（主）</span>
+<span class="g">ros2 launch ascamera hp60c.launch.py</span>
+<span class="c"># 备选：ros2 launch car1_peripherals depth_camera.launch.py</span>
+<span class="c"># 终端 2</span>
+<span class="g">python src/app.py --config config/depth3d_config.yaml --ros</span>
+<span class="y">[app] depth topic ~25 Hz, skip black frame (rgb.mean&lt;5)</span>
+<span class="y">http://&lt;board-ip&gt;:8080/depth.mjpg</span></pre></div></div>
+
+    <div class="step"><span class="n">6</span><div><b>扩展：把"测距仪"变成每帧输出</b>——取画面中心 3×3 深度中值作为"前方距离"，超阈值打印告警（衔接 EXP-11 的判停逻辑）。</div></div>
+  </div>
+  <div class="tip violet"><span class="lab">🚀 扩展挑战</span>全图反投影生成点云（np.meshgrid 一次性向量化，别写双层循环）；再把 EXP-01 的检测框叠上"中位数深度"，输出带距离的 3D 检测表。</div>
+</section>
+
+<!-- 9 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>重点与易错点</h2>
+  <div class="tip amber"><span class="lab">⚠️ 本课最大的坑：所有错误都不报错</span>mm/m 混用、8bit 截断、坐标不还原、0 当 0mm——四类错误全都能"正常跑"，只有数值荒谬。上板前先在样例数据上对源讲义的基准输出：<code>Click (269, 324): z = 309 mm xyz=(-0.039, 0.046, 0.309) m</code>。</div>
+  <table>
+    <tr><th>现象</th><th>根因</th><th>处理</th></tr>
+    <tr><td>数值差 1000 倍</td><td>mm 与 m 混用</td><td>全链路用 mm，仅反投影处 ×0.001</td></tr>
+    <tr><td>深度图全黑/花屏</td><td>默认 8bit 读取截断 uint16</td><td>IMREAD_UNCHANGED + 断言 dtype</td></tr>
+    <tr><td>点击读数错位</td><td>屏幕坐标未还原（display_scale/右栏偏移）</td><td>先减半宽再 ÷0.666</td></tr>
+    <tr><td>归一化后一片死黑</td><td>0 值参与 max 或 min-max 被 0 拉爆</td><td>valid 掩码屏蔽 invalid_value=0</td></tr>
+    <tr><td>x/y 整体平移几厘米</td><td>内参 cx/cy 用了别的分辨率标定</td><td>核对 640×480 出厂内参</td></tr>
+    <tr><td>偶发全黑帧进入统计</td><td>初始化首帧未过滤</td><td>rgb.mean()&lt;5 跳帧（已有保护勿删）</td></tr>
+    <tr><td>远程显示卡顿</td><td>全分辨率伪彩推流</td><td>确认 display_scale≈0.666 生效</td></tr>
+    <tr><td>深度数据滞后/断流</td><td>话题频率与缓存配置</td><td>ROS 模式核对 ~25Hz 与 source.mode=ros</td></tr>
+  </table>
+  <ul class="check">
+    <li>✅ 24 项单测全绿（16bit 读图、屏蔽 0 归一化、反投影数值比对）。</li>
+    <li>✅ 本地样例输出与讲义基准值逐字符一致。</li>
+    <li>✅ 双栏显示 + 点击测距 + (x,y,z) 打印三者联通。</li>
+    <li>✅ 上板 --ros 模式 MJPEG 稳定出流。</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>总结与思考</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">3D 测距闭环</div><p>16bit 深度读取 → 伪彩 → 点击反投影 → 米制坐标全链。</p></div>
+    <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">针孔模型</div><p>内参四元组是像素与世界之间唯一的桥，公式只有两行。</p></div>
+    <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">数值卫生</div><p>单位单一化、无效值先行剔除、每一次坐标变换都注明参照系。</p></div>
+    <div class="kcard"><div class="kd">🔬 验证方法</div><div class="kt">基准对拍 + 错误注入</div><p>对基准输出确认正确，再主动注入四类坑确认"能识别错误"。</p></div>
+  </div>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>点击处恰是反光玻璃，深度返回 0。若直接把 0 当距离参与"最近障碍物"判断，小车会做出什么荒唐决策？检索左右邻域（或时间窗上一帧）的非零深度来补洞，两种方案各有什么失效场景？</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>有了逐像素 (x,y,z)，如何用一句向量化代码（不写循环）把整幅深度图变成点云？点云密度随距离如何变化（提示：远处像素的锥角不变但物理间距变大），这对"远处细障碍物检测"意味着什么？</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-07-deepsort-tracking/index.html"><span class="lb">← 上一个</span>EXP-07 DeepSORT 多目标跟踪</a>
+  <a class="next" href="../exp-09-face-landmarks/index.html"><span class="lb">下一个实验 →</span>EXP-09 人脸关键点检测</a>
+</nav>
+
+<footer>
+  <span>CORE-02 · 机器人视觉应用与开发 · EXP-08 深度信息与 3D 检测</span>
+  <span>4 学时 · 设计性 · 基于 robot_vision 实验指导书改编</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// 测距仿真台：内参 640x480
+var FX = 608.39958, FY = 611.20714, CX = 328.30096, CY = 226.46483;
+
+function runProj(){
+  var u = +document.getElementById("u").value;
+  var v = +document.getElementById("v").value;
+  var zmm = +document.getElementById("z").value;
+  var bug8 = document.getElementById("bug8").checked;
+  var bugmm = document.getElementById("bugmm").checked;
+  document.getElementById("uv").textContent = u;
+  document.getElementById("vv").textContent = v;
+  document.getElementById("zv").textContent = zmm;
+
+  var t = "";
+  t += "<span class=\"dim\">// click screen=(" + u + ", " + v + "), display_scale=0.666, right pane offset applied</span>\n";
+
+  if(zmm === 0){
+    t += "<span class=\"bad\">[depth] </span>z=0 => invalid_value：该像素测距失败（反光/超量程），禁止当 0mm 使用\n";
+    t += "<span class=\"dim\">// 方案：取 3x3 邻域非零中值，或沿用上一帧深度</span>\n";
+    document.getElementById("io").innerHTML = t;
+    return;
+  }
+
+  var qu = u, qv = v, z = zmm * 0.001;
+  if(bug8){
+    t += "<span class=\"bad\">[bug  ] </span>注坑：未除 display_scale 也未减右栏偏移 —— 查询的 (u,v) 根本不是点击处\n";
+    qu = Math.min(639, Math.round(u * 0.666) + 320);
+    qv = Math.min(479, Math.round(v * 0.666));
+  }
+  if(bugmm){
+    z = zmm; // 忘了换算，把 309 当成 309 米
+    t += "<span class=\"bad\">[bug  ] </span>注坑：忘 *0.001 —— z 被当成 " + zmm + " 米（实际应为 " + (zmm * 0.001).toFixed(3) + " 米，差 1000 倍）\n";
+  }
+
+  var X = (qu - CX) * z / FX;
+  var Y = (qv - CY) * z / FY;
+  t += "[pick] u=" + qu + " v=" + qv + " depth=" + zmm + " mm\n";
+  t += "<span class=\"g\">[proj ] </span>z = " + zmm + " mm (" + z.toFixed(3) + " m)\n";
+  t += "         x=(" + qu + "-328.30096)*" + z.toFixed(3) + "/608.39958 = <span class=\"ok\">" + X.toFixed(3) + " m</span>\n";
+  t += "         y=(" + qv + "-226.46483)*" + z.toFixed(3) + "/611.20714 = <span class=\"ok\">" + Y.toFixed(3) + " m</span>\n";
+  t += "Click (" + qu + ", " + qv + "): z = " + zmm + " mm (" + z.toFixed(3) + " m) xyz=(" + X.toFixed(3) + ", " + Y.toFixed(3) + ", " + z.toFixed(3) + ") m\n";
+
+  if(bug8){
+    t += "<span class=\"warn\">[check]</span>对照基准 Click (269, 324) 应得 xyz=(-0.039, 0.046, 0.309) —— 当前结果已错位\n";
+  }
+  if(qu < CX && X > 0 || qu > CX && X < 0){
+    t += "<span class=\"dim\">// x 的符号即左右方位，检查 u 与 cx=328 的相对关系</span>\n";
+  }
+  document.getElementById("io").innerHTML = t;
+}
+
+runProj();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

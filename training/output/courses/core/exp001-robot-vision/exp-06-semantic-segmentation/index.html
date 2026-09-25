@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-06 图像语义分割 · 机器人视觉应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{
+  --theme:#0d9488;
+  --theme-deep:#0f766e;
+  --theme-bg:#ccfbf1;
+  --theme-bd:#99f6e4;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<aside class="side">
+  <div class="side-title">🤖 CORE-02 · 视觉应用与开发</div>
+  <div class="side-sub">12 个实验 · 48 学时</div>
+
+  <div class="grp">CH1 · 检测与分类</div>
+  <a href="../exp-01-industrial-defect/index.html">EXP-01 工业表面缺陷检测</a>
+  <a href="../exp-02-garbage-classification/index.html">EXP-02 垃圾分类图像分类</a>
+  <a href="../exp-03-lab-color-recognition/index.html">EXP-03 Lab/HSV 色彩空间</a>
+  <a href="../exp-04-qrcode/index.html">EXP-04 二维码识别与解码</a>
+
+  <div class="grp">CH2 · 图像理解</div>
+  <a href="../exp-05-line-following/index.html">EXP-05 多边形轮廓巡线</a>
+  <a class="now" href="index.html">EXP-06 图像语义分割</a>
+
+  <div class="grp">CH3 · 跟踪与 3D</div>
+  <a href="../exp-07-deepsort-tracking/index.html">EXP-07 DeepSORT 多目标跟踪</a>
+  <a href="../exp-08-depth-3d-detection/index.html">EXP-08 深度信息与 3D 检测</a>
+
+  <div class="grp">CH4 · 人体感知</div>
+  <a href="../exp-09-face-landmarks/index.html">EXP-09 人脸关键点检测</a>
+  <a href="../exp-10-pose-landmark/index.html">EXP-10 骨骼关键点检测</a>
+  <a href="../exp-11-pose-control/index.html">EXP-11 肢体动作体感控制</a>
+  <a href="../exp-12-hand-control/index.html">EXP-12 手指动作控制</a>
+</aside>
+
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-06 · 第 2 篇 · 设计性 · 4 学时</span>
+  <h1>图像语义分割</h1>
+  <p class="desc">从"框住人"进化到"抠出人"：YOLOv8n-seg 的 13 路输出里，32 通道 proto 与 32 维掩码系数一乘，像素级前景掩码就诞生了，再用 Alpha 合成把人贴到任意背景上。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐⭐ · 4 学时</span>
+    <span class="tag">yolov8n-seg</span>
+    <span class="tag">13 输出 + proto</span>
+    <span class="tag">38 项单元测试</span>
+    <span class="tag">MJPEG :8080/seg.mjpg</span>
+  </div>
+</div>
+
+<!-- 1 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：为什么"框住"还不够？</h2>
+  <p>直播绿幕能把你从教室里"抠"出来换成虚拟背景——这个需求靠矩形框永远做不到：框内既有你也有窗帘。语义分割回答的是逐像素问题：<b>这个像素属于"人"还是"背景"？</b>在机器人场景里它更关键：机械臂要绕开工人、巡检要统计仪表盘区域人流，都必须知道目标的精确外沿，而不是一个粗框。</p>
+  <p>本实验在实验箱 B2 上跑 <code>yolov8n-seg</code> 的 RKNN 版，实时输出 person 掩码并做背景合成。真正的难点藏在模型输出里：13 个输出张量、32 通道低分辨率 proto、掩码阈值的微妙平衡——差一档就"边缘碎成渣"或"人被啃掉一块"。</p>
+  <div class="tip tealb"><span class="lab">🎯 本实验的三个关卡</span>① 看懂 13 输出的布局与掩码分支；② 掌握 mc × proto → sigmoid → 上采样 → 阈值的标准融合式；③ 调出不碎边、不缺块的前景掩码。</div>
+</section>
+
+<!-- 2 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>原理通俗讲解：三十二张"透明胶片"</h2>
+  <p><b>把掩码生成想象成洗照片叠底片。</b>网络后段吐出 32 张模糊的小图（proto，160×160），每张都是一种"形状底片"；每个检测到的人则给出 32 个系数（mc，像 32 支颜料的配比）。把系数乘到对应底片上、全部加起来——一张只属于这个人的"透明胶片"就显影了：</p>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">📦 13 路输出</div><div class="kt">三尺度 × 4 段</div><p>3 层特征图 × [box 64 维 + cls 80 维 + cls_sum 1 维 + mc 32 维]，外加 proto [1,32,160,160]。cls_sum 先做粗过滤，省下大量无效计算。</p></div>
+    <div class="kcard"><div class="kd">🎨 mc × proto</div><div class="kt">32 次乘加</div><p><code>mask = Σ mc[i] × proto[i]</code>——这一步就是"按配比混合 32 张底片"，结果是低分辨率的单人热力图。</p></div>
+    <div class="kcard"><div class="kd">☀️ sigmoid 显影</div><div class="kt">logit → 0~1</div><p>乘加结果还是无量纲的 logit，过一次 sigmoid 把它压成"属于人的概率"，画面上看着像慢慢显影。</p></div>
+    <div class="kcard"><div class="kd">🔍 阈值裁剪</div><div class="kt">mask_thr</div><p>概率 &gt; 阈值 → 1（前景），否则 0。阈值太低边缘发毛带毛刺，太高人体被"啃"——它是本课最重要的手感参数。</p></div>
+    <div class="kcard"><div class="kd">📐 放大回原帧</div><div class="kt">INTER_LINEAR</div><p>160×160 的胶片要插值回 640×640 并摘掉 letterbox 的 pad，才能和原图逐像素对齐——用 NEAREST 会锯齿成马赛克。</p></div>
+    <div class="kcard"><div class="kd">🎞 合成发布</div><div class="kt">Alpha 公式</div><p><code>I_out = I_orig × M + I_bg × (1−M)</code>：M=1 处留人，M=0 处换景。多人掩码取并集即可一次合成。</p></div>
+  </div>
+  <div class="tip amber"><span class="lab">⚠️ 掩码的两个"错位"陷阱</span>① <b>RGB/BGR</b>：proto 分支按 RGB 流水线训练，混用通道会让合成半边脸发青；② <b>pad 不摘</b>：letterbox 补的灰边不除掉，掩码整体会相对原图下移/缩小。这两个错都不报错，只让你"看着差点意思"。</div>
+</section>
+
+<!-- 3 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>关联知识点</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">EXP-01</div><div class="kt">同一家族</div><p>检测分支的 box/cls 解码、NMS（max_wh=7680 一次算完全类别）原样复用，掩码是新增的并行分支。</p></div>
+    <div class="kcard"><div class="kd">EXP-05</div><div class="kt">掩码→轮廓</div><p>得到二值掩码后接 findContours，就能量测人体外接多边形、宽度，用于"能否通过"判断。</p></div>
+    <div class="kcard"><div class="kd">并行</div><div class="kt">workers=3</div><p>每个 worker 持有独立 RKNN 实例（NPU 多实例），流水线吃满 40~60 FPS。</p></div>
+    <div class="kcard"><div class="kd">应用</div><div class="kt">背景替换</div><p>绿幕抠像、隐私打码（背景整体模糊只留人）、电子围栏（人越界报警）都是本课直接延伸。</p></div>
+  </div>
+  <ul class="check">
+    <li>前置：EXP-01 的 RKNN 推理骨架与 NMS（直接复用工程结构）。</li>
+    <li>关联：图像金字塔的多尺度概念（3 层输出各管一段目标尺寸）。</li>
+    <li>出口：掩码可接 EXP-07 作为检测框来源，也可接 EXP-08 做深度融合。</li>
+  </ul>
+</section>
+
+<!-- 4 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>实验目标</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div><b>读懂输出</b>：打印并解释 yolov8n-seg 的 13 个输出张量形状，指出掩码分支（mc32）与 proto 的对应关系。</div></div>
+    <div class="step"><span class="n">2</span><div><b>实现融合</b>：手写 mc×proto → sigmoid → 上采样 → mask_thr 阈值化 → 摘 pad 的完整后处理，前背景并集成前景掩码。</div></div>
+    <div class="step"><span class="n">3</span><div><b>三种呈现</b>：background=black（黑底抠像）/ solid（纯色底）/ image（任意图片 Alpha 合成）三种模式各出一版效果图。</div></div>
+    <div class="step"><span class="n">4</span><div><b>达标性能</b>：38 项单元测试全绿，板端实时流 40~60 FPS @ :8080/seg.mjpg。</div></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>实验环境与准备</h2>
+  <table>
+    <tr><th>类别</th><th>内容</th></tr>
+    <tr><td>硬件</td><td>实验箱 B2（XFLZ_EAI_B2_PRO），HP60C 相机；YOLOv8n-seg 转出的 RKNN 模型</td></tr>
+    <tr><td>软件</td><td>Python 3、rknn-toolkit 板端运行时、OpenCV（resize/插值/合成）、多进程 worker 框架</td></tr>
+    <tr><td>模型</td><td>yolov8n-seg.rknn，输入 640×640，<b>13 输出</b> = 3×[64+80+1+32] + proto[1,32,160,160]</td></tr>
+    <tr><td>数据集</td><td>内置行人样例图 / 视频；classes=[0] person；另备一张背景图用于 image 合成模式</td></tr>
+    <tr><td>参数</td><td>workers=3（每 worker 独立 RKNN 实例）、mask_thr 默认 0.5、max_wh=7680 全类一次 NMS、stream=seg.mjpg</td></tr>
+    <tr><td>预览</td><td>MJPEG <code>:8080/seg.mjpg</code></td></tr>
+  </table>
+  <div class="tip tealb"><span class="lab">🧪 设计性实验提醒</span>本课的设计空间在"后处理链"：阈值、插值方式、合成背景是三个独立旋钮。请用对照截图记录 mask_thr=0.3/0.5/0.7 三档的边缘差异。</div>
+</section>
+
+<!-- 6 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>动画讲解：13 路输出合成前景掩码</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" aria-label="掩码系数与proto融合动画">
+      <rect x="0" y="0" width="640" height="300" fill="#111827"/>
+      <text x="24" y="30" fill="#94a3b8" font-size="13" font-family="monospace">mc[32] x proto[32,160,160] -&gt; sigmoid -&gt; thr -&gt; mask</text>
+
+      <!-- mc 系数柱 -->
+      <g>
+        <text x="60" y="66" fill="#94a3b8" font-size="12" text-anchor="middle">mc (32 系数)</text>
+        <rect x="30" y="80" width="8" height="60" fill="#0d9488" opacity="0.9"/>
+        <rect x="42" y="100" width="8" height="40" fill="#0d9488" opacity="0.6"/>
+        <rect x="54" y="72" width="8" height="68" fill="#0d9488" opacity="1"/>
+        <rect x="66" y="112" width="8" height="28" fill="#0d9488" opacity="0.4"/>
+        <rect x="78" y="90" width="8" height="50" fill="#0d9488" opacity="0.8"/>
+        <text x="60" y="162" fill="#5eead4" font-size="11" text-anchor="middle" font-family="monospace">Σ mc·proto</text>
+      </g>
+
+      <!-- 乘号 -->
+      <text x="112" y="118" fill="#f59e0b" font-size="26" text-anchor="middle">x</text>
+
+      <!-- proto 32 张卡片堆叠 -->
+      <g>
+        <text x="180" y="66" fill="#94a3b8" font-size="12" text-anchor="middle">proto 32 张底片</text>
+        <rect x="140" y="86" width="70" height="70" fill="#1e293b" stroke="#475569" transform="rotate(-6 175 121)"/>
+        <rect x="147" y="82" width="70" height="70" fill="#1e293b" stroke="#475569" transform="rotate(-3 182 117)"/>
+        <rect x="155" y="78" width="70" height="70" fill="#1e293b" stroke="#2dd4bf" opacity="0.9"/>
+        <ellipse cx="190" cy="113" rx="16" ry="26" fill="#0d9488" opacity="0.55"/>
+        <text x="190" y="162" fill="#5eead4" font-size="11" text-anchor="middle" font-family="monospace">160x160 x 32</text>
+      </g>
+
+      <!-- 加和 + sigmoid -->
+      <text x="248" y="118" fill="#f59e0b" font-size="24" text-anchor="middle">+</text>
+      <path d="M262 112 H300" stroke="#64748b" stroke-width="2"/>
+      <polygon points="300,107 310,112 300,117" fill="#64748b"/>
+      <text x="330" y="98" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="monospace">sigmoid</text>
+      <!-- S 曲线 -->
+      <path d="M310 145 C 325 145, 328 80, 350 80 C 372 80, 375 145, 390 145" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-dasharray="170" stroke-dashoffset="170">
+        <animate attributeName="stroke-dashoffset" values="170;0" dur="2.4s" repeatCount="indefinite"/>
+      </path>
+
+      <!-- 阈值 -->
+      <path d="M404 112 H440" stroke="#64748b" stroke-width="2"/>
+      <polygon points="440,107 450,112 440,117" fill="#64748b"/>
+      <g>
+        <text x="474" y="66" fill="#94a3b8" font-size="12" text-anchor="middle">mask_thr</text>
+        <rect x="436" y="80" width="76" height="64" fill="#0f172a" stroke="#334155"/>
+        <line x1="436" y1="110" x2="512" y2="110" stroke="#ef4444" stroke-width="2" stroke-dasharray="5 4">
+          <animate attributeName="y1" values="96;124;96" dur="3s" repeatCount="indefinite"/>
+          <animate attributeName="y2" values="96;124;96" dur="3s" repeatCount="indefinite"/>
+        </line>
+        <ellipse cx="474" cy="120" rx="20" ry="20" fill="#34d399" opacity="0.85">
+          <animate attributeName="ry" values="14;22;14" dur="3s" repeatCount="indefinite"/>
+        </ellipse>
+        <text x="474" y="162" fill="#5eead4" font-size="11" text-anchor="middle" font-family="monospace">&gt; 0.5</text>
+      </g>
+
+      <!-- 结果人形 -->
+      <path d="M556 112 H592" stroke="#64748b" stroke-width="2"/>
+      <polygon points="592,107 602,112 592,117" fill="#64748b"/>
+      <g fill="#34d399">
+        <circle cx="616" cy="86" r="12"/>
+        <path d="M604 104 h24 l6 34 h-10 l-4 -20 -4 20 h-10 z"/>
+      </g>
+      <text x="616" y="162" fill="#34d399" font-size="11" text-anchor="middle" font-family="monospace">person</text>
+      <text x="320" y="220" fill="#94a3b8" font-size="12" text-anchor="middle">并集多人掩码 → INTER_LINEAR 上采样到原帧 → 摘 letterbox pad → Alpha 合成</text>
+      <text x="320" y="248" fill="#64748b" font-size="12" text-anchor="middle" font-family="monospace">I_out = I_orig * M + I_bg * (1 - M)</text>
+    </svg>
+    <div class="anim-cap">掩码生成流水线：32 个系数（左，青色柱）加权求和 32 张 proto 底片（中，卡片堆）→ sigmoid 显影成概率 → 红色 mask_thr 阈值线来回扫描，线压得越低绿色人形越"胖"、越高越"瘦" → 最终输出二值人形掩码。整条链只发生在低分辨率端，最后一步才放大回原帧。</div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>互动讲解：mask_thr 掩码质量实验台</h2>
+  <div class="ix-panel">
+    <div class="ix-title">🎚 参数实验台 · 阈值与插值如何毁掉/拯救掩码边缘</div>
+    <div class="ctl-row">
+      <label class="dim">mask_thr</label>
+      <input type="range" id="thr" min="20" max="85" value="50" oninput="runSeg()">
+      <span class="dim" id="thrv">0.50</span>
+      <label class="dim">&nbsp;&nbsp;插值</label>
+      <select id="interp" onchange="runSeg()">
+        <option value="linear">INTER_LINEAR（推荐）</option>
+        <option value="nearest">INTER_NEAREST（锯齿）</option>
+      </select>
+    </div>
+    <div class="ctl-row">
+      <label class="dim">背景 <select id="bg" onchange="runSeg()"><option value="black">black</option><option value="solid">solid</option><option value="image">image</option></select></label>
+      <label class="dim">&nbsp;&nbsp;<input type="checkbox" id="paderr"> 模拟"未摘 letterbox pad"错位</label>
+      <label class="dim">&nbsp;&nbsp;<input type="checkbox" id="swapped"> 模拟 RGB/BGR 通道互换</label>
+      <button class="btn" onclick="runSeg()">▶ 推理一帧</button>
+    </div>
+    <pre class="io" id="io"></pre>
+  </div>
+  <p>操作建议：把 thr 拉到 0.85 观察"啃块"警告，拉到 0.20 观察"碎渣/粘连"警告；再勾选两个错误开关，体会 pad 错位（整体位移）与通道互换（颜色诡异）这两类"不报错但看着不对"的坑。</p>
+</section>
+
+<!-- 8 -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操步骤</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div><b>先跑 38 项单测确认基线</b>：
+<pre><span class="g">pytest tests/ -v</span>
+<span class="y">tests/test_outputs.py ......           [ 8/38]</span>
+<span class="y">tests/test_mask.py .........           [19/38]</span>
+<span class="y">tests/test_compose.py ......           [30/38]</span>
+<span class="y">38 passed</span></pre></div></div>
+
+    <div class="step"><span class="n">2</span><div><b>打印 13 路输出形状</b>，建立心智模型：
+<pre><span class="g">python src/app.py --print-outputs --image samples/street.jpg</span>
+<span class="y">out[0] box    (1, 8400, 4)</span>
+<span class="y">out[1] cls    (1, 8400, 80)</span>
+<span class="y">out[2] cls_sum(1, 8400, 1)   # 粗过滤器</span>
+<span class="y">out[3] mc     (1, 8400, 32)  # 掩码系数</span>
+<span class="y">... 3 scales x 上述 4 段 ...</span>
+<span class="y">out[12] proto (1, 32, 160, 160)</span></pre></div></div>
+
+    <div class="step"><span class="n">3</span><div><b>手写掩码后处理核心</b>（本课最重要的 12 行）：
+<pre><span class="c"># 1) 选中检测框对应的 mc 系数</span>
+mc = masks_sel[det_idx]                  <span class="c"># (N, 32)</span>
+<span class="c"># 2) 系数 x proto 并按帧累加 —— 连续张量要 read + numpy</span>
+prod = np.matmul(mc.astype(np.float32),
+                 proto.reshape(32, -1))  <span class="c"># (N, 160*160)</span>
+<span class="c"># 3) sigmoid 显影</span>
+prob = 1.0 / (1.0 + np.exp(-prod))
+<span class="c"># 4) 单人掩码上采样到输入尺寸（双线性；NEAREST 会锯齿）</span>
+m = prob[i].reshape(160, 160).astype(np.float32)
+m = cv2.resize(m, (640, 640), interpolation=cv2.INTER_LINEAR)
+<span class="c"># 5) 摘 letterbox pad、再缩放回原帧、阈值化</span>
+m = m[pad_top:640-pad_b, pad_left:640-pad_r]
+m = cv2.resize(m, (W, H), interpolation=cv2.INTER_LINEAR)
+bin_mask = (m &gt; mask_thr).astype(np.uint8)   <span class="c"># 默认 0.5</span></pre></div></div>
+
+    <div class="step"><span class="n">4</span><div><b>前景合并 + 三种背景合成</b>：
+<pre><span class="c"># 多个 person 掩码取并集</span>
+foreground = np.zeros((H, W), np.uint8)
+for mk in person_masks: foreground = np.maximum(foreground, mk)
+
+<span class="c"># background: black / solid / image —— 核心是同一个 Alpha 公式</span>
+M = foreground[..., None].astype(np.float32)      <span class="c"># (H,W,1)</span>
+I_out = (img * M + bg_img * (1 - M)).astype(np.uint8)</pre></div></div>
+
+    <div class="step"><span class="n">5</span><div><b>实时流验证 40~60 FPS</b>：
+<pre><span class="g">python src/app.py --config config/seg_config.yaml --ros</span>
+<span class="y">http://&lt;board-ip&gt;:8080/seg.mjpg</span>
+<span class="y">fps=52  persons=2  mask_thr=0.50  bg=image</span></pre></div></div>
+
+    <div class="step"><span class="n">6</span><div><b>性能小实验</b>：把 workers 从 3 改回 1 对比帧率（配置里改完重跑），理解"每 worker 独立 RKNN 实例"为什么能吃满 NPU。</div></div>
+  </div>
+  <div class="tip violet"><span class="lab">🚀 扩展挑战</span>把 foreground 掩码送进 EXP-05 的 findContours，输出人体外接多边形；再把 mask_thr 当作 ROS 参数动态可调，在 MJPEG 流上实时观察边缘变化。</div>
+</section>
+
+<!-- 9 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>重点与易错点</h2>
+  <div class="tip amber"><span class="lab">⚠️ 第一大坑：低分辨率端一切正常，原帧上一看全是错</span>掩码链的错误几乎都不抛异常：pad 没摘→整体位移；RGB/BGR 混→颜色诡异；INTER_NEAREST→边缘锯齿。<b>对照原图逐像素检查四项：通道序、pad、resize 顺序、阈值</b>。</div>
+  <table>
+    <tr><th>现象</th><th>根因</th><th>处理</th></tr>
+    <tr><td>掩码边缘碎渣、人身上有洞</td><td>mask_thr 偏高 / 低分辨率噪声</td><td>调到 0.4~0.5，必要时形态学闭运算</td></tr>
+    <tr><td>掩码粘到背景、人"变胖"</td><td>mask_thr 偏低</td><td>提到 0.55~0.6 对照测试</td></tr>
+    <tr><td>掩码整体相对人下移</td><td>letterbox pad 未摘除</td><td>按 pad_top/left 切片后再放大</td></tr>
+    <tr><td>合成脸发青/发红</td><td>RGB 与 BGR 通道混用</td><td>全链路统一 BGR → 转一次并固定</td></tr>
+    <tr><td>掩码放大后马赛克</td><td>用了 INTER_NEAREST</td><td>全链路 INTER_LINEAR</td></tr>
+    <tr><td>浓度无效：第二个人没掩码</td><td>并集写成了"覆盖"或 NMS 后索引对错</td><td>np.maximum 并集；核对 det_idx 映射</td></tr>
+    <tr><td>NMS 后框数骤减/不变</td><td>忘了 max_wh=7680 全类一次处理</td><td>按官方写法一次性 NMS</td></tr>
+    <tr><td>帧率掉到个位数</td><td>workers=1 或同实例并发推理</td><td>恢复 workers=3，每 worker 独立 RKNN 实例</td></tr>
+    <tr><td>MJPEG 404</td><td>端口/路径错</td><td>核对 :8080/seg.mjpg</td></tr>
+  </table>
+  <ul class="check">
+    <li>✅ 38 项单元测试全绿（含掩码尺寸、阈值、合成格式用例）。</li>
+    <li>✅ 黑底、纯色、图片三种合成模式各产出一张对照截图。</li>
+    <li>✅ mask_thr 三档（0.3/0.5/0.7）对照图 + 一句结论。</li>
+    <li>✅ 板端实时流稳定在 40 FPS 以上。</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>总结与思考</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">像素级抠像</div><p>13 输出解析 + 掩码融合 + 三种背景合成 + 实时流。</p></div>
+    <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">检测与掩码解耦</div><p>框走 box/cls 分支，掩码走 mc×proto 分支，最后在检测框上会合。</p></div>
+    <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">后处理全链路</div><p>sigmoid、插值、pad 对齐、阈值，每一步都可单独排查。</p></div>
+    <div class="kcard"><div class="kd">🔬 验证方法</div><div class="kt">错误注入</div><p>主动制造 pad/通道/插值三类错误再复原，比只跑对一遍记得牢。</p></div>
+  </div>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>抠像边缘"半透明羽化"看着更自然——可当前实现是硬阈值二值掩码。若把 M 从 0/1 改成 0~1 的软概率直接代入 Alpha 公式，画面会怎么变？mask_thr 这个参数还需要存在吗？它转移到哪里去了？</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>一个工人走进人群，两人的掩码并集把中间的椅子也"吃"进去了（语义分割不分你我，同类别连通）。要区分"张三的掩码"和"李四的掩码"，模型输出还缺哪类信息？提示：实例分割的原型分支与 EXP-07 的 ID 体系各自解决什么。</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-05-line-following/index.html"><span class="lb">← 上一个</span>EXP-05 多边形轮廓巡线</a>
+  <a class="next" href="../exp-07-deepsort-tracking/index.html"><span class="lb">下一个实验 →</span>EXP-07 DeepSORT 多目标跟踪</a>
+</nav>
+
+<footer>
+  <span>CORE-02 · 机器人视觉应用与开发 · EXP-06 图像语义分割</span>
+  <span>4 学时 · 设计性 · 基于 robot_vision 实验指导书改编</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// mask_thr 掩码质量仿真台
+function runSeg(){
+  var thr = +document.getElementById("thr").value / 100;
+  var interp = document.getElementById("interp").value;
+  var bg = document.getElementById("bg").value;
+  var padErr = document.getElementById("paderr").checked;
+  var swapped = document.getElementById("swapped").checked;
+  document.getElementById("thrv").textContent = thr.toFixed(2);
+
+  // 模拟边缘像素概率分布：1.8 万个边缘像素，概率集中在 0.25~0.85
+  var edge = 18000, core = 210000;
+  var fg = Math.round(230000 - edge * (thr - 0.2) / 0.65);
+  var lost = Math.max(0, Math.round((thr - 0.5) * 90000));
+  var halo = Math.max(0, Math.round((0.5 - thr) * 80000));
+
+  var t = "";
+  t += "<span class=\"dim\">// frame 4211: proto (32,160,160) x mc -> sigmoid -> resize(640) -> thr</span>\n";
+  t += "<span class=\"g\">[seg ] </span>mask_thr=" + thr.toFixed(2) + " interp=" + interp + " bg=" + bg + "  fg=" + (fg + lost + halo) + " px\n";
+
+  if(thr >= 0.8){
+    t += "<span class=\"bad\">[warn ] </span>阈值过高：边缘 " + lost + " px 被砍掉，肩部/发梢<em>啃块</em>，人体轮廓收缩\n";
+  } else if(thr <= 0.3){
+    t += "<span class=\"bad\">[warn ] </span>阈值过低：+ " + halo + " px 假前景，背景<em>粘连</em>成光晕，抠像发虚\n";
+  } else {
+    t += "<span class=\"ok\">[ ok  ] </span>边缘带 (0.2~0.85) 处理正常，轮廓完整无啃块\n";
+  }
+  if(interp === "nearest"){
+    t += "<span class=\"warn\">[warn ] </span>INTER_NEAREST 上采样：160->640 出现 4 像素级阶梯锯齿（对比 LINEAR 即知）\n";
+  }
+  if(padErr){
+    t += "<span class=\"bad\">[err  ] </span>未摘 letterbox pad：掩码相对人体下移/缩小 (pad_top/80, pad_left/80)，<em>不报错但全错</em>\n";
+  }
+  if(swapped){
+    t += "<span class=\"bad\">[err  ] </span>RGB/BGR 互换：合成结果肤色发青、背景通道镜像\n";
+  }
+
+  var formula = { black: "bg = 0", solid: "bg = (40,40,40)", image: "bg = cv2.imread(bg.jpg)" };
+  t += "<span class=\"dim\">// I_out = I_orig * M + " + formula[bg] + " * (1 - M)</span>\n";
+  if(!padErr && !swapped && thr > 0.3 && thr < 0.8 && interp === "linear"){
+    t += "<span class=\"ok\">[synth]</span>合成输出正常 (H,W,3) uint8 -> push seg.mjpg, fps≈52\n";
+  } else {
+    t += "<span class=\"warn\">[synth]</span>合成完成但存在上述告警项，请对照坑表逐项排除\n";
+  }
+  document.getElementById("io").innerHTML = t;
+}
+
+runSeg();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

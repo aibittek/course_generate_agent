@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-11 肢体动作体感控制 · 机器人视觉应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{
+  --theme:#0d9488;
+  --theme-deep:#0f766e;
+  --theme-bg:#ccfbf1;
+  --theme-bd:#99f6e4;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<aside class="side">
+  <div class="side-title">🤖 CORE-02 · 视觉应用与开发</div>
+  <div class="side-sub">12 个实验 · 48 学时</div>
+
+  <div class="grp">CH1 · 检测与分类</div>
+  <a href="../exp-01-industrial-defect/index.html">EXP-01 工业缺陷检测（YOLOv8）</a>
+  <a href="../exp-02-garbage-classification/index.html">EXP-02 垃圾分类图像分类</a>
+  <a href="../exp-03-lab-color-recognition/index.html">EXP-03 Lab/HSV 色彩空间</a>
+  <a href="../exp-04-qrcode/index.html">EXP-04 二维码识别与解码</a>
+
+  <div class="grp">CH2 · 图像理解</div>
+  <a href="../exp-05-line-following/index.html">EXP-05 多边形轮廓巡线</a>
+  <a href="../exp-06-semantic-segmentation/index.html">EXP-06 图像语义分割</a>
+
+  <div class="grp">CH3 · 跟踪与 3D</div>
+  <a href="../exp-07-deepsort-tracking/index.html">EXP-07 DeepSORT 多目标跟踪</a>
+  <a href="../exp-08-depth-3d-detection/index.html">EXP-08 深度信息与 3D 检测</a>
+
+  <div class="grp">CH4 · 人体感知</div>
+  <a href="../exp-09-face-landmarks/index.html">EXP-09 人脸关键点检测</a>
+  <a href="../exp-10-pose-landmark/index.html">EXP-10 骨骼关键点检测</a>
+  <a class="now" href="index.html">EXP-11 肢体动作体感控制</a>
+  <a href="../exp-12-hand-control/index.html">EXP-12 手指动作控制</a>
+</aside>
+
+<main class="content">
+  <div class="exp-head">
+    <span class="code">EXP-11 · 第 4 篇 · 综合性 · 4 学时</span>
+    <h1>肢体动作体感控制</h1>
+    <p class="desc">把 EXP-10 拿到的 33 个骨骼关键点变成"方向盘"：站姿举手下蹲判定五个动作，
+    映射成 ROS2 Twist 速度指令，驱动小车或 turtlesim 里的海龟。视觉感知 → 规则决策 → 运动执行的完整闭环，
+    在这里第一次真正闭合。</p>
+    <div class="meta">
+      <span class="tag hl">难度 ⭐⭐⭐ · 4 学时</span>
+      <span class="tag">actions.py 五规则</span>
+      <span class="tag">Twist 映射</span>
+      <span class="tag">55 项单测</span>
+      <span class="tag">:8083/pose_control.mjpg</span>
+    </div>
+  </div>
+
+  <!-- 1 -->
+  <section class="blk" id="s1">
+    <h2><span class="no">01</span>问题引入：你和小车之间，可以没有遥控器</h2>
+    <p>前面十个实验，摄像头一直在"看"，但看完了就完了——缺陷框出来、骨架画出来，然后停在画面上。
+    你可能早就在想：<strong>能不能让它动起来？</strong>我往左挥 hand，小车就往左拐？</p>
+    <p>这正是体感游戏（Kinect、Switch 运动环）背后的逻辑：摄像头成了控制器。
+    把这套逻辑移植到移动小车上，你就得到了一个"人形遥控器"——而且不用买遥控器，
+    任何一台 RGB 摄像头 + 一个跑着 ROS2 的小车就够了。</p>
+    <p>但"看起来能做"和"真的能跑"之间隔着三道坎，本实验逐一拆掉：</p>
+    <ul class="check">
+      <li><strong>怎么从 33 个点得出"他在举手"？</strong>——坐标比较，比你想的简单</li>
+      <li><strong>多个动作同时满足怎么办？</strong>——优先级设计，出事了怎么办（fail-safe）</li>
+      <li><strong>判定结果怎么变成电机转动？</strong>——Twist 消息 + 话题，最后接 turtlesim 验证</li>
+    </ul>
+    <div class="tip amber"><span class="lab">先立规矩</span>
+    本实验的 <code>control.publish_cmd_vel</code> <strong>默认是 false</strong>——这是刻意的安全设计。
+    第一次跑请务必先对 turtlesim 验证，别直接上真车；上真车前确认轮子悬空或场地空旷。
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="blk" id="s2">
+    <h2><span class="no">02</span>原理通俗讲解：交警在路口看懂你的手势</h2>
+    <p>想象路口的交警。他不是在"计算"你的动作，而是在<strong>按一张固定的优先级清单核对</strong>：
+    "先看这个人是不是在拦车（停车手势）；不是？再看是不是左转手势；还不是……"
+    清单从最紧急的条目开始，一旦命中就执行，后面的条目看都不看。</p>
+    <p>我们的 <code>actions.py</code> 就是这位交警的清单，输入是骨骼点坐标，输出是五个动作之一：</p>
+
+    <div class="flow">
+      <div class="step"><span class="n">1</span>归一化：坐标本来就是 0~1，但要注意分数坐标系——左手 x 在 0.3 一侧，右手在 0.7 一侧</div>
+      <div class="step"><span class="n">2</span>取特征量：双髋的 y（判断蹲没蹲）、腕和肩的 y（判断举没举手）</div>
+      <div class="step"><span class="n">3</span>按优先级顺序逐条匹配：蹲 &gt; 双手举 &gt; 单手举 &gt; 默认停止</div>
+      <div class="step"><span class="n">4</span>输出 Action：FORWARD / STOP / TURN_LEFT / TURN_RIGHT / BACKWARD</div>
+      <div class="step"><span class="n">5</span>映射成 Twist：linear.x 管前后，angular.z 管转向</div>
+    </div>
+
+    <h3 style="margin-top:22px;font-size:17px;">生活类比：膝盖弯了就是"蹲"，手腕高过肩就是"举"</h3>
+    <p>所有判定都是几何比较，没有机器学习，没有模糊逻辑：</p>
+    <div class="kgrid">
+      <div class="kcard">
+        <div class="kd">下蹲</div>
+        <div class="kt">双髋 y &gt; 0.72</div>
+        <p>y 越大越靠画面底部。髋部都快沉到画面底了，说明人蹲下去了 → <strong>停车</strong>。放在最高优先级，因为"蹲下"最像"我要停"。</p>
+      </div>
+      <div class="kcard">
+        <div class="kd">双手举起</div>
+        <div class="kt">双腕 y &lt; 双肩 y − 0.08</div>
+        <p>手腕比肩还高出一截（留 0.08 的容差防抖）就是举手 → <strong>前进</strong>。人类宣布"向前冲"的本能姿势。</p>
+      </div>
+      <div class="kcard">
+        <div class="kd">单手举起</div>
+        <div class="kt">左举 → 左转；右举 → 右转</div>
+        <p>只举一只，车就往那只手的方向拐。注意"左手举"对应 TURN_LEFT，坐标系的左右一致性写单测锁死。</p>
+      </div>
+      <div class="kcard">
+        <div class="kd">默认兜底</div>
+        <div class="kt">全不满足 → STOP</div>
+        <p>以及关键的 <strong>fail-safe</strong>：髋部不可见（遮挡、跑出画面）→ 直接 STOP。看不懂就停车，绝不猜。</p>
+      </div>
+    </div>
+
+    <div class="tip tealb"><span class="lab">为什么必须有优先级</span>
+    假设你下蹲的同时胳膊还没完全放下，"蹲"和"举手"两条规则会同时满足。
+    没有优先级，程序就可能随机输出前进或停车——车在你蹲下（你以为它停了）时加速，这是安全事故。
+    优先级把"最安全的意图"排在最前，冲突时安全动作赢。
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="blk" id="s3">
+    <h2><span class="no">03</span>关联知识点</h2>
+    <div class="kgrid">
+      <div class="kcard">
+        <div class="kd">geometry_msgs/Twist</div>
+        <div class="kt">运动的通用语言</div>
+        <p><code>linear.x</code> 前后速度（m/s）、<code>angular.z</code> 转向角速度（rad/s）。几乎所有移动机器人的控制接口都认它，turtlebot、小车底盘、仿真海龟全是。本实验只用这两个字段。</p>
+      </div>
+      <div class="kcard">
+        <div class="kd">发布/订阅（Pub/Sub）</div>
+        <div class="kt">松耦合的传话机制</div>
+        <p>节点往 <code>/cmd_vel</code>（或 <code>/turtle1/cmd_vel</code>）话题上"喊"一嗓子，谁听谁收到。发布者不知道也不关心谁在听——所以换真车还是换海龟，视觉端一行不改。</p>
+      </div>
+      <div class="kcard">
+        <div class="kd">fail-safe（失效安全）</div>
+        <div class="kt">看不懂 = 停</div>
+        <p>感知系统必须设计"降级行为"。骨架缺失、关键点置信度低、摄像头被挡——所有异常的稳态输出都是 STOP，而不是保持上一帧动作。</p>
+      </div>
+      <div class="kcard">
+        <div class="kd">速度限幅（clamp）</div>
+        <div class="kt">给失控加保险丝</div>
+        <p>无论判定逻辑多么正确，出口统一夹在 linear ±0.3 m/s、angular ±1.0 rad/s。算法有 bug？速度也上不去，最多走慢点而不是冲出去。</p>
+      </div>
+      <div class="kcard">
+        <div class="kd">ROS_DOMAIN_ID</div>
+        <div class="kt">同一片"频道"才能通话</div>
+        <p>多套 ROS 环境共存时用域 ID 隔离。本实验系列约定 <code>export ROS_DOMAIN_ID=2</code>，与 ascamera、视觉节点保持一致，否则话题互相看不见。</p>
+      </div>
+      <div class="kcard">
+        <div class="kd">cv2.putText 与中文</div>
+        <div class="kt">OpenCV 的显示短板</div>
+        <p>putText 不带 CJK 字体，画中文会显示一串问号。所以状态栏一律英文（FORWARD / STOP / TURN_LEFT）——不是偷懒，是务实。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="blk" id="s4">
+    <h2><span class="no">04</span>实验目标</h2>
+    <ul class="check">
+      <li>理解并能默画 <strong>五动作的优先级判定链</strong>：下蹲 &gt; 双手举 &gt; 左手举 / 右手举 &gt; 停止</li>
+      <li>能解释 fail-safe 设计：为什么"髋不可见 → Stop"是整套规则里最重要的一条</li>
+      <li>掌握 Action → Twist 的映射：前进/后退的 linear、左/右转的 angular、限幅的作用</li>
+      <li>跑通 55 项单测（含 10 个动作判定用例——合成关键点在 x86 上就能测，不需要板子）</li>
+      <li>用 turtlesim 三件套（海龟 + launch + topic echo）闭环验证控制链，再考虑接真车</li>
+      <li>理解 <code>publish_cmd_vel</code> 默认关闭的设计意图，知道开关在哪里</li>
+      <li>（拓展）把话题指向 <code>/turtle1/cmd_vel</code>，让自己的身体姿势驾驶海龟</li>
+    </ul>
+  </section>
+
+  <!-- 5 -->
+  <section class="blk" id="s5">
+    <h2><span class="no">05</span>实验环境与准备</h2>
+    <table>
+      <thead><tr><th>类别</th><th>清单</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>硬件</td><td>XFLZ_EAI_B2_PRO 实验箱 / 任意 RGB 摄像头</td><td>板端跑感知，真车为可选项</td></tr>
+        <tr><td>上游依赖</td><td>EXP-10 的 33 点骨骼检测（pose_landmark_core）</td><td>本实验直接复用，不再单独 convert</td></tr>
+        <tr><td>核心代码</td><td><code>vision/11_pose_control/</code> 包 <code>car1_pose_control/</code></td><td>检测复用 + <code>actions.py</code> 规则引擎 + 控制发布</td></tr>
+        <tr><td>软件</td><td>ROS2（rclpy）、RKNN-Toolkit2 / rknnlite、OpenCV</td><td>x86 上规则部分可纯测</td></tr>
+        <tr><td>验证工具</td><td>turtlesim（自带小海龟仿真器）</td><td>不接真车也能看效果，强烈推荐首用</td></tr>
+        <tr><td>数据集</td><td>无需新数据集</td><td>判定规则基于合成关键点写单测</td></tr>
+        <tr><td>MJPEG 预览</td><td><code>http://&lt;board-ip&gt;:8083/pose_control.mjpg</code></td><td>约 30 FPS，端口与 exp-10(8082) 错开</td></tr>
+      </tbody>
+    </table>
+    <div class="tip tealb"><span class="lab">建议流程</span>
+    先在 x86 跑 <code>pytest</code> 搞懂规则（55 项全绿）→ 再 <code>--display</code> 本地摄像头看状态栏英文输出 →
+    然后 turtlesim 闭环 → 最后才考虑接真车。每一步的失败面都不同，逐级隔离问题。
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="blk" id="s6">
+    <h2><span class="no">06</span>动画讲解：从骨架到转动的三跳</h2>
+    <p>整个链路是三跳：<strong>看见骨架 → 规则判动作 → 发出速度</strong>。每跳都有自己的失败模式，
+    下面的动画把它们放在一屏里：</p>
+    <div class="anim-box">
+      <svg viewBox="0 0 700 340" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <rect width="700" height="340" fill="#111827"></rect>
+
+        <text x="24" y="30" fill="#94a3b8" font-size="13" font-family="monospace">[1] 感知: 33 keypoints</text>
+        <g stroke="#2dd4bf" stroke-width="2.5" fill="none">
+          <path d="M140 80 L140 130 L110 175 M140 130 L170 175 M140 130 L140 210 M140 210 L120 265 M140 210 L162 265">
+            <animate attributeName="opacity" values="0.35;1;1;0.35" dur="2s" repeatCount="indefinite"></animate>
+          </path>
+          <path d="M95 175 L95 145 M95 145 L95 118" stroke="#fbbf24">
+            <animate attributeName="stroke-width" values="2.5;5;2.5" dur="2s" repeatCount="indefinite"></animate>
+          </path>
+        </g>
+        <circle cx="140" cy="72" r="11" fill="none" stroke="#2dd4bf" stroke-width="2.5"></circle>
+        <circle cx="140" cy="210" r="5" fill="#f472b6"></circle>
+        <text x="152" y="214" fill="#f472b6" font-size="11" font-family="monospace">HIP y=0.62</text>
+        <circle cx="95" cy="112" r="5" fill="#fbbf24"></circle>
+        <text x="18" y="104" fill="#fbbf24" font-size="11" font-family="monospace">WRIST y=0.33</text>
+        <circle cx="128" cy="130" r="4" fill="#94a3b8"></circle>
+        <text x="176" y="134" fill="#94a3b8" font-size="11" font-family="monospace">SHOULDER y=0.41</text>
+
+        <line x1="255" y1="170" x2="305" y2="170" stroke="#475569" stroke-width="2" stroke-dasharray="6 5">
+          <animate attributeName="stroke-dashoffset" values="11;0" dur="0.7s" repeatCount="indefinite"></animate>
+        </line>
+        <text x="262" y="158" fill="#64748b" font-size="11" font-family="monospace">px coords</text>
+
+        <text x="315" y="30" fill="#94a3b8" font-size="13" font-family="monospace">[2] 决策: 优先级链</text>
+        <g font-family="monospace" font-size="12">
+          <rect x="315" y="48" width="230" height="34" rx="6" fill="#1e293b" stroke="#334155"></rect>
+          <text x="327" y="69" fill="#64748b">R1 蹲? hip y&gt;0.72</text>
+          <rect x="315" y="88" width="230" height="34" rx="6" fill="#14532d" stroke="#22c55e">
+            <animate attributeName="stroke-width" values="1;3;1" dur="2s" repeatCount="indefinite"></animate>
+          </rect>
+          <text x="327" y="109" fill="#4ade80" id="animR2">R2 双手举? wrist y &lt; shoulder y-0.08 ✓</text>
+          <rect x="315" y="128" width="230" height="34" rx="6" fill="#1e293b" stroke="#334155"></rect>
+          <text x="327" y="149" fill="#64748b">R3 单手举? L/R</text>
+          <rect x="315" y="168" width="230" height="34" rx="6" fill="#1e293b" stroke="#334155"></rect>
+          <text x="327" y="189" fill="#64748b">R4 兜底 STOP</text>
+          <rect x="315" y="212" width="230" height="34" rx="6" fill="#451a03" stroke="#f59e0b"></rect>
+          <text x="327" y="233" fill="#fbbf24">FAIL-SAFE 髋不可见 → STOP</text>
+        </g>
+        <path d="M430 122 L430 268" stroke="#475569" stroke-width="1.5"></path>
+        <path d="M430 138 l0 0" stroke="#22c55e"></path>
+
+        <line x1="555" y1="170" x2="595" y2="170" stroke="#475569" stroke-width="2" stroke-dasharray="6 5">
+          <animate attributeName="stroke-dashoffset" values="11;0" dur="0.7s" repeatCount="indefinite"></animate>
+        </line>
+        <text x="556" y="158" fill="#64748b" font-size="11" font-family="monospace">Twist</text>
+
+        <text x="470" y="30" fill="#94a3b8" font-size="13" font-family="monospace" transform="translate(150,0)">[3] 执行: cmd_vel</text>
+        <g transform="translate(595,60)">
+          <path d="M0 100 L38 100 M38 100 L76 100" stroke="#22c55e" stroke-width="4">
+            <animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite"></animate>
+          </path>
+          <rect x="20" y="55" width="70" height="46" rx="6" fill="#1e293b" stroke="#22c55e" stroke-width="2"></rect>
+          <circle cx="34" cy="108" r="9" fill="#0f172a" stroke="#64748b" stroke-width="3"></circle>
+          <circle cx="76" cy="108" r="9" fill="#0f172a" stroke="#64748b" stroke-width="3"></circle>
+          <text x="30" y="46" fill="#4ade80" font-size="13" font-family="monospace">linear +0.2</text>
+          <text x="30" y="30" fill="#64748b" font-size="11" font-family="monospace">ang 0.0</text>
+          <path d="M100 78 L118 78 l-6 -6 m6 6 l-6 6" fill="none" stroke="#22c55e">
+            <animate attributeName="opacity" values="0;1;0" dur="1s" repeatCount="indefinite"></animate>
+          </path>
+        </g>
+        <text x="600" y="300" fill="#64748b" font-size="11" font-family="monospace">clamp: |v|≤0.3 |ω|≤1.0</text>
+        <text x="600" y="318" fill="#4ade80" font-size="12" font-family="monospace">STOP 常态=0</text>
+      </svg>
+    </div>
+    <div class="anim-cap">
+      左段：感知只做几何比较（腕 y 0.33 肩 y 0.41 → 0.33 &lt; 0.41−0.08 不成立？注意图中腕 0.33 &lt; 0.41−0.08=0.33 边界情形——容差 0.08 就是为了防止卡在边界抖动）。
+      中段：优先级链从 R1 到 R4 顺序短路，fail-safe 通道永远并联在旁边。右段：命中 FORWARD 后发 Twist，出口限幅，
+      默认状态下一切归零。
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="blk" id="s7">
+    <h2><span class="no">07</span>互动讲解：五动作规则推演台</h2>
+    <p>下面是一个"合成骨架"推演台：拖动滑块改写髋、肩、腕的关键 y 坐标（0 在画面顶部，1 在画面底部），
+    观察优先级链的短路顺序与最终输出。注意勾掉"髋可见"开关——这就是 fail-safe。</p>
+    <div class="ix-panel">
+      <div class="ix-title">🧪 优先级规则推演 · classify_action(landmarks, w, h)</div>
+      <div class="ctl-row">
+        <label>左髋 y <output id="o_hl">0.62</output>
+          <input type="range" id="r_hl" min="0.40" max="0.95" step="0.01" value="0.62" oninput="runRule()"></label>
+        <label>右髋 y <output id="o_hr">0.63</output>
+          <input type="range" id="r_hr" min="0.40" max="0.95" step="0.01" value="0.63" oninput="runRule()"></label>
+        <label>左肩 y <output id="o_sl">0.41</output>
+        <input type="range" id="r_sl" min="0.25" max="0.85" step="0.01" value="0.41" oninput="runRule()"></label>
+        <label>左腕 y <output id="o_wl">0.33</output>
+          <input type="range" id="r_wl" min="0.15" max="0.90" step="0.01" value="0.33" oninput="runRule()"></label>
+        <label>右腕 y <output id="o_wr">0.34</output>
+          <input type="range" id="r_wr" min="0.15" max="0.90" step="0.01" value="0.34" oninput="runRule()"></label>
+        <label>右肩 y <output id="o_sr">0.42</output>
+          <input type="range" id="r_sr" min="0.25" max="0.85" step="0.01" value="0.42" oninput="runRule()"></label>
+      </div>
+      <div class="ctl-row">
+        <button class="btn" onclick="preset('stand')">站立放松</button>
+        <button class="btn" onclick="preset('raise')">双手举起</button>
+        <button class="btn" onclick="preset('left')">左手举起</button>
+        <button class="btn" onclick="preset('squat')">下蹲</button>
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#94a3b8;">
+          <input type="checkbox" id="c_hip" checked onchange="runRule()"> 髋部关键点可见（vis ≥ MIN_VIS=0.5）
+        </span>
+      </div>
+      <pre class="io" id="io">初始化完成，拖动滑块开始推演…</pre>
+    </div>
+    <p style="margin-top:14px;">试三个场景体会设计意图：</p>
+    <ul class="check">
+      <li><strong>对称举双手</strong>：命中 FORWARD。再把任一髋 y 拉到 0.8 → 输出瞬间变 STOP，因为 R1 优先级更高</li>
+      <li><strong>阈值边界</strong>：让腕 y 从 0.34 慢慢到 0.33，会看到 0.08 容差挡住抖动——没有它，手在肩附近会疯狂横跳</li>
+      <li><strong>勾掉"髋可见"</strong>：无论其他滑块怎么调，永远 STOP——这就是车上实验第一步先验证的行为</li>
+    </ul>
+  </section>
+
+  <!-- 8 -->
+  <section class="blk" id="s8">
+    <h2><span class="no">08</span>实操步骤</h2>
+
+    <p><strong>步骤 1 · 跑单测（x86 即可，55 项）</strong></p>
+    <pre><span class="c"># 规则引擎不依赖 NPU，合成关键点直接可测</span>
+<span class="g">cd ~/ros2_ws/src/xflz_eai_car1/vision/11_pose_control</span>
+<span class="g">PYTHONPATH=car1_pose_control:$PYTHONPATH python3 -m pytest tests/ -v</span>
+<span class="y">test_actions.py ......（10 个动作判定用例：五动作 + 优先级冲突 + fail-safe）</span>
+<span class="y">test_twist_mapping.py ..（限幅、符号、话题配置）</span>
+<span class="y">55 passed</span></pre>
+
+    <p><strong>步骤 2 · 读懂 actions.py 的判定链（核心代码骨架）</strong></p>
+    <pre><span class="c"># actions.py —— frozen dataclass 保证判定结果不可被下游偷偷改写</span>
+@dataclass(frozen=True)
+class Action:
+    name: str        <span class="c"># FORWARD / STOP / TURN_LEFT / TURN_RIGHT / BACKWARD</span>
+    linear: float    <span class="c"># m/s</span>
+    angular: float   <span class="c"># rad/s</span>
+
+MIN_VIS = 0.5    <span class="c"># 关键点可见度门槛</span>
+
+def classify_action(landmarks_px, w, h) -&gt; Action:
+    <span class="c"># 1) fail-safe：任一髋不可见直接停（遮挡/出画）</span>
+    if hip_left.vis &lt; MIN_VIS or hip_right.vis &lt; MIN_VIS:
+        return STOP
+
+    hl, hr = _norm(hip_left, ...), _norm(hip_right, ...)
+    sl, sr = _norm(shoulder...), ...
+    wl, wr = _norm(wrist_left, ...), _norm(wrist_right, ...)
+
+    <span class="c"># 2) 按优先级从高到低短路匹配</span>
+    if (hl.y &gt; 0.72) and (hr.y &gt; 0.72):        return SQUAT_STOP      <span class="c"># 下蹲→停</span>
+    if wr.y &lt; sr.y - 0.08 and wl.y &lt; sl.y - 0.08: return FORWARD        <span class="c"># 双手举→前进</span>
+    if wl.y &lt; sl.y - 0.08:                      return TURN_LEFT       <span class="c"># 左手举→左转</span>
+    if wr.y &lt; sr.y - 0.08:                      return TURN_RIGHT      <span class="c"># 右手举→右转</span>
+    return STOP                                                  <span class="c"># 3) 默认停</span></pre>
+
+    <p><strong>步骤 3 · Action → Twist 映射与限幅</strong></p>
+    <pre><span class="c"># 映射表（只用 linear.x 与 angular.z 两个字段）</span>
+<span class="c">#   前进  linear=+0.2  angular= 0.0</span>
+<span class="c">#   后退  linear=-0.2  angular= 0.0</span>
+<span class="c">#   左转  linear= 0.0  angular=+0.8</span>
+<span class="c">#   右转  linear= 0.0  angular=-0.8</span>
+<span class="c">#   停止  0 / 0（常态输出）</span>
+
+<span class="c"># 车端出口统一限幅：无论规则层怎么算，最后都夹一刀</span>
+twist.linear.x  = clamp(twist.linear.x,  -0.3, 0.3)   <span class="c"># m/s</span>
+twist.angular.z = clamp(twist.angular.z, -1.0, 1.0)   <span class="c"># rad/s</span>
+
+<span class="c"># 安全开关：config 中 control.publish_cmd_vel 默认 false</span>
+<span class="c">#   为 true 时才真正发布；调试期保持 false 只打印不发布</span></pre>
+
+    <p><strong>步骤 4 · turtlesim 三连验证（不动真车先玩海龟）</strong></p>
+    <pre><span class="c"># 三个终端窗口，顺序执行（注意统一域 ID，否则话题互不可见）</span>
+<span class="g">export ROS_DOMAIN_ID=2</span>
+
+<span class="c"># 终端 1：仿真海龟（它在听 /turtle1/cmd_vel）</span>
+<span class="g">ros2 run turtlesim turtlesim_node</span>
+<span class="y">[INFO] [turtle_node]: Starting turtlesim with node_name /turtlesim</span>
+
+<span class="c"># 终端 2：体感控制（config 中话题指到 /turtle1/cmd_vel，publish 开 true）</span>
+<span class="g">ros2 launch car1_pose_control pose_control.launch.py</span>
+
+<span class="c"># 终端 3：旁听指令流，验证判定输出</span>
+<span class="g">ros2 topic echo /turtle1/cmd_vel</span>
+<span class="y">linear:</span>
+<span class="y">  x: 0.2</span>
+<span class="y">  y: 0.0</span>
+<span class="y">  z: 0.0</span>
+<span class="y">angular:</span>
+<span class="y">  x: 0.0</span>
+<span class="y">  y: 0.0</span>
+<span class="y">  z: 0.8</span></pre>
+    <div class="tip amber"><span class="lab">反馈信号判断</span>
+    没有任何输出 → 见坑 2 话题名/域 ID；有 echo 但海龟不动 → 检查 publish 开关与话题是否同一个（echo 的话题要和发布的一致）；
+    海龟转错方向 → angular 符号，对照单测里的左右一致性用例。
+    </div>
+
+    <p><strong>步骤 5 · 板端真实摄像头联调 + MJPEG 验流</strong></p>
+    <pre><span class="c"># 板端启动的同时开 MJPEG 预览（浏览器访问）</span>
+<span class="g">PYTHONPATH=car1_pose_control:$PYTHONPATH python3 -m pose_control_core.camera_demo --ros --display</span>
+<span class="y">http://&lt;board-ip&gt;:8083/pose_control.mjpg   # ~30 FPS，状态栏英文 FORWARD/STOP/…</span>
+
+<span class="c"># 修改 config 后必须重新编译，否则 launch 拿到的还是旧配置</span>
+<span class="g">colcon build --symlink-install</span>
+<span class="g">source install/setup.bash</span></pre>
+    <p>真车联调顺序：<code>publish_cmd_vel</code> 保持 false 跑两轮确认状态栏动作判定都对 → 轮子悬空开 true 看轮子转向 → 落地低速实测。</p>
+  </section>
+
+  <!-- 9 -->
+  <section class="blk" id="s9">
+    <h2><span class="no">09</span>重点与易错点</h2>
+    <div class="tip amber"><span class="lab">易错点</span>
+    本实验的故障几乎都在"判定对了但世界不对"：优先级顺序、坐标系约定、话题名、域 ID、编译没做——
+    每一条都对应源讲义里被绊过的坑。
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>坑</th><th>现象</th><th>原因与解法</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>阈值未标定</td><td>换个人/换个机位就开始误判</td><td>0.72 / 0.08 是通用起点，按实际摄像头高度与取景重标（人体占画面比例变了）</td></tr>
+        <tr><td>2</td><td>优先级顺序搞反</td><td>蹲下时车反而前进</td><td>R1 必须是"蹲→停"。把安全动作排在最前，冲突时安全赢</td></tr>
+        <tr><td>3</td><td>关键点遮挡仍输出</td><td>人跑出画面车还在动</td><td>必须过 MIN_VIS=0.5 且髋不可见→Stop；任何异常分支收敛到 STOP</td></tr>
+        <tr><td>4</td><td>状态栏中文乱码</td><td>画面上一串 ????</td><td>cv2.putText 不支持 CJK，状态栏用英文 FORWARD/STOP/TURN_LEFT</td></tr>
+        <tr><td>5</td><td>topic echo 没输出</td><td>人比划了，终端安静</td><td><code>publish_cmd_vel</code> 默认 false 必须开 true；或话题名被改成了 /cmd_vel 而你 echo 的是 /turtle1/cmd_vel</td></tr>
+        <tr><td>6</td><td>话题不可见</td><td><code>ros2 topic list</code> 里没有目标话题</td><td>所有终端统一 <code>export ROS_DOMAIN_ID=2</code>，且 source 过 setup.bash</td></tr>
+        <tr><td>7</td><td>海龟不动</td><td>echo 有数据、海龟没反应</td><td>确认 turtlesim 存活 + 发布/收听是同一话题 + linear 符号方向符合预期</td></tr>
+        <tr><td>8</td><td>rclpy / PYTHONPATH 报错</td><td>ModuleNotFoundError 或按旧配置跑</td><td><code>PYTHONPATH=car1_pose_control:$PYTHONPATH</code> 保留原值；改 config 后 <code>colcon build --symlink-install</code></td></tr>
+      </tbody>
+    </table>
+    <ul class="check" style="margin-top:16px">
+      <li>能不看笔记画出优先级链，并解释为什么"蹲"排在"举手"前面</li>
+      <li>能指出 fail-safe 发生在哪一行、覆盖了哪些异常（髋遮挡/出画/分数坐标越界）</li>
+      <li>能说出 Twist 五种取值里哪两个字段在动、限幅值是多少、为什么需要它</li>
+      <li>55 项单测全部通过，且能指出哪几个用例在守护左右方向一致性</li>
+      <li>turtlesim 三连成功，echo 输出与身体动作一一对应</li>
+      <li>知道 <code>publish_cmd_vel</code> 默认 false 的意义：默认"只看不动手"</li>
+    </ul>
+  </section>
+
+  <!-- 10 -->
+  <section class="blk" id="s10">
+    <h2><span class="no">10</span>总结与思考</h2>
+    <p>恭喜走完本站最"闭环"的一个实验。你完成的链路是：</p>
+    <div class="kgrid">
+      <div class="kcard">
+        <div class="kd">感知</div>
+        <div class="kt">EXP-10 的 33 点骨架</div>
+        <p>复用而不重造；坐标归一化、vis 置信度、letterbox 逆映射的坑在这里不会重复踩。</p>
+      </div>
+      <div class="kcard">
+        <div class="kd">决策</div>
+        <div class="kt">actions.py 优先级规则</div>
+        <p>可解释、可单测、可调试的规则引擎——不是所有决策都该上模型，安全攸关的短链路规则更可靠。</p>
+      </div>
+      <div class="kcard">
+        <div class="kd">执行</div>
+        <div class="kt">Twist + 限幅 + 开关</div>
+        <p>Topic 解耦让同一套感知可以开海龟、开小车、开机械臂；默认关断与出口限幅是两道保险丝。</p>
+      </div>
+    </div>
+
+    <div class="tip violet"><span class="lab">思考题</span>
+    <p><strong>1.</strong> 代码里"髋部关键点不可见（vis &lt; 0.5）→ 直接 STOP"被称为整套规则最核心的一条。
+    请设想：如果没有这条 fail-safe，只把"不满足任何动作规则 → STOP"作为兜底，			会出什么事故？
+    提示——考虑"手里还举着但髋被纸箱挡住"这个场景，其余四条规则会怎么判定。</p>
+    <p style="margin-top:12px;"><strong>2.</strong> 如果把优先级顺序改成"动作触发优先"（即只要举手就前进，哪怕同时在下蹲），
+    交互体验会变"灵敏"，但风险在哪里？再进一步：工业机械臂的急停按钮为什么必须是硬件电路而非同一条优先级链里的最高级软件规则？</p>
+    </div>
+
+    <p style="margin-top:16px;">下一步 EXP-12 把最小的关节——手指——单独拎出来：21 个手部关键点实现 8 类手势与特效控制，
+    并讨论 MediaPipe 四模型级联的输入契约问题。</p>
+  </section>
+
+  <nav class="expnav">
+    <a href="../exp-10-pose-landmark/index.html">← 上一个（EXP-10 骨骼关键点检测）</a>
+    <a href="../exp-12-hand-control/index.html">下一个实验（EXP-12 手指动作控制） →</a>
+  </nav>
+
+  <footer>
+    <div class="foot-in">
+      <span>CORE-02 · 机器人视觉应用与开发 · EXP-11 肢体动作体感控制</span>
+      <span>4 学时 · 综合性 · 基于 robot_vision 实验指导书改编</span>
+    </div>
+  </footer>
+</main>
+</div>
+
+<script>
+var LINE = "----------------------------------------";
+
+function readState(){
+  return {
+    hl: parseFloat(document.getElementById("r_hl").value),
+    hr: parseFloat(document.getElementById("r_hr").value),
+    sl: parseFloat(document.getElementById("r_sl").value),
+    sr: parseFloat(document.getElementById("r_sr").value),
+    wl: parseFloat(document.getElementById("r_wl").value),
+    wr: parseFloat(document.getElementById("r_wr").value),
+    hipVisible: document.getElementById("c_hip").checked
+  };
+}
+
+function out(id, v){
+  document.getElementById(id).textContent = parseFloat(v).toFixed(2);
+}
+
+function runRule(){
+  var s = readState();
+  out("o_hl", s.hl); out("o_hr", s.hr);
+  out("o_sl", s.sl); out("o_sr", s.sr);
+  out("o_wl", s.wl); out("o_wr", s.wr);
+
+  var t = "";
+  t += "<span class=\"dim\"># classify_action(landmarks_px, w, h)  MIN_VIS=0.5</span>\n";
+  t += "hip_L.y=" + s.hl.toFixed(2) + "  hip_R.y=" + s.hr.toFixed(2) + "\n";
+  t += "sho_L.y=" + s.sl.toFixed(2) + "  sho_R.y=" + s.sr.toFixed(2) + "\n";
+  t += "wri_L.y=" + s.wl.toFixed(2) + "  wri_R.y=" + s.wr.toFixed(2) + "\n";
+  t += LINE + "\n";
+
+  // fail-safe 通道优先检查（与源码一致：髋不可见直接停）
+  if(!s.hipVisible){
+    t += "<span class=\"bad\">FAIL-SAFE 触发：hip vis &lt; MIN_VIS=0.5</span>\n";
+    t += "<span class=\"warn\">无论其余规则多像，输出锁定 = </span>STOP (0.0, 0.0)\n";
+    document.getElementById("io").innerHTML = t;
+    return;
+  }
+  t += "<span class=\"ok\">髋部可见性检查通过</span>（vis ≥ 0.5），继续优先级链\n";
+
+  var hit = null;
+  // R1 下蹲（最高优先级）
+  if(s.hl > 0.72 && s.hr > 0.72){
+    hit = { n:"R1", why:"双髋 y 均 > 0.72（都沉到画面底部 = 下蹲）", name:"SQUAT → STOP", v:"0.0, 0.0" };
+    t += "<span class=\"warn\">R1 命中</span>：hip y " + s.hl.toFixed(2) + "/" + s.hr.toFixed(2) + " > 0.72\n";
+  } else {
+    t += "<span class=\"dim\">R1 miss：双髋 y</span> 未同时超过 0.72\n";
+  }
+  // R2 双手举
+  if(!hit && s.wl < s.sl - 0.08 && s.wr < s.sr - 0.08){
+    hit = { n:"R2", why:"双腕 y < 双肩 y - 0.08", name:"FORWARD", v:"+0.20, 0.00" };
+    t += "<span class=\"ok\">R2 命中</span>：双腕均高出肩线 0.08 容差\n";
+  } else if(!hit){
+    t += "<span class=\"dim\">R2 miss：</span>L(" + s.wl.toFixed(2) + " vs " + (s.sl - 0.08).toFixed(2)
+       + ") R(" + s.wr.toFixed(2) + " vs " + (s.sr - 0.08).toFixed(2) + ")\n";
+  }
+  // R3 左 / 右
+  if(!hit && s.wl < s.sl - 0.08){
+    hit = { n:"R3a", why:"左腕 y < 左肩 y - 0.08", name:"TURN_LEFT", v:"0.00, +0.80" };
+    t += "<span class=\"ok\">R3a 命中</span>：左手举起 → 左转\n";
+  }
+  if(!hit && s.wr < s.sr - 0.08){
+    hit = { n:"R3b", why:"右腕 y < 右肩 y - 0.08", name:"TURN_RIGHT", v:"0.00, -0.80" };
+    t += "<span class=\"ok\">R3b 命中</span>：右手举起 → 右转\n";
+  }
+  if(!hit){
+    hit = { n:"R4", why:"四条规则全部 miss → 默认兜底", name:"STOP", v:"0.00, 0.00" };
+    t += "<span class=\"dim\">R4 默认兜底</span>\n";
+  }
+
+  t += LINE + "\n";
+  t += "<span class=\"dim\">命中 " + hit.n + "：</span>" + hit.why + "\n";
+  t += "Action = <span class=\"ok\">" + hit.name + "</span>   Twist: linear.x, angular.z = " + hit.v + "\n";
+  var parts = hit.v.split(",");
+  var lin = Math.max(-0.3, Math.min(0.3, parseFloat(parts[0])));
+  var ang = Math.max(-1.0, Math.min(1.0, parseFloat(parts[1])));
+  t += "出口限幅 clamp(±0.3, ±1.0) → [" + lin.toFixed(2) + ", " + ang.toFixed(2) + "]  ";
+  if(lin === parseFloat(parts[0]) && ang === parseFloat(parts[1])){
+    t += "<span class=\"ok\">未触发限幅</span>\n";
+  } else {
+    t += "<span class=\"warn\">被限幅截断</span>\n";
+  }
+  t += "<span class=\"dim\">// publish_cmd_vel=false 时仅打印；true 才 publish 到话题</span>\n";
+  document.getElementById("io").innerHTML = t;
+}
+
+function preset(kind){
+  if(kind === "stand"){
+    setV("r_hl", 0.62); setV("r_hr", 0.63); setV("r_sl", 0.41); setV("r_sr", 0.42);
+    setV("r_wl", 0.60); setV("r_wr", 0.58);
+    document.getElementById("c_hip").checked = true;
+  } else if(kind === "raise"){
+    setV("r_wl", 0.26); setV("r_wr", 0.25); setV("r_sl", 0.41); setV("r_sr", 0.42);
+    setV("r_hl", 0.62); setV("r_hr", 0.63);
+    document.getElementById("c_hip").checked = true;
+  } else if(kind === "left"){
+    setV("r_wl", 0.24); setV("r_wr", 0.62); setV("r_sl", 0.41); setV("r_sr", 0.42);
+    setV("r_hl", 0.62); setV("r_hr", 0.63);
+    document.getElementById("c_hip").checked = true;
+  } else {
+    setV("r_hl", 0.83); setV("r_hr", 0.84); setV("r_sl", 0.55); setV("r_sr", 0.56);
+    setV("r_wl", 0.60); setV("r_wr", 0.59);
+    document.getElementById("c_hip").checked = true;
+  }
+  runRule();
+}
+
+function setV(id, v){
+  document.getElementById(id).value = v;
+}
+
+runRule();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

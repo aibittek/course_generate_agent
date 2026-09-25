@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-04 正/逆运动学基础 · 机器人机械臂应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{--theme:#dc2626;--theme-deep:#b91c1c;--theme-bg:#fee2e2;--theme-bd:#fecaca}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="logo" href="../index.html">🤖 机械臂教程</a>
+  <span class="sep"></span>
+  <nav class="links">
+    <a href="../index.html">课程目录</a>
+    <a href="../../../index.html#core">核心课程</a>
+    <a href="../../../index.html">总首页</a>
+  </nav>
+</div>
+
+<p class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">机械臂应用与开发</a> / EXP-04</p>
+
+<div class="wrap">
+<aside class="side">
+  <div class="stitle">本页目录</div>
+  <nav>
+    <a class="now" href="#s1">01 · 问题引入</a>
+    <a href="#s2">02 · 原理通俗讲解</a>
+    <a href="#s3">03 · 关联知识点</a>
+    <a href="#s4">04 · 实验目标</a>
+    <a href="#s5">05 · 实验环境与准备</a>
+    <a href="#s6">06 · 动画讲解</a>
+    <a href="#s7">07 · 互动讲解</a>
+    <a href="#s8">08 · 实操步骤</a>
+    <a href="#s9">09 · 重点与易错点</a>
+    <a href="#s10">10 · 总结与思考</a>
+  </nav>
+  <div class="stitle">本课程实验</div>
+  <nav>
+    <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
+    <a href="../exp-02-serial-pwm/index.html">EXP-02 串口协议与 PWM</a>
+    <a href="../exp-03-action-replay/index.html">EXP-03 架构与动作回放</a>
+    <a href="../exp-04-kinematics/index.html">EXP-04 正/逆运动学基础</a>
+    <a href="../exp-05-ik-solver/index.html">EXP-05 逆运动学解算</a>
+    <a href="../exp-06-fixed-grasp/index.html">EXP-06 逆运动学固定抓取</a>
+    <a href="../exp-07-visual-grasp/index.html">EXP-07 视觉动态抓取</a>
+  </nav>
+</aside>
+
+<main>
+<div class="exp-head">
+  <span class="code">EXP-04 · 第 2 章 · 验证性 · 4 学时</span>
+  <h1>正/逆运动学基础</h1>
+  <p class="desc">在浏览器里的 3D 仿真器上，弄懂机械臂最核心的一对问答：已知各关节角，指尖在哪（正运动学 FK）；想让指尖到哪，各关节该弯多少（逆运动学 IK）。解析法与 DLS 数值法同台对比，用 DH 参数表和闭环误差给自己交一份可量化的答卷。</p>
+  <span class="tag hl">⭐⭐ · FK / IK · Web 仿真器</span>
+</div>
+
+<!-- 01 -->
+<section class="blk" id="s1">
+<h2><span class="no">01</span>问题引入</h2>
+<p>前三个实验里，你已经能让机械臂"动起来"：URDF 描述它的身体，串口协议驱动它的舵机，action_player 回放它的动作。但一直有一个绕不开的幕后主角——<b>运动学</b>。你往 <code>/arm/target_pose</code> 发一个坐标 (0.28, 0, 0.10)，控制器凭什么算出五路 PWM？你在 Web 仿真器里把目标球拖到 (0.15, 0, 0.25)，页面凭什么瞬间把小臂折成对应姿态？</p>
+<p>本质上，机械臂每天都在回答两个问题：</p>
+<ul class="check">
+  <li><b>正运动学（FK）</b>：已知五个关节角，指尖究竟在空间哪个点？——"弯完胳膊，看指尖到哪了"。</li>
+  <li><b>逆运动学（IK）</b>：想把指尖放到那个点，五个关节角各应该是多少？——"看到杯子，反推胳膊怎么弯"。</li>
+</ul>
+<p>本实验不下放实机指令，全部在 <code>server_cors.py</code> 起的 Web 仿真器里完成：浏览器本地跑 FK/IK 库，拖一拖目标球、改一改关节角，把这两问一直答到闭环误差小于 1mm。</p>
+</section>
+
+<!-- 02 -->
+<section class="blk" id="s2">
+<h2><span class="no">02</span>原理通俗讲解</h2>
+<p><b>正运动学 = 盯着自己的手臂算指尖。</b>像你闭着眼把胳膊摆成某个姿势，让朋友量指尖离地多高：只要知道大臂多长、小臂多长、每个关节弯了多少度，一路"接力"算过去就能得到指尖位置。机械臂的每节连杆都有一张"臂长名片"——DH 参数，把名片首尾相乘（齐次变换矩阵连乘），FK 就算完了。</p>
+<p><b>逆运动学 = 想拿桌角的杯子，反推胳膊怎么弯。</b>这更难：指尖目标只有一个点，关节角却有五个，答案往往不止一种（胳膊从上方探和从下方探都能到）。生活直觉也告诉你：IK 不唯一、有时无解（杯子太远够不着）、有时难算（胳膊伸到笔直的"极限姿势"附近特别别扭）。</p>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">解析法 IK</div><div class="kt">几何作业直接写答案</div><p>像初中平面几何：把 5 自由度臂拆成"底座转角 + 2R 平面机构"，用三角函数封闭求解。速度 μs 级、结果确定，car1 的 <code>ik-analytical.js</code> 即此类。</p></div>
+  <div class="kcard"><div class="kd">数值法 DLS</div><div class="kt">闭眼摸象式逐步逼近</div><p>每次只朝"误差变小"的方向挪一小步（Δq = Jᵀ(JJᵀ+λ²I)⁻¹e）。阻尼因子 λ（仿真器默认 0.1）像防抖杆：接近奇异时自动减速，宁可慢也不乱抖。</p></div>
+</div>
+<p><b>大臂不在底座正中心</b>（d=0.085m）是 car1 的一个几何细节：做 IK 几何推导时要用 asin 补偿这一段偏置，否则算出来的指尖总是差一截。通俗说：别人的胳膊长在肩膀正上方，car1 的"肩膀"和"大臂根"错开了 8.5 厘米，量尺子时别忘了这段。</p>
+</section>
+
+<!-- 03 -->
+<section class="blk" id="s3">
+<h2><span class="no">03</span>关联知识点</h2>
+<p><b>DH 参数表</b>（<code>viewer/kinematics/dh_params.json</code>，单位 m / rad）——每行连杆的"名片"：</p>
+<table>
+<tr><th>关节</th><th>a（杆长）</th><th>alpha（扭转）</th><th>d（偏置）</th><th>theta_offset</th></tr>
+<tr><td>joint1</td><td>0.0</td><td>1.5708</td><td>0.085</td><td>0.0</td></tr>
+<tr><td>joint2</td><td>0.105</td><td>0.0</td><td>0.0</td><td>1.5708</td></tr>
+<tr><td>joint3</td><td>0.105</td><td>0.0</td><td>0.0</td><td>0.0</td></tr>
+<tr><td>joint4</td><td>0.075</td><td>1.5708</td><td>0.0</td><td>0.0</td></tr>
+<tr><td>joint5+tcp</td><td>0.045</td><td>0.0</td><td>0.0</td><td>0.0</td></tr>
+</table>
+<p><b>2R 机构简化视角</b>：侧面看，大臂 L1=0.105m，小臂+腕部 L2=0.105+0.075=0.180m（再加 tcp 0.045），底座偏置 d=0.085m。解析 IK 就是围绕这个三角形做几何题。</p>
+<p><b>前后端分离架构</b>：后端 <code>server_cors.py</code>（Python，WebSocket，8000 端口）只负责把 ROS2 话题转发给浏览器；前端 Three.js 负责 3D 渲染；FK/IK 全部在浏览器本地的 <code>viewer/kinematics/</code>（fk.js、ik-analytical.js、ik-numerical.js）里算——无依赖、零延迟。</p>
+<table>
+<tr><th>对比项</th><th>解析法</th><th>数值法 DLS</th></tr>
+<tr><td>速度</td><td>μs 级</td><td>ms 级（迭代）</td></tr>
+<tr><td>结果</td><td>确定</td><td>可能不收敛</td></tr>
+<tr><td>奇异处理</td><td>需几何分支</td><td>λ 阻尼天然兜底</td></tr>
+<tr><td>适用</td><td>5 自由度非冗余实时控制</td><td>冗余/奇异邻域优化</td></tr>
+</table>
+</section>
+
+<!-- 04 -->
+<section class="blk" id="s4">
+<h2><span class="no">04</span>实验目标</h2>
+<ul class="check">
+  <li>能用自己的话向同伴讲清 FK 与 IK 的区别，并说出 car1 为 IK 引入的 d=0.085 asin 补偿缘由。</li>
+  <li>能启动 Web 仿真器并定位三套核心源码：fk.js、ik-analytical.js、ik-numerical.js，读懂 dh_params.json 每一列含义。</li>
+  <li>能在仿真器中完成 FK↔IK 闭环验证：目标点 P1=(0.2, 0.1, 0.2) 经 IK→FK 后误差 &lt; 1mm。</li>
+  <li>能切换解析法与 DLS 数值法，观察奇异位姿下解析法失效而 DLS（λ=0.1）仍收敛的现象。</li>
+  <li>能用 workspace_scanner 执行球面扫描（r_max=0.4m），得到并解释"可达率"指标。</li>
+</ul>
+</section>
+
+<!-- 05 -->
+<section class="blk" id="s5">
+<h2><span class="no">05</span>实验环境与准备</h2>
+<p>本实验不需要 ros2 launch，甚至不需要接机械臂——只依赖一个 Python 服务和浏览器，是全课程门槛最低的"纯脑力+可视化"实验。</p>
+<table>
+<tr><th>项</th><th>要求</th></tr>
+<tr><td>运行环境</td><td>Python 3.10（仅运行 server_cors.py 时需要），Chrome / Edge 任意现代浏览器</td></tr>
+<tr><td>服务端口</td><td>server_cors.py 默认监听 8000（WebSocket 路径 /ws）</td></tr>
+<tr><td>主入口</td><td><code>test/car1_web_server/server_cors.py</code> + <code>viewer/index.html</code></td></tr>
+<tr><td>IK 库</td><td><code>viewer/kinematics/</code>：fk.js / ik-analytical.js / ik-numerical.js / dh_params.json</td></tr>
+<tr><td>辅助工具</td><td>workspace_scanner.js（工作空间扫描）、demo_fk_ik.py（可独立运行的 FK/IK 演示脚本）</td></tr>
+</table>
+<div class="tip amber"><b>准备检查：</b>确认 8000 端口空闲（<code>lsof -i:8000</code>）；若机械臂已上电且 bringup 在跑，本实验的仿真器会与之独立运行，互不抢占（仿真在浏览器本地算，不经串口）。</div>
+</section>
+
+<!-- 06 -->
+<section class="blk" id="s6">
+<h2><span class="no">06</span>动画讲解：关节角叠加，指尖坐标一点点"长"出来</h2>
+<div class="anim-box">
+<svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="640" height="300" fill="#0b1120"></rect>
+  <!-- 地面与基座 -->
+  <line x1="40" y1="250" x2="600" y2="250" stroke="#334155" stroke-width="2"></line>
+  <rect x="90" y="230" width="60" height="20" fill="#475569"></rect>
+  <!-- 大臂 L1 -->
+  <line x1="120" y1="230" x2="120" y2="150" stroke="#f87171" stroke-width="8" stroke-linecap="round">
+    <animate attributeName="x1" values="120;120;210;210;120" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="y1" values="230;230;230;195;230" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="x2" values="120;120;285;247;120" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="y2" values="150;150;160;147;120" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+  </line>
+  <!-- 小臂+腕 L2 -->
+  <line x1="120" y1="150" x2="120" y2="60" stroke="#fbbf24" stroke-width="7" stroke-linecap="round">
+    <animate attributeName="x1" values="120;120;285;247;120" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="y1" values="150;150;160;147;150" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="x2" values="120;120;345;343;120" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="y2" values="60;60;120;73;60" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+  </line>
+  <!-- 关节角标注 -->
+  <path d="M 140 230 A 20 20 0 0 0 138 210" fill="none" stroke="#4ade80" stroke-width="2" stroke-dasharray="4 3">
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.75;1" dur="8s" repeatCount="indefinite"/>
+  </path>
+  <text x="150" y="222" fill="#4ade80" font-size="13" font-family="monospace">θ2</text>
+  <path d="M 138 140 A 18 18 0 0 0 136 122" fill="none" stroke="#4ade80" stroke-width="2" stroke-dasharray="4 3">
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.75;1" dur="8s" repeatCount="indefinite"/>
+  </path>
+  <text x="150" y="132" fill="#4ade80" font-size="13" font-family="monospace">θ3</text>
+  <!-- 末端点与坐标 -->
+  <circle cx="345" cy="60" r="7" fill="#f87171">
+    <animate attributeName="cx" values="120;120;345;343;120" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="cy" values="60;60;120;73;60" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.2;1;1;0.2" keyTimes="0;0.1;0.3;0.8;1" dur="8s" repeatCount="indefinite"/>
+  </circle>
+  <!-- 坐标弧线：肩→末端辅助虚线 -->
+  <path d="M 120 150 Q 240 60 345 60" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="6 5">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.2;0.4;0.85;1" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="stroke-dashoffset" values="44;0" dur="2s" repeatCount="indefinite"/>
+  </path>
+  <text x="360" y="55" fill="#fca5a5" font-size="14" font-family="monospace">
+    <tspan>x,y,z = T1·T2·T3·T4·T5 · [0,0,0,1]ᵀ</tspan>
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.2;0.4;0.85;1" dur="8s" repeatCount="indefinite"/>
+  </text>
+  <text x="360" y="78" fill="#94a3b8" font-size="12" font-family="monospace">（五级矩阵连乘 → 指尖坐标）</text>
+  <!-- 说明行 -->
+  <text x="40" y="285" fill="#64748b" font-size="12" font-family="monospace">joint1 转朝向 → joint2/3 抬臂 → joint4/5 调姿态，每加一个角，末端坐标重新"接力"一次</text>
+</svg>
+</div>
+<p class="anim-cap">动画 8 秒一循环：θ2、θ3 依次变化，末端点带着坐标沿弧线移动。正解就是"接力赛"——每一级关节角都乘进 4×4 矩阵里，最终位置是五次叠加的结果；改任何一个角，终点都会挪，这正是 FK 的确定性。</p>
+</section>
+
+<!-- 07 -->
+<section class="blk" id="s7">
+<h2><span class="no">07</span>互动讲解：FK 正解试算台 + 闭环误差判定</h2>
+<div class="ix-panel">
+  <div class="ix-title">互动台 · 已知关节角，指尖在哪？（2R 简化，单位 m）</div>
+  <div class="ctl-row">
+    <label class="ctl">θ2 (J2)<input type="number" id="t2" value="0.5" step="0.05"></label>
+    <label class="ctl">θ3 (J3)<input type="number" id="t3" value="-1.0" step="0.05"></label>
+    <button class="btn" onclick="fkCalc()">正解算一笔</button>
+    <button class="btn" onclick="errCalc()">闭环误差判定</button>
+  </div>
+  <div class="ctl-row">
+    <label class="ctl">目标 x<input type="number" id="tx" value="0.2" step="0.01"></label>
+    <label class="ctl">目标 y<input type="number" id="ty" value="0.1" step="0.01"></label>
+    <label class="ctl">目标 z<input type="number" id="tz" value="0.2" step="0.01"></label>
+    <label class="ctl">IK 反解后 FK 回算 x<input type="number" id="fx" value="0.2005" step="0.0005"></label>
+    <label class="ctl">回算 y<input type="number" id="fy" value="0.1003" step="0.0005"></label>
+    <label class="ctl">回算 z<input type="number" id="fz" value="0.2004" step="0.0005"></label>
+  </div>
+  <div class="io" id="ixout">提示：正解用讲义 2R 简化模型（L1=0.105，L2=0.180，底座偏置 d=0.085），完整链以 dh_params.json 为准。误差判定阈值取讲义闭环标准 1mm。</div>
+</div>
+<p>试几组再回网页仿真器对账：把 θ2=0.5、θ3=-1.0 输入页面里的滑块，看浏览器实时 FK 输出的坐标；再到误差判定里输入你的回算值——<b>误差 = √(Δx²+Δy²+Δz²)</b>，小于 1mm 显示 ok，否则标红提醒。这就是讲义"目标点 P1 经 IK→FK 后误差 &lt; 1mm"的白盒版。</p>
+</section>
+
+<!-- 08 -->
+<section class="blk" id="s8">
+<h2><span class="no">08</span>实操步骤</h2>
+<div class="flow">
+  <div class="step"><b>Step 1 · 读 DH 名片</b><br>先看参数表，建立"每行连杆"的直觉。</div>
+  <div class="arr">→</div>
+  <div class="step"><b>Step 2 · 起服务</b><br>Web 服务器监听 8000，浏览器加载仿真器。</div>
+  <div class="arr">→</div>
+  <div class="step"><b>Step 3 · FK 正解</b><br>拖动/输入关节角，读末端坐标。</div>
+  <div class="arr">→</div>
+  <div class="step"><b>Step 4 · IK 逆解 + 闭环</b><br>拖目标球，分别用解析法、DLS 求解并算误差。</div>
+  <div class="arr">→</div>
+  <div class="step"><b>Step 5 · 扫描工作空间</b><br>r_max=0.4m 球面采样，统计可达率。</div>
+</div>
+<pre><span class="c"># 步骤 1 · 查看 DH 参数表（源：viewer/kinematics/dh_params.json）</span>
+cat ~/ros2_ws/src/xflz_eai_car1/test/car1_web_server/viewer/kinematics/dh_params.json
+
+<span class="c"># 步骤 2 · 启动 Web 服务器（默认 8000 端口）</span>
+cd ~/ros2_ws/src/xflz_eai_car1/test/car1_web_server
+python3 server_cors.py
+<span class="g"># [INFO] Server started on http://localhost:8000</span>
+<span class="g"># [INFO] WebSocket server started on ws://localhost:8000/ws</span>
+<span class="y"># 浏览器访问（/viewer 后缀不能省）</span>
+<span class="b"># 本机：http://localhost:8000/viewer     跨设备：http://&lt;设备IP&gt;:8000/viewer</span></pre>
+<pre><span class="c"># 步骤 4 · FK↔IK 闭环（目标点 P1=(0.2, 0.1, 0.2)，误差应 &lt; 1mm）</span>
+<span class="y"># 仿真器里：拖动目标点到 P1 → 解析法 IK 得关节角 → FK 反算 P2 → 量 P1-P2 距离</span>
+
+<span class="c"># 解析法演示：把目标球拖到 (0.15, 0, 0.25)，观察 IK 解与末端吸附</span>
+<span class="c"># DLS 数值法：控制面板切换到 numerical，奇异附近观察，可调 λ（默认 0.1）</span>
+
+<span class="c"># 步骤 5 · 工作空间扫描（可达率指标）</span>
+<span class="y"># workspace_scanner.js：scan(r_max, sample_count)，建议 r_max=0.4m 起步</span>
+<span class="y"># 可达率异常低 → 依次查：DH 参数 → 软限位 → IK 求解器</span>
+
+<span class="c"># 独立脚本：可脱离浏览器跑的完整 FK/IK 演示（源：demo_fk_ik.py）</span>
+python3 demo_fk_ik.py
+<span class="y"># 内建 test_cases：(0.15,0,0.25) / (0.25,0,0.15) / (0.30,0,0.10) 等，打印位置误差(mm)</span></pre>
+</section>
+
+<!-- 09 -->
+<section class="blk" id="s9">
+<h2><span class="no">09</span>重点与易错点</h2>
+<div class="tip tealb"><b>理解要点：</b>FK 一对一、IK 一对多（或多对零）。仿真器里同一个目标点用 <code>prefer_elbow='up'/'down'</code> 能切出不同构型——这不是 bug，是多解的本来面目；真正判别好坏的是闭环误差与是否踩软限位。</div>
+<table>
+<tr><th>坑</th><th>现象</th><th>对策</th></tr>
+<tr><td>URL 少了 /viewer</td><td>页面 404 / 空白</td><td>必须访问 <code>http://localhost:8000/viewer</code></td></tr>
+<tr><td>8000 端口被占</td><td>浏览器打不开</td><td><code>lsof -i:8000</code> 查占用进程</td></tr>
+<tr><td>跨设备访问失败</td><td>对端无法连接</td><td>用 <code>hostname -I</code> 查设备 IP，改 <code>http://&lt;IP&gt;:8000/viewer</code>；server_cors.py 已放开 CORS</td></tr>
+<tr><td>忽略 d=0.085 偏置</td><td>手算 FK 与页面差 8cm 级</td><td>解析推导里必须做 asin 补偿</td></tr>
+<tr><td>奇异位姿求解失败</td><td>解析法报错/跳解</td><td>切 DLS 数值法，λ=0.1 阻尼兜底；靠近笔直伸展位时尤其注意</td></tr>
+<tr><td>可达率看不懂</td><td>指标忽高忽低</td><td>先固定 r_max 与采样数再比较；排查顺序 DH → 软限位 → IK 求解器</td></tr>
+</table>
+<ul class="check">
+  <li>闭环三连问必做：IK 解出的角喂回 FK，位置误差是否 &lt; 1mm？末端姿态是否贴近目标 pitch？解是否全在软限位内？</li>
+  <li>做完用 <code>demo_fk_ik.py</code> 离线复核一遍——它和浏览器跑的是同一套数学。</li>
+</ul>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+<h2><span class="no">10</span>总结与思考</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">FK 正解</div><div class="kt">关节角 → 指尖坐标</div><p>DH 表五级矩阵连乘，一对一定论。偏置 d=0.085 别漏。</p></div>
+  <div class="kcard"><div class="kd">IK 逆解</div><div class="kt">指尖目标 → 关节角</div><p>解析法快而脆，数值法（DLS, λ=0.1）慢而稳，多解需选择。</p></div>
+  <div class="kcard"><div class="kd">闭环验证</div><div class="kt">IK→FK 误差 &lt; 1mm</div><p>P1=(0.2,0.1,0.2) 拖点实测，误差是唯一诚实的裁判。</p></div>
+  <div class="kcard"><div class="kd">工作空间</div><div class="kt">r_max=0.4 球面扫描</div><p>可达率是采样口径下的比例，不是体积。</p></div>
+</div>
+<div class="tip violet"><b>思考题 1：</b>工作空间扫描给出的"可达率"指标有何局限性？如何用"可达体积"更准确地描述机械臂的工作空间？（提示：采样半径、采样密度、内外层分布都会改变这个数字。）</div>
+<div class="tip violet"><b>思考题 2：</b>同一个目标点，解析法给出"手肘朝上"、DLS 迭代给出另一个同样达标的解——下游的抓取程序应该按什么标准二选一？把你在 EXP-03 学到的软限位、奇异检测一起考虑进来。</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-03-action-replay/index.html"><span class="lb">← 上一个实验</span>EXP-03 ROS2 架构与动作回放</a>
+  <a class="next" href="../exp-05-ik-solver/index.html"><span class="lb">下一个实验 →</span>EXP-05 逆运动学解算</a>
+</nav>
+<footer>
+  <span>CORE-05 · 机器人机械臂应用与开发 · EXP-04 正/逆运动学基础</span>
+  <span>4 学时 · 验证性 · 基于 arm_practice 实验讲义改编</span>
+</footer>
+</main>
+</div>
+
+<script>
+function fkCalc(){
+  var t2=parseFloat(document.getElementById('t2').value)||0;
+  var t3=parseFloat(document.getElementById('t3').value)||0;
+  var L1=0.105,L2=0.180,d=0.085;
+  var r=L1*Math.cos(t2)+L2*Math.cos(t2+t3);
+  var z=d+L1*Math.sin(t2)+L2*Math.sin(t2+t3);
+  var reach=Math.sqrt(r*r+z*z);
+  var tag=(reach&lt;=0.4)?'<span class="ok">在 r_max=0.4 可达球内</span>':'<span class="warn">超出 r_max=0.4 参考球，实臂可能无解</span>';
+  document.getElementById('ixout').innerHTML=
+    'FK 简化正解：θ2='+t2.toFixed(3)+' rad, θ3='+t3.toFixed(3)+' rad\n'
+    +'→ 平面位置 r='+r.toFixed(4)+' m, z='+z.toFixed(4)+' m, 离底座中心 '+reach.toFixed(4)+' m\n'
+    +tag+'\n<span class="dim">精确 5 连杆链请把同组角度喂给 demo_fk_ik.py 复核</span>';
+}
+function errCalc(){
+  var tx=parseFloat(document.getElementById('tx').value),ty=parseFloat(document.getElementById('ty').value),tz=parseFloat(document.getElementById('tz').value);
+  var fx=parseFloat(document.getElementById('fx').value),fy=parseFloat(document.getElementById('fy').value),fz=parseFloat(document.getElementById('fz').value);
+  var e=Math.sqrt(Math.pow(fx-tx,2)+Math.pow(fy-ty,2)+Math.pow(fz-tz,2))*1000;
+  var ok=e&lt;1.0;
+  document.getElementById('ixout').innerHTML=
+    '闭环误差 = √(Δx²+Δy²+Δz²) = <span class="'+(ok?'ok':'bad')+'">'+e.toFixed(2)+' mm</span>\n'
+    +(ok?'<span class="ok">达标：&lt; 1mm，FK/IK 往返一致</span>':'<span class="bad">超标：阈值 1mm——检查 IK 是否走了奇异分支或坐标系没对齐</span>')
+    +'\n<span class="dim">阈值来源：讲义闭环标准 P1-P2 误差应 &lt; 1mm</span>';
+}
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

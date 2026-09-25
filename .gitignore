@@ -70,3 +70,6 @@ ros2_ws/log/
 # Windows Zone.Identifier metadata
 *:Zone.Identifier
 *.Zone.Identifier
+
+# 行业课程案例（大文件/LFS，不入库）
+/行业课程案例/

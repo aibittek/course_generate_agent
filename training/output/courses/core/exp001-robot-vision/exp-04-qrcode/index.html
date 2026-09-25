@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-04 二维码识别与解码 · 机器人视觉应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{
+  --theme:#0d9488;
+  --theme-deep:#0f766e;
+  --theme-bg:#ccfbf1;
+  --theme-bd:#99f6e4;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<aside class="side">
+  <div class="side-title">🤖 CORE-02 · 视觉应用与开发</div>
+  <div class="side-sub">12 个实验 · 48 学时</div>
+
+  <div class="grp">CH1 · 检测与分类</div>
+  <a href="../exp-01-industrial-defect/index.html">EXP-01 工业表面缺陷检测</a>
+  <a href="../exp-02-garbage-classification/index.html">EXP-02 垃圾分类图像分类</a>
+  <a href="../exp-03-lab-color-recognition/index.html">EXP-03 Lab/HSV 色彩空间</a>
+  <a class="now" href="index.html">EXP-04 二维码识别与解码</a>
+
+  <div class="grp">CH2 · 图像理解</div>
+  <a href="../exp-05-line-following/index.html">EXP-05 多边形轮廓巡线</a>
+  <a href="../exp-06-semantic-segmentation/index.html">EXP-06 图像语义分割</a>
+
+  <div class="grp">CH3 · 跟踪与 3D</div>
+  <a href="../exp-07-deepsort-tracking/index.html">EXP-07 DeepSORT 多目标跟踪</a>
+  <a href="../exp-08-depth-3d-detection/index.html">EXP-08 深度信息与 3D 检测</a>
+
+  <div class="grp">CH4 · 人体感知</div>
+  <a href="../exp-09-face-landmarks/index.html">EXP-09 人脸关键点检测</a>
+  <a href="../exp-10-pose-landmark/index.html">EXP-10 骨骼关键点检测</a>
+  <a href="../exp-11-pose-control/index.html">EXP-11 肢体动作体感控制</a>
+  <a href="../exp-12-hand-control/index.html">EXP-12 手指动作控制</a>
+</aside>
+
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-04 · 第 1 篇 · 验证性 · 4 学时</span>
+  <h1>二维码识别与解码</h1>
+  <p class="desc">从"回"字角标定位到 Reed-Solomon 纠错：先学会生成一张能扫的二维码，再让小车摄像头在单码 / 多码 / 轻度遮挡 scenarios 下都能稳稳读出内容。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐ · 4 学时</span>
+    <span class="tag">qrcode 7.4.2</span>
+    <span class="tag">cv2.QRCodeDetector</span>
+    <span class="tag">19 项单元测试</span>
+    <span class="tag">文件 / 相机 / ROS 三入口</span>
+  </div>
+</div>
+
+<!-- 1 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：为什么扫码几乎"秒回"？</h2>
+  <p>快递驿站里，面单朝下、褶皱、灯光反光，扫枪却"嘀"的一声就读出单号；食堂收款码贴在亚克力板上，被贴纸蹭掉了一角，手机照样识别。二维码看起来只是一堆黑白小方块，但它抗污损、抗反光、能一口气读多个的能力从何而来？</p>
+  <p>更让人好奇的是：<b>机器怎么知道二维码在画面的哪个位置、歪了多少度？</b>一张图片里同时出现 3 个二维码时，为什么不会把左上角的定位图案和右下角的数据区"缝合"成一段乱码？本实验从零生成一张二维码，再用 OpenCV 逐帧解码，把这两个问题彻底拆开。</p>
+  <div class="tip tealb"><span class="lab">🎯 本实验要验证的三件事</span>① 生成参数（纠错等级、版本）如何决定二维码的"耐用度"；② 定位角标如何让检测器在任意旋转角度下找到码；③ 多码场景为什么要"逐码分图"再解码。</div>
+</section>
+
+<!-- 2 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>原理通俗讲解：一张码的"三层结构"</h2>
+  <p><b>先把二维码想成一张带花边的信纸。</b>信纸的正文是数据，花边不只是装饰——三个角上的"回"字印花就是这张纸的"装订孔"：无论你把信纸旋转、折叠成什么角度，只要三个孔凑齐，读信的人立刻知道哪边朝上、纸歪了几度。</p>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">🔍 角标 Finder</div><div class="kt">7×7 的"回"字</div><p>左上、右上、左下各一个。检测器先在图里找三个同心方块，用它们的相对位置直接算出码的旋转与倾斜——这就是"任意角度秒扫"的秘密。</p></div>
+    <div class="kcard"><div class="kd">📏 校正 Alignment</div><div class="kt">版本 ≥2 才有</div><p>版本变大、码变"胖"后纸会"折"，校正图案负责逐区微调，防止远处的数据区被透视拉歪。</p></div>
+    <div class="kcard"><div class="kd">📖 数据 Data</div><div class="kt">按掩模打散的字节</div><p>正文按固定"九宫格阅读顺序"排布，并 XOR 一层掩模图案打散——避免出现大片纯黑/纯白让检测器跟丢。</p></div>
+    <div class="kcard"><div class="kd">💊 纠错 Reed-Solomon</div><div class="kt">L 7% / M 15% / Q 25% / H 30%</div><p>像涂改液：污损不超过额定比例，被划掉的字还能"复原"。等级越高冗余越多，同容量下码也越大。</p></div>
+  </div>
+  <p><b>容量公式只有两行：</b>模块边长 <code>M = 17 + 4 × 版本</code>（版本 1 是 21×21，版本 40 高达 177×177）。生成时三个关键旋钮：<code>version</code>（容量）、<code>error_correction</code>（耐污度）、<code>box_size</code> / <code>border</code>（每个模块画多大、留多宽静默区）。</p>
+  <div class="tip amber"><span class="lab">⚠️ 为什么"高纠错 + 中文"反而是坑？</span>H 等级冗余最长，解出的字节序列更长、更容易在板端截断或触发编码歧义——源讲义明确要求：<b>不要用 H 等级编码中文</b>，选 M 并控制内容长度最稳。</div>
+</section>
+
+<!-- 3 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>关联知识点</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">几何</div><div class="kt">透视与仿射</div><p>三个角标构成参照系，任意倾斜的码都能被"扶正"成正视图再采样读取。</p></div>
+    <div class="kcard"><div class="kd">编码</div><div class="kt">GF(256) 有限域</div><p>Reed-Solomon 纠错建立在有限域运算上，本质是"多项式除法取余"做奇偶校验。</p></div>
+    <div class="kcard"><div class="kd">工程</div><div class="kt">静态 vs 流式</div><p>图片文件解码是单帧验证，MJPEG 流才是真实接入形态，两者的失败模式不同。</p></div>
+    <div class="kcard"><div class="kd">颜色</div><div class="kt">BGR 通道序</div><p>qrcode 库输出 RGB，必须 <code>cv2.cvtColor(..., COLOR_RGB2BGR)</code> 才能被 OpenCV 正确写盘。</p></div>
+  </div>
+  <ul class="check">
+    <li>前置：OpenCV 图像读写与 <code>cvtColor</code>（EXP-03）。</li>
+    <li>后续：EXP-05 轮廓与多边形——角标本身就是一对"同心轮廓"。</li>
+    <li>串课：识别出的内容可以喂给 ROS2 topic（EXP-00 系列）驱动小车行为。</li>
+  </ul>
+</section>
+
+<!-- 4 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>实验目标</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div><b>会生成</b>：用 qrcode 7.4.2 指定 version / error_correction / box_size / border 生成可扫二维码，并正确处理 RGB→BGR。</div></div>
+    <div class="step"><span class="n">2</span><div><b>会单测</b>：跑通 19 项单元测试，覆盖生成、文件解码、相机链路的典型失败分支。</div></div>
+    <div class="step"><span class="n">3</span><div><b>会多码</b>：理解 <code>cv2.QRCodeDetector</code> 整图多码的串扰问题，掌握"逐码分图 + MAX_DETECT_PASSES=8"的解法。</div></div>
+    <div class="step"><span class="n">4</span><div><b>会上板</b>：<code>--detect --ros</code> 接入 ascamera 相机流实时解码，MJPEG 预览验证。</div></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>实验环境与准备</h2>
+  <table>
+    <tr><th>类别</th><th>内容</th></tr>
+    <tr><td>硬件</td><td>实验箱 B2（XFLZ_EAI_B2_PRO），HP60C 相机 / 树莓派板端，或本机摄像头</td></tr>
+    <tr><td>软件</td><td>Python 3、OpenCV（含 <code>cv2.QRCodeDetector</code>）、<code>qrcode</code> 库（板端需 <code>pip install qrcode</code>，未安装时生成入口会直接报错）</td></tr>
+    <tr><td>数据集</td><td>无需外部数据集——二维码由本实验自产：文本 / URL / 中文皆可，另备几张打印后折叠、污损的样张做鲁棒性验证</td></tr>
+    <tr><td>工作目录</td><td>视觉实验目录下的二维码模块（experiment-4 对应工程），所有命令在该目录执行</td></tr>
+    <tr><td>离线要求</td><td>全程无外网：生成、解码、相机、ROS 四条链路全部本地闭环</td></tr>
+  </table>
+  <div class="tip tealb"><span class="lab">🧪 验证性实验提醒</span>"验证性"意味着每一步都有预期答案：先照跑命令核对输出，再回头改参数观察差异，比"一上来就自由发挥"学得快得多。</div>
+</section>
+
+<!-- 6 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>动画讲解：角标定位的三步走</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" aria-label="二维码角标定位动画">
+      <rect x="0" y="0" width="640" height="300" fill="#111827"/>
+      <text x="24" y="30" fill="#94a3b8" font-size="13" font-family="monospace">QR Finder Pattern Scan</text>
+
+      <!-- 数据区噪声 -->
+      <g fill="#334155">
+        <rect x="220" y="80" width="14" height="14"/><rect x="250" y="80" width="14" height="14"/><rect x="280" y="94" width="14" height="14"/><rect x="310" y="80" width="14" height="14"/>
+        <rect x="234" y="110" width="14" height="14"/><rect x="264" y="110" width="14" height="14"/><rect x="294" y="124" width="14" height="14"/><rect x="324" y="110" width="14" height="14"/>
+        <rect x="220" y="140" width="14" height="14"/><rect x="250" y="154" width="14" height="14"/><rect x="280" y="140" width="14" height="14"/><rect x="310" y="154" width="14" height="14"/>
+        <rect x="234" y="184" width="14" height="14"/><rect x="294" y="184" width="14" height="14"/><rect x="324" y="198" width="14" height="14"/><rect x="250" y="212" width="14" height="14"/>
+      </g>
+
+      <!-- 三个回字角标：外框 7x7 示意 -->
+      <g id="qf1">
+        <rect x="120" y="60" width="70" height="70" fill="none" stroke="#0d9488" stroke-width="8"/>
+        <rect x="141" y="81" width="28" height="28" fill="#0d9488"/>
+        <rect x="116" y="56" width="78" height="78" fill="none" stroke="#2dd4bf" stroke-width="2" opacity="0">
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.75;1" dur="3s" repeatCount="indefinite"/>
+        </rect>
+      </g>
+      <g id="qf2">
+        <rect x="450" y="60" width="70" height="70" fill="none" stroke="#0d9488" stroke-width="8"/>
+        <rect x="471" y="81" width="28" height="28" fill="#0d9488"/>
+        <rect x="446" y="56" width="78" height="78" fill="none" stroke="#2dd4bf" stroke-width="2" opacity="0">
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.3;0.8;1" dur="3s" repeatCount="indefinite"/>
+        </rect>
+      </g>
+      <g id="qf3">
+        <rect x="120" y="190" width="70" height="70" fill="none" stroke="#0d9488" stroke-width="8"/>
+        <rect x="141" y="211" width="28" height="28" fill="#0d9488"/>
+        <rect x="116" y="186" width="78" height="78" fill="none" stroke="#2dd4bf" stroke-width="2" opacity="0">
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.45;0.85;1" dur="3s" repeatCount="indefinite"/>
+        </rect>
+      </g>
+
+      <!-- 三角定位连线 -->
+      <path d="M155 95 L485 95 L155 225 Z" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 6" stroke-dashoffset="60" opacity="0.9">
+        <animate attributeName="stroke-dashoffset" values="60;0" dur="3s" repeatCount="indefinite"/>
+      </path>
+      <circle cx="155" cy="95" r="5" fill="#f59e0b"><animate attributeName="r" values="5;8;5" dur="1.5s" repeatCount="indefinite"/></circle>
+      <circle cx="485" cy="95" r="5" fill="#f59e0b"><animate attributeName="r" values="5;8;5" dur="1.5s" begin="0.3s" repeatCount="indefinite"/></circle>
+      <circle cx="155" cy="225" r="5" fill="#f59e0b"><animate attributeName="r" values="5;8;5" dur="1.5s" begin="0.6s" repeatCount="indefinite"/></circle>
+
+      <!-- 读取扫描线 -->
+      <line x1="210" y1="60" x2="350" y2="60" stroke="#2dd4bf" stroke-width="3" opacity="0">
+        <animate attributeName="y1" values="60;245;60" dur="3s" repeatCount="indefinite"/>
+        <animate attributeName="y2" values="60;245;60" dur="3s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0;0.9;0" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite"/>
+      </line>
+      <text x="370" y="270" fill="#5eead4" font-size="13" font-family="monospace">3 finders → pose solved</text>
+    </svg>
+    <div class="anim-cap">三个"回"字角标依次被锁定（青色闪烁）→ 三心连线确定朝向与倾斜（橙色虚线）→ 扫描线按掩模顺序读出数据区。角标缺失任何一个，检测器就无法解算姿态，码再清晰也读不出。</div>
+  </div>
+  <p>看清动画里的顺序：<b>先定位、再纠偏、后读数</b>。这也解释了多码场景的困境——三个角标必须属于同一个码；整图一次性检测时，检测器可能把 A 码的左上角和 B 码的右上角配成一对，输出一段"缝合乱码"。</p>
+</section>
+
+<!-- 7 -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>互动讲解：纠错等级 × 遮挡存活率实验台</h2>
+  <div class="ix-panel">
+    <div class="ix-title">🎚 参数实验台 · 生成参数如何决定"能不能扫出来"</div>
+    <div class="ctl-row">
+      <button class="btn" onclick="setEc('L')">L · 7%</button>
+      <button class="btn" onclick="setEc('M')">M · 15%</button>
+      <button class="btn" onclick="setEc('Q')">Q · 25%</button>
+      <button class="btn" onclick="setEc('H')">H · 30%</button>
+      <button class="btn" onclick="runQr()">▶ 生成并扫码</button>
+      <button class="btn" onclick="resetQr()">↺ 复位</button>
+    </div>
+    <div class="ctl-row">
+      <label class="dim">污损 / 遮挡比例</label>
+      <input type="range" id="dmg" min="0" max="45" value="10" oninput="drawDmg()">
+      <span class="dim" id="dmgv">10%</span>
+      <label class="dim">&nbsp;&nbsp;内容长度</label>
+      <input type="range" id="len" min="8" max="60" value="20" oninput="drawDmg()">
+      <span class="dim" id="lenv">20 字符</span>
+    </div>
+    <div class="ctl-row">
+      <label class="dim"><input type="checkbox" id="zh"> 内容含中文（提示：板端解码风险）</label>
+      <label class="dim">&nbsp;&nbsp;<input type="checkbox" id="multi"> 相机里同时出现 3 张码</label>
+    </div>
+    <pre class="io" id="io"></pre>
+  </div>
+  <p>操作建议：先用 L 等级把遮挡拉到 25%，观察解码失败（<span style="color:#f87171">FAIL</span>）；再切到 H 同样的污损立刻成功——这就是"涂改液"的威力。然后勾选中文并把等级设回 H，观察警告输出，对应下节坑表第 1 条。</p>
+</section>
+
+<!-- 8 -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操步骤</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div><b>安装依赖（仅首次）</b>——板端缺 qrcode 库时生成入口直接报错：
+<pre><span class="c"># 板端 / 本机，离线环境用内网 wheel 源</span>
+<span class="g">pip install qrcode</span>
+<span class="y">Successfully installed qrcode-7.4.2</span></pre></div></div>
+
+    <div class="step"><span class="n">2</span><div><b>生成一张可扫二维码</b>——五个参数缺一不可，注意 RGB→BGR：
+<pre><span class="g">python src/app.py --generate "https://example.com" --save my_qr.png</span>
+<span class="c"># 等价核心代码（自动生成时的默认参数）</span>
+import qrcode
+from qrcode.constants import ERROR_CORRECT_M
+qr = qrcode.QRCode(version=None, error_correction=ERROR_CORRECT_M,
+                   box_size=5, border=4)
+qr.add_data("https://example.com")
+img = qr.make_image()                  <span class="c"># RGB</span>
+cv2.imwrite("my_qr.png",
+            cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR))  <span class="c"># 换成 BGR</span></pre></div></div>
+
+    <div class="step"><span class="n">3</span><div><b>静态图片解码（单测的主战场）</b>：
+<pre><span class="g">python src/app.py --detect --image my_qr.png</span>
+<span class="y">QR found: https://example.com</span>
+<span class="c"># 传空串或不存在的路径 → 走失败分支，是 19 项单测的固定用例</span></pre></div></div>
+
+    <div class="step"><span class="n">4</span><div><b>多码场景：逐码分图</b>——整图一次解 3 张码会串扰，标准解法是循环裁剪：
+<pre><span class="c"># 伪代码：先拿 ROI 列表，再逐块单独解码</span>
+ok, pts = detector.detect(img)         <span class="c"># 找到 N 个码的四角点</span>
+for i in range(MAX_DETECT_PASSES):      <span class="c"># =8，防止死循环</span>
+    roi = perspective_fix(img, pts[i])  <span class="c"># 扶正成正视图</span>
+    roi = cv2.resize(roi, None, fx=0.5, fy=0.5)  <span class="c"># 降采样提速</span>
+    data, _ = detector.detectAndDecode(roi)      <span class="c"># 只喂一个码</span>
+    if data: print("QR", i, data)</pre></div></div>
+
+    <div class="step"><span class="n">5</span><div><b>相机实时解码（MJPEG 验证）</b>：
+<pre><span class="g">python src/app.py --detect --ros</span>
+<span class="c"># 浏览器打开预览流（端口按模块配置）</span>
+<span class="y">http://&lt;board-ip&gt;:8080/qrcode.mjpg</span>
+<span class="y">decoded @ 15 FPS: https://example.com</span></pre></div></div>
+
+    <div class="step"><span class="n">6</span><div><b>跑单元测试核对 19 项通过</b>：
+<pre><span class="g">pytest tests/ -v</span>
+<span class="y">tests/test_generate.py ....            [ 4/19]</span>
+<span class="y">tests/test_detect.py .......           [11/19]</span>
+<span class="y">tests/test_camera_mock.py ......       [17/19]</span>
+<span class="y">tests/test_edge.py ....                [19/19]  passed</span></pre></div></div>
+  </div>
+  <div class="tip violet"><span class="lab">🚀 扩展挑战</span>改 <code>box_size=10, border=2</code> 重新生成，量一量屏幕像素与模块宽度的变化；再把识别结果通过 ROS2 发布到自定义 topic，让小车"扫码后起步"（衔接 EXP-11 的 cmd_vel 发布模式）。</div>
+</section>
+
+<!-- 9 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>重点与易错点</h2>
+  <div class="tip amber"><span class="lab">⚠️ 最高频翻车点</span>生成端做了 RGB→BGR 转换，解码端却拿"看起来发灰"的图硬扫——<b>先确认色彩通道，再怀疑算法</b>。其次是多码不裁剪：整图 <code>detectAndDecode</code> 一次返回的第一条结果在多码场景下不可信。</div>
+  <table>
+    <tr><th>现象</th><th>根因</th><th>处理</th></tr>
+    <tr><td>板端解码中文乱码</td><td>字体 / 编码链不齐 + H 等级字节流过长</td><td>纠错等级改 M，内容控制在 40 字符内</td></tr>
+    <tr><td>3 张码只读出 1 张或读串</td><td><code>QRCodeDetector</code> 整图多码串扰</td><td>逐码分图 + <code>MAX_DETECT_PASSES=8</code></td></tr>
+    <tr><td><code>ModuleNotFoundError: qrcode</code></td><td>生成库未安装</td><td><code>pip install qrcode</code> 后重跑</td></tr>
+    <tr><td>生成函数抛 <code>ValueError</code></td><td>data 为空字符串 / 全空格</td><td>入口处校验内容非空</td></tr>
+    <tr><td>打印样张扫不出</td><td>border 静默区被裁、box_size 太小</td><td>border ≥4 模块、打印后留白边</td></tr>
+    <tr><td>H 等级 + 中文板端失败</td><td>冗余字节过长，板端解不出</td><td>降级到 Q/M，删掉多余字符</td></tr>
+    <tr><td>相机链路 404</td><td>MJPEG 路径或端口不对</td><td>核对 <code>qrcode.mjpg</code> 路径与模块端口</td></tr>
+    <tr><td>内容 40 字符被截断</td><td>单码 ROI 采样不足 / 版本太小</td><td>version 自适应或手动加 1</td></tr>
+  </table>
+  <ul class="check">
+    <li>✅ 生成、静态解码、相机解码三条链路各跑通一次。</li>
+    <li>✅ 19 项单元测试全绿（含失败分支）。</li>
+    <li>✅ 至少做过一组"L 等级被污损 vs H 等级存活"的对照实验。</li>
+    <li>✅ 多码场景用逐码分图方案读出全部 3 张码。</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>总结与思考</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">生成 + 解码双入口</div><p>文本码、污损码、多码、相机流四类输入全部验证通过。</p></div>
+    <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">定位与读数分离</div><p>角标解决"在哪、多歪"，掩模 + 纠错解决"读什么、读错了怎么救"。</p></div>
+    <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">鲁棒解码套路</div><p>逐码分图、降采样提速、MAX_DETECT_PASSES 防死循环。</p></div>
+    <div class="kcard"><div class="kd">🔬 验证方法</div><div class="kt">参数对照</div><p>同一污损样本 × 四档纠错等级，把"冗余换鲁棒"量化到百分比。</p></div>
+  </div>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>模块尺寸公式 M = 17 + 4×version：一张 version=5 的码边长是多少模块？若每个模块 5 像素、静默区 4 模块，整张图最少多少像素？把 box_size 从 5 调到 10，扫描距离理论上能提升几倍？</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>既然 H 纠错能救回 30% 的污损，为什么本实验坚持"中文 + M 等级 + 40 字符"的组合？结合"板端字节流解码链路"和"版本越大码越密"两方面，说说盲目拉高纠错等级会付出哪两类代价。</div>
+</section>
+
+<nav class="expnav">
+  <a href="../index.html"><span class="lb">← 返回</span>课程目录 · 视觉应用与开发</a>
+  <a class="next" href="../exp-05-line-following/index.html"><span class="lb">下一个实验 →</span>EXP-05 多边形轮廓巡线</a>
+</nav>
+
+<footer>
+  <span>CORE-02 · 机器人视觉应用与开发 · EXP-04 二维码识别与解码</span>
+  <span>4 学时 · 验证性 · 基于 robot_vision 实验指导书改编</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// 纠错等级 x 遮挡存活率仿真台
+var ec = "M";
+var ECC = { L:0.07, M:0.15, Q:0.25, H:0.30 };
+
+function setEc(v){
+  ec = v;
+  runQr();
+}
+
+function drawDmg(){
+  document.getElementById("dmgv").textContent = document.getElementById("dmg").value + "%";
+  document.getElementById("lenv").textContent = document.getElementById("len").value + " 字符";
+}
+
+function resetQr(){
+  ec = "M";
+  document.getElementById("dmg").value = 10;
+  document.getElementById("len").value = 20;
+  document.getElementById("zh").checked = false;
+  document.getElementById("multi").checked = false;
+  drawDmg();
+  runQr();
+}
+
+function runQr(){
+  drawDmg();
+  var dmg = +document.getElementById("dmg").value / 100;
+  var len = +document.getElementById("len").value;
+  var zh = document.getElementById("zh").checked;
+  var multi = document.getElementById("multi").checked;
+  var cap = ECC[ec];
+  var t = "";
+  t += "<span class=\"dim\">// generate: version=auto error_correction=" + ec + " box_size=5 border=4</span>\n";
+  t += "<span class=\"ok\">[gen] </span>QRCode(version≈" + Math.max(1, Math.ceil((len + (zh ? 2 : 0) - 10) / 4) + 1) + ", ec=" + ec + ") -> qr.png, content=" + (len + (zh ? 2 : 0)) + " 字符\n";
+  t += "<span class=\"dim\">// damage = " + Math.round(dmg * 100) + "% modules occluded, Reed-Solomon budget = " + Math.round(cap * 100) + "%</span>\n";
+
+  var survive = dmg <= cap;
+  if(survive){
+    t += "<span class=\"ok\">[decode] OK  </span>污染 " + Math.round(dmg * 100) + "% ≤ 纠错预算 " + Math.round(cap * 100) + "%，被划掉的字节全部复原\n";
+    t += "         payload = \"https://example.com?id=" + len + "\"\n";
+  } else {
+    var over = Math.round((dmg - cap) * 100);
+    t += "<span class=\"bad\">[decode] FAIL</span>污染 " + Math.round(dmg * 100) + "% > 预算 " + Math.round(cap * 100) + "%，超出 " + over + "% 的字节无法复原\n";
+    t += "         <span class=\"warn\">检测到 3 个角标但 BCH 校验失败，放弃输出</span>\n";
+  }
+
+  if(zh){
+    t += "<span class=\"warn\">[warn ] </span>内容含中文：勿用 H 等级（板端解不出），当前 ec=" + ec + (ec === "H" ? " => 板端失败风险高" : " => 请保持 ≤40 字符") + "\n";
+  }
+  if(multi){
+    t += "<span class=\"dim\">// 相机帧内 3 张码：整图 detectAndDecode 会串扰</span>\n";
+    t += "<span class=\"warn\">[multi] </span>1 次整图解码 => 输出乱码；启用逐码分图（MAX_DETECT_PASSES=8, scale=0.5）\n";
+    t += "<span class=\"ok\">[multi] </span>ROI[0] ok · ROI[1] ok · ROI[2] ok  <span class=\"dim\">(3/3 solved)</span>\n";
+  }
+  if(!survive && cap < 0.30){
+    t += "<span class=\"dim\">// 提示：换 H 等级（30% 预算）可救回本次污损</span>\n";
+  }
+  document.getElementById("io").innerHTML = t;
+}
+
+runQr();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

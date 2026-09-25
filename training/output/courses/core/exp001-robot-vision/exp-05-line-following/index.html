@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-05 多边形轮廓巡线 · 机器人视觉应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{
+  --theme:#0d9488;
+  --theme-deep:#0f766e;
+  --theme-bg:#ccfbf1;
+  --theme-bd:#99f6e4;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<aside class="side">
+  <div class="side-title">🤖 CORE-02 · 视觉应用与开发</div>
+  <div class="side-sub">12 个实验 · 48 学时</div>
+
+  <div class="grp">CH1 · 检测与分类</div>
+  <a href="../exp-01-industrial-defect/index.html">EXP-01 工业表面缺陷检测</a>
+  <a href="../exp-02-garbage-classification/index.html">EXP-02 垃圾分类图像分类</a>
+  <a href="../exp-03-lab-color-recognition/index.html">EXP-03 Lab/HSV 色彩空间</a>
+  <a href="../exp-04-qrcode/index.html">EXP-04 二维码识别与解码</a>
+
+  <div class="grp">CH2 · 图像理解</div>
+  <a class="now" href="index.html">EXP-05 多边形轮廓巡线</a>
+  <a href="../exp-06-semantic-segmentation/index.html">EXP-06 图像语义分割</a>
+
+  <div class="grp">CH3 · 跟踪与 3D</div>
+  <a href="../exp-07-deepsort-tracking/index.html">EXP-07 DeepSORT 多目标跟踪</a>
+  <a href="../exp-08-depth-3d-detection/index.html">EXP-08 深度信息与 3D 检测</a>
+
+  <div class="grp">CH4 · 人体感知</div>
+  <a href="../exp-09-face-landmarks/index.html">EXP-09 人脸关键点检测</a>
+  <a href="../exp-10-pose-landmark/index.html">EXP-10 骨骼关键点检测</a>
+  <a href="../exp-11-pose-control/index.html">EXP-11 肢体动作体感控制</a>
+  <a href="../exp-12-hand-control/index.html">EXP-12 手指动作控制</a>
+</aside>
+
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-05 · 第 2 篇 · 设计性 · 4 学时</span>
+  <h1>多边形轮廓巡线</h1>
+  <p class="desc">给定一张俯拍地面图，把色带的边缘一步步"瘦身"成干净的多边形：二值化 → 形态学 → 外轮廓 → 凸包 → 多边形逼近，最终输出顶点、质心与"N 边形"标签。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐⭐ · 4 学时</span>
+    <span class="tag">findContours</span>
+    <span class="tag">approxPolyDP</span>
+    <span class="tag">21 项单元测试</span>
+    <span class="tag">MJPEG :8080/polygon.mjpg</span>
+  </div>
+</div>
+
+<!-- 1 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>问题引入：小车凭什么"认得"那条线？</h2>
+  <p>仓库里的 AGV 沿着地面胶带走，物料框放在一个贴了胶带的方框里——机器要回答两个问题：<b>线在哪？框是几边形、转角朝哪？</b>摄像头给出的只是一堆像素，怎么从灰度深浅的海洋里捞出一条边界清晰、顶点分明的"几何体"？</p>
+  <p>难点在于"噪声无处不在"：地面反光、胶带磨损、相机噪点都会让边缘长出毛刺。如果直接对每一个白色像素连线，你会得到一条上千个顶点的"锯齿怪物"。本实验要用一条标准瘦身流水线，把它收敛成 4 个顶点的矩形——而且<code>epsilon</code> 还能由你亲手调。</p>
+  <div class="tip tealb"><span class="lab">🎯 本实验要打通的链路</span>二值化决定"是线还是地" → 形态学决定"毛刺去不去" → 轮廓提取决定"边界在哪" → 凸包/多边形逼近决定"顶点几个"。每一级都可参数化，21 项单测逐级守护。</div>
+</section>
+
+<!-- 2 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>原理通俗讲解：把轮廓"瘦身"成几何体</h2>
+  <p><b>把这张图想象成退潮后的礁石海岸。</b>海水（背景）退去，露出的黑色礁石（目标）边缘弯弯绕绕、尽是碎石和沙坑。我们的目标不是数沙粒，而是画出礁石的"大致形状"——几块大岩石、几个弯角。流水线每一步都在"丢掉小的、留下大的"：</p>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">🌡 第 1 步 · 二值化</div><div class="kt">涨潮线</div><p>设定一条水位线（阈值）：低于它的算礁石、高于它的算海水。光照不均就用 adaptive 自适应——局部区域各设各的水位。</p></div>
+    <div class="kcard"><div class="kd">🔄 第 2 步 · invert</div><div class="kt">黑白翻转</div><p>OpenCV 轮廓提取默认"白目标黑背景"。拍到的是暗色胶带？必须 invert，否则整幅图变成一个外框轮廓——<b>设反了后面全错</b>。</p></div>
+    <div class="kcard"><div class="kd">🧽 第 3 步 · 形态学</div><div class="kt">退潮冲沙</div><p>用 3×3 的小刷子做开/闭运算：碎沙坑被填平、细砂被冲走。<b>kernel 必须是奇数</b>（3、5、7），偶数会让刷子"站不正"偏移半像素。</p></div>
+    <div class="kcard"><div class="kd">🎣 第 4 步 · findContours</div><div class="kt">描海岸线</div><p>RETR_EXTERNAL 只取最外圈（不要礁石内部的水坑），min_area 过滤掉小石子级别的假轮廓。</p></div>
+    <div class="kcard"><div class="kd">🐎 第 5 步 · convexHull</div><div class="kt">绷紧的橡皮筋</div><p>拿一根橡皮筋套在轮廓外面自然松手，它会绷成凸包——先消掉所有凹陷，一步去掉 90% 的毛刺。</p></div>
+    <div class="kcard"><div class="kd">✂️ 第 6 步 · approxPolyDP</div><div class="kt">折纸</div><p>Douglas-Peucker 算法像折纸：<b>epsilon 是容差</b>——偏离折线小于 epsilon 的点全部扔掉。epsilon = 0.02 × 周长是经验起点。</p></div>
+  </div>
+  <div class="tip amber"><span class="lab">⚠️ choose_hull 与 epsilon 的关系</span>凸包语义下（use_hull=true），逼近的是凸包而非原轮廓——角更钝、更稳，但 epsilon 过大时圆也会被折成三角形。工程口诀：<b>epsilon 从小往大调，顶点数掉到目标值就停</b>。</div>
+</section>
+
+<!-- 3 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>关联知识点</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">数学</div><div class="kt">周长与面积</div><p>arcLength、contourArea 是 epsilon 归一化的基石：<code>epsilon = k × peri</code> 让阈值与目标大小无关。</p></div>
+    <div class="kcard"><div class="kd">几何</div><div class="kt">质心</div><p>moments → <code>cx=M10/M00, cy=M01/M00</code>：巡线时质心相对画面中线的偏移就是转向误差。</p></div>
+    <div class="kcard"><div class="kd">前置课</div><div class="kt">EXP-03 HSV</div><p>彩色图先用 inRange 得到掩膜，再进本实验流水线——两课拼出完整识别链。</p></div>
+    <div class="kcard"><div class="kd">后续课</div><div class="kt">EXP-11 cmd_vel</div><p>质心 x 偏差 → 比例控制 → twist，本课输出就是巡线小车的"眼睛"。</p></div>
+  </div>
+  <ul class="check">
+    <li>理解 RETR_EXTERNAL / CHAIN_APPROX_SIMPLE 两种模式的输出差异。</li>
+    <li>记住经验参数：morph_kernel=3、min_area 按目标面积 1%~5% 起步、epsilon=0.02×peri。</li>
+    <li>会读多边形顶点序列并判断边数（"4边形"、"八边形"标签由此而来）。</li>
+  </ul>
+</section>
+
+<!-- 4 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>实验目标</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div><b>搭流水线</b>：按"二值化 → invert → 形态学 → findContours → convexHull → approxPolyDP"六级实现完整的轮廓多边形化管线。</div></div>
+    <div class="step"><span class="n">2</span><div><b>调三组参数</b>：binary/adaptive 二值化方式、morph_kernel、epsilon，理解每组参数对输出顶点数的敏感度。</div></div>
+    <div class="step"><span class="n">3</span><div><b>出结果</b>：画出彩色轮廓与多边形顶点，输出"N 边形"标签与质心坐标，黑底彩色模式（display.colored_mode）预览。</div></div>
+    <div class="step"><span class="n">4</span><div><b>过测试</b>：21 项单元测试全绿，覆盖 invert、kernel 奇偶、epsilon 边界等典型失败分支。</div></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>实验环境与准备</h2>
+  <table>
+    <tr><th>类别</th><th>内容</th></tr>
+    <tr><td>硬件</td><td>实验箱 B2（XFLZ_EAI_B2_PRO）俯拍rig 或本机 WebCam；巡线地毯 / 胶带样例若干</td></tr>
+    <tr><td>软件</td><td>Python 3 + OpenCV（findContours、approxPolyDP、morphologyEx 皆为内置 API，纯 CPU 即可，无需 NPU）</td></tr>
+    <tr><td>数据集</td><td>内置样例图（矩形框、多边形色块若干张）+ 现场采集：正对地面 30~50cm 俯拍，避免强反光</td></tr>
+    <tr><td>预览端口</td><td>MJPEG 流 <code>:8080/polygon.mjpg</code></td></tr>
+    <tr><td>模式开关</td><td><code>display.colored_mode</code> 黑底彩色显示（默认开），方便看清轮廓着色</td></tr>
+  </table>
+  <div class="tip tealb"><span class="lab">🧪 设计性实验提醒</span>本课没有"唯一正确答案"：同样是 4 边形，不同光照、不同距离下参数组合可以完全不同。请记录你最终选定的一组参数并写明理由——这是设计性实验的核心交付物。</div>
+</section>
+
+<!-- 6 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>动画讲解：轮廓三级瘦身</h2>
+  <div class="anim-box">
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" aria-label="轮廓到多边形的三级瘦身动画">
+      <rect x="0" y="0" width="640" height="300" fill="#111827"/>
+      <text x="24" y="30" fill="#94a3b8" font-size="13" font-family="monospace">raw contour -> convex hull -> approxPolyDP</text>
+
+      <!-- 阶段标签 -->
+      <text x="60" y="272" fill="#64748b" font-size="12" text-anchor="middle">① 毛刺轮廓</text>
+      <text x="260" y="272" fill="#64748b" font-size="12" text-anchor="middle">② 凸包绷紧</text>
+      <text x="490" y="272" fill="#64748b" font-size="12" text-anchor="middle">③ 折成多边形</text>
+
+      <!-- ① 原始毛刺轮廓（闪动锯齿） -->
+      <path fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4 4"
+            d="M40 200 L46 176 L54 196 L64 170 L76 194 L90 165 L104 190 L120 160 L136 188 L152 158 L168 186 L182 162 L194 190 L200 178 L204 205 L150 225 L90 228 L44 214 Z">
+        <animate attributeName="stroke-dashoffset" values="0;16" dur="1.2s" repeatCount="indefinite"/>
+      </path>
+      <text x="60" y="150" fill="#38bdf8" font-size="11" font-family="monospace">40+ pts</text>
+
+      <!-- ② 凸包（橡皮筋） -->
+      <path fill="none" stroke="#f59e0b" stroke-width="3"
+            d="M232 205 L238 172 L256 158 L282 156 L304 168 L312 190 L306 212 L270 226 L240 220 Z" stroke-dasharray="380" stroke-dashoffset="380">
+        <animate attributeName="stroke-dashoffset" values="380;0" dur="1.6s" repeatCount="indefinite"/>
+      </path>
+      <circle cx="232" cy="205" r="4" fill="#f59e0b"/><circle cx="256" cy="158" r="4" fill="#f59e0b"/><circle cx="312" cy="190" r="4" fill="#f59e0b"/><circle cx="270" cy="226" r="4" fill="#f59e0b"/>
+      <text x="240" y="145" fill="#f59e0b" font-size="11" font-family="monospace">convexHull</text>
+
+      <!-- ③ approxPolyDP 结果 -->
+      <path fill="none" stroke="#34d399" stroke-width="4"
+            d="M430 210 L444 152 L536 168 L548 214 Z" stroke-dasharray="440" stroke-dashoffset="440" opacity="0">
+        <animate attributeName="stroke-dashoffset" values="440;0" dur="1.4s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.3;1" dur="1.4s" repeatCount="indefinite"/>
+      </path>
+      <g opacity="0">
+        <animate attributeName="opacity" values="0;1" begin="0.9s" dur="1.4s" repeatCount="indefinite"/>
+        <circle cx="430" cy="210" r="6" fill="#f59e0b"/><circle cx="444" cy="152" r="6" fill="#f59e0b"/>
+        <circle cx="536" cy="168" r="6" fill="#f59e0b"/><circle cx="548" cy="214" r="6" fill="#f59e0b"/>
+      </g>
+      <text x="440" y="145" fill="#34d399" font-size="11" font-family="monospace">4 vertices = "4边形"</text>
+      <circle cx="489" cy="186" r="4" fill="#5eead4"/>
+      <text x="498" y="243" fill="#5eead4" font-size="11" font-family="monospace">centroid</text>
+
+      <!-- 箭头 -->
+      <path d="M212 195 L224 195" stroke="#64748b" stroke-width="2" marker-end="none"/>
+      <path d="M382 195 L400 195" stroke="#64748b" stroke-width="2"/>
+      <polygon points="400,190 410,195 400,200" fill="#64748b"/>
+      <polygon points="224,190 234,195 224,200" fill="#64748b"/>
+    </svg>
+    <div class="anim-cap">三级瘦身动画：① 原始轮廓带着毛刺抖动（顶点 40+）→ ② 凸包像橡皮筋一样绷紧（橙线描边动画，凹陷被吞掉）→ ③ approxPolyDP 折出最终多边形，4 个顶点高亮并标出质心。每过一级，数据量断崖式下降，而"形状语义"反而更清晰。</div>
+  </div>
+  <p>注意动画里顶点数的变化：40+ → 凸包 9 → 多边形 4。<b>瘦身不是失真，而是提纯</b>——巡线小车只关心"框在哪里、朝哪偏"，那些毫米级的胶带毛边本来就该扔掉。</p>
+</section>
+
+<!-- 7 -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>互动讲解：epsilon 折纸实验台</h2>
+  <div class="ix-panel">
+    <div class="ix-title">🎚 参数实验台 · 一个 epsilon 滑块看懂 approxPolyDP</div>
+    <div class="ctl-row">
+      <label class="dim">epsilon 系数 × 1000</label>
+      <input type="range" id="eps" min="2" max="120" value="20" oninput="runPoly()">
+      <span class="dim" id="epsv">0.020</span>
+      <label class="dim">&nbsp;&nbsp;周长 peri</label>
+      <input type="range" id="peri" min="100" max="600" value="400" oninput="runPoly()">
+      <span class="dim" id="periv">400 px</span>
+    </div>
+    <div class="ctl-row">
+      <button class="btn" onclick="preset('rect')">▶ 矩形样例</button>
+      <button class="btn" onclick="preset('circle')">▶ 圆形样例</button>
+      <button class="btn" onclick="runPoly()">运行流水线</button>
+      <button class="btn" onclick="resetPoly()">↺ 复位 epsilon=0.02</button>
+    </div>
+    <pre class="io" id="io"></pre>
+  </div>
+  <p>操作建议：固定矩形样例，把 epsilon 从 0.02 慢慢推到 0.12——顶点数从 4 掉到 3（矩形被折掉一个角，标签变"3边形"）。切到圆形样例，epsilon 很小时输出十几个顶点，推大后圆变多边形、最终塌成三角形——<b>这就是 epsilon 过大的经典症状</b>。</p>
+</section>
+
+<!-- 8 -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>实操步骤</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div><b>进入工程目录并跑单测</b>（先绿后改）：
+<pre><span class="c"># 实验工程下的多边形巡线模块</span>
+<span class="g">pytest tests/ -v</span>
+<span class="y">21 passed</span></pre></div></div>
+
+    <div class="step"><span class="n">2</span><div><b>最小可跑版本：六级流水线</b>：
+<pre><span class="c"># 1) 灰度 + 二值化（光照不均改用 adaptive）</span>
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+_, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+binary = cv2.bitwise_not(binary)            <span class="c"># invert：暗目标 -> 白目标，设反全错</span>
+
+<span class="c"># 2) 形态学去毛刺（kernel 必须奇数）</span>
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+
+<span class="c"># 3) 外轮廓 + 面积过滤</span>
+cnts, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+cnts = [c for c in cnts if cv2.contourArea(c) &gt; min_area]
+
+<span class="c"># 4) 凸包 + 5) 多边形逼近 + 6) 质心</span>
+hull = cv2.convexHull(c, clockwise=True)     <span class="c"># use_hull=true 时逼近的是 hull</span>
+peri = cv2.arcLength(hull, True)
+eps  = 0.02 * peri                           <span class="c"># 黄金起点，再微调</span>
+poly = cv2.approxPolyDP(hull, eps, True)
+M = cv2.moments(c); cx, cy = int(M["m10"]/M["m00"]), int(M["m01"]/M["m00"])
+label = str(len(poly)) + "边形"</pre></div></div>
+
+    <div class="step"><span class="n">3</span><div><b>渲染与预览</b>——黑底彩色模式看轮廓最清楚：
+<pre><span class="c"># config: display.colored_mode = true（默认）</span>
+cv2.drawContours(canvas, [c], -1, color, 2)   <span class="c"># 原轮廓</span>
+cv2.drawContours(canvas, [poly], -1, (0,255,255), 3)  <span class="c"># 多边形</span>
+cv2.circle(canvas, (cx, cy), 5, (255,0,255), -1)
+cv2.putText(canvas, label, (cx+10, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)</pre></div></div>
+
+    <div class="step"><span class="n">4</span><div><b>实时 MJPEG 流验证</b>：
+<pre><span class="g">python src/app.py --config config/detect_config.yaml --ros</span>
+<span class="y">http://&lt;board-ip&gt;:8080/polygon.mjpg</span>
+<span class="y">frame 128: 1 contour -> polygon (4 verts), centroid=(312, 205)</span></pre></div></div>
+
+    <div class="step"><span class="n">5</span><div><b>扩展：质心偏差驱动巡线</b>（衔接 EXP-11）：
+<pre><span class="c"># 画面中线为基准，质心偏右 -> 左转修正</span>
+err = cx - img.shape[1] // 2
+cmd.linear.x  = 0.15                    <span class="c"># 恒速</span>
+cmd.angular.z = -0.004 * err            <span class="c"># 比例项，限幅 ±0.8</span></pre></div></div>
+  </div>
+  <div class="tip violet"><span class="lab">🚀 扩展挑战</span>把 epsilon 做成在线可调（如滑块或 ROS 参数），观察实时流里顶点数如何跳变；再把"N 边形"标签换成边长列表，验证矩形的对边是否近似相等。</div>
+</section>
+
+<!-- 9 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>重点与易错点</h2>
+  <div class="tip amber"><span class="lab">⚠️ 本实验第一大坑</span><b>invert 设反 = 后面全错。</b>二值化后不翻转暗色目标，findContours 会把"整幅图的白边框"当唯一轮廓，输出一个贴着画面边缘的假矩形。看见"4 顶点永远贴边"先查 invert。</div>
+  <table>
+    <tr><th>现象</th><th>根因</th><th>处理</th></tr>
+    <tr><td>输出 4 顶点且贴着画面边缘</td><td>invert 没翻转，取到整图外框</td><td>bitwise_not / THRESH_BINARY_INV</td></tr>
+    <tr><td>圆形被折成三角形</td><td>epsilon 过大</td><td>从 0.02×peri 起调，掉了就回退</td></tr>
+    <tr><td>顶点上千、形状抖动</td><td>形态学缺失或 kernel 太小</td><td>MORPH_OPEN + kernel=3（奇数）</td></tr>
+    <tr><td>轮廓坐标整体偏移半像素</td><td>morph_kernel 用了偶数</td><td>改为 3/5/7 等奇数</td></tr>
+    <tr><td>识别出一堆小碎块</td><td>min_area 太小，噪点入列</td><td>按目标面积 1%~5% 设 min_area</td></tr>
+    <tr><td>use_hull 语误解码出的顶点对不上</td><td>逼近对象是凸包不是原轮廓</td><td>确认配置 use_hull=true 的语义预期</td></tr>
+    <tr><td>光照变化后阈值全失效</td><td>全局固定阈值</td><td>切换 adaptiveThreshold 自适应</td></tr>
+    <tr><td>MJPEG 404</td><td>端口或路径配错</td><td>核对 :8080/polygon.mjpg</td></tr>
+  </table>
+  <ul class="check">
+    <li>✅ 21 项单元测试全绿，再开始调参。</li>
+    <li>✅ 至少在 binary / adaptive 两种二值化下各得到一次正确多边形。</li>
+    <li>✅ 手动扫过 epsilon 全程，知道自己的样例在哪个值开始"丢角"。</li>
+    <li>✅ MJPEG 流里能实时看到轮廓、多边形、质心、"N 边形"标签四件套。</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>总结与思考</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">多边形化管线</div><p>六级流水线 + 参数成组调优 + 实时流验证。</p></div>
+    <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">数据逐级提纯</div><p>从像素到轮廓到凸包到多边形，每级都在"丢小留大"。</p></div>
+    <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">几何量测</div><p>周长/面积/质心/顶点数四个指标联合判断识别质量。</p></div>
+    <div class="kcard"><div class="kd">🔬 验证方法</div><div class="kt">失败分支回放</div><p>invert、kernel、epsilon 三个开关制造故障并逐个复原。</p></div>
+  </div>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>严格凸的圆用 approxPolyDP 逼近，顶点数随 epsilon 增大单调下降——但巡线场景里我们反而希望弯道"顶点多一点"。要让 S 形弯道保留更多细节，应该调小 epsilon 还是干脆跳过凸包步骤？两种方案各牺牲什么？</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>质心只给了位置，没给朝向。若胶带框旋转了 45°，质心仍在画面中央——请用本课已有的数据结构（顶点序列）提出至少两种估计框朝向的方法，并说明哪种对噪声更稳。</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-04-qrcode/index.html"><span class="lb">← 上一个</span>EXP-04 二维码识别与解码</a>
+  <a class="next" href="../exp-06-semantic-segmentation/index.html"><span class="lb">下一个实验 →</span>EXP-06 图像语义分割</a>
+</nav>
+
+<footer>
+  <span>CORE-02 · 机器人视觉应用与开发 · EXP-05 多边形轮廓巡线</span>
+  <span>4 学时 · 设计性 · 基于 robot_vision 实验指导书改编</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// epsilon 折纸实验台：模拟矩形/圆轮廓在 approxPolyDP 下的顶点塌缩
+var shape = "rect";
+
+function preset(s){
+  shape = s === "circle" ? "circle" : "rect";
+  runPoly();
+}
+
+function resetPoly(){
+  document.getElementById("eps").value = 20;
+  document.getElementById("peri").value = 400;
+  shape = "rect";
+  runPoly();
+}
+
+function runPoly(){
+  var epsCoef = +document.getElementById("eps").value / 1000;
+  var peri = +document.getElementById("peri").value;
+  document.getElementById("epsv").textContent = epsCoef.toFixed(3);
+  document.getElementById("periv").textContent = peri + " px";
+
+  var epsilon = epsCoef * peri;
+  // 模拟：矩形原始顶点数固定 48（含毛刺），圆 72，按 epsilon/peri 比例塌缩到下限
+  var raw = shape === "rect" ? 48 : 72;
+  var lower = shape === "rect" ? 4 : 6;
+  var ratio = epsCoef / 0.02;                       // 相对黄金起点
+  var verts = Math.max(lower, Math.round(raw / (1 + 1.6 * (ratio - 1) * 4)));
+  if(epsCoef < 0.02) verts = Math.min(raw, Math.round(raw * (0.4 + epsCoef / 0.02 * 0.6)));
+
+  var t = "";
+  t += "<span class=\"dim\">// sample: " + (shape === "rect" ? "rectangle" : "circle") + ", peri=" + peri + " px, min_area ok, invert ok</span>\n";
+  t += "<span class=\"g\">[pipe] </span>threshold -> invert -> MORPH_OPEN(3,3) -> RETR_EXTERNAL -> convexHull\n";
+  t += "[hull]  vertices (post-hull): " + (shape === "rect" ? "*** 8" : "*** 64") + " (毛刺已由橡皮筋吞掉)\n";
+  t += "[eps ]  eps = " + epsCoef.toFixed(3) + " * " + peri + " = <span class=\"warn\">" + epsilon.toFixed(1) + " px</span>\n";
+
+  if(verts === lower && verts >= 4){
+    t += "<span class=\"ok\">[poly ] </span>" + verts + "顶点 -> label=\"" + verts + "边形\"  ";
+    t += shape === "rect" && epsCoef > 0.09 ? "<span class=\"warn\">⚠ 记录该值为塌缩临界点</span>\n" : "<span class=\"ok\">输出稳定</span>\n";
+  } else {
+    t += "<span class=\"ok\">[poly ] </span>" + verts + "顶点 -> label=\"" + verts + "边形\"\n";
+  }
+
+  if(shape === "circle" && epsCoef >= 0.06){
+    t += "<span class=\"bad\">[warn ] </span>epsilon 过大：圆被折成了" + verts + "边形，弯道细节丢失\n";
+  }
+  if(shape === "rect" && epsCoef > 0.09){
+    t += "<span class=\"bad\">[warn ] </span>矩形丢角：4边形 已塌缩为 " + verts + "边形\n";
+  }
+  if(epsCoef < 0.01){
+    t += "<span class=\"dim\">// epsilon 偏小：顶点接近原始毛刺数，抗噪能力下降</span>\n";
+  }
+  var M = {x: 318, y: 205};
+  t += "[ctr ]  centroid=(" + M.x + ", " + M.y + ")  err=" + (M.x - 320) + " px vs 画面中线\n";
+  document.getElementById("io").innerHTML = t;
+}
+
+runPoly();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

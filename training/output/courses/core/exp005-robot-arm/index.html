@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器人机械臂应用与开发 · 教程首页</title>
+<style>
+:root{
+  --bg-base:#f8fafc; --bg-surface:#ffffff; --bg-muted:#f1f5f9;
+  --text-primary:#0f172a; --text-secondary:#475569; --text-muted:#94a3b8;
+  --accent-teal:#0d9488; --accent-blue:#2563eb; --accent-amber:#d97706; --accent-violet:#7c3aed; --accent-rose:#e11d48;
+  --border:#e2e8f0;
+  --font-body:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --font-mono:'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--bg-base);color:var(--text-primary);line-height:1.7}
+a{text-decoration:none;color:inherit}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(248,250,252,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.topbar-in{max-width:1200px;margin:0 auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between}
+.logo{font-weight:800;font-size:.95rem}
+.logo span{color:var(--accent-rose)}
+.crumb{font-size:.85rem;color:var(--text-secondary)}
+.crumb a:hover{color:var(--accent-rose)}
+.hero{background:linear-gradient(135deg,#0f172a 0%,#7f1d1d 55%,#dc2626 100%);color:#fff;padding:3.5rem 1.5rem 3rem;text-align:center}
+.eyebrow{font-size:.8rem;letter-spacing:.28em;opacity:.75;margin-bottom:.8rem}
+.hero h1{font-size:clamp(1.7rem,4vw,2.6rem);font-weight:900;margin-bottom:.9rem}
+.hero h1 .grad{background:linear-gradient(90deg,#fca5a5,#fdba74);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{max-width:760px;margin:0 auto 1.4rem;opacity:.85;font-size:1rem}
+.bades{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap}
+.bade{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);padding:.3rem .85rem;border-radius:999px;font-size:.85rem}
+.wrap{max-width:1200px;margin:0 auto;padding:2.5rem 1.5rem}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2.5rem}
+.stat{background:var(--bg-surface);border:1px solid var(--border);border-radius:14px;padding:1rem 1.2rem;text-align:center}
+.stat b{display:block;font-size:1.5rem;color:var(--accent-rose)}
+.stat span{font-size:.8rem;color:var(--text-secondary)}
+.sec-head{margin:2.4rem 0 1.2rem}
+.sec-head .k{font-size:.75rem;letter-spacing:.24em;color:var(--accent-rose);font-weight:700}
+.sec-head h2{font-size:1.45rem;font-weight:800;margin-top:.25rem}
+.sec-head p{color:var(--text-secondary);font-size:.92rem;margin-top:.3rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1.1rem}
+.card{background:var(--bg-surface);border:1px solid var(--border);border-radius:16px;padding:1.2rem 1.3rem;transition:box-shadow .25s,transform .25s;display:flex;flex-direction:column}
+.card:hover{box-shadow:0 10px 30px rgba(220,38,38,.12);transform:translateY(-3px)}
+.card .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
+.card .code{font-family:var(--font-mono);font-size:.72rem;background:#fee2e2;color:#b91c1c;padding:.15rem .55rem;border-radius:6px;font-weight:700}
+.card h3{font-size:1.05rem;font-weight:800;margin-bottom:.35rem}
+.card>p{font-size:.86rem;color:var(--text-secondary);margin-bottom:.7rem}
+.card .meta{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem}
+.tag{font-size:.7rem;background:var(--bg-muted);color:var(--text-secondary);padding:.14rem .55rem;border-radius:999px;border:1px solid var(--border)}
+.kv{font-size:.78rem;color:var(--text-secondary);background:var(--bg-muted);border:1px solid var(--border);border-radius:8px;padding:.42rem .65rem;margin-bottom:.65rem;line-height:1.6}
+.kv b{color:var(--accent-rose);font-weight:700}
+.explist{list-style:none;max-height:1400px;overflow:hidden;margin-bottom:.7rem}
+.explist li{display:flex;align-items:center;gap:.5rem;font-size:.82rem;padding:.42rem 0;border-top:1px dashed var(--border);color:var(--text-secondary)}
+.explist .no{font-family:var(--font-mono);font-size:.7rem;color:var(--text-muted);min-width:2.1em}
+.explist .stars{color:var(--accent-amber);font-size:.7rem;letter-spacing:1px}
+.explist a.ttl{flex:1;min-width:0;color:var(--text-secondary);border-radius:4px;transition:color .2s}
+.explist a.ttl:hover{color:var(--accent-rose);text-decoration:underline}
+.explist a.dur{margin-left:auto;font-size:.7rem;color:var(--accent-blue);background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:.05rem .55rem;transition:background .2s}
+.explist a.dur:hover{background:#dbeafe}
+.hint{font-size:.75rem;color:var(--accent-rose);margin-top:auto;padding-top:.55rem;display:flex;justify-content:space-between;align-items:center}
+.pills{display:flex;flex-wrap:wrap;gap:.65rem}
+.pill{display:inline-flex;align-items:center;gap:.45rem;background:var(--bg-surface);border:1px solid var(--border);border-radius:999px;padding:.4rem .95rem;font-size:.83rem;color:var(--text-secondary);transition:.2s}
+.pill:hover{border-color:var(--accent-rose);color:var(--accent-rose);transform:translateY(-2px)}
+.pill i{width:.55rem;height:.55rem;border-radius:50%;display:inline-block}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}
+.kcard{background:var(--bg-surface);border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem}
+.kcard h4{font-size:.95rem;margin-bottom:.45rem;display:flex;align-items:center;gap:.5rem}
+.kcard p{font-size:.84rem;color:var(--text-secondary)}
+.dot{width:.5rem;height:.5rem;border-radius:50%;display:inline-block}
+.tbl{background:var(--bg-surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.tbl table{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{background:var(--bg-muted);color:var(--text-secondary);font-size:.75rem;letter-spacing:.05em;text-align:left;padding:.6rem .9rem;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:.58rem .9rem;border-bottom:1px dashed var(--border);color:var(--text-secondary);vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .k2{font-family:var(--font-mono);font-size:.78rem;font-weight:700;color:var(--accent-rose);white-space:nowrap}
+ol.rules{list-style:none;counter-reset:rt}
+ol.rules li{counter-increment:rt;position:relative;padding:.5rem 0 .5rem 2.7rem;border-bottom:1px dashed var(--border);font-size:.86rem;color:var(--text-secondary)}
+ol.rules li:last-child{border-bottom:none}
+ol.rules li::before{content:counter(rt,decimal-leading-zero);position:absolute;left:.4rem;top:.5rem;font-family:var(--font-mono);font-size:.72rem;font-weight:700;color:var(--accent-rose);background:var(--bg-muted);border:1px solid var(--border);border-radius:6px;padding:.05rem .35rem}
+ol.rules li b{color:var(--text-primary)}
+footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-top:3rem}
+.foot-in{max-width:1200px;margin:0 auto;padding:1.4rem 1.5rem;display:flex;justify-content:space-between;align-items:center;font-size:.82rem;color:var(--text-secondary);flex-wrap:wrap;gap:.5rem}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .55s ease,transform .55s ease}
+.reveal.show{opacity:1;transform:none}
+@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="logo">🎓 具身智能课程 · <span>教程首页</span></div>
+    <div class="crumb"><a href="../../index.html">← 返回总首页</a></div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="eyebrow">CATEGORY 1 · 核心课程 / CORE-05</div>
+  <h1>机器人 <span class="grad">机械臂应用与开发</span></h1>
+  <p>7 个递进实验，从 URDF 建模与 Gazebo 仿真起步，穿透 1Mbps 串口协议与 PWM 舵机底层控制，贯通 ROS2 架构与动作回放，再沿正/逆运动学到解析 IK 解算，最终落地固定抓取与视觉动态抓取 —— 每个实验均配通俗原理讲解、SVG 动画演示与互动换算台。</p>
+  <div class="bades">
+    <span class="bade">📚 7 个实验</span>
+    <span class="bade">⏱️ 32 学时</span>
+    <span class="bade">🤖 六轴机械臂 + ROS2</span>
+    <span class="bade">🎯 前置：ROS2 基础</span>
+  </div>
+</section>
+
+<div class="wrap">
+
+  <div class="stats reveal">
+    <div class="stat"><b>7</b><span>递进实验</span></div>
+    <div class="stat"><b>32</b><span>总学时</span></div>
+    <div class="stat"><b>3</b><span>知识篇章</span></div>
+    <div class="stat"><b>⭐1~3</b><span>难度跨度</span></div>
+  </div>
+
+  <div class="sec-head reveal">
+    <div class="k">COURSE PROFILE</div>
+    <h2>课程概览与关键参数</h2>
+    <p>以下参数全部取自 arm_practice 源讲义与真实源码，是贯穿 7 个实验的"硬指标"——先混个脸熟，实验中会反复用到。</p>
+  </div>
+  <div class="tbl reveal" style="margin-bottom:1.1rem">
+    <table>
+      <thead><tr><th>维度</th><th>取值 / 说明</th><th>首次出现</th></tr></thead>
+      <tbody>
+        <tr><td class="k2">硬件平台</td><td>具身智能实验箱 B2 + 六轴机械臂（URDF 名义 5 自由度链 + 夹爪），桌面级桌面抓取场景</td><td>EXP-01</td></tr>
+        <tr><td class="k2">串口链路</td><td>1 Mbps（1000000 baud）pyserial 直连下位机，0xAA55 双字节帧头 + CRC8 校验</td><td>EXP-02</td></tr>
+        <tr><td class="k2">PWM 舵机</td><td>脉宽 500~2500 μs，中位 CENTER_PWM=1500，弧度换算 PWM_TO_RAD=0.002356</td><td>EXP-02</td></tr>
+        <tr><td class="k2">运动学指标</td><td>正/逆运动学闭环误差 &lt; 1.5 mm（Avg &lt; 0.5 mm、Max &lt; 1.5 mm 验收）</td><td>EXP-04 / EXP-05</td></tr>
+        <tr><td class="k2">系统偏移</td><td>J2 +4.0°（0.0698 rad）、J3 +2.3°（0.0401 rad）实测机械偏移，逆解结果需减法补偿</td><td>EXP-05</td></tr>
+        <tr><td class="k2">抓取参数</td><td>gripper_depth 0.02 / approach 0.05 / lift 0.10 / pitch 0，grasp_params.yaml 按物体分组</td><td>EXP-06</td></tr>
+        <tr><td class="k2">视觉定位</td><td>HSV 颜色分割 + 深度反投影（fx=fy=614，cx=320，cy=240）+ TF 坐标链变换</td><td>EXP-07</td></tr>
+        <tr><td class="k2">软件栈</td><td>ROS2 Humble · MoveIt2 · Gazebo · pyserial · URDF/TF · server_cors Web 仿真器（8000 端口）</td><td>贯穿全课</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec-head reveal">
+    <div class="k">SAFETY FIRST</div>
+    <h2>动手前的四条安全红线</h2>
+    <p>机械臂是全课程唯一会"真动"的执行器，越界代价是舵机堵转打齿、甚至拽倒自身。以下红线在每个实验第 09 节还会以坑表形式复现。</p>
+  </div>
+  <ol class="rules reveal" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:14px;padding:.7rem 1.1rem;margin-bottom:1rem">
+    <li><b>PWM 一律落在 500~2500 μs 之内</b>——发之前先心算对应角度，超限即撞机械限位。</li>
+    <li><b>目标位姿必须逐步逼近</b>——先小步试、再放大步长，禁止一条指令甩到极限位。</li>
+    <li><b>抓取前先预演</b>——用 pwm_to_fk_demo 或 Web 仿真器把 5 路 PWM 走一遍，确认不会撞桌再上真机。</li>
+    <li><b>先跑安全前置脚本</b>——test_servo_direct 自检通过、串口权限（dialout 组）配好，才允许进入交互模式。</li>
+  </ol>
+
+  <div class="sec-head reveal">
+    <div class="k">LEARNING OUTCOMES</div>
+    <h2>学完你将能做什么</h2>
+    <p>四个可验收的能力目标，对应三个篇章的递进路径——每一条都能在实验报告里拿出证据。</p>
+  </div>
+  <div class="kgrid reveal">
+    <div class="kcard">
+      <h4><span class="dot" style="background:#dc2626"></span>读得懂模型</h4>
+      <p>看 URDF 就知道每个 link / joint 在干什么，能沿 7 坐标系 TF 链回答"末端到底在哪"，能在 RViz2 里复现并修改模型。</p>
+    </div>
+    <div class="kcard">
+      <h4><span class="dot" style="background:#2563eb"></span>组得出协议帧</h4>
+      <p>用 pyserial 手工拼出 0xAA55 + CRC8 的完整帧，把任意关节角换算成 500~2500 μs 安全脉宽并下发真实舵机。</p>
+    </div>
+    <div class="kcard">
+      <h4><span class="dot" style="background:#0d9488"></span>算得对运动学</h4>
+      <p>手算与代码双轨完成 FK 正解与解析 IK 逆解，用闭环误差 &lt; 1.5 mm 验收，并说清 J2/J3 系统偏移的补偿原理。</p>
+    </div>
+    <div class="kcard">
+      <h4><span class="dot" style="background:#e11d48"></span>调得动抓取</h4>
+      <p>配置 grasp_params 参数组，串起"预演 → 设目标 → Trigger 抓取 → 放置"全流程，并能扩展到视觉动态抓取。</p>
+    </div>
+  </div>
+
+  <div class="sec-head reveal">
+    <div class="k">COURSE MAP</div>
+    <h2>七步学习路线图</h2>
+    <p>把 7 个实验串成一条通关路线，每一步都踩在上一步的成果之上。</p>
+  </div>
+  <ol class="rules reveal" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:14px;padding:.9rem 1.3rem;margin-bottom:1rem">
+    <li>
+      <b>STEP 1 · EXP-01 仿真建模（4 学时）</b>
+      <span class="kv" style="display:block;margin:.35rem 0 0">在 RViz2 / Gazebo 里"造出"机械臂，弄清 7 个坐标系与每个关节的转轴方向。</span>
+    </li>
+    <li>
+      <b>STEP 2 · EXP-02 串口与 PWM 底层（4 学时）</b>
+      <span class="kv" style="display:block;margin:.35rem 0 0">绕开 ROS2 直连下位机，亲手组 0xAA55 + CRC8 帧，把角度变成舵机能听懂的脉宽。</span>
+    </li>
+    <li>
+      <b>STEP 3 · EXP-04 正/逆运动学基础（4 学时）</b>
+      <span class="kv" style="display:block;margin:.35rem 0 0">建立"关节角 ↔ 末端坐标"的几何直觉，DH 表、FK 变换链与解析/数值两路 IK 对比。</span>
+    </li>
+    <li>
+      <b>STEP 4 · EXP-05 逆运动学解算（4 学时）</b>
+      <span class="kv" style="display:block;margin:.35rem 0 0">用闭环 100 样本验证解算器，定位 J2/J3 机械偏移并完成减法补偿，--direct 实机逼近。</span>
+    </li>
+    <li>
+      <b>STEP 5 · EXP-03 ROS2 架构与动作回放（4 学时）</b>
+      <span class="kv" style="display:block;margin:.35rem 0 0">勘察 bringup 节点拓扑，让 action_player 把 pick_and_place.yaml 里的动作原样演一遍。</span>
+    </li>
+    <li>
+      <b>STEP 6 · EXP-06 逆运动学固定抓取（4 学时）</b>
+      <span class="kv" style="display:block;margin:.35rem 0 0">预演 → set_pick_target → Trigger 六阶段抓取，用 grasp_params 调出适配物体的参数组。</span>
+    </li>
+    <li>
+      <b>STEP 7 · EXP-07 视觉动态抓取（8 学时）</b>
+      <span class="kv" style="display:block;margin:.35rem 0 0">HSV + 深度反投影 + TF 三件套定位任意摆放的目标，五状态机一键完成"看见即抓起"。</span>
+    </li>
+  </ol>
+
+  <div class="sec-head reveal">
+    <div class="k">ENVIRONMENT</div>
+    <h2>实验环境与课前准备</h2>
+    <p>开课前按此清单逐项打勾，可避免大部分"环境半小时、实验五分钟"的尴尬。</p>
+  </div>
+  <div class="tbl reveal" style="margin-bottom:1rem">
+    <table>
+      <thead>
+        <tr><th>类别</th><th>需要就位的内容</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="k2">硬件</td><td>具身智能实验箱 B2、机械臂实验平台（含夹爪与桌面抓取物块）、深度相机、USB 串口线</td></tr>
+        <tr><td class="k2">上位机</td><td>Ubuntu 22.04 + ROS2 Humble 桌面版，已安装 colcon、rviz2、rqt、MoveIt2、Gazebo</td></tr>
+        <tr><td class="k2">串口权限</td><td>当前用户加入 dialout 组（sudo usermod -aG dialout $USER），重新登录生效；ls -l /dev/ttyUSB* 可见设备</td></tr>
+        <tr><td class="k2">Python 依赖</td><td>pyserial、numpy 等讲义 requirements；交互脚本均以 python3 运行</td></tr>
+        <tr><td class="k2">Web 仿真器</td><td>server_cors.py 起本地 8000 端口，浏览器访问 http://localhost:8000/viewer（注意 /viewer 后缀）</td></tr>
+        <tr><td class="k2">预备知识</td><td>CORE-01 ROS2 基础（节点/话题/服务）、Linux 常用命令、Python 函数与矩阵入门</td></tr>
+        <tr><td class="k2">耗材与视角</td><td>桌面留出机械臂全展空间；抓取物块按 grasp_params 分组摆放；相机视野对准抓取区</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec-head reveal">
+    <div class="k">CHAPTER 1</div>
+    <h2>第 1 章 · 建模与底层驱动</h2>
+    <p>先让机械臂在数字世界"拥有身体"（URDF + RViz2/MoveIt2/Gazebo），再钻到最底层，用 pyserial 亲手组帧驱动真实舵机。</p>
+  </div>
+  <div class="grid">
+
+    <article class="card reveal">
+      <div class="top"><span class="code">EXP-01</span><span class="tag">⭐ · 4 学时</span></div>
+      <h3>URDF 模型与仿真控制</h3>
+      <p>5 自由度机械臂的 link/joint 建模与 7 坐标系 TF 链，RViz2 可视化、MoveIt2 规划、Gazebo 物理仿真到 grasp_demo 抓取演示一条龙。</p>
+      <div class="kv"><b>关键点</b> · display / demo / Gazebo 三级验证 · joint_state_publisher_gui 拖动关节 · TF 链 base → link → gripper</div>
+      <div class="meta"><span class="tag">URDF</span><span class="tag">TF</span><span class="tag">MoveIt2</span><span class="tag">Gazebo</span></div>
+      <ul class="explist">
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s1">① 问题引入：屏幕里的机械臂是谁画的</a><span class="stars">⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s6">② 动画讲解：TF 坐标树逐级生长</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s7">③ 互动讲解：关节限位与状态试算台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s8">④ 实操步骤：display → demo → Gazebo</a><span class="stars">⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s10">验证</a></li>
+      </ul>
+      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">EXP-02</span><span class="tag">⭐⭐ · 4 学时</span></div>
+      <h3>串口底层协议与 PWM 控制</h3>
+      <p>剥开 ROS2 的外壳直达硬件：1Mbps 串口裸机通信、0xAA55 帧头 + CRC8 校验、PWM 500~2500μs 舵机控制与动作序列录制导出。</p>
+      <div class="kv"><b>关键参数</b> · 1000000 baud · CENTER_PWM=1500 · PWM_TO_RAD=0.002356 · 0xAA55 + CRC8 · interactive_mode</div>
+      <div class="meta"><span class="tag">pyserial</span><span class="tag">CRC8</span><span class="tag">PWM 舵机</span><span class="tag">interactive_mode</span></div>
+      <ul class="explist">
+        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s1">① 问题引入：ROS2 节点之下是什么在响</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s6">② 动画讲解：帧格式与脉宽对比动画</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s7">③ 互动讲解：PWM ↔ 关节角换算器</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s8">④ 实操步骤：test_servo_direct 实战</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s10">验证</a></li>
+      </ul>
+      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+    </article>
+
+  </div>
+
+  <div class="sec-head reveal">
+    <div class="k">CHAPTER 2</div>
+    <h2>第 2 章 · 运动学进阶</h2>
+    <p>几何直觉先行：正运动学是"已知关节角求指尖"，逆运动学是"想放哪反推关节角"；先在 Web 仿真器里建立手感，再解析求解。</p>
+  </div>
+  <div class="grid">
+
+    <article class="card reveal">
+      <div class="top"><span class="code">EXP-04</span><span class="tag">⭐⭐ · 4 学时</span></div>
+      <h3>正/逆运动学基础</h3>
+      <p>DH 参数与连杆长度（L2=0.180m）、FK 逐段变换链、三段式解析 IK 与 DLS 数值法对比、Web 仿真器与 demo_fk_ik.py 实测。</p>
+      <div class="kv"><b>关键参数</b> · 基座 d=0.085 · r_max=0.4 m · L1=0.105 / L2=0.180 · DLS 阻尼 λ=0.1 · localhost:8000/viewer</div>
+      <div class="meta"><span class="tag">DH 参数</span><span class="tag">正运动学 FK</span><span class="tag">逆运动学 IK</span><span class="tag">Web 仿真</span></div>
+      <ul class="explist">
+        <li><a class="ttl" href="exp-04-kinematics/index.html#s1">① 问题引入：想把物放到哪，手臂该怎么弯</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-kinematics/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-04-kinematics/index.html#s6">② 动画讲解：关节角叠加求末端坐标</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-kinematics/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-04-kinematics/index.html#s7">③ 互动讲解：FK 正解试算台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-kinematics/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-04-kinematics/index.html#s8">④ 实操步骤：仿真器 + demo_fk_ik.py</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-kinematics/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-04-kinematics/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-kinematics/index.html#s10">验证</a></li>
+      </ul>
+      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">EXP-05</span><span class="tag">⭐⭐⭐ · 4 学时</span></div>
+      <h3>逆运动学解算</h3>
+      <p>ik_solve / fk_solve 库 API 与闭环验证（100 样本 Max 1.23mm、成功率 100%），J2 +4°/J3 +2.3° 系统偏移补偿与 --direct 实机逼近。</p>
+      <div class="kv"><b>关键接口</b> · ik_solve(xyz, pitch, elbow='up') → 5 弧度 · fk_solve → 4×4 齐次矩阵 · 闭环 Avg 0.42 / Max 1.23 mm</div>
+      <div class="meta"><span class="tag">ik_solve</span><span class="tag">闭环验证</span><span class="tag">系统偏移补偿</span><span class="tag">DLS</span></div>
+      <ul class="explist">
+        <li><a class="ttl" href="exp-05-ik-solver/index.html#s1">① 问题引入：算得出的解为何上机就偏</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-05-ik-solver/index.html#s6">② 动画讲解：多解构型切换与偏移叠加</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-05-ik-solver/index.html#s7">③ 互动讲解：误差判定与偏移补偿台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-05-ik-solver/index.html#s8">④ 实操步骤：interactive_ik_test --direct</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-05-ik-solver/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s10">验证</a></li>
+      </ul>
+      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+    </article>
+
+  </div>
+
+  <div class="sec-head reveal">
+    <div class="k">CHAPTER 3</div>
+    <h2>第 3 章 · 动作回放与抓取应用</h2>
+    <p>把模型、协议与运动学串成系统：ROS2 节点拓扑勘察、YAML 动作回放、固定位姿抓取状态机，直到相机指哪抓哪的视觉动态抓取。</p>
+  </div>
+  <div class="grid">
+
+    <article class="card reveal">
+      <div class="top"><span class="code">EXP-03</span><span class="tag">⭐⭐ · 4 学时</span></div>
+      <h3>ROS2 架构与动作回放</h3>
+      <p>bringup 7~8 节点拓扑勘察、joint_command 弧度指令、action_player 节点回放 pick_and_place.yaml、play/next/stop 三服务与 servo_calib 零位校准。</p>
+      <div class="kv"><b>关键点</b> · ros2 node/topic 勘察拓扑 · TF 链自检 · joint_command 弧度 vs PWM 两套单位 · Trajectory YAML 逐行回放</div>
+      <div class="meta"><span class="tag">节点拓扑</span><span class="tag">action_player</span><span class="tag">Trigger 服务</span><span class="tag">软件 offset</span></div>
+      <ul class="explist">
+        <li><a class="ttl" href="exp-03-action-replay/index.html#s1">① 问题引入：录好的动作如何原样动起来</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-action-replay/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-03-action-replay/index.html#s6">② 动画讲解：回放管线数据流</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-action-replay/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-03-action-replay/index.html#s7">③ 互动讲解：弧度 ↔ PWM 双向换算台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-action-replay/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-03-action-replay/index.html#s8">④ 实操步骤：bringup → action_player 回放</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-action-replay/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-03-action-replay/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-action-replay/index.html#s10">验证</a></li>
+      </ul>
+      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">EXP-06</span><span class="tag">⭐⭐⭐ · 4 学时</span></div>
+      <h3>逆运动学固定抓取</h3>
+      <p>真实接口 set_pick_target / target_pose 与 pick·place Trigger 服务，预演三工具、分步移动 two_stage_move 与六阶段抓取状态机、grasp_params.yaml 调参。</p>
+      <div class="kv"><b>关键参数</b> · gripper_depth 0.02 · approach 0.05 · lift 0.10 · pitch 0（四元数 {0,1,0,0}）· 放置点 (0.059,0.074,0.219)</div>
+      <div class="meta"><span class="tag">抓取状态机</span><span class="tag">两段式移动</span><span class="tag">软限位</span><span class="tag">grasp_params</span></div>
+      <ul class="explist">
+        <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s1">① 问题引入：固定目标为何也要"先想再动"</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s6">② 动画讲解：抓取六阶段流程</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s7">③ 互动讲解：抓取参数组配置台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s8">④ 实操步骤：预演 → 目标 → pick/place</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s10">验证</a></li>
+      </ul>
+      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">EXP-07</span><span class="tag">⭐⭐⭐ · 8 学时</span></div>
+      <h3>视觉动态抓取</h3>
+      <p>visual_grasp.launch 一键拉起 5 节点：HSV 颜色分割 + 深度反投影 + TF 变换定位目标，look-then-move 策略与五状态机一键 start/confirm/skip/abort。</p>
+      <div class="kv"><b>关键参数</b> · HSV 黄 (20,100,100)~(40,255,255) · fx=fy=614 · 深度 uint16 ÷1000 · OBSERVE&lt;1s / PICK&lt;8s · 成功率 &gt;85%</div>
+      <div class="meta"><span class="tag">HSV 分割</span><span class="tag">深度反投影</span><span class="tag">TF 定位</span><span class="tag">状态机</span></div>
+      <ul class="explist">
+        <li><a class="ttl" href="exp-07-visual-grasp/index.html#s1">① 问题引入：机械臂怎么"看见"目标</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-07-visual-grasp/index.html#s1">8 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-07-visual-grasp/index.html#s6">② 动画讲解：观察-移动-抓取三乐章</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-07-visual-grasp/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-07-visual-grasp/index.html#s7">③ 互动讲解：HSV 掩膜调参台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-07-visual-grasp/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-07-visual-grasp/index.html#s8">④ 实操步骤：分阶段启动与服务触发</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-07-visual-grasp/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-07-visual-grasp/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-07-visual-grasp/index.html#s10">验证</a></li>
+      </ul>
+      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+    </article>
+
+  </div>
+
+  <div class="sec-head reveal">
+    <div class="k">TECH STACK</div>
+    <h2>技术栈与硬件平台</h2>
+    <p>全课程围绕 ROS2 Humble + 具身智能实验箱 B2 展开，协议、参数均来自真实源码与实测基线。</p>
+  </div>
+  <div class="pills reveal">
+    <span class="pill"><i style="background:#dc2626"></i>URDF / TF</span>
+    <span class="pill"><i style="background:#2563eb"></i>串口协议 1Mbps</span>
+    <span class="pill"><i style="background:#7c3aed"></i>0xAA55 帧头 + CRC8</span>
+    <span class="pill"><i style="background:#d97706"></i>PWM 舵机 500~2500μs</span>
+    <span class="pill"><i style="background:#0d9488"></i>正运动学 FK</span>
+    <span class="pill"><i style="background:#e11d48"></i>逆运动学 IK</span>
+    <span class="pill"><i style="background:#0891b2"></i>ROS2 action_player 回放</span>
+    <span class="pill"><i style="background:#059669"></i>MoveIt2 / Gazebo</span>
+    <span class="pill"><i style="background:#4f46e5"></i>HSV + 深度 + TF 视觉抓取</span>
+    <span class="pill"><i style="background:#be185d"></i>状态机 + 服务化控制</span>
+    <span class="pill"><i style="background:#b45309"></i>Web 运动学仿真器</span>
+    <span class="pill"><i style="background:#334155"></i>实验箱 B2 · C1 机械臂</span>
+  </div>
+
+  <div class="sec-head reveal">
+    <div class="k">LEARNING PATH</div>
+    <h2>学习路径建议</h2>
+  </div>
+  <div class="kgrid reveal">
+    <div class="kcard"><h4><span class="dot" style="background:#dc2626"></span>先比喻，后公式</h4><p>每个实验的"原理通俗讲解"先用生活类比（手臂、暗号脉宽、反推姿势）建立直觉，再看 DH 表与 CRC8 —— 按顺序读，公式不再是天书。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>软硬两条路线对照</h4><p>EXP-01 是纯仿真路线，EXP-02 是裸机串口路线，EXP-03 回到 ROS2 架构路线 —— 同一条机械臂三种打开方式，对照着学最快。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>动画与互动台先玩一遍</h4><p>帧格式、连杆几何、抓取流程都有 SVG 动画；PWM↔弧度、FK 正解、HSV 调参都有互动台 —— 先玩懂参数，再上实机少翻车。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>安全红线贯穿始终</h4><p>PWM 必须落在 500~2500μs、目标须逐步逼近、抓取前先预演 —— 实机代价是堵转打齿，把第 09 节的坑表背下来再动手。</p></div>
+  </div>
+
+  <div class="sec-head reveal">
+    <div class="k">FAQ</div>
+    <h2>开课前的三个常见疑问</h2>
+  </div>
+  <div class="kgrid reveal">
+    <div class="kcard">
+      <h4><span class="dot" style="background:#d97706"></span>没有真机能学完吗？</h4>
+      <p>能。EXP-01/04/05 全程可用 Gazebo 与 Web 仿真器完成闭环验证；EXP-02/03/06/07 的命令与协议推导可在无硬件条件下通读演练，上机步骤以真机验收为准。</p>
+    </div>
+    <div class="kcard">
+      <h4><span class="dot" style="background:#7c3aed"></span>为什么先仿真、后裸机？</h4>
+      <p>仿真里改坏一个 URDF 只是重载，裸机发错一帧可能堵转。先在数字世界建立"关节角 ↔ 末端位置"的直觉，再下探串口与 PWM，翻车成本最低。</p>
+    </div>
+    <div class="kcard">
+      <h4><span class="dot" style="background:#0891b2"></span>数学基础差怎么办？</h4>
+      <p>只需三角函数与二维向量：FK=逐段累加旋转平移，IK=解一个含 sin/cos 的方程组。第 06 节动画负责建几何直觉，第 07 节互动台负责代数验算，公式不背也能算对。</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="foot-in">
+    <span>🎓 具身智能课程 · CORE-05 · 机器人机械臂应用与开发（CORE-05 · 32 学时 · 7 实验）</span>
+    <span><a href="../../index.html">总首页</a> · 基于 arm_practice 实验讲义改编，含原理讲解与互动演示</span>
+  </div>
+</footer>
+
+<script>
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('show');io.unobserve(e.target);}});},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+</script>
+</body>
+</html>
