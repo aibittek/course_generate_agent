@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>设备开发 · 具身智能课程</title>
+<style>
+:root{
+  --bg-base:#f8fafc;--bg-card:#fff;--bg-soft:#f1f5f9;--bg-tint:#eef4ff;
+  --border:#e2e8f0;--border-hover:#94a3b8;
+  --accent-blue:#2563eb;--accent-cyan:#0891b2;--accent-teal:#0d9488;
+  --accent-indigo:#4f46e5;--accent-amber:#d97706;--accent-rose:#e11d48;--accent-violet:#7c3aed;
+  --text-primary:#0f172a;--text-body:#334155;--text-secondary:#64748b;--text-muted:#94a3b8;
+  --shadow-glow:0 8px 24px rgba(37,99,235,.10);
+  --font-mono:'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text-body);
+  font-family:"Noto Sans CJK SC","PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% -5%,rgba(37,99,235,.05),transparent),
+    radial-gradient(ellipse 50% 35% at 100% 5%,rgba(13,148,136,.04),transparent);}
+/* Topbar */
+.topbar{position:sticky;top:0;z-index:50;height:60px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 40px;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--text-primary);font-size:15px}
+.logo .dot{width:9px;height:9px;border-radius:50%;background:var(--accent-blue);animation:pulse 2.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.nav a{font-size:13.5px;color:var(--text-secondary);text-decoration:none;margin-left:22px;transition:.28s}
+.nav a:hover{color:var(--accent-blue)}
+.nav a.active{color:var(--accent-blue);font-weight:600}
+/* 下拉菜单 */
+.nav .dropdown{position:relative;display:inline-block}
+.nav .dropdown>.dd-toggle{font-size:13.5px;color:var(--text-secondary);text-decoration:none;cursor:pointer;
+  display:inline-flex;align-items:center;gap:4px;transition:.28s;border:none;background:none;font-family:inherit;padding:0}
+.nav .dropdown>.dd-toggle:hover{color:var(--accent-blue)}
+.nav .dropdown>.dd-toggle .arr{font-size:10px;transition:.25s}
+.nav .dropdown:hover>.dd-toggle .arr{transform:rotate(180deg)}
+.dd-menu{position:absolute;top:calc(100% + 14px);left:50%;transform:translateX(-50%) translateY(6px);
+  min-width:250px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 14px 36px rgba(15,23,42,.14);padding:6px;opacity:0;visibility:hidden;transition:.22s;z-index:60}
+.nav .dropdown:hover .dd-menu{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.dd-menu a{display:flex;flex-direction:column;gap:2px;padding:10px 13px;border-radius:8px;
+  font-size:13px;color:var(--text-body);text-decoration:none;transition:.2s;margin-left:0!important}
+.dd-menu a:hover{background:var(--bg-tint);color:var(--accent-blue)}
+.dd-menu a small{font-size:11.5px;color:var(--text-muted);font-weight:400}
+.dd-menu a+a{border-top:1px solid var(--border)}
+/* Hero */
+.hero{max-width:960px;margin:0 auto;padding:56px 40px 8px;text-align:center}
+.hero .eyebrow{display:inline-block;font-size:12.5px;letter-spacing:.14em;color:var(--accent-blue);
+  background:var(--bg-tint);border:1px solid #dbeafe;border-radius:100px;padding:5px 14px;font-family:var(--font-mono)}
+.hero h1{margin:18px 0 14px;font-size:40px;line-height:1.2;color:var(--text-primary);font-weight:800}
+.hero h1 .grad{background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan),var(--accent-teal));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{max-width:740px;margin:0 auto;font-size:16px;line-height:1.8;color:var(--text-secondary)}
+.badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:22px 0 0}
+.badge{font-size:12.5px;padding:5px 12px;border-radius:100px;background:var(--bg-card);
+  border:1px solid var(--border);color:var(--text-secondary)}
+.hero-cta{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:24px 0 0}
+.hero-cta .hint{font-size:12.5px;color:var(--text-muted);max-width:400px;text-align:left;line-height:1.7}
+.feat{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:6px}
+.feat>div{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:15px 17px}
+.feat h4{margin:0 0 6px;font-size:14px;color:var(--text-primary)}
+.feat p{margin:0;font-size:12.5px;line-height:1.7;color:var(--text-secondary)}
+/* Section */
+.section{max-width:1200px;margin:0 auto;padding:54px 40px 6px;scroll-margin-top:72px}
+.section-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+.section-head h2{margin:0;font-size:22px;color:var(--text-primary);display:flex;align-items:center;gap:10px}
+.section-head h2 .idx{font-family:var(--font-mono);font-size:12px;font-weight:700;color:#fff;
+  background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border-radius:7px;padding:3px 9px}
+.section-head .sub{font-size:13.5px;color:var(--text-muted)}
+.section .desc{font-size:14px;color:var(--text-secondary);line-height:1.8;margin:8px 0 20px;max-width:860px}
+/* Cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px}
+.card{position:relative;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
+  padding:22px 24px 18px;display:flex;flex-direction:column;overflow:hidden;
+  transition:.28s cubic-bezier(.4,0,.2,1)}
+.card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;transform:scaleX(0);transform-origin:left;
+  background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.card:hover{transform:translateY(-4px);box-shadow:var(--shadow-glow);border-color:var(--border-hover)}
+.card:hover::before{transform:scaleX(1)}
+.card .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card .code{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--accent-blue);
+  background:var(--bg-tint);border-radius:6px;padding:3px 8px}
+.status{font-size:11.5px;padding:3px 10px;border-radius:100px;font-weight:600;border:1px solid;
+  white-space:nowrap}
+.status.idle{color:var(--text-muted);border-color:var(--border);background:var(--bg-soft)}
+.status.on{color:var(--accent-teal);border-color:#ccfbf1;background:#f0fdfa}
+.status.off{color:var(--accent-rose);border-color:#ffe4e6;background:#fff1f2}
+.status.busy{color:var(--accent-amber);border-color:#fef3c7;background:#fffbeb}
+.card h3{margin:14px 0 8px;font-size:17.5px;color:var(--text-primary);line-height:1.4}
+.card p{margin:0;font-size:13.5px;line-height:1.7;color:var(--text-secondary);flex:1}
+.card .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.tag{font-size:12px;padding:3px 10px;border-radius:100px;background:var(--bg-soft);
+  border:1px solid var(--border);color:var(--text-secondary)}
+.tag.violet{color:var(--accent-violet);border-color:#ede9fe;background:#f5f3ff}
+.tag.teal{color:var(--accent-teal);border-color:#ccfbf1;background:#f0fdfa}
+.tag.amber{color:var(--accent-amber);border-color:#fef3c7;background:#fffbeb}
+.card .foot{margin-top:13px;padding-top:12px;border-top:1px dashed var(--border);
+  display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12.5px;color:var(--text-muted)}
+.card .foot .url{font-family:var(--font-mono);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .foot .go{color:var(--accent-blue);text-decoration:none;font-weight:600;white-space:nowrap;cursor:pointer}
+.card .foot .go:hover{text-decoration:underline}
+/* 连接配置面板 */
+.panel{max-width:960px;margin:34px auto 0;padding:0 40px}
+.cc{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
+  padding:24px 26px 22px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.cc-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.cc-head h3{margin:0;font-size:16px;color:var(--text-primary)}
+.cc-head .hint{font-size:12.5px;color:var(--text-muted)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.grow{flex:1;min-width:200px}
+.field label{font-size:12.5px;color:var(--text-secondary);font-weight:600}
+.field input,.field select{font-family:var(--font-mono);font-size:13.5px;padding:9px 12px;
+  border:1px solid var(--border);border-radius:9px;background:var(--bg-base);color:var(--text-primary);
+  outline:none;transition:.2s;min-width:0}
+.field select{font-family:inherit;min-width:150px;cursor:pointer}
+.field input:focus,.field select:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.btn{font-family:inherit;font-size:13.5px;font-weight:600;padding:10px 18px;border-radius:9px;
+  border:1px solid var(--border);background:var(--bg-card);color:var(--text-body);cursor:pointer;transition:.22s;
+  white-space:nowrap}
+.btn:hover{border-color:var(--accent-blue);color:var(--accent-blue)}
+.btn.primary{background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border:none;color:#fff;
+  box-shadow:0 4px 14px rgba(37,99,235,.22)}
+.btn.primary:hover{filter:brightness(1.06);color:#fff}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+details.adv{margin-top:16px;border-top:1px dashed var(--border);padding-top:14px}
+details.adv summary{font-size:12.5px;color:var(--text-secondary);cursor:pointer;font-weight:600;list-style:none;
+  display:flex;align-items:center;gap:6px;user-select:none}
+details.adv summary::-webkit-details-marker{display:none}
+details.adv summary::before{content:"▸";font-size:11px;transition:.2s;color:var(--accent-blue)}
+details.adv[open] summary::before{transform:rotate(90deg)}
+.ports{margin-top:14px;gap:14px}
+.ports .field input{width:104px;text-align:center}
+.probe{margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);display:flex;
+  align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--text-secondary)}
+.probe .res{font-size:12.5px;font-family:var(--font-mono)}
+.probe .res.ok{color:var(--accent-teal)}
+.probe .res.no{color:var(--accent-rose)}
+.pdot{width:8px;height:8px;border-radius:50%;background:var(--text-muted);display:inline-block;flex:none}
+.pdot.on{background:var(--accent-teal);box-shadow:0 0 0 3px rgba(13,148,136,.15)}
+.pdot.off{background:var(--accent-rose)}
+.pdot.busy{background:var(--accent-amber);animation:pulse 1s infinite}
+/* 提示条 */
+.tip{margin-top:16px;display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.7;
+  color:var(--text-secondary);background:var(--bg-tint);border:1px solid #dbeafe;border-radius:10px;padding:11px 14px}
+.tip b{color:var(--accent-blue)}
+/* 命令块 */
+pre.cmd{background:#0f172a;color:#e2e8f0;border-radius:11px;padding:15px 18px;margin:0;
+  font-family:var(--font-mono);font-size:12.5px;line-height:1.85;overflow-x:auto}
+pre.cmd .c{color:#64748b}
+pre.cmd .k{color:#7dd3fc}
+.steps{display:grid;gap:16px}
+.step{background:var(--bg-card);border:1px solid var(--border);border-radius:13px;padding:18px 20px}
+.step h4{margin:0 0 10px;font-size:14.5px;color:var(--text-primary);display:flex;align-items:center;gap:9px}
+.step h4 .n{font-family:var(--font-mono);font-size:11.5px;font-weight:700;color:#fff;
+  background:var(--accent-blue);border-radius:6px;padding:2px 7px}
+.step p{margin:0 0 12px;font-size:13px;color:var(--text-secondary);line-height:1.75}
+footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px solid var(--border);
+  text-align:center;font-size:12.5px;color:var(--text-muted)}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .5s,transform .5s}
+.reveal.visible{opacity:1;transform:none}
+@media (max-width:760px){
+  .topbar,.hero,.panel,.section,footer{padding-left:20px;padding-right:20px}
+  .nav{display:none}.hero h1{font-size:29px}
+}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="dot"></span>具身智能课程</div>
+  <nav class="nav">
+    <div class="dropdown">
+      <a class="dd-toggle" href="javascript:void(0)">人培方案 <span class="arr">▼</span></a>
+      <div class="dd-menu">
+        <a href="../renpei/index.html#b">📘 具身智能本科人培方案<small>本科 · 星辰版 · 2026 版 V4.1 · 四年制 8 学期</small></a>
+        <a href="../renpei/index.html#g">📗 具身智能高职人培方案<small>高职 · 星辰版 · 2026 版 V1.1 · 三年制 6 学期</small></a>
+      </div>
+    </div>
+    <div class="dropdown">
+      <a class="dd-toggle" href="javascript:void(0)">产品介绍 <span class="arr">▼</span></a>
+      <div class="dd-menu">
+        <a href="../../products/b2-box/index.html">📦 具身智能实验箱B2旗舰版<small>6 TOPS · 双核架构 · 6 门课 / 65 实验</small></a>
+        <a href="../../products/c1-car/index.html">🚗 具身智能机器人小车 C1<small>移动导航 · 机械臂作业 · 7 门课 / 59 实验</small></a>
+      </div>
+    </div>
+    <a href="../index.html#core">核心课程</a>
+    <a href="../index.html#case">综合案例</a>
+    <a href="../index.html#ind">行业应用</a>
+    <a href="../index.html#tech">技术栈</a>
+    <a href="index.html" class="active">设备开发</a>
+  </nav>
+</div>
+
+<header class="hero">
+  <span class="eyebrow">DEVICE WORKSPACE · SSH / SFTP / SERIAL / VNC</span>
+  <h1>设备开发 <span class="grad">一体化工作台</span></h1>
+  <p>终端 SSH、远程文件管理、串口调试、远程桌面集中在一个页面：多标签、左右分屏、可弹出独立窗口。<br>
+     SSH 登录后直接浏览设备目录结构并在线编辑文件；设备与打开本页的电脑处于同一局域网即可，与网页本身部署在哪里无关。</p>
+  <div class="hero-cta">
+    <a class="btn primary" href="workspace.html" target="_blank" rel="noopener">启动工作台 →</a>
+    <span class="hint">在新标签页打开，需要设备上已运行桥接服务 <code>device_bridge.py</code>（见下方「设备端准备」）</span>
+  </div>
+  <div class="badges">
+    <span class="badge">⌨ SSH 终端</span>
+    <span class="badge">📁 文件管理 / 在线编辑</span>
+    <span class="badge">📡 串口</span>
+    <span class="badge">🖥 远程桌面</span>
+    <span class="badge">🔗 本机 USB 直连</span>
+  </div>
+</header>
+
+<!-- ============ 一体化工作台 ============ -->
+<section class="section" id="workspace">
+  <div class="section-head">
+    <h2><span class="idx">APP</span>一体化工作台</h2>
+    <span class="sub">推荐入口：一个页面搞定终端、文件、串口、桌面</span>
+  </div>
+  <p class="desc">工作台复用设备上同一个桥接服务：SSH 终端与文件管理共用一条登录会话，登录后即可浏览设备目录结构、
+    在线编辑文件并保存；串口与远程桌面也以标签页形式并存于同一界面。</p>
+  <div class="feat">
+    <div><h4>⌨ SSH 终端</h4><p>多标签并发，可左右分屏、可弹出为独立浏览器窗口，支持窗口自适应与滚动回看。</p></div>
+    <div><h4>📁 文件管理 + 编辑器</h4><p>浏览设备目录，上传下载、新建重命名删除，双击文本文件直接在线编辑，Ctrl+S 保存。</p></div>
+    <div><h4>📡 串口</h4><p>本机 USB 直连（Web Serial）：数据线插在电脑上，浏览器直接读写，文本 / 十六进制双视图，带时间戳。</p></div>
+    <div><h4>🖥 远程桌面</h4><p>内嵌 noVNC 访问设备图形桌面，复用设备上已有的 VNC 服务，无需安装客户端。</p></div>
+  </div>
+  <div class="hero-cta" style="justify-content:flex-start;margin-top:22px">
+    <a class="btn primary" href="workspace.html" target="_blank" rel="noopener">启动工作台 →</a>
+    <span class="hint">页面里的「＋ 新建连接」可选 SSH 终端 / 文件管理 / 串口 / 远程桌面四种方式。</span>
+  </div>
+</section>
+
+<!-- ============ 连接配置 ============ -->
+<section class="panel reveal">
+  <div class="cc">
+    <div class="cc-head">
+      <h3>连接配置</h3>
+      <span class="hint">填写设备 IP（或主机名），检测后即可进入工具</span>
+    </div>
+
+    <div class="row">
+      <div class="field grow">
+        <label>设备地址</label>
+        <input id="host" placeholder="例如 192.168.1.100" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label>已保存设备</label>
+        <select id="saved"><option value="">— 未保存 —</option></select>
+      </div>
+      <button class="btn primary" id="btnProbe">检测连接</button>
+      <button class="btn" id="btnSave">保存设备</button>
+      <button class="btn" id="btnDel">删除</button>
+    </div>
+
+    <details class="adv">
+      <summary>端口设置（设备端服务未改端口时无需调整）</summary>
+      <div class="row ports">
+        <div class="field"><label>终端</label><input id="p_ssh" value="7681" inputmode="numeric"></div>
+        <div class="field"><label>文件</label><input id="p_files" value="8081" inputmode="numeric"></div>
+        <div class="field"><label>桌面</label><input id="p_vnc" value="6080" inputmode="numeric"></div>
+      </div>
+    </details>
+
+    <div class="probe">
+      <span class="pdot" id="d_ssh"></span><span class="res" id="r_ssh">终端 未检测</span>
+      <span class="pdot" id="d_files"></span><span class="res" id="r_files">文件 未检测</span>
+      <span class="pdot" id="d_vnc"></span><span class="res" id="r_vnc">桌面 未检测</span>
+    </div>
+
+    <div class="tip">
+      <span>💡</span>
+      <span>检测仅作提示，<b>不影响打开</b>：某些浏览器会拦截从本地文件发起的探测请求，直接点开工具页同样可用。
+        若三项全部显示离线，请确认设备端服务已启动（见下方「设备端准备」），且电脑与设备在同一网段。</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 工具入口 ============ -->
+<section class="section" id="entries">
+  <div class="section-head">
+    <h2><span class="idx">TOOLS</span>开发工具入口</h2>
+    <span class="sub">终端 / 文件 / 桌面走网络，串口走本机 USB</span>
+  </div>
+  <p class="desc">前三项由设备上的常驻服务提供，网页只负责探测与跳转，数据流是「浏览器 ↔ 设备」点对点，不经过任何中间服务器；
+    串口是<b>本机 USB 直连</b>——数据线插在这台电脑上时用它，不需要设备端任何服务，也不占用网络端口。</p>
+
+  <div class="grid">
+
+    <article class="card reveal">
+      <div class="top"><span class="code">ttyd · 终端</span><span class="status idle" id="s_ssh">未检测</span></div>
+      <h3>🔌 终端（SSH）</h3>
+      <p>在浏览器里直接操作设备 shell，等同 SSH 登录后的终端。支持窗口自适应、滚动回看、复制粘贴。</p>
+      <div class="meta"><span class="tag">ttyd</span><span class="tag">xterm.js</span><span class="tag">Basic Auth</span></div>
+      <div class="foot"><span class="url" id="u_ssh">—</span><a class="go" href="javascript:void(0)" data-open="ssh">打开终端 →</a></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">filebrowser · 文件</span><span class="status idle" id="s_files">未检测</span></div>
+      <h3>📁 文件管理</h3>
+      <p>浏览设备文件列表，拖拽上传、下载、新建目录、重命名、删除，并可直接在浏览器中编辑文本文件并保存。</p>
+      <div class="meta"><span class="tag teal">上传 / 下载</span><span class="tag">在线编辑</span><span class="tag">多用户权限</span></div>
+      <div class="foot"><span class="url" id="u_files">—</span><a class="go" href="javascript:void(0)" data-open="files">打开文件管理 →</a></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">noVNC · 桌面</span><span class="status idle" id="s_vnc">未检测</span></div>
+      <h3>🖥️ 远程桌面</h3>
+      <p>通过 noVNC 在浏览器里访问设备的图形桌面，无需安装 VNC 客户端。全屏、剪贴板、快捷键一应俱全。</p>
+      <div class="meta"><span class="tag violet">noVNC</span><span class="tag">websockify</span><span class="tag">RFB over WebSocket</span></div>
+      <div class="foot"><span class="url" id="u_vnc">—</span><a class="go" href="javascript:void(0)" data-open="vnc">打开桌面 →</a></div>
+    </article>
+
+    <article class="card reveal">
+      <div class="top"><span class="code">Web Serial · 本机</span><span class="status on">免服务</span></div>
+      <h3>🔗 本机 USB 直连</h3>
+      <p>数据线插在<b>这台电脑</b>上时用这个：浏览器直接读写串口，<b>不需要设备端任何服务</b>，也不占用网络端口。适合机械臂底层协议、STM32 固件交互。</p>
+      <div class="meta"><span class="tag teal">Web Serial API</span><span class="tag">文本 / 十六进制</span><span class="tag">点对点</span></div>
+      <div class="foot"><span class="url">device/serial.html</span><a class="go" href="serial.html">打开本机串口 →</a></div>
+    </article>
+
+  </div>
+
+  <div class="tip" style="margin-top:20px">
+    <span>💡</span>
+    <span>串口只有<b>本机 USB 直连</b>一种方式：数据线插在电脑上，浏览器直接抓本机 COM 口，零依赖、数据不过网络。
+      需要 <code>Chrome / Edge</code>，且页面以 <code>file://</code>、<code>localhost</code> 或 <code>https</code> 打开；
+      设备与电脑在同一局域网即可使用终端 / 文件 / 桌面。</span>
+  </div>
+</section>
+
+<!-- ============ 设备端准备 ============ -->
+<section class="section" id="prepare">
+  <div class="section-head">
+    <h2><span class="idx">SETUP</span>设备端准备</h2>
+    <span class="sub">在设备上执行一次，之后开机即可用</span>
+  </div>
+  <p class="desc">网页端不需要安装任何东西。工作台所需的一切都在设备上的一个 Python 服务里，装好并设为开机自启即可。
+    若只用「本机 USB 直连」，本节可以直接跳过。</p>
+
+  <div class="steps">
+
+    <div class="step">
+      <h4><span class="n">1</span>把桥接服务与前端放到设备上</h4>
+      <p>服务文件在课程仓库的 <code>ros2_ws/fw/device_dev/device_bridge.py</code>，把前端目录一起拷过去。</p>
+      <pre class="cmd"><span class="c"># 在开发机上执行，把 &lt;设备IP&gt; 换成实际地址</span>
+scp ros2_ws/fw/device_dev/device_bridge.py iflytek@<span class="k">&lt;设备IP&gt;</span>:/home/iflytek/
+scp -r training/output/courses/device iflytek@<span class="k">&lt;设备IP&gt;</span>:/home/iflytek/bridge-web</pre>
+    </div>
+
+    <div class="step">
+      <h4><span class="n">2</span>启动服务（依赖会自动安装）</h4>
+      <p>首次运行会自动从清华源安装 aiohttp / paramiko / pyserial。串口默认值 <code>/dev/ttyACM0 @115200</code> 可按需修改。</p>
+      <pre class="cmd">ssh iflytek@<span class="k">&lt;设备IP&gt;</span>
+python3 device_bridge.py --port 8100 --static /home/iflytek/bridge-web \
+  --serial-port /dev/ttyACM0 --baud 115200</pre>
+    </div>
+
+    <div class="step">
+      <h4><span class="n">3</span>打开工作台并登录</h4>
+      <p>回到本页点「启动工作台」，或直接在浏览器访问 <code>http://&lt;设备IP&gt;:8100/</code>。
+        填入设备上的 Linux 账号密码即可——桥接服务用这个账号登录设备自己的 sshd，密码不落盘、不回传。</p>
+    </div>
+
+  </div>
+
+  <details class="adv" style="margin-top:22px">
+    <summary>备选方案：不装桥接服务，改用 ttyd / filebrowser / noVNC</summary>
+    <div class="steps" style="margin-top:16px">
+
+      <div class="step">
+        <h4><span class="n">A</span>安装三个服务</h4>
+        <p>Debian / Ubuntu 系设备，一条命令装齐（ttyd 承担终端入口）。</p>
+        <pre class="cmd"><span class="c"># 终端（ttyd）／桌面（websockify + noVNC）</span>
+sudo apt update
+sudo apt install -y ttyd novnc websockify
+
+<span class="c"># 文件管理（单个 Go 二进制，前端已内嵌）</span>
+curl -fsSL https://raw.githubusercontent.com/filebrowser/filebrowser/master/get.sh | bash</pre>
+      </div>
+
+      <div class="step">
+        <h4><span class="n">B</span>启动服务</h4>
+        <p>三个服务分别监听 7681 / 8081 / 6080，与上方「连接配置」里的默认端口一致。VNC 复用设备上已在运行的 VNC server（默认 5900）。串口始终走本机 USB 直连，无需设备端服务。</p>
+        <pre class="cmd"><span class="c"># 终端 —— 7681</span>
+ttyd -p 7681 -c <span class="k">admin:你的密码</span> -W bash
+
+<span class="c"># 文件管理 —— 8081，根目录指向工作区</span>
+filebrowser -a 0.0.0.0 -p 8081 -r /home/iflytek -d /opt/device-dev/filebrowser.db
+
+<span class="c"># 桌面 —— 6080，把本机 5900 的 VNC 转成 WebSocket</span>
+websockify --web=/usr/share/novnc 6080 127.0.0.1:5900</pre>
+      </div>
+
+      <div class="step">
+        <h4><span class="n">C</span>把地址填到上方</h4>
+        <p>回到本页「连接配置」，填入设备局域网 IP（如 <code>192.168.1.100</code>），点「检测连接」→ 三项状态变绿即表示服务已就绪。</p>
+      </div>
+
+    </div>
+  </details>
+
+  <div class="tip" style="margin-top:20px">
+    <span>🔒</span>
+    <span>桥接服务等同于把设备的 <b>shell 与文件系统</b>开放给能访问该端口的人（远程桌面另有 VNC 自己的密码保护），
+      务必使用强密码，并只在教学网段内使用。完整安装说明、systemd 开机自启、防火墙与安全建议见
+      <code>ros2_ws/fw/device_dev/README.md</code>。</span>
+  </div>
+</section>
+
+<footer>
+  具身智能课程 · 设备开发 · 一体化工作台（device_bridge）· 备选：ttyd / filebrowser / websockify+noVNC
+</footer>
+
+<script>
+(function(){
+  var LS='eai_device_dev_v1';
+  var KEYS=['ssh','files','vnc'];
+  var LABEL={ssh:'终端',files:'文件',vnc:'桌面'};
+  var $=function(id){return document.getElementById(id)};
+
+  /* ---------- 存取 ---------- */
+  function load(){
+    try{ return JSON.parse(localStorage.getItem(LS)||'{}') }catch(e){ return {} }
+  }
+  function store(o){
+    try{ localStorage.setItem(LS,JSON.stringify(o)) }catch(e){}
+  }
+  function cur(){
+    var d={host:$('host').value.trim(),ports:{}};
+    KEYS.forEach(function(k){ d.ports[k]=parseInt($('p_'+k).value,10)||0 });
+    return d;
+  }
+  function fill(d){
+    if(!d) return;
+    $('host').value=d.host||'';
+    if(d.ports) KEYS.forEach(function(k){ if(d.ports[k]) $('p_'+k).value=d.ports[k] });
+    refreshUrls();
+  }
+  function url(k){
+    var d=cur();
+    if(!d.host||!d.ports[k]) return '';
+    var path=(k==='vnc')?'/vnc.html':'/';
+    return 'http://'+d.host+':'+d.ports[k]+path;
+  }
+  function refreshUrls(){
+    KEYS.forEach(function(k){
+      var u=url(k);
+      $('u_'+k).textContent=u||'—';
+    });
+  }
+
+  /* ---------- 已保存设备 ---------- */
+  function renderSaved(sel){
+    var db=load(),s=$('saved'),names=Object.keys(db);
+    s.innerHTML='<option value="">— 未保存 —</option>'+names.map(function(n){
+      return '<option value="'+esc(n)+'">'+esc(n)+'</option>';
+    }).join('');
+    if(sel) s.value=sel;
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }) }
+
+  /* ---------- 状态显示 ---------- */
+  function setState(k,state,txt){
+    var cls={idle:'idle',busy:'busy',on:'on',off:'off'}[state];
+    var s=$('s_'+k),d=$('d_'+k),r=$('r_'+k);
+    if(s){ s.className='status '+cls; s.textContent=txt }
+    if(d){ d.className='pdot '+(state==='idle'?'':state) }
+    if(r){ r.className='res '+(state==='on'?'ok':state==='off'?'no':''); r.textContent=LABEL[k]+' '+txt }
+  }
+
+  /* ---------- 连通性探测 ---------- */
+  function probe(k){
+    var u=url(k);
+    if(!u){ return Promise.resolve(false) }
+    var ctrl=new AbortController();
+    var t=setTimeout(function(){ ctrl.abort() },2600);
+    return fetch(u,{mode:'no-cors',cache:'no-store',signal:ctrl.signal})
+      .then(function(){ clearTimeout(t); return true })
+      .catch(function(){ clearTimeout(t); return false });
+  }
+  function probeAll(){
+    if(!$('host').value.trim()){
+      alert('请先填写设备地址');
+      return;
+    }
+    refreshUrls();
+    var btn=$('btnProbe');
+    btn.disabled=true; btn.textContent='检测中…';
+    KEYS.forEach(function(k){ setState(k,'busy','检测中…') });
+
+    Promise.all(KEYS.map(function(k){
+      return probe(k).then(function(ok){ setState(k,ok?'on':'off',ok?'在线':'离线'); return ok })
+    })).then(function(list){
+      btn.disabled=false; btn.textContent='检测连接';
+      var n=list.filter(Boolean).length;
+      if(n===KEYS.length){
+        var dev=cur();
+        if(!load()[dev.host]) persist(dev.host);
+      }
+    });
+  }
+
+  /* ---------- 保存 / 删除 ---------- */
+  function persist(name){
+    var db=load();
+    db[name]=cur();
+    store(db);
+    renderSaved(name);
+  }
+  function save(){
+    var d=cur();
+    if(!d.host){ alert('请先填写设备地址'); return }
+    persist(d.host);
+    var btn=$('btnSave'),old=btn.textContent;
+    btn.textContent='已保存 ✓';
+    setTimeout(function(){ btn.textContent=old },1400);
+  }
+  function del(){
+    var n=$('saved').value;
+    if(!n){ alert('请先在下拉框中选择要删除的设备'); return }
+    var db=load();
+    delete db[n];
+    store(db);
+    renderSaved('');
+    $('host').value='';
+    refreshUrls();
+    KEYS.forEach(function(k){ setState(k,'idle','未检测') });
+  }
+
+  /* ---------- 打开工具 ---------- */
+  function open(k){
+    var u=url(k);
+    if(!u){ alert('请先填写设备地址与端口'); return }
+    var d=cur();
+    var db=load();
+    if(!db[d.host]) persist(d.host);
+    window.open(u,'_blank','noopener');
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  $('btnProbe').addEventListener('click',probeAll);
+  $('btnSave').addEventListener('click',save);
+  $('btnDel').addEventListener('click',del);
+  $('saved').addEventListener('change',function(){
+    var n=this.value;
+    if(!n){ return }
+    var db=load();
+    fill(db[n]);
+    KEYS.forEach(function(k){ setState(k,'idle','未检测') });
+  });
+  $('host').addEventListener('input',refreshUrls);
+  $('host').addEventListener('keydown',function(e){ if(e.key==='Enter') probeAll() });
+  KEYS.forEach(function(k){
+    $('p_'+k).addEventListener('input',refreshUrls);
+  });
+  document.querySelectorAll('[data-open]').forEach(function(a){
+    a.addEventListener('click',function(e){ e.preventDefault(); open(this.dataset.open) });
+  });
+
+  /* ---------- 初始化 ---------- */
+  (function init(){
+    var db=load();
+    renderSaved('');
+    var names=Object.keys(db);
+    if(names.length){
+      fill(db[names[0]]);
+      renderSaved(names[0]);
+    }else if(location.protocol.indexOf('http')===0 && location.hostname){
+      /* 页面本身就是从某台主机提供的，预填该主机，省去手输 */
+      $('host').value=location.hostname;
+    }
+    refreshUrls();
+  })();
+
+  /* ---------- 滚动显现 ---------- */
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('visible'); io.unobserve(e.target);} });
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>串口调试 · 本机 USB 直连 · 具身智能课程</title>
+<style>
+:root{
+  --bg-base:#f8fafc;--bg-card:#fff;--bg-soft:#f1f5f9;--bg-tint:#eef4ff;
+  --border:#e2e8f0;--border-hover:#94a3b8;
+  --accent-blue:#2563eb;--accent-cyan:#0891b2;--accent-teal:#0d9488;
+  --accent-indigo:#4f46e5;--accent-amber:#d97706;--accent-rose:#e11d48;--accent-violet:#7c3aed;
+  --text-primary:#0f172a;--text-body:#334155;--text-secondary:#64748b;--text-muted:#94a3b8;
+  --shadow-glow:0 8px 24px rgba(37,99,235,.10);
+  --font-mono:'Cascadia Code','JetBrains Mono',Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text-body);
+  font-family:"Noto Sans CJK SC","PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% -5%,rgba(37,99,235,.05),transparent),
+    radial-gradient(ellipse 50% 35% at 100% 5%,rgba(13,148,136,.04),transparent);}
+/* Topbar */
+.topbar{position:sticky;top:0;z-index:50;height:60px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 40px;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--text-primary);font-size:15px}
+.logo .dot{width:9px;height:9px;border-radius:50%;background:var(--accent-blue);animation:pulse 2.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.nav a{font-size:13.5px;color:var(--text-secondary);text-decoration:none;margin-left:22px;transition:.28s}
+.nav a:hover{color:var(--accent-blue)}
+.nav a.active{color:var(--accent-blue);font-weight:600}
+.nav .dropdown{position:relative;display:inline-block}
+.nav .dropdown>.dd-toggle{font-size:13.5px;color:var(--text-secondary);text-decoration:none;cursor:pointer;
+  display:inline-flex;align-items:center;gap:4px;transition:.28s;border:none;background:none;font-family:inherit;padding:0}
+.nav .dropdown>.dd-toggle:hover{color:var(--accent-blue)}
+.nav .dropdown>.dd-toggle .arr{font-size:10px;transition:.25s}
+.nav .dropdown:hover>.dd-toggle .arr{transform:rotate(180deg)}
+.dd-menu{position:absolute;top:calc(100% + 14px);left:50%;transform:translateX(-50%) translateY(6px);
+  min-width:250px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 14px 36px rgba(15,23,42,.14);padding:6px;opacity:0;visibility:hidden;transition:.22s;z-index:60}
+.nav .dropdown:hover .dd-menu{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.dd-menu a{display:flex;flex-direction:column;gap:2px;padding:10px 13px;border-radius:8px;
+  font-size:13px;color:var(--text-body);text-decoration:none;transition:.2s;margin-left:0!important}
+.dd-menu a:hover{background:var(--bg-tint);color:var(--accent-blue)}
+.dd-menu a small{font-size:11.5px;color:var(--text-muted);font-weight:400}
+.dd-menu a+a{border-top:1px solid var(--border)}
+/* Hero */
+.hero{max-width:960px;margin:0 auto;padding:52px 40px 8px;text-align:center}
+.hero .eyebrow{display:inline-block;font-size:12.5px;letter-spacing:.14em;color:var(--accent-blue);
+  background:var(--bg-tint);border:1px solid #dbeafe;border-radius:100px;padding:5px 14px;font-family:var(--font-mono)}
+.hero h1{margin:18px 0 14px;font-size:38px;line-height:1.2;color:var(--text-primary);font-weight:800}
+.hero h1 .grad{background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan),var(--accent-teal));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{max-width:740px;margin:0 auto;font-size:15.5px;line-height:1.8;color:var(--text-secondary)}
+.badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:22px 0 0}
+.badge{font-size:12.5px;padding:5px 12px;border-radius:100px;background:var(--bg-card);
+  border:1px solid var(--border);color:var(--text-secondary)}
+/* Section */
+.section{max-width:1080px;margin:0 auto;padding:40px 40px 6px}
+.section-head{display:flex;align-items:baseline;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.section-head h2{margin:0;font-size:19px;color:var(--text-primary);display:flex;align-items:center;gap:10px}
+.section-head h2 .idx{font-family:var(--font-mono);font-size:12px;font-weight:700;color:#fff;
+  background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border-radius:7px;padding:3px 9px}
+.section-head .sub{font-size:13px;color:var(--text-muted)}
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
+  padding:20px 22px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+/* 工具条 */
+.bar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;color:var(--text-secondary);font-weight:600}
+.field select,.field input{font-family:var(--font-mono);font-size:13px;padding:8px 10px;
+  border:1px solid var(--border);border-radius:8px;background:var(--bg-base);color:var(--text-primary);
+  outline:none;transition:.2s;min-width:0}
+.field select{font-family:inherit;cursor:pointer}
+.field select:focus,.field input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.btn{font-family:inherit;font-size:13.5px;font-weight:600;padding:9px 17px;border-radius:8px;
+  border:1px solid var(--border);background:var(--bg-card);color:var(--text-body);cursor:pointer;transition:.22s;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--accent-blue);color:var(--accent-blue)}
+.btn.primary{background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border:none;color:#fff;
+  box-shadow:0 4px 14px rgba(37,99,235,.22)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.06);color:#fff}
+.btn.danger:hover:not(:disabled){border-color:var(--accent-rose);color:var(--accent-rose)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.sep{width:1px;align-self:stretch;background:var(--border);margin:0 2px}
+.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;
+  padding:8px 2px;user-select:none}
+.chk input{accent-color:var(--accent-blue);cursor:pointer;margin:0}
+/* 状态条 */
+.state{display:flex;align-items:center;gap:9px;margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);
+  font-size:13px;color:var(--text-secondary);flex-wrap:wrap}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--text-muted);flex:none}
+.sdot.on{background:var(--accent-teal);box-shadow:0 0 0 3px rgba(13,148,136,.15)}
+.sdot.err{background:var(--accent-rose)}
+.sdot.busy{background:var(--accent-amber);animation:pulse 1s infinite}
+.state .mono{font-family:var(--font-mono);font-size:12.5px;color:var(--text-body)}
+/* 控制台 */
+.console{background:#0f172a;border-radius:11px;height:430px;overflow-y:auto;padding:14px 16px;
+  font-family:var(--font-mono);font-size:12.5px;line-height:1.7;color:#e2e8f0;
+  white-space:pre-wrap;word-break:break-all;scroll-behavior:auto}
+.console::-webkit-scrollbar{width:9px}
+.console::-webkit-scrollbar-thumb{background:#334155;border-radius:9px}
+.console .sys{color:#64748b}
+.console .tx{color:#7dd3fc}
+.console .err{color:#fca5a5}
+.console .ts{color:#475569}
+.send{display:flex;gap:10px;margin-top:14px;align-items:stretch}
+.send input{flex:1;font-family:var(--font-mono);font-size:13px;padding:11px 13px;border:1px solid var(--border);
+  border-radius:9px;background:var(--bg-base);color:var(--text-primary);outline:none;transition:.2s}
+.send input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.hint{font-size:12px;color:var(--text-muted);margin-top:9px;line-height:1.7}
+/* 提示条 */
+.tip{margin-top:16px;display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.75;
+  color:var(--text-secondary);background:var(--bg-tint);border:1px solid #dbeafe;border-radius:10px;padding:12px 15px}
+.tip.warn{background:#fffbeb;border-color:#fef3c7}
+.tip.bad{background:#fff1f2;border-color:#ffe4e6}
+.tip b{color:var(--accent-blue)}
+.tip.warn b{color:var(--accent-amber)}
+.tip.bad b{color:var(--accent-rose)}
+.tip code,.hint code{font-family:var(--font-mono);font-size:12px;background:var(--bg-soft);
+  border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+/* 已授权串口 */
+.ports{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.portchip{font-family:var(--font-mono);font-size:12px;padding:6px 12px;border-radius:100px;
+  background:var(--bg-card);border:1px solid var(--border);color:var(--text-secondary);cursor:pointer;transition:.2s}
+.portchip:hover{border-color:var(--accent-blue);color:var(--accent-blue)}
+footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px solid var(--border);
+  text-align:center;font-size:12.5px;color:var(--text-muted)}
+@media (max-width:760px){
+  .topbar,.hero,.section,footer{padding-left:20px;padding-right:20px}
+  .nav{display:none}.hero h1{font-size:27px}.sep{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="dot"></span>具身智能课程</div>
+  <nav class="nav">
+    <div class="dropdown">
+      <a class="dd-toggle" href="javascript:void(0)">人培方案 <span class="arr">▼</span></a>
+      <div class="dd-menu">
+        <a href="../renpei/index.html#b">📘 具身智能本科人培方案<small>本科 · 星辰版 · 2026 版 V4.1 · 四年制 8 学期</small></a>
+        <a href="../renpei/index.html#g">📗 具身智能高职人培方案<small>高职 · 星辰版 · 2026 版 V1.1 · 三年制 6 学期</small></a>
+      </div>
+    </div>
+    <div class="dropdown">
+      <a class="dd-toggle" href="javascript:void(0)">产品介绍 <span class="arr">▼</span></a>
+      <div class="dd-menu">
+        <a href="../../products/b2-box/index.html">📦 具身智能实验箱B2旗舰版<small>6 TOPS · 双核架构 · 6 门课 / 65 实验</small></a>
+        <a href="../../products/c1-car/index.html">🚗 具身智能机器人小车 C1<small>移动导航 · 机械臂作业 · 7 门课 / 59 实验</small></a>
+      </div>
+    </div>
+    <a href="../index.html#core">核心课程</a>
+    <a href="../index.html#case">综合案例</a>
+    <a href="../index.html#ind">行业应用</a>
+    <a href="../index.html#tech">技术栈</a>
+    <a href="index.html" class="active">设备开发</a>
+  </nav>
+</div>
+
+<header class="hero">
+  <span class="eyebrow">WEB SERIAL · USB DIRECT · NO SERVICE</span>
+  <h1>串口调试 <span class="grad">本机 USB 直连</span></h1>
+  <p>数据线插在这台电脑上，浏览器直接读写串口——<b>不需要设备端服务，不占用任何网络端口</b>。<br>
+     适合调试机械臂底层协议、STM32 固件交互、外接传感器等场景。</p>
+  <div class="badges">
+    <span class="badge">🔌 无需安装驱动以外的任何软件</span>
+    <span class="badge">⚡ 支持 115200 及以上波特率</span>
+    <span class="badge">🧾 文本 / 十六进制双视图</span>
+  </div>
+</header>
+
+<!-- 兼容性提示 -->
+<section class="section" id="compat" style="padding-bottom:0">
+  <div id="compat-box"></div>
+</section>
+
+<!-- 控制栏 -->
+<section class="section" id="panel">
+  <div class="section-head">
+    <h2><span class="idx">SETUP</span>串口参数</h2>
+    <span class="sub">连接前先设好参数；连接后参数会锁定</span>
+  </div>
+  <div class="panel">
+    <div class="bar">
+      <div class="field">
+        <label>波特率</label>
+        <select id="baud">
+          <option>9600</option><option>19200</option><option>38400</option><option>57600</option>
+          <option selected>115200</option><option>230400</option><option>460800</option><option>921600</option>
+          <option>1000000</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>数据位</label>
+        <select id="dataBits"><option selected>8</option><option>7</option></select>
+      </div>
+      <div class="field">
+        <label>停止位</label>
+        <select id="stopBits"><option selected>1</option><option>2</option></select>
+      </div>
+      <div class="field">
+        <label>校验位</label>
+        <select id="parity">
+          <option value="none" selected>无</option>
+          <option value="even">偶校验</option>
+          <option value="odd">奇校验</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>流控</label>
+        <select id="flow">
+          <option value="none" selected>无</option>
+          <option value="hardware">硬件 RTS/CTS</option>
+        </select>
+      </div>
+      <div class="sep"></div>
+      <button class="btn primary" id="btnConnect">连接串口</button>
+      <button class="btn danger" id="btnDisconnect" disabled>断开</button>
+      <button class="btn" id="btnClear">清空</button>
+    </div>
+
+    <div class="state">
+      <span class="sdot" id="dot"></span>
+      <span id="stateText">未连接</span>
+      <span class="mono" id="portInfo"></span>
+    </div>
+
+    <div id="portsWrap" style="display:none">
+      <div class="hint" style="margin-top:14px">已授权过的串口（点击可直接重连，无需再次选择）：</div>
+      <div class="ports" id="ports"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 终端 -->
+<section class="section" id="term">
+  <div class="section-head">
+    <h2><span class="idx">TERM</span>串口终端</h2>
+    <span class="sub">↑ / ↓ 可翻阅历史发送记录</span>
+  </div>
+  <div class="panel">
+    <div class="bar" style="margin-bottom:14px">
+      <div class="field">
+        <label>行尾符</label>
+        <select id="eol">
+          <option value="crlf" selected>CRLF (\r\n)</option>
+          <option value="lf">LF (\n)</option>
+          <option value="cr">CR (\r)</option>
+          <option value="">无</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>显示方式</label>
+        <select id="view">
+          <option value="text" selected>文本</option>
+          <option value="hex">十六进制</option>
+        </select>
+      </div>
+      <label class="chk"><input type="checkbox" id="ts"> 时间戳</label>
+      <label class="chk"><input type="checkbox" id="echo"> 本地回显发送内容</label>
+    </div>
+
+    <div class="console" id="console"></div>
+
+    <div class="send">
+      <input id="input" placeholder="输入要发送的内容，回车发送…" autocomplete="off" spellcheck="false" disabled>
+      <button class="btn primary" id="btnSend" disabled>发送</button>
+    </div>
+    <div class="hint">提示：连接成功后输入框才可用。发送内容按上面选择的「行尾符」自动追加；十六进制视图下每字节以空格分隔显示。</div>
+  </div>
+</section>
+
+<footer>
+  具身智能课程 · 设备开发 · 本机串口控制台（Web Serial API） · 数据不经过任何服务器
+</footer>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var HAS = ('serial' in navigator);
+  var SECURE = (window.isSecureContext === true);
+
+  var port=null, reader=null, writer=null, keepReading=false;
+  var enc=new TextEncoder(), dec=new TextDecoder('utf-8',{fatal:false});
+  var history=[], hIdx=-1;
+
+  /* ---------- 兼容性提示 ---------- */
+  function compat(){
+    var box=$('compat-box');
+    if(HAS){
+      box.innerHTML='<div class="tip"><span>✅</span><span>当前浏览器<b>支持 Web Serial</b>，可以直连本机串口。'+
+        '点击「连接串口」后浏览器会弹出端口选择框，选中你的设备即可。</span></div>';
+      return;
+    }
+    var why = !SECURE
+      ? '当前页面不是<b>安全上下文</b>（用 <code>http://局域网IP</code> 打开时会这样）。'
+      : '当前浏览器<b>不支持 Web Serial</b>（Firefox / Safari 尚未实现）。';
+    box.innerHTML='<div class="tip bad"><span>⛔</span><span>无法使用本机串口：'+why+
+      '<br>解决办法：① 用 <b>Chrome / Edge</b> 打开本页；② 以 <code>file://</code> 直接打开，或用 <code>https</code> / <code>http://localhost</code> 提供服务。'+
+      '<br>若必须通过局域网地址访问，请先解决安全上下文问题；终端 / 文件 / 桌面等网络功能不受影响，设备与电脑在同一局域网即可正常使用。</span></div>';
+  }
+
+  /* ---------- 状态 ---------- */
+  function setState(kind,txt,info){
+    $('dot').className='sdot'+(kind?(' '+kind):'');
+    $('stateText').textContent=txt;
+    $('portInfo').textContent=info||'';
+  }
+  function lock(on){
+    ['baud','dataBits','stopBits','parity','flow'].forEach(function(id){ $(id).disabled=on });
+    $('btnConnect').disabled=on;
+    $('btnDisconnect').disabled=!on;
+    $('input').disabled=!on;
+    $('btnSend').disabled=!on;
+  }
+
+  /* ---------- 终端输出 ---------- */
+  function stamp(){
+    var d=new Date(),p=function(n,w){return String(n).padStart(w||2,'0')};
+    return '['+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+'.'+p(d.getMilliseconds(),3)+'] ';
+  }
+  function nearBottom(){
+    var c=$('console');
+    return c.scrollHeight-c.scrollTop-c.clientHeight < 40;
+  }
+  function write(str,cls){
+    var c=$('console'), stick=nearBottom();
+    if($('ts').checked && cls!=='sys'){
+      var s=document.createElement('span'); s.className='ts'; s.textContent=stamp(); c.appendChild(s);
+    }
+    var s2=document.createElement('span');
+    if(cls) s2.className=cls;
+    s2.textContent=str;
+    c.appendChild(s2);
+    if(stick) c.scrollTop=c.scrollHeight;
+  }
+  function writeBytes(bytes){
+    if($('view').value==='hex'){
+      var a=[]; for(var i=0;i<bytes.length;i++) a.push(bytes[i].toString(16).padStart(2,'0'));
+      write(a.join(' ')+' ','');
+    }else{
+      write(dec.decode(bytes,{stream:true}),'');
+    }
+  }
+  function sys(msg){ write(msg+'\n','sys') }
+
+  /* ---------- 连接 ---------- */
+  function openOpts(){
+    return {
+      baudRate: parseInt($('baud').value,10),
+      dataBits: parseInt($('dataBits').value,10),
+      stopBits: parseInt($('stopBits').value,10),
+      parity: $('parity').value,
+      flowControl: $('flow').value
+    };
+  }
+  function desc(p){
+    var i=p.getInfo?p.getInfo():{};
+    var v=(i.usbVendorId!=null)?('VID:0x'+i.usbVendorId.toString(16).padStart(4,'0')):
+          (p.getInfo && p.getInfo().usbVendorId===undefined?'':'');
+    return v;
+  }
+  async function connect(existing){
+    if(!HAS){ compat(); return }
+    try{
+      setState('busy','正在打开串口…','');
+      port = existing || await navigator.serial.requestPort();
+      await port.open(openOpts());
+      keepReading=true;
+      writer=port.writable.getWriter();
+      lock(true);
+      setState('on','已连接', (desc(port)||'') + ' · ' + $('baud').value + ' ' +
+        $('dataBits').value + $('parity').value.charAt(0).toUpperCase() + $('stopBits').value);
+      sys('串口已打开：'+$('baud').value+' '+$('dataBits').value+$('parity').value.charAt(0).toUpperCase()+$('stopBits').value);
+      readLoop();
+      refreshPorts();
+    }catch(e){
+      port=null;
+      setState('err','打开失败',e && e.message ? e.message : '');
+      sys('打开串口失败：'+(e && e.message ? e.message : e));
+    }
+  }
+  async function readLoop(){
+    while(port && port.readable && keepReading){
+      reader=port.readable.getReader();
+      try{
+        while(true){
+          var r=await reader.read();
+          if(r.done) break;
+          if(r.value && r.value.length) writeBytes(r.value);
+        }
+      }catch(e){
+        if(keepReading) sys('\n读取中断：'+(e && e.message ? e.message : e));
+      }finally{
+        try{ reader.releaseLock() }catch(e){}
+        reader=null;
+      }
+    }
+  }
+  async function disconnect(silent){
+    keepReading=false;
+    try{ if(reader) await reader.cancel() }catch(e){}
+    try{ if(writer){ writer.releaseLock() } }catch(e){}
+    writer=null;
+    try{ if(port && port.readable) await port.close() }catch(e){}
+    port=null;
+    lock(false);
+    setState('','未连接','');
+    if(!silent) sys('\n串口已断开。');
+    refreshPorts();
+  }
+
+  /* ---------- 发送 ---------- */
+  async function send(){
+    if(!port || !writer) return;
+    var t=$('input').value;
+    var eol=$('eol').value;
+    var tail = eol==='crlf' ? '\r\n' : eol==='lf' ? '\n' : eol==='cr' ? '\r' : '';
+    var data=enc.encode(t+tail);
+    try{
+      await writer.write(data);
+      if($('echo').checked) write('▸ '+t+'\n','tx');
+      if(t.trim() && history[0]!==t){ history.unshift(t); if(history.length>60) history.pop() }
+      hIdx=-1;
+      $('input').value='';
+    }catch(e){
+      sys('\n发送失败：'+(e && e.message ? e.message : e));
+    }
+  }
+
+  /* ---------- 已授权串口 ---------- */
+  async function refreshPorts(){
+    if(!HAS || !navigator.serial.getPorts) return;
+    try{
+      var list=await navigator.serial.getPorts();
+      var wrap=$('portsWrap'), box=$('ports');
+      if(!list.length){ wrap.style.display='none'; return }
+      wrap.style.display='';
+      box.innerHTML='';
+      list.forEach(function(p,i){
+        var d=document.createElement('span');
+        d.className='portchip';
+        d.textContent='串口 #'+(i+1)+(desc(p)?(' · '+desc(p)):'');
+        d.addEventListener('click',function(){ if(!port) connect(p) });
+        box.appendChild(d);
+      });
+    }catch(e){}
+  }
+
+  /* ---------- 事件 ---------- */
+  $('btnConnect').addEventListener('click',function(){ connect(null) });
+  $('btnDisconnect').addEventListener('click',function(){ disconnect(false) });
+  $('btnClear').addEventListener('click',function(){ $('console').innerHTML='' });
+  $('btnSend').addEventListener('click',send);
+  $('input').addEventListener('keydown',function(e){
+    if(e.key==='Enter'){ e.preventDefault(); send(); return }
+    if(e.key==='ArrowUp'){
+      e.preventDefault();
+      if(history.length && hIdx<history.length-1){ hIdx++; this.value=history[hIdx] }
+      return;
+    }
+    if(e.key==='ArrowDown'){
+      e.preventDefault();
+      if(hIdx>0){ hIdx--; this.value=history[hIdx] }
+      else { hIdx=-1; this.value='' }
+    }
+  });
+  if(HAS && navigator.serial.addEventListener){
+    navigator.serial.addEventListener('disconnect',function(e){
+      if(e.target===port){ sys('\n设备已被拔出，连接中断。'); disconnect(true) }
+    });
+  }
+
+  /* ---------- 初始化 ---------- */
+  compat();
+  if(HAS){ setState('','未连接',''); refreshPorts() }
+  else { $('btnConnect').disabled=true }
+})();
+</script>
+</body>
+</html>
