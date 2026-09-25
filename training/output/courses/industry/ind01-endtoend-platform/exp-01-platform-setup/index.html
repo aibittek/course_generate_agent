@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-01 · 主机环境搭建与硬件认知 — IND-01 具身智能端到端平台与基础</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{--theme:#0d9488;--theme-deep:#0f766e;--theme-bg:#f0fdfa;--theme-bd:#99f6e4}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:13px}
+.vcard{background:#fff;border:1px solid var(--line,#e2ece9);border-radius:13px;padding:13px}
+.vcard h4{font-size:14px;font-weight:800;margin-bottom:7px}
+.vcard p{font-size:12.5px;color:#5b6b78;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🦾 IND-01 · <i>端到端平台与基础</i></div>
+  <div class="crumb"><a href="../../../index.html">总首页</a> / <a href="../../../index.html#ind">行业应用</a> / <a href="../index.html">IND-01</a> / EXP-01</div>
+</div>
+
+<div class="wrap">
+
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 学习目标</a>
+  <a href="#s2">02 原理讲解：端到端平台拓扑</a>
+  <a href="#s3">03 硬件与材料</a>
+  <a href="#s4">04 步骤实践：环境搭建</a>
+  <a href="#s5">05 关键命令</a>
+  <a href="#s6">06 动画讲解：连接拓扑</a>
+  <a href="#s7">07 互动练习：udev 配对</a>
+  <a href="#s8">08 常见问题</a>
+  <a href="#s9">09 拓展挑战</a>
+  <a href="#s10">10 思考题</a>
+  <h4>IND-01 · 四个实验</h4>
+  <a href="../exp-01-platform-setup/index.html">EXP-01 平台搭建</a>
+  <a href="../exp-02-arm-assembly/index.html">EXP-02 硬件组装</a>
+  <a href="../exp-03-arm-calibration/index.html">EXP-03 摄像头校准</a>
+  <a href="../exp-04-teleop-checkout/index.html">EXP-04 遥操作排查</a>
+</aside>
+
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-01 · 第 00/01 章 · 验证性 · 8 学时</span>
+  <h1>主机环境搭建与硬件认知</h1>
+  <p class="desc">这是整门课的"通电第一课"。你在一台 Ubuntu 22.04 主机上依次装好 NVIDIA 驱动、Miniconda、LeRobot 0.4.1，写入机械臂与相机的 udev 别名规则，再对照第 01 章认识从臂、主臂、摄像头三大件。做完本实验，<b>ls /dev/arm_* 和 ls /dev/cam_* 应能列出全部 7 个设备名</b>——这是后续三个实验一切操作的地基。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐ · 8 学时</span>
+    <span class="tag">Ubuntu 22.04</span><span class="tag">LeRobot 0.4.1</span>
+    <span class="tag">udev 规则</span><span class="tag">SO100 双臂 + 三摄像头</span>
+  </div>
+</div>
+
+<!-- 01 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>学习目标</h2>
+  <ul class="check">
+    <li>能说出 LZ-XL01 平台的三大硬件组成：<span class="ok">从臂、主臂、摄像头</span>，以及它们与主机的连接关系</li>
+    <li>能独立完成第 00 章十一步环境部署：<span class="ok">驱动 → 源码 → Miniconda → VS Code → 镜像源 → Python 3.10 → LeRobot</span></li>
+    <li>能解释 udev 规则的作用并<span class="ok">默写机械臂四条 + 相机三条别名规则</span>的关键字段</li>
+    <li>能执行三条验证命令并读懂正常输出：<span class="ok">python --version、ls /dev/arm_*、ls /dev/cam_*</span></li>
+    <li>建立"端到端"的硬件直觉：<b>感知（摄像头）→ 决策（主机）→ 执行（机械臂）</b>的闭环</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>原理讲解：什么叫"端到端平台"</h2>
+  <p>先打个比方：端到端（end-to-end）就像<b>学炒菜不拆步骤</b>——眼睛看到菜在哪（感知），大脑想怎么抓（决策），手直接伸过去（执行），中间不留"专门算坐标的模块、专门规划路径的模块"。具身智能的端到端策略也是这样：摄像头画面直接进模型，模型直接输出关节角度。而要让这条链路跑起来，先得把三个"端"物理连好：</p>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><b>感知端</b>：三路 USB 摄像头（左手 / 右手 / 头部）给系统提供画面</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span><b>决策端</b>：Ubuntu 主机跑 LeRobot 与策略模型，是整个平台的"大脑"</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span><b>执行端</b>：主臂（leader，被人牵着示范）与从臂（follower，跟着学）通过串口听主机指挥</div>
+  </div>
+  <p>为什么第 00 章要花大力气配 <code>udev</code> 规则？想想小区给快递柜编号：厂家给每块电路板烧了唯一"序列号"（serial），但 Linux 按插拔顺序把串口命名成 <code>ttyACM0</code>、<code>ttyACM2</code>……<b>一重启顺序可能就变了</b>。udev 规则就是"贴标签"：不管插哪个口，只要序列号是 <code>5B79018622</code>，系统就给它挂上 <code>/dev/arm_master_right</code> 这个永久别名。</p>
+</section>
+
+<!-- 03 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>硬件与材料</h2>
+  <table>
+    <thead><tr><th>类别</th><th>清单</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>主机</td><td>Ubuntu 22.04 LTS 工作站</td><td>用户目录 /home/lz-xl01/，配 NVIDIA 显卡（驱动 595-open）</td></tr>
+      <tr><td>安装介质</td><td>U 盘（卷标 UBUNTU 22_0）</td><td>插主机自动挂载到 /media/lz-xl01/UBUNTU 22_0/，内含 LeRobot 源码与 Miniconda 安装包</td></tr>
+      <tr><td>机械臂</td><td>从臂 ×2、主臂 ×2（SO100 系列）</td><td>四条臂各有 USB 串口，序列号见第 00 章 udev 规则</td></tr>
+      <tr><td>摄像头</td><td>USB 摄像头 ×3</td><td>左手 / 右手 / 头部，640×480@30，按固定 USB 端口接入</td></tr>
+      <tr><td>软件包</td><td>Miniconda、lerobot-0.4.1.zip、VS Code</td><td>均从 U 盘拷贝（或 wget 联网下载 Miniconda）</td></tr>
+    </tbody>
+  </table>
+  <figure>
+    <img src="images/fig-p01-teleop.png" loading="lazy" alt="第 01 章第 1 页：从臂硬件介绍表格截图">
+    <figcaption>图 1-1｜第 01 章「机器人硬件介绍」第 1 页：从臂（follower）部件说明表，点击原书图片可查看完整电子表格</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p01-teleop-2.png" loading="lazy" alt="第 01 章第 2 页：主臂硬件介绍表格截图">
+    <figcaption>图 1-2｜第 01 章第 2 页：主臂（leader）部件说明表——主臂装在桌面供人示范，从臂在工作区执行</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p01-cam.png" loading="lazy" alt="第 01 章第 3 页：摄像头硬件介绍截图">
+    <figcaption>图 1-3｜第 01 章第 3 页：三路摄像头硬件说明——左手、右手、头部各一路，是端到端的"眼睛"</figcaption>
+  </figure>
+</section>
+
+<!-- 04 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>步骤实践：十一步搭起开发环境</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>插 U 盘（卷标 UBUNTU 22_0），确认挂载到 /media/lz-xl01/UBUNTU 22_0/</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span>装 NVIDIA 驱动：<code>sudo apt install nvidia-driver-595-open …</code>，reboot 后 <code>nvidia-smi</code> 验证</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span>拷贝安装包并解压源码：<code>unzip lerobot-0.4.1.zip</code></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span>静默装 Miniconda 并 <code>conda init bash</code>，<code>source ~/.bashrc</code> 生效</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">5</span>装 VS Code（微软 GPG 密钥 + 官方源 + apt install code）</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">6</span>conda 配清华三通道镜像源；<code>conda create -n lerobot python=3.10 -y</code></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">7</span>进源码目录，pip 配清华源升级并 <code>pip install -e .</code> 开发模式安装 LeRobot</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">8</span>写机械臂 udev 规则（4 条序列号别名），<code>usermod -aG dialout $USER</code></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">9</span>写相机 udev 规则（3 条 ID_PATH 别名），<code>usermod -aG video $USER</code></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">10</span><code>sudo udevadm control --reload-rules</code> + <code>sudo udevadm trigger</code> 重载生效</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">11</span>三条验证命令全过 → 环境搭建完成</div>
+  </div>
+  <figure>
+    <img src="images/fig-p00-term.png" loading="lazy" alt="第 00 章第 1 页：前期准备与 NVIDIA 驱动安装终端截图">
+    <figcaption>图 1-4｜第 00 章第 1 页：前期准备（U 盘挂载）与 NVIDIA 驱动安装命令的终端实录</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p00-term-2.png" loading="lazy" alt="第 00 章第 2 页：Miniconda 下载与静默安装终端截图">
+    <figcaption>图 1-5｜第 00 章第 2 页：U 盘无安装包时联网 wget Miniconda，bash -b 静默安装并 conda init bash</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p00-term-3.png" loading="lazy" alt="第 00 章第 3 页：conda 镜像源与 Python 环境创建终端截图">
+    <figcaption>图 1-6｜第 00 章第 3 页：装完 VS Code 后配置 conda 清华镜像源、创建 lerobot 虚拟环境（Python 3.10）</figcaption>
+  </figure>
+  <div class="tip amber"><span class="lab">⚠ 顺序提醒</span>驱动安装后必须 <code>sudo reboot</code> 再验证 <code>nvidia-smi</code>；<code>conda init bash</code> 后必须 <code>source ~/.bashrc</code>，否则新终端里 conda 命令不存在。</div>
+</section>
+
+<!-- 05 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>关键命令</h2>
+  <pre><span class="c"># ① 安装 NVIDIA 驱动并重启验证（第 00 章 二）</span>
+<span class="g">sudo</span> apt update
+<span class="g">sudo</span> apt install nvidia-driver-595-open nvidia-settings nvidia-prime -y
+<span class="c"># 完成后：sudo reboot，再执行 nvidia-smi 验证</span>
+
+<span class="c"># ② 解压源码 + 静默安装 Miniconda（第 00 章 三、四）</span>
+<span class="g">unzip</span> lerobot-0.4.1.zip
+<span class="g">bash</span> Miniconda3-latest-Linux-x86_64.sh -b
+<span class="g">~/miniconda3/bin/conda</span> init bash && <span class="g">source</span> ~/.bashrc
+
+<span class="c"># ③ 创建环境并安装 LeRobot（第 00 章 七、八）</span>
+<span class="g">conda</span> create -n lerobot python=3.10 -y
+<span class="g">cd</span> ~/lerobot-0.4.1
+<span class="g">python3</span> -m pip install --upgrade pip <span class="y">-i https://pypi.tuna.tsinghua.edu.cn/simple</span>
+<span class="g">pip</span> install -e . <span class="y">-i https://pypi.tuna.tsinghua.edu.cn/simple</span>
+
+<span class="c"># ④ 写入机械臂 udev 规则（4 条序列号别名，第 00 章 九）</span>
+<span class="g">sudo</span> tee /etc/udev/rules.d/99-lerobot-arms.rules <span class="y">&lt;&lt; 'EOF'</span>
+<span class="y">SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55d3",</span>
+<span class="y">ATTRS{serial}=="5B61034506", SYMLINK+="arm_master_left", GROUP="dialout", MODE="0660"</span>
+<span class="y"># 同样格式另写三条：5B79018622→arm_master_right 5B79019324→arm_slave_left 5B79018452→arm_slave_right</span>
+<span class="y">EOF</span>
+<span class="g">sudo</span> usermod -aG dialout $USER
+
+<span class="c"># ⑤ 写入相机 udev 规则（3 条端口别名，第 00 章 十）</span>
+<span class="g">sudo</span> tee /etc/udev/rules.d/99-lerobot-cameras.rules <span class="y">&lt;&lt; 'EOF'</span>
+<span class="y">SUBSYSTEM=="video4linux", ENV{ID_PATH}=="pci-0000:00:14.0-usb-0:7:1.0", ATTR{index}=="0", SYMLINK+="cam_left", GROUP="video", MODE="0660"</span>
+<span class="y"># 端口6→cam_right 端口1→cam_head 同理</span>
+<span class="y">EOF</span>
+<span class="g">sudo</span> usermod -aG video $USER
+
+<span class="c"># ⑥ 重载规则 + 三重验证（第 00 章 十一）</span>
+<span class="g">sudo</span> udevadm control --reload-rules && <span class="g">sudo</span> udevadm trigger
+<span class="g">python</span> --version   <span class="c"># → Python 3.10.x</span>
+<span class="g">ls</span> /dev/arm_*      <span class="c"># → arm_master_left arm_master_right arm_slave_left arm_slave_right</span>
+<span class="g">ls</span> /dev/cam_*      <span class="c"># → cam_head cam_left cam_right</span></pre>
+  <figure>
+    <img src="images/fig-p00-term-4.png" loading="lazy" alt="第 00 章第 4 页：pip 安装 LeRobot 与机械臂 udev 规则写入截图">
+    <figcaption>图 1-7｜第 00 章第 4 页：pip install -e . 安装 LeRobot 与九、机械臂 udev 规则文件写入过程</figcaption>
+  </figure>
+</section>
+
+<!-- 06 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>动画讲解：主机 + 双臂 + 摄像头连接拓扑</h2>
+  <p class="lead">下图是 LZ-XL01 平台的连接拓扑：主机居中，四条臂经串口、三路摄像头经 USB 汇入，udev 别名像"门牌号"一样把物理端口翻译成稳定设备名：</p>
+  <div class="anim-box">
+    <svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="主机与双臂摄像头连接拓扑动画">
+      <rect x="8" y="8" width="704" height="324" rx="12" fill="#111827" stroke="#334155"/>
+      <text x="360" y="34" text-anchor="middle" font-size="13.5" font-weight="700" fill="#5eead4">LZ-XL01 端到端平台 · udev 别名连接拓扑</text>
+      <!-- 主机 -->
+      <rect x="270" y="128" width="180" height="84" rx="12" fill="#1e293b" stroke="#0d9488" stroke-width="2">
+        <animate attributeName="stroke-width" values="2;3.5;2" dur="3s" repeatCount="indefinite"/>
+      </rect>
+      <text x="360" y="160" text-anchor="middle" font-size="14" font-weight="700" fill="#5eead4">Ubuntu 22.04 主机</text>
+      <text x="360" y="180" text-anchor="middle" font-size="11" fill="#94a3b8">LeRobot 0.4.1 · conda lerobot</text>
+      <text x="360" y="198" text-anchor="middle" font-size="10.5" fill="#64748b">决策端 · 端到端策略运行处</text>
+      <!-- 左：从臂 -->
+      <rect x="30" y="60" width="150" height="52" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="1.8"/>
+      <text x="105" y="82" text-anchor="middle" font-size="12" fill="#7dd3fc" font-weight="700">从臂 ×2（执行端）</text>
+      <text x="105" y="100" text-anchor="middle" font-size="10" fill="#64748b">/dev/arm_slave_left·right</text>
+      <!-- 右：主臂 -->
+      <rect x="540" y="60" width="150" height="52" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="1.8"/>
+      <text x="615" y="82" text-anchor="middle" font-size="12" fill="#c4b5fd" font-weight="700">主臂 ×2（示范端）</text>
+      <text x="615" y="100" text-anchor="middle" font-size="10" fill="#64748b">/dev/arm_master_left·right</text>
+      <!-- 下：摄像头 -->
+      <rect x="90" y="252" width="150" height="52" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="1.8"/>
+      <text x="165" y="274" text-anchor="middle" font-size="12" fill="#fde68a" font-weight="700">摄像头 ×3（感知端）</text>
+      <text x="165" y="292" text-anchor="middle" font-size="10" fill="#64748b">/dev/cam_left·right·head</text>
+      <!-- 右下：udev -->
+      <rect x="480" y="252" width="150" height="52" rx="10" fill="#1e293b" stroke="#34d399" stroke-width="1.8"/>
+      <text x="555" y="274" text-anchor="middle" font-size="12" fill="#6ee7b7" font-weight="700">udev 规则（贴标签）</text>
+      <text x="555" y="292" text-anchor="middle" font-size="10" fill="#64748b">serial / ID_PATH → 别名</text>
+      <!-- 连线 -->
+      <g stroke="#2dd4bf" stroke-width="2" stroke-dasharray="7 6" fill="none">
+        <path d="M180 112 L270 150"><animate attributeName="stroke-dashoffset" values="0;-26" dur="1.3s" repeatCount="indefinite"/></path>
+        <path d="M540 112 L450 150"><animate attributeName="stroke-dashoffset" values="0;-26" dur="1.3s" begin=".4s" repeatCount="indefinite"/></path>
+        <path d="M240 252 L300 212"><animate attributeName="stroke-dashoffset" values="0;-26" dur="1.3s" begin=".8s" repeatCount="indefinite"/></path>
+        <path d="M480 278 L450 230" stroke="#34d399"><animate attributeName="stroke-dashoffset" values="0;-26" dur="1.3s" begin="1.2s" repeatCount="indefinite"/></path>
+      </g>
+      <g font-size="10.5" text-anchor="middle">
+        <text x="195" y="124" fill="#7dd3fc">USB 串口</text>
+        <text x="520" y="124" fill="#c4b5fd">USB 串口</text>
+        <text x="245" y="248" fill="#fde68a">USB 直连</text>
+      </g>
+      <!-- 数据环 -->
+      <text x="360" y="238" text-anchor="middle" font-size="10.5" fill="#64748b">感知 → 决策 → 执行 闭环（端到端）</text>
+      <circle cx="360" cy="226" r="4" fill="#5eead4">
+        <animate attributeName="cx" values="250;470;250" dur="6s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0;1;0" keyTimes="0;.5;1" dur="6s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+  </div>
+  <div class="anim-cap">动画 1-1｜主机居中（决策端），左侧从臂、右侧主臂经 USB 串口汇入，下方三路摄像头直连，udev 规则负责把物理端口翻译成稳定别名；光点表示感知→决策→执行的数据闭环</div>
+  <figure>
+    <img src="images/fig-p01-pg04.png" loading="lazy" alt="第 01 章第 4 页：硬件说明附表截图">
+    <figcaption>图 1-8｜第 01 章第 4 页：硬件介绍附表——三大件的规格参数汇总，装机前先通读一遍</figcaption>
+  </figure>
+</section>
+
+<!-- 07 -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>互动练习：udev 别名配对自测</h2>
+  <p class="lead">规则记不住就来配对：点一个设备序列号/端口，再点你认为正确的别名，即时判分：</p>
+  <div class="ix-panel">
+    <div class="ix-title">udev 配对小考 · 把"身份证"贴到"门牌号"上</div>
+    <div class="ctl-row">
+      <button class="btn" onclick="pickKey('5B79018622')">选序列号 5B79018622</button>
+      <button class="btn ghost" onclick="pickKey('ID_PATH …usb-0:7:1.0')">选相机端口 7</button>
+      <button class="btn ghost" onclick="pickKey('5B61034506')">选序列号 5B61034506</button>
+      <button class="btn ghost" onclick="resetPair()">↺ 重来</button>
+    </div>
+    <div class="ctl-row" style="margin-top:8px">
+      <button class="btn ghost" onclick="pickVal('/dev/arm_master_right')">arm_master_right</button>
+      <button class="btn ghost" onclick="pickVal('/dev/cam_left')">cam_left</button>
+      <button class="btn ghost" onclick="pickVal('/dev/arm_master_left')">arm_master_left</button>
+      <button class="btn ghost" onclick="pickVal('/dev/arm_slave_left')">arm_slave_left</button>
+    </div>
+    <div class="io" id="pairIo"><span class="dim">// 先选上方一个"物理身份"，再选下方一个"别名"，配对成功会亮绿灯</span>
+<span class="dim">提示：主臂右 5B79018622 / 主臂左 5B61034506 / 从臂左 5B79019324 / 相机左=USB 端口 7</span></div>
+  </div>
+</section>
+
+<!-- 08 -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>常见问题</h2>
+  <ul class="check">
+    <li><span class="ok">装完驱动 nvidia-smi 找不到命令</span>：忘了 reboot，或安装时没等 apt 完成就中断——重启后再验证</li>
+    <li><span class="ok">conda: command not found</span>：<code>conda init bash</code> 后没执行 <code>source ~/.bashrc</code>，或没开新终端</li>
+    <li><span class="ok">pip install 极慢/超时</span>：确认命令带了 <code>-i https://pypi.tuna.tsinghua.edu.cn/simple</code> 清华源参数</li>
+    <li><span class="ok">ls /dev/arm_* 提示 No such file</span>：udev 规则没重载——<code>sudo udevadm control --reload-rules && sudo udevadm trigger</code> 后重新插拔臂</li>
+    <li><span class="ok">摄像头别名不生成</span>：相机必须插在规则里写死的端口（7/6/1），插错口 ID_PATH 对不上</li>
+    <li><span class="ok">登录组不生效</span>：usermod 加组后必须<b>注销重新登录</b>（或重启），当前会话不刷新</li>
+  </ul>
+  <div class="tip amber"><span class="lab">💡 排障口诀</span>先验驱动、再验环境、后验别名：<code>nvidia-smi</code> → <code>python --version</code> → <code>ls /dev/arm_* /dev/cam_*</code>，哪一步断了修哪一步，别跳着查。</div>
+</section>
+
+<!-- 09 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>拓展挑战</h2>
+  <div class="tip violet"><span class="lab">🚀 挑战一：给第五条臂起名</span>若再接入一条从臂，序列号为自选值，请仿照第 00 章格式写出它的 udev 规则行（SUBSYSTEM=="tty" … SYMLINK+="arm_slave_mid"），说明 idVendor/idProduct 为什么仍填 1a86/55d3，以及如何用 <code>udevadm info</code> 查出新臂序列号。</div>
+  <div class="tip violet"><span class="lab">🚀 挑战二：画出你的接线台账</span>把四条臂的序列号、对应别名、USB 实际插口、相机三路端口画成一张表格贴在工位上——装机阶段这张表能省掉 80% 的"哪个是哪个"。</div>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>思考题</h2>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>udev 规则用 <code>ATTRS{serial}</code> 匹配机械臂、却用 <code>ENV{ID_PATH}</code> 匹配相机。为什么两类设备选用不同匹配字段？（提示：相机的多个 video 设备共享同一个 USB 序列信息吗？插口位置对相机为什么反而更重要？）</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>指导文档提示"每次重启端口号可能会变化"。假如不做 udev 规则、每次启动都用 <code>/dev/ttyACM0</code> 这种动态名，会把后面哪个实验（组装找口？校准带 port 参数？遥操作命令？）埋下什么样的坑？逐一推演说明。</div>
+</section>
+
+<nav class="expnav">
+  <a href="../index.html"><span class="lb">← 返回</span>课程目录 · IND-01</a>
+  <a class="next" href="../exp-02-arm-assembly/index.html"><span class="lb">下一个实验 →</span>EXP-02 机械臂硬件组装</a>
+</nav>
+
+<footer>
+  <span>IND-01 · 具身智能端到端平台与基础 · EXP-01 主机环境搭建与硬件认知</span>
+  <span>8 学时 · 验证性 · 基于 LZ-XL01 指导文档第 00 章《主机环境搭建》、第 01 章《机器人硬件介绍》改编</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// udev 别名配对练习
+var match={'5B79018622':'/dev/arm_master_right','ID_PATH …usb-0:7:1.0':'/dev/cam_left','5B61034506':'/dev/arm_master_left'};
+var pk=null,pv=null;
+function pairOut(t){document.getElementById('pairIo').innerHTML=t;}
+function pickKey(k){pk=k;render();}
+function pickVal(v){pv=v;render();}
+function render(){
+  if(!pk||!pv){pairOut('<span class="dim">// 已选：'+(pk||'（未选物理身份）')+' ⇄ '+(pv||'（未选别名）')+' —— 两边都选完才判分</span>');return;}
+  if(match[pk]===pv){
+    pairOut('<span class="dim">// 配对：'+pk+' ⇄ '+pv+'</span>\n<span class="ok">✔ 配对成功！规则命中后 SYMLINK 会永久指向该别名，重启不变</span>\n<span class="dim">依据：第 00 章 九/十 udev 规则 —— 序列号定臂，ID_PATH 定相机口</span>');
+  }else{
+    pairOut('<span class="dim">// 配对：'+pk+' ⇄ '+pv+'</span>\n<span class="bad">✘ 不匹配 —— 再回想四条臂序列号与三个相机端口的对应表</span>\n<span class="warn">可回看本页第 05 节命令块中的规则原文再试一次</span>');
+  }
+}
+function resetPair(){pk=pv=null;pairOut('<span class="dim">// 已重置。先选物理身份，再选别名</span>\n<span class="dim">主臂左 5B61034506 / 主臂右 5B79018622 / 从臂左 5B79019324 / 从臂右 5B79018452</span>');}
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

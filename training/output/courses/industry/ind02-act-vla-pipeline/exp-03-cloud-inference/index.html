@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-03 云服务器使用与真机推理 · IND-02 双臂采训推全流程</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{
+  --theme:#7c3aed; --theme-deep:#6d28d9; --theme-bg:#f5f3ff; --theme-bd:#ddd6fe;
+}
+figure{margin:14px 0;text-align:center}
+figure img{max-width:100%;border:1px solid var(--line,#e2e8f0);border-radius:10px;display:block;margin:0 auto}
+figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
+.tag.hl{background:#ede9fe;color:#6d28d9}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🧠 双臂采训推全流程 · <i>教程首页</i></div>
+  <div class="crumb"><a href="../../../index.html#ind">📚 开发者教程首页</a> › <a href="../index.html">IND-02 课程首页</a> › <span class="here">EXP-03 云服务器与真机推理</span></div>
+</div>
+
+<div class="wrap">
+  <aside class="side">
+    <h4>实验目录</h4>
+    <a class="now" href="#s1">§1 实验目标</a>
+    <a href="#s2">§2 核心原理</a>
+    <a href="#s3">§3 环境与材料</a>
+    <a href="#s4">§4 实操步骤</a>
+    <a href="#s5">§5 关键命令</a>
+    <a href="#s6">§6 动画演示</a>
+    <a href="#s7">§7 互动练习</a>
+    <a href="#s8">§8 常见问题</a>
+    <a href="#s9">§9 拓展阅读</a>
+    <a href="#s10">§10 思考题</a>
+    <h4 style="margin-top:18px">本课其他实验</h4>
+    <a href="../exp-01-teleop-recording/index.html">EXP-01 遥操作与数据采集</a>
+    <a href="../exp-02-act-training/index.html">EXP-02 ACT 模型训练</a>
+    <a href="../exp-04-vla-model/index.html">EXP-04 VLA 大模型</a>
+  </aside>
+
+  <main class="content">
+    <div class="exp-head">
+      <div class="code">EXP-03 · CLOUD &amp; INFERENCE</div>
+      <h1 class="h1">云服务器使用与真机推理</h1>
+      <p class="desc">本地算力不够怎么办？租一台 L40S 云实例训练，回到工位让检查点驱动真机自主抓取——本实验打通"计算在云、智能在端"的部署闭环，是产品化的关键一跃。</p>
+      <div class="meta"><span class="tag">8 学时</span><span class="tag">难度 ★★☆</span><span class="tag hl">进阶实验</span><span class="tag">对应指导文档 11 / 12 章</span></div>
+    </div>
+
+    <section class="blk" id="s1">
+      <h2><span class="no">01</span>实验目标</h2>
+      <div class="kgrid">
+        <div class="kcard"><div class="kd">目标 A</div><p>在 gpufree.cn 租用 L40S 实例，选用 LeRobot 镜像，通过 JupyterLab 终端完成 <code>cd /data/lerobot/</code> + <code>pip install -e .</code> 部署。</p></div>
+        <div class="kcard"><div class="kd">目标 B</div><p>把 EXP-02 打包的 zip 数据集上传云端并在 L40S 上完成训练（或直接取回本地已训好的检查点）。</p></div>
+        <div class="kcard"><div class="kd">目标 C</div><p>用 <code>lerobot-record --policy.path=…</code>（不带 --teleop）在真机上推理：机器人自主完成 <code>Put red cube into plate</code>。</p></div>
+        <div class="kcard"><div class="kd">验收</div><p>推理日志出现 <code>Loading weights from local directory</code>、<code>teleop: None</code>、<code>'policy': {…}</code> 输入输出特征声明，且能观察到自动抓取动作；费用方面做到用完即关机。</p></div>
+        <div class="kcard"><div class="kd">方法论</div><p>把"传数据 → 训 → 取模型 → 推 → 评 → 关机"固化成检查单（checklist），是云上作业不烧钱、不出错的工程纪律。</p></div>
+      </div>
+    </section>
+
+    <section class="blk" id="s2">
+      <h2><span class="no">02</span>核心原理：云训练 ↔ 真机推理的闭环</h2>
+      <p><b>通俗类比</b>：这就像"厨师在中央厨房练手艺（云端 GPU），学成后回到家里做饭（本地机械臂）"。训练吃算力（几小时到几天的矩阵乘法），推理吃实时性（60 Hz 内必须吐出动作）。两者天然分离，所以工程上分工：云上练模型、本地跑部署。</p>
+      <p><b>训练侧</b>：LeRobot 镜像把 CUDA、PyTorch、LeRobot 依赖预装好，一条 <code>pip install -e .</code> 即完成源码安装。数据靠 zip 上传，训练产出的 <code>checkpoints/last/pretrained_model</code> 是一个自包含目录（config + 权重 + 处理器），下载回本地即可用。</p>
+      <p><b>推理侧</b>：推理复用了采集命令 <code>lerobot-record</code>，但<b>去掉了 --teleop</b>，改为加 <code>--policy.path=/…/checkpoints/last/pretrained_model</code>。此时每个控制周期的数据流变成：三摄像头图像 + 6 维状态 → 喂给策略 → 得到 100 步动作块 → 取前 n 步下发给关节 → 下一周期再推理。日志里 <code>'policy': {input_features: observation.images.left/side (3,480,640), observation.state (6,), output_features action (6,)}</code> 就是这份"策略契约"。<code>episode_time_s=60</code> 让机器人有一分钟自主发挥。</p>
+      <p><b>为什么 repo_id 加 eval_ 前缀</b>：推理也要开启 recorder 记录表现（方便回看与评估），但这些数据不是训练原料，用 <code>eval_</code> 命名和训练集彻底分开，避免后来者把"机器人的尝试"误当成"人类示范"混进训练。</p>
+      <figure>
+        <img src="./images/fig-p04-cloud-3.png" alt="云服务器 JupyterLab 终端操作截图" loading="lazy">
+        <figcaption>图 2-1｜云实例 JupyterLab 终端：pip install -e . 部署 LeRobot（第 11 章）</figcaption>
+      </figure>
+      <figure>
+        <img src="./images/fig-p04-inference-3.png" alt="推理命令与 policy 配置加载日志截图" loading="lazy">
+        <figcaption>图 2-2｜推理启动日志：policy 输入输出特征与加载来源（第 12 章）</figcaption>
+      </figure>
+      <div class="tip violet"><span class="lab">对照记忆</span>采集 = record + teleop；推理 = record + policy.path。<b>同一个命令，换掉"谁来给动作"。</b></div>
+    </section>
+
+    <section class="blk" id="s3">
+      <h2><span class="no">03</span>环境与材料</h2>
+      <ul class="check">
+        <li><span class="ok">✓</span>云侧：gpufree.cn 账号（个人付费），L40S 实例 + LeRobot 镜像，JupyterLab 访问</li>
+        <li><span class="ok">✓</span>本地：LZ-XL01 双臂平台、<code>lerobot</code> conda 环境、串口/摄像头 udev 就绪</li>
+        <li><span class="ok">✓</span>数据：EXP-02 打包的 <code>put_cube_plate.zip</code>（云端训练时上传）</li>
+        <li><span class="ok">✓</span>模型：训练完成的 <code>checkpoints/last/pretrained_model</code>（云端下载或本地原生产出）</li>
+        <li><span class="ok">✓</span>任务布置：桌上放红方块与盘子，初始摆位与采集时一致</li>
+        <li><span class="ok">✓</span>准备数据：本地 zip 打包核对大小无误后再上传，避免云端反复重传</li>
+        <li><span class="ok">✓</span>关机习惯：实例控制台提前收藏书签；释放确认要复制 ID 前五位</li>
+      </ul>
+      <p>云上全程的操作动线（按顺序执行，一步都别跳）：</p>
+      <table>
+        <tr><th>阶段</th><th>控制台 / 终端动作</th><th>完成标志</th></tr>
+        <tr><td>开机</td><td>租实例 → 选 L40S → 搜"lerobot"镜像 → 创建</td><td>实例状态 RUNNING</td></tr>
+        <tr><td>部署</td><td>JupyterLab 新终端：<code>cd /data/lerobot/</code> + <code>pip install -e .</code></td><td>终端无报错返回提示符</td></tr>
+        <tr><td>上传</td><td>JupyterLab 上传按钮 / scp 传 zip 并解压到缓存目录</td><td>数据集目录可见 parquet</td></tr>
+        <tr><td>训练</td><td>lerobot-train（§5 第二条）</td><td>Checkpoint / End of training</td></tr>
+        <tr><td>回收</td><td>下载 pretrained_model → 关机 → 课程结束释放实例</td><td>ID 前五位确认弹窗通过</td></tr>
+      </table>
+      <div class="tip amber"><span class="lab">费用红线</span>指导文件原话：接受低速可本地训练；<b>云实例不使用时务必关机</b>，否则持续计费。</div>
+    </section>
+
+    <section class="blk" id="s4">
+      <h2><span class="no">04</span>实操步骤</h2>
+      <div class="flow">
+        <div class="step"><div class="n">Step 1</div>打开 gpufree.cn → 控制台 → 租用实例 → 选 L40S → 搜镜像"lerobot" → 立即创建，等待启动。<div class="arr"></div></div>
+        <div class="step"><div class="n">Step 2</div>控制台 → JupyterLab → 新终端，执行 <code>cd /data/lerobot/</code> 与 <code>pip install -e .</code> 完成安装。<div class="arr"></div></div>
+        <div class="step"><div class="n">Step 3</div>上传本地打包的 zip 数据集（JupyterLab 上传按钮或 scp），解压到 <code>~/.cache/huggingface/lerobot/&lt;名&gt;/</code> 对应位置。<div class="arr"></div></div>
+        <div class="step"><div class="n">Step 4</div>云端训练（命令见 §5），或跳过此步使用本地已训好的检查点。<div class="arr"></div></div>
+        <div class="step"><div class="n">Step 5</div>下载 <code>pretrained_model</code> 到本地推理机，摆好红方块与盘子，运行推理命令（§5 第二条）。<div class="arr"></div></div>
+        <div class="step"><div class="n">Step 6</div>校准提示 Mismatch 时按 ENTER；<code>Recording episode 0</code> 出现后机器人开始自主抓取，看满 60 秒或按一次 Ctrl+C 退出。收工后：云实例 → 更多 → 释放实例（复制确认 ID 前五位）。</div></div>
+      </div>
+      <figure>
+        <img src="./images/fig-p02-cloud-1.png" alt="云平台租用实例选卡页面截图" loading="lazy">
+        <figcaption>图 4-1｜租用实例：选择 L40S 显卡（第 11 章）</figcaption>
+      </figure>
+      <figure>
+        <img src="./images/fig-p05-inference-4.png" alt="真机自主执行任务截图" loading="lazy">
+        <figcaption>图 4-2｜推理中的真机：机器人自主执行 Put red cube into plate（第 12 章）</figcaption>
+      </figure>
+      <figure>
+        <img src="./images/fig-p06-inference-5.png" alt="推理退出与 Ctrl+C 日志截图" loading="lazy">
+        <figcaption>图 4-3｜推理退出：Recording episode 0 开始自动抓取，Ctrl+C 仅按一次（第 12 章）</figcaption>
+      </figure>
+      <figure>
+        <img src="./images/fig-p05-cloud-4.png" alt="云端安装完成后上传数据集截图" loading="lazy">
+        <figcaption>图 4-4｜安装完成后在 JupyterLab 上传本地打包的采集数据（第 11 章）</figcaption>
+      </figure>
+      <figure>
+        <img src="./images/fig-p07-cloud-6.png" alt="云平台释放实例确认弹窗截图" loading="lazy">
+        <figcaption>图 4-5｜收工关机：复制实例 ID 前五位确认后释放，防止持续计费（第 11 章）</figcaption>
+      </figure>
+    </section>
+
+    <section class="blk" id="s5">
+      <h2><span class="no">05</span>关键命令</h2>
+      <pre><span class="c"># ── 云实例部署（第 11 章）</span>
+cd /data/lerobot/
+pip install -e .
+
+<span class="c"># ── 云端训练（与第 10 章同款，数据已上传）</span>
+lerobot-train --dataset.repo_id=liming/put_cube_plate --policy.type=act --policy.repo_id=put_cube_on_plate_act --policy.push_to_hub=false --batch_size=8 --steps=1000 --output_dir=./outputs/put_cube_on_plate_act --policy.device=cuda --num_workers=4 --wandb.enable=false --log_freq=100 --save_freq=1000 --eval_freq=1000
+
+<span class="c"># ── 本地真机推理（第 12 章原文命令：record + policy.path，无 teleop）</span>
+rm -rf /home/lz-xl01/.cache/huggingface/lerobot/liming/eval_put_cube_plate
+lerobot-record --robot.type=so101_follower --robot.port=/dev/arm_slave_left --robot.id=left_follower_arm --robot.cameras='{left: {index: 0, fps: 30, width: 640, height: 480, video_backend: av}, side: {index: 2, fps: 30, width: 640, height: 480, video_backend: av}}' --display_data=true --dataset.repo_id=liming/eval_put_cube_plate --dataset.num_episodes=1 --dataset.single_task="Put red cube into plate" --dataset.push_to_hub=false --dataset.episode_time_s=60 --policy.path=/home/lz-xl01/lerobot-0.4.1/outputs/put_cube_on_plate_act/checkpoints/last/pretrained_model</pre>
+      <ul class="check" style="margin-top:10px">
+        <li><span class="ok">✓</span><b>repo_id 必须加 <code>eval_</code> 前缀</b>：推理记录与训练集隔离。</li>
+        <li><span class="ok">✓</span><b>episode_time_s=60</b>：给自主执行留足时间，可按需延长。</li>
+        <li><span class="ok">✓</span><b>key 命令不含 teleop</b>：日志显示 <code>teleop: None</code>，动作完全来自策略。</li>
+        <li><span class="ok">✓</span><b>退出</b>：时间到自动退出，或 Ctrl+C <b>一次</b>；连按会导致机械臂姿态异常（KeyboardInterrupt 落在 busy_wait 里属正常）。</li>
+      </ul>
+      <figure>
+        <img src="./images/fig-p07-inference-6.png" alt="推理结束退出日志截图" loading="lazy">
+        <figcaption>图 5-1｜推理结束的退出日志（尾部 FATAL / 核心已转储提示可忽略）</figcaption>
+      </figure>
+    </section>
+
+    <section class="blk" id="s6">
+      <h2><span class="no">06</span>动画演示：云服务器 ↔ 真机推理链路</h2>
+      <div class="anim-box">
+        <svg viewBox="0 0 780 270" width="100%">
+          <defs>
+            <marker id="c1" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#7c3aed"/></marker>
+            <marker id="c2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#0d9488"/></marker>
+          </defs>
+          <rect x="25" y="35" width="175" height="90" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+          <text x="112" y="68" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#6d28d9">本地 · 采集端</text>
+          <text x="112" y="90" text-anchor="middle" font-size="11.5" fill="#64748b">zip 数据包</text>
+          <text x="112" y="108" text-anchor="middle" font-size="11.5" fill="#64748b">put_cube_plate.zip</text>
+          <rect x="300" y="30" width="190" height="100" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+          <text x="395" y="62" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#1d4ed8">云服务器 · L40S</text>
+          <text x="395" y="84" text-anchor="middle" font-size="11.5" fill="#64748b">pip install -e .  →  lerobot-train</text>
+          <text x="395" y="104" text-anchor="middle" font-size="11.5" fill="#64748b">checkpoints/last/pretrained_model</text>
+          <rect x="25" y="170" width="175" height="82" rx="12" fill="#f8fafc" stroke="#7c3aed" stroke-width="2"/>
+          <text x="112" y="202" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#6d28d9">真机推理端</text>
+          <text x="112" y="224" text-anchor="middle" font-size="11.5" fill="#64748b">摄像头×2 + 状态 → 策略</text>
+          <rect x="300" y="170" width="190" height="82" rx="12" fill="#ecfdf5" stroke="#0d9488" stroke-width="2"/>
+          <text x="395" y="202" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#0f766e">从臂执行动作块</text>
+          <text x="395" y="224" text-anchor="middle" font-size="11.5" fill="#64748b">chunk 100 步 → 取前 n 步下发</text>
+          <rect x="580" y="170" width="180" height="82" rx="12" fill="#fff7ed" stroke="#d97706" stroke-width="2"/>
+          <text x="670" y="202" text-anchor="middle" font-size="14" font-weight="bold" fill="#b45309">eval_ 数据回看</text>
+          <text x="670" y="224" text-anchor="middle" font-size="11.5" fill="#92400e">评估表现（不入训练集）</text>
+          <line x1="202" y1="70" x2="294" y2="70" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#c1)"/>
+          <text x="248" y="60" text-anchor="middle" font-size="11.5" fill="#6d28d9">上传数据</text>
+          <circle r="7" fill="#7c3aed">
+            <animate attributeName="cx" values="206;290" dur="1.4s" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="70;70" dur="1.4s" repeatCount="indefinite"/>
+          </circle>
+          <path d="M360 132 C 300 160, 240 170, 204 196" fill="none" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#c1)"/>
+          <text x="250" y="166" text-anchor="middle" font-size="11.5" fill="#6d28d9">下载检查点</text>
+          <circle r="7" fill="#7c3aed">
+            <animate attributeName="cx" values="354;210" dur="1.6s" begin="0.5s" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="136;192" dur="1.6s" begin="0.5s" repeatCount="indefinite"/>
+          </circle>
+          <line x1="202" y1="211" x2="294" y2="211" stroke="#0d9488" stroke-width="2.5" marker-end="url(#c2)"/>
+          <circle r="7" fill="#0d9488">
+            <animate attributeName="cx" values="206;290" dur="1.1s" begin="1.1s" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="211;211" dur="1.1s" begin="1.1s" repeatCount="indefinite"/>
+          </circle>
+          <line x1="492" y1="211" x2="574" y2="211" stroke="#d97706" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#c2)"/>
+          <text x="660" y="24" text-anchor="middle" font-size="12" fill="#6d28d9">云上练（离线、重算力） → 本地用（在线、重实时 60Hz）</text>
+        </svg>
+        <div class="anim-cap">图 6-1｜云端训练到真机推理的四段链路：上传数据 → 云上训练 → 下载检查点 → 本地闭环执行</div>
+      </div>
+      <p>闭环完成的标志：<b>数据从人来，模型从云来，动作全靠模型自己出</b>。</p>
+      <p>四段链路各有自己的完成信号：上传后能看到 parquet 文件、训练日志出现 End of training、下载后目录含 pretrained_model、真机日志出现 Recording episode——哪个信号缺失就回查哪一段。</p>
+    </section>
+
+    <section class="blk" id="s7">
+      <h2><span class="no">07</span>互动练习：显存与云租费估算器</h2>
+      <div class="ix-panel">
+        <div class="ix-title">按模型规模估算显存与一次训练的云费用</div>
+        <div class="ctl-row">
+          <label>路线
+            <select id="ixM" onchange="ixCalc()" style="padding:5px 8px;border:1px solid #ddd6fe;border-radius:6px">
+              <option value="0.52">ACT（48M 可学习，参考 52M）</option>
+              <option value="0.62">VLA·16 层（100M 可学习 / 450M 总量）</option>
+              <option value="0.85">VLA·全量微调（450M）</option>
+            </select>
+          </label>
+          <label>batch_size <input type="range" id="ixB" min="4" max="64" step="4" value="8" oninput="ixCalc()"> <b id="ixBV">8</b></label>
+          <label>图像分辨率 <select id="ixR" onchange="ixCalc()" style="padding:5px 8px;border:1px solid #ddd6fe;border-radius:6px"><option value="1">640×480</option><option value="0.42">256×256</option></select></label>
+          <label>训练时长(h) <input type="range" id="ixH" min="1" max="48" value="6" oninput="ixCalc()"> <b id="ixHV">6</b></label>
+        </div>
+        <div class="io">
+          <span>峰值显存粗估：<b id="ixMem">—</b></span>
+          <span>L40S(48G) 余量：<b id="ixLeft">—</b></span>
+          <span>费用粗估 @￥8/h：<b id="ixCost">—</b></span>
+          <span id="ixV" class="dim">—</span>
+        </div>
+        <p style="margin-top:8px;font-size:13px;color:#64748b">经验公式：激活≈ batch × 分辨率系数 × 模型档位 + 权重常数，仅供开机前拍板用；实际以 <code>nvtop</code> / 平台监控为准。</p>
+      </div>
+      <script>
+      function ixCalc(){
+        var m=+ixM.value, b=+ixB.value, r=+ixR.value, h=+ixH.value;
+        ixBV.textContent=b; ixHV.textContent=h;
+        var mem=m*4 + b*r*m*1.6 + 1.2;               // 权重 + 激活 + 优化器余量（GB 粗估）
+        mem=Math.round(mem*10)/10;
+        ixMem.textContent=mem+" GB";
+        var left=Math.round((48-mem)*10)/10;
+        ixLeft.textContent=left+" GB";
+        ixCost.textContent="￥"+(h*8);
+        var v=document.getElementById('ixV');
+        if(mem>48){v.className='bad';v.textContent='超过单卡 L40S：降 batch 或分辨率，VLA 全量微调慎选';}
+        else if(mem>40){v.className='warn';v.textContent='接近满载：留出 eval 与碎片余量，建议 batch 降一档';}
+        else if(mem>48*0.7){v.className='ok';v.textContent='可上 48G 单卡，按需开启梯度检查点';}
+        else{v.className='ok';v.textContent='显存宽裕，可考虑缩短租期省费用';}
+      }
+      ixCalc();
+      </script>
+    </section>
+
+    <section class="blk" id="s8">
+      <h2><span class="no">08</span>常见问题</h2>
+      <ul class="check">
+        <li><span class="ok">✓</span><b>推理时显存不足</b>：确认图片分辨率参数与训练一致（(3,480,640)），关掉 --display_data 的高负载预览，减小 batch 类参数。</li>
+        <li><span class="ok">✓</span><b>找不到 policy.path</b>：路径必须精确到 <code>checkpoints/last/pretrained_model</code> 目录本身（不是 checkpoints），内含 config 与权重。</li>
+        <li><span class="ok">✓</span><b>启动报 Mismatch…Press ENTER</b>：直接 ENTER 沿用现有校准文件。</li>
+        <li><span class="ok">✓</span><b>机器人一动不动</b>：检查 policy.path 是否加载成功（看 Loading weights 日志）、任务初始摆位是否与训练一致、episode_time_s 是否太短。</li>
+        <li><span class="ok">✓</span><b>云端 pip 慢 / JupyterLab 传大文件断</b>：换国内源、分卷上传 zip 或改用 scp/rsync。</li>
+        <li><span class="ok">✓</span><b>忘记关机被扣费</b>：下机前固定动作——控制台 → 实例 → 关机；课程结束 → 更多 → 释放实例（复制 ID 前五位确认）。</li>
+        <li><span class="ok">✓</span><b>检查点拷到推理机后加载失败</b>：<code>pretrained_model</code> 必须整目录传输（config.json、权重、processor 缺一不可），打包压缩时保留目录层级。</li>
+      </ul>
+      <table>
+        <tr><th>报错 / 现象</th><th>原因</th><th>处置</th></tr>
+        <tr><td><code>CUDA out of memory</code></td><td>推理分辨率与训练不一致或同卡混跑</td><td>对齐分辨率、nb 单任务占卡</td></tr>
+        <tr><td><code>Loading weights…failed</code></td><td>路径指错 / 下载不完整</td><td>校验目录结构与文件大小</td></tr>
+        <tr><td><code>KeyboardInterrupt in busy_wait</code></td><td>Ctrl+C 打断帧循环</td><td>正常退出，只按一次</td></tr>
+        <tr><td>eval_ 数据集混入训练</td><td>repo_id 忘加前缀</td><td>重建带 eval_ 的 repo_id</td></tr>
+      </table>
+      <div class="tip amber"><span class="lab">安全清单</span>云上：install → upload → train → download → <b>关机/释放</b>；本地：path 指对 → 校准 ENTER → 推理 → 单次退出。</div>
+    </section>
+
+    <section class="blk" id="s9">
+      <h2><span class="no">09</span>拓展阅读</h2>
+      <div class="tip violet"><span class="lab">深入</span>① LeRobot 官方 <code>command/6_inference.sh</code> 把推理命令参数化（模型名、任务名一键切换），量产部署时照抄其组织方式；② 检查点目录里的 <code>config.json</code> 记录了训练全部超参——换机部署时它是"自解释说明书"；③ 进一步可研究 ONNX / TensorRT 导出与 Isaac Lab 仿真回放，把真机验证前置到仿真；④ 多机位部署时思考：推理 60 Hz 下每一步都要过模型吗？还是块内复用（chunk 机制本身就是为此设计）。</div>
+      <div class="tip violet"><span class="lab">延伸</span>⑤ 把实例规格、镜像版本、开机关机时间做成一页值班记录，多人共用云账号时能对账；⑥ eval_ 数据集回放多次成功率，是比"看一次演示"更硬的验收证据；⑦ 检查点体积不大（ACT 52M 约 200MB 上下），走网盘/对象存储分发给多台推理机即可复现同款行为。</div>
+    </section>
+
+    <section class="blk" id="s10">
+      <h2><span class="no">10</span>思考题</h2>
+      <div class="tip violet"><span class="lab">思考 1</span>如果把带 <code>--teleop</code> 的采集命令和带 <code>--policy.path</code> 的推理命令接反（比如推理时忘了删 teleop），系统行为会有什么差别？从"动作来源"的角度解释。</div>
+      <div class="tip violet"><span class="lab">思考 2</span>真机推理时摄像头被手挡了一下，图像变模糊。结合 ACT 的输入特征（480×640 图像 + 6 维状态）想一动：模型输出会如何劣化？用什么便宜手段（数据增强 / 多视角冗余）能降低这种脆弱性？</div>
+    </section>
+
+    <nav class="expnav">
+      <a href="../exp-02-act-training/index.html">← 上一实验：EXP-02 数据整理与 ACT 模型训练</a>
+      <a href="../exp-04-vla-model/index.html">下一实验：EXP-04 VLA 大模型路线与对比 →</a>
+    </nav>
+
+    <footer>
+      <div>IND-02 · 双臂采训推全流程（ACT / VLA）· EXP-03 云服务器使用与真机推理</div>
+      <div>8 学时 · 进阶实验 · 基于 LZ-XL01 指导文档第 11 章《云服务器使用》、第 12 章《模型推理》改编</div>
+    </footer>
+  </main>
+</div>
+
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

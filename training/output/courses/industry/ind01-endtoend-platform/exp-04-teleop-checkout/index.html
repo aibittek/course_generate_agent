@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-04 · 遥操作自检与故障排查 — IND-01 具身智能端到端平台与基础</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{--theme:#0d9488;--theme-deep:#0f766e;--theme-bg:#f0fdfa;--theme-bd:#99f6e4}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:13px}
+.vcard{background:#fff;border:1px solid var(--line,#e2ece9);border-radius:13px;padding:13px}
+.vcard h4{font-size:14px;font-weight:800;margin-bottom:7px}
+.vcard p{font-size:12.5px;color:#5b6b78;line-height:1.6}
+.vcard video{width:100%;border-radius:9px;margin-bottom:8px;background:#000;aspect-ratio:16/9}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🦾 IND-01 · <i>端到端平台与基础</i></div>
+  <div class="crumb"><a href="../../../index.html">总首页</a> / <a href="../../../index.html#ind">行业应用</a> / <a href="../index.html">IND-01</a> / EXP-04</div>
+</div>
+
+<div class="wrap">
+
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 学习目标</a>
+  <a href="#s2">02 原理讲解：遥操作映射</a>
+  <a href="#s3">03 硬件与材料</a>
+  <a href="#s4">04 步骤实践：单臂与双臂</a>
+  <a href="#s5">05 关键命令</a>
+  <a href="#s6">06 动画讲解：遥操作数据流</a>
+  <a href="#s7">07 互动练习：故障诊断选择题</a>
+  <a href="#s8">08 常见问题</a>
+  <a href="#s9">09 拓展挑战</a>
+  <a href="#s10">10 思考题</a>
+  <h4>IND-01 · 四个实验</h4>
+  <a href="../exp-01-platform-setup/index.html">EXP-01 平台搭建</a>
+  <a href="../exp-02-arm-assembly/index.html">EXP-02 硬件组装</a>
+  <a href="../exp-03-arm-calibration/index.html">EXP-03 摄像头校准</a>
+  <a href="../exp-04-teleop-checkout/index.html">EXP-04 遥操作排查</a>
+</aside>
+
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-04 · 第 06/07/14/15 章 · 综合性 · 8 学时</span>
+  <h1>遥操作自检与故障排查</h1>
+  <p class="desc">这是本课的"总验收实验"。前三步（串口、校准、摄像头）全部就位后，你将跑通<b>不带摄像头的单臂遥操作（16.74ms · 60Hz）→ 带摄像头的单臂（31.59ms · 32Hz）→ 双臂遥操作</b>，读懂 NORM 姿态表与正常停止打印；再对照第 14 章学会三类故障的处置，最后用第 15 章脚本手册把所有手动命令沉淀成一键脚本。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐⭐ · 8 学时</span>
+    <span class="tag">lerobot-teleoperate</span><span class="tag">bi_so100 双臂</span>
+    <span class="tag">故障排查</span><span class="tag">bash 脚本手册</span>
+  </div>
+</div>
+
+<!-- 01 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>学习目标</h2>
+  <ul class="check">
+    <li>能说出遥操作的前置三件套：<span class="ok">串口别名（第 03 章）→ 主从臂校准（第 05 章）→ 摄像头配置（第 04 章）</span></li>
+    <li>能独立跑通单臂遥操作并<span class="ok">读懂 time: 16.74ms (60 Hz) 与 31.59ms (32 Hz)</span> 两档打印的含义</li>
+    <li>能完成双臂前的<span class="ok">校准数据复制（mkdir + 4 条 cp）</span>并执行 bi_so100 双臂遥操作命令</li>
+    <li>掌握正确停止方式：<span class="ok">CTRL+C 只能按一次</span>，识别 disconnected 正常停止打印与视频窗手动关闭</li>
+    <li>能对第 14 章三类故障<span class="ok">对症下药</span>：权限 Errno 13、FileExistsError、退出时臂卡住</li>
+    <li>会用第 15 章 <span class="ok">0_config.yaml + bash 脚本</span>把校准、遥操作、采集、训练串成流水线</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>原理讲解：遥操作是怎么"隔空传动"的</h2>
+  <p>打个比方：遥操作就像<b>提线木偶 + 同声传译</b>。你牵动主臂（leader）的关节，主臂编码器把每个关节的角度读出来；LeRobot 进程以 60Hz 的"节拍"（每 16.7ms 一次）把这组角度翻译成指令，经串口发给从臂（follower）的舵机——从臂就像被无形的手牵着的木偶，实时复现你的动作。整条链路没有"先算路径再执行"的中间模块，关节角直接进出，这就是最贴近端到端的一次数据流动。</p>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><b>你的手</b>掰动主臂 → 编码器读出六关节角度</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span><b>lerobot-teleoperate</b> 按 fps=60 采样映射（16.7ms/拍）</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span><b>串口</b>把目标角发给从臂 → 舵机跟随，NORM 表实时刷新</div>
+  </div>
+  <p>再看两个关键数字：<b>不带摄像头时 16.74ms（60Hz）</b>几乎全速跟随；<b>加上两路 640×480 摄像头后变 31.59ms（32Hz）</b>，双臂加摄像头 36.29ms（28Hz）——图像采集与显示挤占了节拍。这就是"感知会吃算力预算"的最直观体现。另外，退出时<b>CTRL+C 只能按一次</b>：第一下让程序走 finally 断开串口、关闭相机，连按会打断清理，臂就可能保持失锁前的力矩状态卡住。</p>
+</section>
+
+<!-- 03 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>硬件与材料</h2>
+  <table>
+    <thead><tr><th>类别</th><th>清单</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>主从臂</td><td>主臂 ×2、从臂 ×2</td><td>别名 /dev/arm_master_left·right、/dev/arm_slave_left·right（第 03 章就绪）</td></tr>
+      <tr><td>摄像头</td><td>USB 三路</td><td>/dev/cam_left（手臂）、/dev/cam_right（右手）、/dev/cam_head（头部）</td></tr>
+      <tr><td>校准数据</td><td>4 份 JSON</td><td>so101 单臂校准须完成；双臂另需 cp 成 so100/bimanual_* 四份</td></tr>
+      <tr><td>桌面条件</td><td>固定、无遮挡</td><td>主从臂正确安装至桌面，周围无遮挡物，接线正确</td></tr>
+      <tr><td>脚本包（本课）</td><td>0_config.yaml + 1~9 号 bash 脚本</td><td>第 15 章命令行脚本操作手册</td></tr>
+    </tbody>
+  </table>
+  <figure>
+    <img src="images/fig-p06-term.png" loading="lazy" alt="第 06 章第 1 页：串口摄像头编号与遥操作前准备截图">
+    <figcaption>图 4-1｜第 06 章第 1 页：开跑前的编号确认——从臂/主臂串口别名、头部与手臂摄像头编号，外加"安装至桌面、无遮挡"两条准备项</figcaption>
+  </figure>
+</section>
+
+<!-- 04 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>步骤实践：单臂 → 双臂跑通遥操作</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><code>conda activate lerobot</code> + <code>sudo chmod 666 /dev/arm*</code> 放行串口</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span>跑<b>不带摄像头单臂遥操作</b>：看到 connected 与 time: 16.74ms (60 Hz) 即成功，动手掰主臂试跟随</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span><code>CTRL+C</code> 单次停止，见到 leader/follower <b>disconnected</b> 打印为正常</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span>加 <code>--robot.cameras=…</code> 两路 + <code>--display_data=true</code> 跑<b>带摄像头版</b>：31.59ms (32 Hz)、NORM 六关节表、弹出夹爪/顶部视频窗（可调顶部摄像头对准作业区）</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">5</span><b>双臂前先复制校准</b>：mkdir 两个 so100 目录 + 4 条 cp 把 so101 单臂校准改名为 bimanual_*（务必执行）</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">6</span>跑 <code>bi_so100_follower/bi_so100_leader</code> 双臂命令：12 关节 NORM 表 16.72ms (60 Hz)；带摄像头版 36.29ms (28 Hz)；视频窗停止后需<b>手动点 X</b></div>
+  </div>
+  <div class="vgrid" style="margin-top:12px">
+    <div class="vcard">
+      <video controls preload="metadata" playsinline poster="./videos/单臂遥操作-poster.jpg" src="./videos/单臂遥操作.mp4"></video>
+      <h4>单臂遥操作.mp4（第 06 章配套）</h4>
+      <p>左臂遥操作全流程演示：命令输入 → connected → 60Hz 跟随 → CTRL+C 正常停止，对应步骤 1~4。</p>
+    </div>
+    <div class="vcard">
+      <video controls preload="metadata" playsinline poster="./videos/双臂遥操作-poster.jpg" src="./videos/双臂遥操作.mp4"></video>
+      <h4>双臂遥操作.mp4（第 07 章配套）</h4>
+      <p>双臂版完整操作：先复制 4 份校准 JSON，再执行 bi_so100 命令，12 关节同步跟随与单次停止。</p>
+    </div>
+  </div>
+  <figure>
+    <img src="images/fig-p06-term-2.png" loading="lazy" alt="第 06 章第 3 页：CTRL+C 正常停止打印截图">
+    <figcaption>图 4-2｜第 06 章第 3 页：按一次 ^C 后 right_leader_arm / right_follower_arm 依次 disconnected——这就是"正常停止"的标准长相</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p06-asm.png" loading="lazy" alt="第 06 章第 6 页：NORM 姿态表与视频窗口说明截图">
+    <figcaption>图 4-3｜第 06 章第 6 页：NORM 姿态表（gripper.pos 等六关节）实时刷新，同时弹出夹爪与顶部摄像头画面；停止后视频窗要手动点 X</figcaption>
+  </figure>
+</section>
+
+<!-- 05 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>关键命令</h2>
+  <pre><span class="c"># ① 单臂遥操作·不带摄像头（第 06 章 3）</span>
+<span class="g">conda</span> activate lerobot
+<span class="g">sudo</span> chmod 666 /dev/arm*
+<span class="g">lerobot-teleoperate</span> \
+  <span class="y">--robot.type=so101_follower</span> \
+  <span class="y">--robot.port=/dev/arm_slave_left</span> \
+  <span class="y">--robot.id=left_follower_arm</span> \
+  <span class="y">--teleop.type=so101_leader</span> \
+  <span class="y">--teleop.port=/dev/arm_master_left</span> \
+  <span class="y">--teleop.id=left_leader_arm</span>
+<span class="c"># 正常打印：connected … time: 16.74ms (60 Hz)，动主臂从臂跟随</span>
+
+<span class="c"># ② 单臂遥操作·带摄像头（第 06 章 4，追加两段）</span>
+<span class="g">lerobot-teleoperate</span> … <span class="y">--robot.cameras="{ left: {type: opencv, index_or_path: \"/dev/cam_left\",</span>
+<span class="y">  width: 640, height: 480, fps: 30, fourcc: \"MJPG\"}, side: {type: opencv,</span>
+<span class="y">  index_or_path: \"/dev/cam_head\", width: 640, height: 480, fps: 30, fourcc: \"MJPG\"}}"</span> \
+  <span class="y">--display_data=true</span>
+<span class="c"># 打印 time: 31.59ms (32 Hz) + 六关节 NORM 表 + 视频窗口</span>
+
+<span class="c"># ③ 双臂前·复制校准 so101 → so100/bimanual（第 07 章 2，务必执行）</span>
+<span class="g">mkdir</span> -p ~/.cache/huggingface/lerobot/calibration/robots/so100_follower/
+<span class="g">mkdir</span> -p ~/.cache/huggingface/lerobot/calibration/teleoperators/so100_leader/
+<span class="g">cp</span> …/robots/so101_follower/left_follower_arm.json  …/robots/so100_follower/bimanual_follower_left.json
+<span class="g">cp</span> …/robots/so101_follower/right_follower_arm.json …/robots/so100_follower/bimanual_follower_right.json
+<span class="g">cp</span> …/teleoperators/so101_leader/left_leader_arm.json  …/teleoperators/so100_leader/bimanual_leader_left.json
+<span class="g">cp</span> …/teleoperators/so101_leader/right_leader_arm.json …/teleoperators/so100_leader/bimanual_leader_right.json
+
+<span class="c"># ④ 双臂遥操作（第 07 章 3，CTRL+C 只按一次）</span>
+<span class="g">lerobot-teleoperate</span> \
+  <span class="y">--robot.type=bi_so100_follower</span> \
+  <span class="y">--robot.left_arm_port=/dev/arm_slave_left</span> <span class="y">--robot.right_arm_port=/dev/arm_slave_right</span> \
+  <span class="y">--robot.id=bimanual_follower</span> \
+  <span class="y">--teleop.type=bi_so100_leader</span> \
+  <span class="y">--teleop.left_arm_port=/dev/arm_master_left</span> <span class="y">--teleop.right_arm_port=/dev/arm_master_right</span> \
+  <span class="y">--teleop.id=bimanual_leader</span> <span class="y">--display_data=true</span>
+<span class="c"># 12 关节 NORM 表，time: 16.72ms (60 Hz)；带摄像头再追加三路 cameras JSON</span>
+
+<span class="c"># ⑤ 停止与脚本化（第 15 章 1）</span>
+<span class="g">bash</span> 1_calibrate_all.sh        <span class="c"># 依次校准 左从→右从→左主→右主</span>
+<span class="g">bash</span> 2.3_teleoperate_left_with_cameras.sh   <span class="c"># 左臂带摄像头遥操作</span>
+<span class="g">bash</span> 3_teleoperate_dual_arm.sh <span class="c"># 内含 mkdir+4cp+双臂命令，一键完成</span></pre>
+  <figure>
+    <img src="images/fig-p07-term.png" loading="lazy" alt="第 07 章第 2 页：双臂校准文件复制命令截图">
+    <figcaption>图 4-4｜第 07 章第 2 页：4 条 cp 把 left/right_follower|leader 校准复制成 bimanual_*——不做这步双臂命令会找不到校准数据</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p15-term.png" loading="lazy" alt="第 15 章第 6 页：左臂带摄像头遥操作脚本截图">
+    <figcaption>图 4-5｜第 15 章第 6 页：2.3_teleoperate_left_with_cameras.sh 脚本实录——先 chmod 放权限再执行带摄像头命令，失败即 exit 1</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p15-term-3.png" loading="lazy" alt="第 15 章第 12 页：双臂遥操作脚本截图">
+    <figcaption>图 4-6｜第 15 章第 12 页：3.1 双臂带摄像头脚本的命令段——mkdir+校准检查+chmod+bi_so100 命令全打包在一脚本里</figcaption>
+  </figure>
+</section>
+
+<!-- 06 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>动画讲解：遥操作数据流（人手→主臂→节拍→从臂）</h2>
+  <p class="lead">下图把一次遥操作循环拆开：手的运动被主臂采样，按 60Hz 节拍翻译，经串口抵达从臂；带摄像头时图像从旁路汇入，帧率因此从 60Hz 掉到 32Hz（双臂再降到 28Hz）：</p>
+  <div class="anim-box">
+    <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="遥操作数据流：人手到主臂到节拍到从臂动画">
+      <rect x="8" y="8" width="704" height="284" rx="12" fill="#111827" stroke="#334155"/>
+      <text x="360" y="36" text-anchor="middle" font-size="13.5" font-weight="700" fill="#5eead4">遥操作单次循环 · 16.7ms 一拍（60 Hz）</text>
+      <!-- 节点 -->
+      <g>
+        <rect x="30" y="90" width="120" height="66" rx="11" fill="#1e293b" stroke="#fbbf24" stroke-width="2"/>
+        <text x="90" y="118" text-anchor="middle" font-size="13" font-weight="700" fill="#fde68a">① 人手</text>
+        <text x="90" y="140" text-anchor="middle" font-size="10.5" fill="#94a3b8">掰动主臂关节</text>
+        <rect x="195" y="90" width="130" height="66" rx="11" fill="#1e293b" stroke="#a78bfa" stroke-width="2"/>
+        <text x="260" y="118" text-anchor="middle" font-size="13" font-weight="700" fill="#c4b5fd">② 主臂编码</text>
+        <text x="260" y="140" text-anchor="middle" font-size="10.5" fill="#94a3b8">六关节角度入串口</text>
+        <rect x="370" y="78" width="150" height="90" rx="11" fill="#1e293b" stroke="#0d9488" stroke-width="2">
+          <animate attributeName="stroke-width" values="2;3.5;2" dur="2.4s" repeatCount="indefinite"/>
+        </rect>
+        <text x="445" y="110" text-anchor="middle" font-size="13" font-weight="700" fill="#5eead4">③ teleoperate 节拍</text>
+        <text x="445" y="132" text-anchor="middle" font-size="10.5" fill="#94a3b8">fps=60 · 16.7ms/拍</text>
+        <text x="445" y="152" text-anchor="middle" font-size="10.5" fill="#64748b">主臂角 → 从臂目标角</text>
+        <rect x="565" y="90" width="125" height="66" rx="11" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+        <text x="627" y="118" text-anchor="middle" font-size="13" font-weight="700" fill="#7dd3fc">④ 从臂跟随</text>
+        <text x="627" y="140" text-anchor="middle" font-size="10.5" fill="#94a3b8">舵机复现动作</text>
+      </g>
+      <!-- 主链路 -->
+      <g stroke="#2dd4bf" stroke-width="2.4" stroke-dasharray="8 6" fill="none">
+        <path d="M150 123 L195 123"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1s" repeatCount="indefinite"/></path>
+        <path d="M325 123 L370 123"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1s" begin=".3s" repeatCount="indefinite"/></path>
+        <path d="M520 123 L565 123"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1s" begin=".6s" repeatCount="indefinite"/></path>
+      </g>
+      <g font-size="10" text-anchor="middle" fill="#64748b">
+        <text x="172" y="112">机械牵动</text>
+        <text x="347" y="112">串口采样</text>
+        <text x="542" y="112">arm_slave</text>
+      </g>
+      <!-- 摄像头旁路 -->
+      <rect x="195" y="212" width="130" height="56" rx="11" fill="#1e293b" stroke="#f472b6" stroke-width="1.8"/>
+      <text x="260" y="236" text-anchor="middle" font-size="12" font-weight="700" fill="#f9a8d4">摄像头旁路</text>
+      <text x="260" y="256" text-anchor="middle" font-size="10" fill="#94a3b8">640×480@30 ×2~3 路</text>
+      <path d="M325 240 L420 168" stroke="#f472b6" stroke-width="2" stroke-dasharray="7 5" fill="none">
+        <animate attributeName="stroke-dashoffset" values="0;-24" dur="1.2s" repeatCount="indefinite"/>
+      </path>
+      <text x="445" y="212" text-anchor="middle" font-size="11" fill="#f9a8d4">图像挤占节拍 → 31.59ms (32 Hz)</text>
+      <text x="445" y="234" text-anchor="middle" font-size="10.5" fill="#64748b">双臂三路则 36.29ms (28 Hz)</text>
+      <!-- 循环光点 -->
+      <circle r="5" fill="#5eead4">
+        <animateMotion path="M90 123 L260 123 L445 123 L627 123" dur="3.2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.12;.88;1" dur="3.2s" repeatCount="indefinite"/>
+      </circle>
+      <text x="360" y="88" text-anchor="middle" font-size="10.5" fill="#64748b">正常打印 time: 16.74ms (60 Hz) → 停止：CTRL+C 一次 → disconnected</text>
+    </svg>
+  </div>
+  <div class="anim-cap">动画 4-1｜一次遥操作循环：人手掰主臂 → 编码器角度入串口 → teleoperate 按 60Hz 节拍翻译 → 从臂舵机复现；粉色旁路是摄像头，图像汇入后节拍变慢（60 → 32 → 28Hz），光点就是一拍数据的旅程</div>
+  <figure>
+    <img src="images/fig-p07-teleop.png" loading="lazy" alt="第 07 章第 7 页：双臂带摄像头视频窗口与停止说明截图">
+    <figcaption>图 4-7｜第 07 章第 7 页：双臂带摄像头运行画面——左右夹爪 + 顶部三窗并排，CTRL+C 正常关闭后视频窗仍需手动点 X</figcaption>
+  </figure>
+</section>
+
+<!-- 07 -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>互动练习：故障诊断选择题</h2>
+  <p class="lead">下面 4 个故障现场全部取自第 06/07/14/15 章真实打印。选出你认为正确的处置，点一下立即判分：</p>
+  <div class="ix-panel">
+    <div class="ix-title">排障门诊 · 对症下药才算过关</div>
+    <div id="quizBox"></div>
+    <div class="ctl-row" style="margin-top:10px">
+      <button class="btn ghost" onclick="resetQuiz()">↺ 重做四题</button>
+      <span class="dim" id="quizScore">// 已答 0 / 4</span>
+    </div>
+  </div>
+</section>
+
+<!-- 08 -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>常见问题</h2>
+  <ul class="check">
+    <li><span class="ok">PermissionError: [Errno 13] … '/dev/ttyACM0'</span>（第 14 章 1）：串口没放权限 → <code>sudo chmod 666 /dev/ttyACM*</code>；日常用别名前先 <code>sudo chmod 666 /dev/arm*</code></li>
+    <li><span class="ok">FileExistsError: …test/put_cube_on_plate</span>（第 14 章 2）：数据集目录已存在——要续录就改 <code>--dataset.repo_id</code> 名称；数据不要了就 <code>rm -rf ~/.cache/huggingface/lerobot/test/put_cube_on_plate</code></li>
+    <li><span class="ok">退出时从臂卡住掰不动</span>（第 14 章 3）：多因 CTRL+C 连按打断清理——<b>拔掉该设备电源再插回</b>即可恢复；以后只按一次</li>
+    <li><span class="ok">带摄像头弹 winit/DISPLAY 报错打印</span>：第 06/07 章原文日志中该行之后仍继续出现 connected 与 time 打印——以紧跟其后的 connected、60Hz/32Hz 节拍打印为运行判据</li>
+    <li><span class="ok">遥操作没反应、一直没节拍打印</span>：第 07 章提示"如果未开始，则多点击几下回车继续"；同时核对串口别名与校准 JSON 是否已按 4 条 cp 复制成 bimanual_*</li>
+    <li><span class="ok">双臂找不到校准</span>：第 07 章强调 cp "务必执行"——so101 单臂的 JSON 文件名与 bimanual 所需文件名不同，不复制就对不上号</li>
+  </ul>
+  <figure>
+    <img src="images/fig-p14-port.png" loading="lazy" alt="第 14 章第 1 页：串口权限报错截图">
+    <figcaption>图 4-8｜第 14 章第 1 页：PermissionError [Errno 13] 全 traceback——根因在 openPort 阶段被系统拒绝，解法就一行 chmod 666</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p14-term.png" loading="lazy" alt="第 14 章第 2 页：报错调用栈续页截图">
+    <figcaption>图 4-9｜第 14 章第 2 页：调用栈延伸到 lerobot_calibrate.py 的 connect(calibrate=False)——权限问题会在任何 connect 阶段炸出</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p14-pg03.png" loading="lazy" alt="第 14 章第 3 页：录制数据集参数日志截图">
+    <figcaption>图 4-10｜第 14 章第 3 页：lerobot-record 的 dataset 参数日志——repo_id: 'test/put_cube_on_plate' 与已有目录冲突时即触发 FileExistsError</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p07-term-2.png" loading="lazy" alt="第 07 章第 4 页：单次 CTRL+C 正常停止打印截图">
+    <figcaption>图 4-11｜第 07 章第 4 页：按一次 ^C 后四路（左右 leader/left right follower）依次 disconnected——"只能按一次"的标准验证画面</figcaption>
+  </figure>
+  <div class="tip amber"><span class="lab">💡 排障心法</span>先问"上一次做到哪一步"：连接类报错查第 03/05 章（别名、chmod、校准），数据类报错查 repo_id 目录（改名或 rm -rf），机械状态类报错先断电复位——永远先看 traceback 最后一行，再回来对表。</div>
+</section>
+
+<!-- 09 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>拓展挑战</h2>
+  <div class="tip violet"><span class="lab">🚀 挑战一：读懂 0_config.yaml 流水线</span>按第 15 章打开 <code>0_config.yaml</code>：把 task_name、student_name、episode_time=6、reset_time=2、episode_num=2、train_steps=1000、batch_size=8 逐项用自己的话注释；再沿 1_calibrate_all → 2.x_teleoperate → 4_record → 5_train → 6_inference 的调用链，画出"校准→遥操作演练→采集→训练→推理"数据流向草图。</div>
+  <div class="tip violet"><span class="lab">🚀 挑战二：中英脚本对照</span>把本页第 05 节你手敲过的单臂命令，仿照 2.1_teleoperate_left.sh 的 if [ $? -eq 0 ] 结构补全右臂版脚本（端口换 /dev/arm_*_right、id 换 right_*），要求带权限设置、成功/失败两种收尾 echo。</div>
+  <figure>
+    <img src="images/fig-p15-term-2.png" loading="lazy" alt="第 15 章第 8 页：右臂带摄像头遥操作脚本截图">
+    <figcaption>图 4-12｜第 15 章第 8 页：2.4 右臂摄像头脚本——对照左臂版找不同（端口/ID/cam_left→cam_right），正是挑战二的标准答案样式</figcaption>
+  </figure>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>思考题</h2>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>三组实测节拍：单臂无摄像头 16.74ms (60Hz)、单臂双摄 31.59ms (32Hz)、双臂三摄 36.29ms (28Hz)。为什么加摄像头后 Hz 几乎腰斩、而双臂只比单臂再慢一点？图像与关节指令谁更吃时间？这对"端到端策略实时性"意味着什么？</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>第 07 章要求先把 so101 的 4 份校准 JSON cp 成 so100/bimanual_*。若跳过这步直接跑 bi_so100 命令，推演程序会在哪一环、以什么形式失败？再回答：为什么厂商用"改文件名复用"而不是让双臂类型自动去找单臂校准？（提示：从 id 命名空间与校准目录结构想）</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-03-arm-calibration/index.html"><span class="lb">← 上一个实验</span>EXP-03 摄像头配置与主从臂校准</a>
+  <a class="next" href="../index.html"><span class="lb">课程完结 →</span>返回课程目录 · IND-01</a>
+</nav>
+
+<footer>
+  <span>IND-01 · 具身智能端到端平台与基础 · EXP-04 遥操作自检与故障排查</span>
+  <span>8 学时 · 综合性 · 基于 LZ-XL01 指导文档第 06 章《单臂遥操作》、第 07 章《双臂遥操作》、第 14 章《故障排查》、第 15 章《命令行脚本操作手册》改编</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// 故障诊断选择题（现场与选项均取自第 06/07/14/15 章）
+var QS=[
+ {q:'现场一：执行 lerobot-calibrate 报 PermissionError: [Errno 13] Permission denied: \'/dev/ttyACM0\'。怎么办？',
+  o:[{t:'sudo chmod 666 /dev/ttyACM*（日常用 /dev/arm*）',ok:1,w:'✔ 正确！第 14 章 1 的唯一解法就是放开串口权限（日常先 chmod 666 /dev/arm*）'},
+     {t:'删掉 ~/.cache/huggingface 下的 calibration 目录再来一遍',ok:0,w:'✘ 删校准目录治不了权限——报错发生在 openPort 打开设备这一步'},
+     {t:'拔掉从臂电源再插回去',ok:0,w:'✘ 断电复位是给"退出时臂卡住"用的（第 14 章 3），与权限报错无关'}]},
+ {q:'现场二：lerobot-record 报 FileExistsError: …/.cache/huggingface/lerobot/test/put_cube_on_plate。怎么办？',
+  o:[{t:'数据不要了：rm -rf 该目录；要续录：改 --dataset.repo_id 换个名',ok:1,w:'✔ 正确！第 14 章 2 的两条路——清旧目录或换新名字'},
+     {t:'sudo chmod 666 /dev/ttyACM* 后重试',ok:0,w:'✘ 这是权限解法，但本例是数据集目录已存在'},
+     {t:'重新执行 4 条 cp 复制校准文件',ok:0,w:'✘ 校准文件与此无关，报错在 mkdir exist_ok 阶段'}]},
+ {q:'现场三：遥操作退出时从臂卡住掰不动，CTRL+C 之后发生的。怎么办？',
+  o:[{t:'拔掉不能动的设备电源再插回去；以后 CTRL+C 只按一次',ok:1,w:'✔ 正确！第 14 章 3：断电复位 + 单次停止，多次按会出现异常'},
+     {t:'什么都不做，干等 1 分钟让程序自己退完',ok:0,w:'✘ 程序若已卡住等待无济于事，文档给的是断电复位'},
+     {t:'rm -rf 数据集目录后重启脚本',ok:0,w:'✘ 那是录数据目录冲突的处置'}]},
+ {q:'现场四：双臂带摄像头运行正常但想停止。规范动作是？',
+  o:[{t:'按一次 CTRL+C 等待自动退出，随后手动点视频窗 X 关闭',ok:1,w:'✔ 正确！第 06/07 章：单次 ^C，断连打印走完，视频窗手动 X'},
+     {t:'连按 CTRL+C 直到窗口全部消失',ok:0,w:'✘ 第 07 章黑体警告"只能按一次"，多次可能出现异常'},
+     {t:'直接关机或拔主机电源',ok:0,w:'✘ 跳过 finally 清理正是臂卡住的诱因'}]}
+];
+var ans=[];
+function quizInit(){
+  ans=QS.map(function(){return -1;});
+  var h='';
+  for(var i=0;i<QS.length;i++){
+    h+='<div style="margin-top:'+(i?18:4)+'px;padding-top:12px;border-top:1px dashed #334155;font-size:13.5px;line-height:1.75"><b>Q'+(i+1)+'</b> '+QS[i].q+'</div><div class="ctl-row" style="margin-top:6px">';
+    for(var j=0;j<QS[i].o.length;j++) h+='<button class="btn ghost" id="q'+i+'o'+j+'" onclick="answer('+i+','+j+')">'+QS[i].o[j].t+'</button>';
+    h+='</div><div class="io" id="qOut'+i+'"><span class="dim">// 未作答</span></div>';
+  }
+  document.getElementById('quizBox').innerHTML=h;
+}
+function answer(i,j){
+  if(ans[i]!==-1) return;
+  ans[i]=j;
+  var right=QS[i].o[j].ok===1;
+  document.getElementById('qOut'+i).innerHTML=right?('<span class="ok">'+QS[i].o[j].w+'</span>'):('<span class="bad">'+QS[i].o[j].w+'</span>');
+  var b=document.getElementById('q'+i+'o'+j);
+  if(b){b.className=right?'btn':'btn ghost';b.style.borderColor=right?'var(--theme)':'#f87171';b.style.color=right?'':'#f87171';}
+  var done=0;for(var k=0;k<ans.length;k++) if(ans[k]!==-1) done++;
+  var rightN=0;for(var k=0;k<ans.length;k++) if(ans[k]!==-1&&QS[k].o[ans[k]].ok===1) rightN++;
+  document.getElementById('quizScore').textContent='// 已答 '+done+' / 4 · 正确 '+rightN+' 题';
+}
+function resetQuiz(){quizInit();document.getElementById('quizScore').textContent='// 已答 0 / 4';}
+quizInit();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

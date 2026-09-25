@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-02 · 机械臂硬件组装与串口识别 — IND-01 具身智能端到端平台与基础</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{--theme:#0d9488;--theme-deep:#0f766e;--theme-bg:#f0fdfa;--theme-bd:#99f6e4}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:15px;margin-top:14px}
+.vitem{background:#fff;border:1px solid #e2ece9;border-radius:14px;padding:13px}
+.vitem video{width:100%;border-radius:9px;background:#000;aspect-ratio:16/9}
+.vitem h4{font-size:14.5px;font-weight:800;margin:9px 0 5px;color:var(--theme-deep)}
+.vitem p{font-size:12.5px;color:#5b6b78;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🦾 IND-01 · <i>端到端平台与基础</i></div>
+  <div class="crumb"><a href="../../../index.html">总首页</a> / <a href="../../../index.html#ind">行业应用</a> / <a href="../index.html">IND-01</a> / EXP-02</div>
+</div>
+
+<div class="wrap">
+
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 学习目标</a>
+  <a href="#s2">02 原理讲解：串口与供电</a>
+  <a href="#s3">03 硬件与材料</a>
+  <a href="#s4">04 步骤实践：组装 + 9 段视频</a>
+  <a href="#s5">05 关键命令：find-port</a>
+  <a href="#s6">06 动画讲解：关节爆炸图</a>
+  <a href="#s7">07 互动练习：装配顺序</a>
+  <a href="#s8">08 常见问题</a>
+  <a href="#s9">09 拓展挑战</a>
+  <a href="#s10">10 思考题</a>
+  <h4>IND-01 · 四个实验</h4>
+  <a href="../exp-01-platform-setup/index.html">EXP-01 平台搭建</a>
+  <a href="../exp-02-arm-assembly/index.html">EXP-02 硬件组装</a>
+  <a href="../exp-03-arm-calibration/index.html">EXP-03 摄像头校准</a>
+  <a href="../exp-04-teleop-checkout/index.html">EXP-04 遥操作排查</a>
+</aside>
+
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-02 · 第 02/03 章 · 操作性 · 8 学时</span>
+  <h1>机械臂硬件组装与串口识别</h1>
+  <p class="desc">本课是全课的<b>视频重点课</b>：9 段指导视频覆盖主臂安装、从臂安装、设置电机编号、Gripper 与 Joint1~Joint5 逐关节上臂全过程。你将把主臂卡钳夹紧桌面、从臂卡上小推车，接对 5V/12V 两路电源与串口线，再用 <code>lerobot-find-port</code> 找到每条臂的端口并落成永久别名——这是"从零件到能被软件认出来的机械臂"最关键的一步。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐⭐ · 8 学时</span>
+    <span class="tag">9 段装配视频</span><span class="tag">5V 2A / 12V 8A</span>
+    <span class="tag">lerobot-find-port</span><span class="tag">四臂别名</span>
+  </div>
+</div>
+
+<!-- 01 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>学习目标</h2>
+  <ul class="check">
+    <li>能区分主臂与从臂的安装方式与供电规格：<span class="ok">主臂 5V 2A 固定桌面、从臂 12V 8A 卡小推车</span></li>
+    <li>能按 9 段视频独立完成 <span class="ok">设置电机编号 → Joint1~5 / Gripper 逐关节装配</span></li>
+    <li>能说出六关节的英文名与中文含义：<span class="ok">shoulder_pan / shoulder_lift / elbow_flex / wrist_flex / wrist_roll / gripper</span></li>
+    <li>能执行"<span class="ok">先接电源、后插 USB</span>"的正确插拔顺序与 <code>lerobot-find-port</code> 找口流程</li>
+    <li>能用 <code>udevadm info</code> 核对 <span class="ok">ID_SERIAL_SHORT 并确认四条别名</span>已生效</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>原理讲解：串口是"对讲机"，供电是"两路电"</h2>
+  <p>把机械臂想成住在楼里的住户，串口（USB 串口，/dev/ttyACM*）就是<b>住户与物业之间的对讲线</b>：主机发角度指令、臂回传位置反馈，全走这一根线。两个要点：</p>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><b>供电分两路</b>：主臂是示范端，吃电少（<b>5V 2A</b>）；从臂要真正举东西，吃电大（<b>12V 8A</b>）——插错电源轻则不工作，重则烧板</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span><b>先电后 USB</b>：先给臂通电、再插 USB 到电脑，顺序颠倒可能导致枚举失败（第 03 章明确警告"顺序不要颠倒"）</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span><b>端口会变、序列号不变</b>：重启后 ttyACM0/2/3 顺序可能重排，但每块板的序列号（如 5B79018622）是出厂烧死的——所以找口后要写 udev 别名</div>
+  </div>
+  <p>再看"六关节"：SO100 系列每条臂有 6 个受控自由度——底座水平旋转（shoulder_pan）、肩俯仰（shoulder_lift）、肘俯仰（elbow_flex）、腕俯仰（wrist_flex）、腕滚转（wrist_roll）、夹爪开合（gripper）。<b>设电机编号就是告诉每个关节里的电机"你是几号"</b>，编号错一个，未来遥操作时手臂就会"往东施力往西动"。</p>
+</section>
+
+<!-- 03 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>硬件与材料</h2>
+  <table>
+    <thead><tr><th>部件</th><th>数量/规格</th><th>安装要点</th></tr></thead>
+    <tbody>
+      <tr><td>主臂（leader）</td><td>×2 · 电源 5V 2A</td><td>卡钳旋转夹紧固定桌面；接线<b>左电源、右串口</b></td></tr>
+      <tr><td>从臂（follower）连底座</td><td>×2 · 电源 12V 8A</td><td>连同底座一起卡到小推车上；同样<b>左电源、右串口</b></td></tr>
+      <tr><td>机械臂摄像头</td><td>装于臂上</td><td>注意<b>防呆口</b>方向，插反插不进</td></tr>
+      <tr><td>从臂摄像头</td><td>装于从臂顶部</td><td>按防呆口卡入</td></tr>
+      <tr><td>摄像头线</td><td>×3 接主机</td><td>插<b>电脑背面</b>，且必须按指导顺序插入</td></tr>
+      <tr><td>串口线</td><td>经拓展坞</td><td>接机箱前面的拓展坞，<b>插口和顺序无要求</b></td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:12px">口诀：摄像头线要"按顺序插背面"，串口线可"随便插拓展坞"——两者约束完全不同，别混。</p>
+  <figure>
+    <img src="images/fig-p02-wire.png" loading="lazy" alt="第 02 章第 1 页：主臂组装接线图截图">
+    <figcaption>图 2-1｜第 02 章第 1 页：主臂组装接线图——左边电源线（5V 2A）、右边串口线，卡钳旋转夹紧固定桌面</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p02-port.png" loading="lazy" alt="第 02 章第 3 页：从臂组装接线图截图">
+    <figcaption>图 2-2｜第 02 章第 3 页：从臂组装接线图——从臂连底座卡上小推车，电源 12V 8A，同样左电源右串口</figcaption>
+  </figure>
+</section>
+
+<!-- 04 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>步骤实践：跟着 9 段视频完成装配</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>主臂上桌：卡钳旋转夹紧，按"左电源右串口"接线（看主臂安装.mp4）</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span>从臂上车：连底座卡到小推车，接 12V 8A 电源（看从臂安装.mp4）</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span>设置电机编号（设置电机编号.mp4），再按 Joint1→5、Gripper 顺序逐个上臂</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span>摄像头装臂（防呆口）→ 三路摄像头按顺序插电脑背面 → 串口线接拓展坞</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">5</span>先接臂电源、后插 USB，跑第 05 节 find-port 找口并核对别名</div>
+  </div>
+  <div class="vgrid">
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/主臂安装-poster.jpg" src="./videos/主臂安装.mp4"></video>
+      <h4>① 主臂安装</h4>
+      <p>第 02 章「主臂组装」演示：卡钳旋转夹紧固定桌面，左电源右串口接线（主臂电源 5V 2A）。</p>
+    </div>
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/从臂安装-poster.jpg" src="./videos/从臂安装.mp4"></video>
+      <h4>② 从臂安装</h4>
+      <p>第 02 章「从臂组装」演示：从臂连同底座卡到小推车上，接 12V 8A 电源与串口线。</p>
+    </div>
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/设置电机编号-poster.jpg" src="./videos/设置电机编号.mp4"></video>
+      <h4>③ 设置电机编号</h4>
+      <p>给每个关节电机写入编号，编号是后续校准与遥操作映射的身份依据，不可跳过。</p>
+    </div>
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/Gripper_v2-poster.jpg" src="./videos/Gripper_v2.mp4"></video>
+      <h4>④ Gripper 夹爪装配</h4>
+      <p>第 6 关节 gripper：夹爪舵机与弹簧组件的安装、对位与试合拢。</p>
+    </div>
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/Joint1_v2-poster.jpg" src="./videos/Joint1_v2.mp4"></video>
+      <h4>⑤ Joint1 · shoulder_pan</h4>
+      <p>底座水平旋转关节：电机落座、同步带/齿轮对位，装好后底座应能平滑左右转。</p>
+    </div>
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/Joint2_v2-poster.jpg" src="./videos/Joint2_v2.mp4"></video>
+      <h4>⑥ Joint2 · shoulder_lift</h4>
+      <p>肩俯仰关节：大臂起落的主受力关节，注意螺丝力矩与限位对齐。</p>
+    </div>
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/Joint3_v2-poster.jpg" src="./videos/Joint3_v2.mp4"></video>
+      <h4>⑦ Joint3 · elbow_flex</h4>
+      <p>肘俯仰关节：小臂折叠的枢纽，装配后手动掰动应无卡滞。</p>
+    </div>
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/Joint4_v2-poster.jpg" src="./videos/Joint4_v2.mp4"></video>
+      <h4>⑧ Joint4 · wrist_flex</h4>
+      <p>腕俯仰关节：控制手腕上下摆，零件细小，注意防呆与走线不夹线。</p>
+    </div>
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/Joint5_v2-poster.jpg" src="./videos/Joint5_v2.mp4"></video>
+      <h4>⑨ Joint5 · wrist_roll</h4>
+      <p>腕滚转关节：最后一个旋转自由度，装完接夹爪即构成完整六关节手臂。</p>
+    </div>
+  </div>
+  <figure>
+    <img src="images/fig-p02-teleop.png" loading="lazy" alt="第 02 章第 2 页：主臂安装视频参考截图">
+    <figcaption>图 2-3｜第 02 章第 2 页：文档标注「具体流程可参考主臂安装.mp4」——对应上方视频①</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p02-teleop-2.png" loading="lazy" alt="第 02 章第 4 页：从臂安装视频参考截图">
+    <figcaption>图 2-4｜第 02 章第 4 页：文档标注「具体流程可参考视频从臂安装.mp4」——对应上方视频②</figcaption>
+  </figure>
+  <div class="tip amber"><span class="lab">⚠ 装配纪律</span>每装完一个关节，先<b>手动全程掰一遍</b>确认无卡滞再装下一个；发现卡滞立即拆检，别等通电了才发现——那时候你已经不知道是哪个关节装偏了。</div>
+</section>
+
+<!-- 05 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>关键命令：搜索端口与核对别名</h2>
+  <pre><span class="c"># ① 顺序：先将主从臂接通电源，再把 USB 插到电脑（顺序不要颠倒！）</span>
+<span class="g">conda</span> activate lerobot
+
+<span class="c"># ② 搜索端口（第 03 章）——列出当前所有端口后提示拔线</span>
+<span class="g">lerobot-find-port</span>
+<span class="y">Finding all available ports for the MotorsBus.</span>
+<span class="y">Ports before disconnecting: ['/dev/ttyACM0', '/dev/ttyACM2', '/dev/ttyACM3', '/dev/ttyACM1', …]</span>
+<span class="y">Remove the USB cable from your MotorsBus and press Enter when done.</span>
+
+<span class="c"># ③ 拔掉要找的那只臂的 USB → 回车，输出即为它的端口</span>
+<span class="y">The port of this MotorsBus is '/dev/ttyACM0'</span>
+<span class="y">Reconnect the USB cable.</span>   <span class="c"># 插回继续找下一条（每次重启端口号可能会变化）</span>
+
+<span class="c"># ④ 查询串口信息，核对序列号与别名（示例为右主臂）</span>
+<span class="g">udevadm</span> info --query=all --name=/dev/ttyACM0
+<span class="y">S: arm_master_right</span>
+<span class="y">E: ID_SERIAL_SHORT=5B79018622</span>
+<span class="y">E: DEVLINKS=… /dev/arm_master_right …</span>
+
+<span class="c"># ⑤ 写入/检查四条别名规则（第 03 章 5）</span>
+<span class="g">sudo</span> nano /etc/udev/rules.d/99-lerobot-arms.rules
+<span class="c">#   5B61034506→arm_master_left   5B79018622→arm_master_right</span>
+<span class="c">#   5B79019324→arm_slave_left     5B79018452→arm_slave_right</span>
+
+<span class="c"># ⑥ 之后所有命令直接用稳定别名</span>
+<span class="c">#   /dev/arm_slave_left · /dev/arm_slave_right · /dev/arm_master_left · /dev/arm_master_right</span></pre>
+  <figure>
+    <img src="images/fig-p03-port.png" loading="lazy" alt="第 03 章第 1 页：lerobot-find-port 输出清单截图">
+    <figcaption>图 2-5｜第 03 章第 1 页：先接电源后插 USB，执行 lerobot-find-port 后列出全部可用端口的真实输出</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p03-port-2.png" loading="lazy" alt="第 03 章第 2 页：拔线定位端口与 udevadm 查询截图">
+    <figcaption>图 2-6｜第 03 章第 2 页：拔掉一只臂后回车，输出 The port …is '/dev/ttyACM0'，随后用 udevadm info 查串口信息</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p03-term.png" loading="lazy" alt="第 03 章第 3 页：udevadm 查询输出的 ID_PATH 与候选字段截图">
+    <figcaption>图 2-7｜第 03 章第 3 页：udevadm 输出续——ID_USB_DRIVER、ID_PATH 等字段，就是相机/串口 udev 规则的匹配依据</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p03-port-3.png" loading="lazy" alt="第 03 章第 4 页：四条串口别名汇总与串口接线图截图">
+    <figcaption>图 2-8｜第 03 章第 4 页：四条串口别名汇总（arm_slave/master_left/right）与串口接线图——本实验的最终验收物</figcaption>
+  </figure>
+</section>
+
+<!-- 06 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>动画讲解：六关节结构爆炸图</h2>
+  <p class="lead">下图把一条 SO100 手臂"拆开摊平"：从底座到夹爪六个环节依次分离又合拢，对应 Joint1~5 + Gripper 的装配顺序（爆炸动画与装配动画的顺序正好互为正反）：</p>
+  <div class="anim-box">
+    <svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="机械臂六关节结构爆炸动画">
+      <rect x="8" y="8" width="704" height="324" rx="12" fill="#111827" stroke="#334155"/>
+      <text x="360" y="34" text-anchor="middle" font-size="13.5" font-weight="700" fill="#5eead4">SO100 六关节 · 爆炸分解（装配合拢 ⇄ 分解示意循环）</text>
+      <g font-family="sans-serif" font-size="11" text-anchor="middle">
+        <!-- 合拢态组：逐段分开再合上 -->
+        <g>
+          <animateTransform attributeName="transform" type="translate" values="0,0;0,0;30,0;60,0;90,0;120,0;60,0;0,0" keyTimes="0;.12;.27;.42;.57;.72;.86;1" dur="9s" repeatCount="indefinite"/>
+          <!-- 基座 J1 -->
+          <rect x="40" y="150" width="90" height="60" rx="10" fill="#1e293b" stroke="#0d9488" stroke-width="2">
+            <animate attributeName="stroke-width" values="2;3.5;2" dur="4.5s" repeatCount="indefinite"/>
+          </rect>
+          <text x="85" y="175" fill="#5eead4" font-weight="700">J1 底座旋转</text>
+          <text x="85" y="193" fill="#64748b" font-size="10">shoulder_pan</text>
+
+          <rect x="150" y="135" width="84" height="90" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2">
+            <animate attributeName="stroke-width" values="2;3.5;2" dur="4.5s" begin=".75s" repeatCount="indefinite"/>
+          </rect>
+          <text x="192" y="176" fill="#7dd3fc" font-weight="700">J2 肩俯仰</text>
+          <text x="192" y="194" fill="#64748b" font-size="10">shoulder_lift</text>
+
+          <rect x="246" y="120" width="84" height="120" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="2">
+            <animate attributeName="stroke-width" values="2;3.5;2" dur="4.5s" begin="1.5s" repeatCount="indefinite"/>
+          </rect>
+          <text x="288" y="176" fill="#c4b5fd" font-weight="700">J3 肘俯仰</text>
+          <text x="288" y="194" fill="#64748b" font-size="10">elbow_flex</text>
+
+          <rect x="344" y="140" width="84" height="76" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="2">
+            <animate attributeName="stroke-width" values="2;3.5;2" dur="4.5s" begin="2.25s" repeatCount="indefinite"/>
+          </rect>
+          <text x="386" y="172" fill="#fde68a" font-weight="700">J4 腕俯仰</text>
+          <text x="386" y="190" fill="#64748b" font-size="10">wrist_flex</text>
+
+          <rect x="442" y="150" width="84" height="60" rx="10" fill="#1e293b" stroke="#f472b6" stroke-width="2">
+            <animate attributeName="stroke-width" values="2;3.5;2" dur="4.5s" begin="3s" repeatCount="indefinite"/>
+          </rect>
+          <text x="484" y="175" fill="#f9a8d4" font-weight="700">J5 腕滚转</text>
+          <text x="484" y="193" fill="#64748b" font-size="10">wrist_roll</text>
+
+          <rect x="540" y="158" width="84" height="44" rx="10" fill="#1e293b" stroke="#34d399" stroke-width="2">
+            <animate attributeName="stroke-width" values="2;3.5;2" dur="4.5s" begin="3.75s" repeatCount="indefinite"/>
+          </rect>
+          <text x="582" y="176" fill="#6ee7b7" font-weight="700">夹爪</text>
+          <text x="582" y="193" fill="#64748b" font-size="10">gripper</text>
+
+          <!-- 机械连接示意 -->
+          <g stroke="#475569" stroke-width="2" stroke-dasharray="6 5">
+            <line x1="130" y1="180" x2="150" y2="180"><animate attributeName="stroke-dashoffset" values="0;-22" dur="1.1s" repeatCount="indefinite"/></line>
+            <line x1="234" y1="180" x2="246" y2="180"><animate attributeName="stroke-dashoffset" values="0;-22" dur="1.1s" begin=".3s" repeatCount="indefinite"/></line>
+            <line x1="330" y1="180" x2="344" y2="180"><animate attributeName="stroke-dashoffset" values="0;-22" dur="1.1s" begin=".6s" repeatCount="indefinite"/></line>
+            <line x1="428" y1="180" x2="442" y2="180"><animate attributeName="stroke-dashoffset" values="0;-22" dur="1.1s" begin=".9s" repeatCount="indefinite"/></line>
+            <line x1="526" y1="180" x2="540" y2="180"><animate attributeName="stroke-dashoffset" values="0;-22" dur="1.1s" begin="1.2s" repeatCount="indefinite"/></line>
+          </g>
+        </g>
+        <text x="360" y="262" fill="#94a3b8" font-size="11.5">装配顺序：编号 → J1 → J2 → J3 → J4 → J5 → Gripper（爆炸方向与之一致）</text>
+        <g font-size="10.5" fill="#64748b">
+          <text x="360" y="288">每段点亮脉冲 = 该关节的装配节拍；合拢态为安装完成形态</text>
+          <text x="360" y="308">六关节轴承与电机编号在 EXP-03 校准时逐一录 MIN/POS/MAX</text>
+        </g>
+      </g>
+    </svg>
+  </div>
+  <div class="anim-cap">动画 2-1｜六个关节模块循环"分解—合拢"，颜色脉冲标出装配节拍：J1 底座 → J2 肩 → J3 肘 → J4 腕俯仰 → J5 腕滚转 → 夹爪，正反两个方向分别对应装配与爆炸视图</div>
+</section>
+
+<!-- 07 -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>互动练习：装配顺序点击排序</h2>
+  <p class="lead">下面 8 张卡片被打乱了。按正确流程<b>依次点击</b>：点对亮绿、点错亮红并提示，全部排完自动通关：</p>
+  <div class="ix-panel">
+    <div class="ix-title">装配流水线 · 按正确顺序点击步骤卡</div>
+    <div class="ctl-row" id="asmRow">
+      <button class="btn ghost" data-step="4" onclick="asmPick(4,this)">接 12V 电源（从臂上车）</button>
+      <button class="btn ghost" data-step="2" onclick="asmPick(2,this)">设置电机编号</button>
+      <button class="btn ghost" data-step="7" onclick="asmPick(7,this)">摄像头按顺序插电脑背面</button>
+      <button class="btn ghost" data-step="1" onclick="asmPick(1,this)">主臂卡钳夹紧固定桌面</button>
+      <button class="btn ghost" data-step="5" onclick="asmPick(5,this)">Joint1~5 + Gripper 逐关节上臂</button>
+      <button class="btn ghost" data-step="3" onclick="asmPick(3,this)">摄像头装臂（注意防呆口）</button>
+      <button class="btn ghost" data-step="8" onclick="asmPick(8,this)">find-port 找口核对别名</button>
+      <button class="btn ghost" data-step="6" onclick="asmPick(6,this)">先接臂电源、后插 USB</button>
+    </div>
+    <div class="io" id="asmIo"><span class="dim">// 待排步骤 8 / 已排 0 —— 从第 1 步开始点</span>
+<span class="dim">提示：① 主臂上桌 → ② 编号 → ③ 摄像头装臂 → ④ 从臂上车 → ⑤ 上关节 → ⑥ 插线 → ⑦ 背面顺序插相机 → ⑧ 找口</span></div>
+    <div class="ctl-row" style="margin-top:8px">
+      <button class="btn ghost" onclick="asmReset()">↺ 重排</button>
+    </div>
+  </div>
+  <div class="tip violet" style="margin-top:14px"><span class="lab">🙋 为什么第 6 步"先电源后 USB"这么靠后还关键</span>它是每次开机都要重复的"肌肉记忆"，装机当天做错一次，就会在 find-port 阶段表现为"少一只臂"——排障成本极高，所以单独成卡。</div>
+</section>
+
+<!-- 08 -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>常见问题</h2>
+  <ul class="check">
+    <li><span class="ok">find-port 找到的 ttyACM 比臂少一只</span>：先查供电（主臂 5V 2A / 从臂 12V 8A 是否插对），再按"先断电→插 USB→再通电"顺序重插（第 03 章 1）</li>
+    <li><span class="ok">重启后端口号对不上了</span>：正常现象——"每次重启端口号可能会变化"，靠 udev 别名而不是 ttyACM 序号识别</li>
+    <li><span class="ok">udevadm info 查不到 arm_* 别名</span>：规则文件没重载，或该臂序列号抄错一位</li>
+    <li><span class="ok">摄像头线插了没画面</span>：摄像头必须插<b>电脑背面</b>且按指导顺序插入；串口线才走拓展坞（第 02 章 4）</li>
+    <li><span class="ok">某个关节方向装反/卡死</span>：对照对应 Joint 视频重装，编号与机械限位一次对齐，别带病进 EXP-03</li>
+    <li><span class="ok">GPIO/串口权限报错</span>：见 EXP-01 已加入 dialout 组；本课临时排查可用 <code>sudo chmod 666 /dev/ttyACM*</code></li>
+  </ul>
+  <div class="tip amber"><span class="lab">💡 排障顺序</span>先看灯与电源（硬件通电没）→ 再看线（左电源右串口对吗）→ 最后看软件（find-port 输出）。八成问题出在前两步。</div>
+</section>
+
+<!-- 09 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>拓展挑战</h2>
+  <div class="tip violet"><span class="lab">🚀 挑战一：做一张"序列号—别名—插口"三联台账</span>四条臂逐一 udevadm info 核对，把 ID_SERIAL_SHORT、SYMLINK 别名、实际插的拓展坞口位记成表；下次换机复现只看这张表。</div>
+  <div class="tip violet"><span class="lab">🚀 挑战二：盲装一个关节</span>在不看视频的情况下装配一个关节（如 Joint3），再回放视频核对螺丝顺序与走线，记录差异点——差异清单就是你的技能盲区清单。</div>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>思考题</h2>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>指导文档强调"先接通电源，再插 USB，顺序不要颠倒，可能导致连接失败"。结合 USB 枚举与供电时序，推演<b>反着插</b>时主机可能看到什么现象？你会用哪条命令验证猜测？</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>如果"设置电机编号"时把 Joint2 和 Joint3 的编号写反了，到 EXP-03 校准或 EXP-04 遥操作阶段会分别出现什么症状？为什么越早发现代价越小？</div>
+</section>
+
+<nav class="expnav">
+  <a class="prev" href="../exp-01-platform-setup/index.html"><span class="lb">← 上一个实验</span>EXP-01 主机环境搭建</a>
+  <a class="next" href="../exp-03-arm-calibration/index.html"><span class="lb">下一个实验 →</span>EXP-03 摄像头配置与主从臂校准</a>
+</nav>
+
+<footer>
+  <span>IND-01 · 具身智能端到端平台与基础 · EXP-02 机械臂硬件组装与串口识别</span>
+  <span>8 学时 · 操作性 · 基于 LZ-XL01 指导文档第 02 章《硬件组装》、第 03 章《机械臂串口》改编</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// 装配顺序点击排序：1→8
+var asmNext=1;
+function asmOut(t){document.getElementById('asmIo').innerHTML=t;}
+function asmPick(step,btn){
+  if(step===asmNext && asmNext<=8){
+    btn.classList.remove('ghost');
+    btn.style.background='var(--theme)';
+    btn.style.borderColor='var(--theme)';
+    btn.style.color='#fff';
+    btn.disabled=true;
+    var done=asmNext;
+    asmNext=asmNext+1;
+    asmOut('<span class="dim">// 第 '+done+' 步：'+btn.textContent+'</span>\n<span class="ok">✔ 顺序正确！当前进度 '+done+' / 8</span>'+(done===8?'\n<span class="ok">🎉 全部排完：现场装配即按此流水线执行，可进入 EXP-03</span>':'\n<span class="dim">继续点第 '+(asmNext)+' 步</span>'));
+  }else{
+    asmOut('<span class="dim">// 第 ? 步尝试：'+btn.textContent+'</span>\n<span class="bad">✘ 不是当前该做的步骤 —— 回想流程：上桌 → 编号 → 装摄像头 → 上车 → 上关节 → 接线找口</span>\n<span class="warn">当前正等第 '+asmNext+' 步</span>');
+  }
+}
+function asmReset(){
+  asmNext=1;
+  var bs=document.querySelectorAll('#asmRow .btn');
+  bs.forEach(function(b){b.disabled=false;b.className='btn ghost';b.style.cssText='';});
+  asmOut('<span class="dim">// 已重排，从第 1 步开始：主臂卡钳夹紧固定桌面</span>');
+}
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-02 · LDT-01 遥操作数据采集 | IND-04 家庭整理应用场景</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+  :root{
+    --theme:#0284c7;
+    --theme-deep:#0369a1;
+    --theme-bg:#f0f9ff;
+    --theme-bd:#bae6fd;
+  }
+  figure.shot{margin:18px 0;border:1px solid var(--theme-bd);border-radius:12px;overflow:hidden;background:#fff}
+  figure.shot img{display:block;width:100%;height:auto}
+  figure.shot figcaption{padding:10px 14px;font-size:13px;color:#075985;background:var(--theme-bg);border-top:1px solid var(--theme-bd)}
+  .vid-note{text-align:center;font-size:12.5px;color:#0369a1;margin-bottom:6px}
+  .tag.hl{background:var(--theme-bg);border-color:var(--theme-bd);color:var(--theme-deep)}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="bar-in">
+    <a class="logo" href="../../../index.html"><b>课程</b>家庭</a>
+    <nav class="crumb"><a href="../../../index.html#ind">总首页</a> / <a href="../index.html">IND-04 家庭整理</a> / EXP-02</nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <aside class="side">
+    <h4>本页目录</h4>
+    <a href="#s1">01 学习目标</a>
+    <a href="#s2">02 原理</a>
+    <a href="#s3">03 硬件与材料</a>
+    <a href="#s4">04 操作步骤</a>
+    <a href="#s5">05 关键命令</a>
+    <a href="#s6">06 动画</a>
+    <a href="#s7">07 互动</a>
+    <a href="#s8">08 常见问题</a>
+    <a href="#s9">09 拓展</a>
+    <a href="#s10">10 思考题</a>
+    <h4>兄弟实验</h4>
+    <a href="../exp-01-case-overview/index.html">EXP-01 案例总览</a>
+    <a href="../exp-03-data-training/index.html">EXP-03 转换与训练</a>
+    <a href="../exp-04-real-robot/index.html">EXP-04 真机与鲁棒性</a>
+  </aside>
+
+  <main class="content">
+    <div class="exp-head">
+      <div class="code">EXP-02 · 8 学时</div>
+      <h1>LDT-01 遥操作数据采集</h1>
+      <p class="desc">按家庭场景默认布局布景，用 LDT-01 主从遥操作双臂演示「开盖—取物—入罐—盖盖」，把每一次成功示范录成训练要用的原始数据。</p>
+      <div class="meta"><span class="tag hl">真机实操</span><span class="tag">双人安全制</span><span class="tag">三路相机</span></div>
+    </div>
+
+    <!-- 01 学习目标 -->
+    <section class="blk" id="s1">
+      <h2><span class="no">01</span>学习目标</h2>
+      <ul class="check">
+        <li>掌握 LDT-01 设备开机流程与双人安全制：操作员 + 安全员，2 米半圆清场。</li>
+        <li>理解主从映射：主动臂怎么动，从动臂就怎么跟，人的示范因此被完整记录。</li>
+        <li>会在上位机完成新建任务 → 预览 → 开始采集（3 秒内握持）→ 停止当前组的完整循环。</li>
+        <li>养成数据质控习惯：坏组当场点「本次采集失败」，有效组数对齐案例约 200 组口径。</li>
+      </ul>
+    </section>
+
+    <!-- 02 原理 -->
+    <section class="blk" id="s2">
+      <h2><span class="no">02</span>原理：主从映射与示范数据</h2>
+      <p>遥操作像「提线木偶的反向版」：你手里的<b>主动臂</b>是发令端，桌上的<b>从动臂</b>是执行端——主动臂转多少度，从动臂跟着转多少度。你用它做一遍开盖入罐，系统就同时记下<b>三路相机画面</b>和<b>每一拍的关节角度</b>，这正是后面训练要的「画面 + 动作」配对样本。行为克隆没有捷径：<b>你演得越稳、场景越一致，机器人学得越像</b>。</p>
+      <div class="kgrid">
+        <div class="kcard"><div class="kd">输入</div><div class="kt">你的双手操作主动臂：肩/肘/腕七轴姿态 + 夹爪捏合量。</div></div>
+        <div class="kcard"><div class="kd">跟随</div><div class="kt">从动臂 7 轴按主端指令同步运动，500Hz 通信保持跟手。</div></div>
+        <div class="kcard"><div class="kd">同步录制</div><div class="kt">头部/左腕/右腕三路相机 + 关节角，按拍对齐写入一组数据。</div></div>
+        <div class="kcard"><div class="kd">质控</div><div class="kt">打滑、碰盖、超时的组当场作废，绝不带病入库。</div></div>
+      </div>
+      <div class="tip amber"><b>生活化类比：</b>像带着孩子手把手教叠衣服——你的手是「主端」，孩子的手是「从端」；录像里同时存着「你看到的画面」和「手的走势」，下次他看图自己叠，就是机器人在推理。</div>
+    </section>
+
+    <!-- 03 硬件与安全 -->
+    <section class="blk" id="s3">
+      <h2><span class="no">03</span>硬件与安全</h2>
+      <div class="kgrid">
+        <div class="kcard"><div class="kd">LDT-01 遥操作端</div><div class="kt">主动臂 ×2（7 轴总线舵机，DC12V，100Hz，半径 554mm）+ 捏合式二指夹爪。</div></div>
+        <div class="kcard"><div class="kd">从动臂</div><div class="kt">7 轴谐波关节，DC48V，通信 500Hz，负载 5kg，运动半径 850mm。</div></div>
+        <div class="kcard"><div class="kd">安全设备</div><div class="kt">脚蹬急停 + 急停按钮；双人制：一人操作、一人观察随时可蹬急停。</div></div>
+        <div class="kcard"><div class="kd">状态指示</div><div class="kt">LED 四色状态灯 + 上位机 localhost:8699 任务管理与采集进度。</div></div>
+      </div>
+      <figure class="shot">
+        <img src="./images/fig-ldt-p04-safety.png" alt="LDT-01 遥操作安全规范与启动步骤" loading="lazy">
+        <figcaption>图 2-1｜《遥操作设备LDT-01软件使用流程(开发者版)》安全章节：双人分工（操作员 + 安全员脚蹬急停）、直径 2 米半圆清场、启动脚本 <code>. ./01start_tele.sh</code>、等 5 秒「嗒」声后各关节依次回初始姿态。</figcaption>
+      </figure>
+      <table>
+        <thead><tr><th>安全项</th><th>要求（摘自 LDT-01 开发者版）</th></tr></thead>
+        <tbody>
+          <tr><td>人员站位</td><td>双人制：操作员握持遥操作端，安全员专职观察、脚蹬急停待命</td></tr>
+          <tr><td>清场范围</td><td>机械臂工作区直径 2 米半圆内禁止站人与杂物</td></tr>
+          <tr><td>异常处置</td><td>任何异响/抖动先蹬急停再排查；故障码 61445 按手册复位</td></tr>
+          <tr><td>布景复原</td><td>每组结束把芒果/罐盖复位到默认布局，换组交接拍照核对</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 04 操作步骤 -->
+    <section class="blk" id="s4">
+      <h2><span class="no">04</span>操作步骤：家庭场景采集循环</h2>
+      <div class="flow">
+        <div class="step"><b class="n">1</b>开机布景<br><small>侧面电源 → 主机 → 夹爪张开收回，按默认布局摆好罐与芒果</small></div>
+        <div class="arr">→</div>
+        <div class="step"><b class="n">2</b>新建任务<br><small>localhost:8699 任务管理 → 新建任务，名称/描述英文、数量写足</small></div>
+        <div class="arr">→</div>
+        <div class="step"><b class="n">3</b>示范录制<br><small>点开始后 3 秒内握持操作端 → 左开盖 → 右放芒果 → 左盖盖 → 停止当前组</small></div>
+        <div class="arr">→</div>
+        <div class="step"><b class="n">4</b>组间质控<br><small>正常：复原场景进下一组；失误：点「本次采集失败」再重来</small></div>
+      </div>
+      <figure class="shot">
+        <img src="./images/fig-01-p05-newtask.png" alt="任务管理新建任务表单" loading="lazy">
+        <figcaption>图 2-2｜《01-数据采集流程》新建任务：任务名称/描述必填且建议用英文写要做的事；采集数量可写大（示例 100），后续排除失败项；配置文件含 cam2d、cam_head、cam_left、cam_right、image_save_mode 等参数。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="./images/fig-01-p07-startrec.png" alt="开始采集与停止/失败分支" loading="lazy">
+        <figcaption>图 2-3｜采集执行：恢复初始状态后点「开始数据采集」，3 秒内握持操作端出现三路画面；完成点「停止当前组」，正常走「恢复桌面 → 下一组」，失败走「本次采集失败 → 恢复 → 再开始」。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="./images/fig-01-p09-family-ops.png" alt="家庭场景关键动作：左手开盖与右手放入水果" loading="lazy">
+        <figcaption>图 2-4｜家庭任务关键动作照片：编号 3「左手打开盖子」（左臂持物掀起不锈钢罐盖）、编号 4「右手放入水果」（芒果已置于罐内），即每次示范必须完成的核心两步。</figcaption>
+      </figure>
+      <ol style="margin:14px 0 6px;padding-left:22px;line-height:1.9">
+        <li><b>一轮动作节奏：</b>左手开盖 → 右手取芒果入罐 → 左手盖回 → 保持 1 秒收尾再停止。</li>
+        <li><b>组间复原：</b>把芒果取出放回定位点、盖子离罐摆好，桌面擦净再点下一次开始。</li>
+        <li><b>编号规则：</b>save_data 自动编号，家庭案例从 180 号段起步；记下每组好坏与编号，供 EXP-03 切段。</li>
+      </ol>
+    </section>
+
+    <!-- 05 关键命令 -->
+    <section class="blk" id="s5">
+      <h2><span class="no">05</span>关键命令与数据落盘</h2>
+      <pre><span class="c"># ① 启动遥操作（摘自 LDT-01 开发者版）</span>
+cd /home/lindenbot/iflytek_armtele_project/start_bash/01teleoperation
+. ./01start_tele.sh
+<span class="c"># 等 5 秒听到「嗒」声：第 3 关节转相机朝两侧 → 第 4 关节举臂 → 全关节回初始姿态</span>
+
+<span class="c"># ② 上位机入口（浏览器）</span>
+localhost:8699/#/robotManage   <span class="c"># 任务管理 → 新建任务 → 预览 → 开始采集</span>
+
+<span class="c"># ③ 采集落盘结构（一组 = 一个编号目录）</span>
+/home/lindenbot/save_data/
+  ├─ 180/            <span class="c"># 编号目录（最大编号 = 最新一组）</span>
+  │   ├─ robot_data.csv   <span class="c"># 每拍关节角</span>
+  │   └─ cam_head/ cam_left/ cam_right/   <span class="c"># 三路视频帧</span>
+  └─ ...</pre>
+      <div class="tip tealb"><b>3 秒规则：</b>点「开始数据采集」后必须在 3 秒内握持操作端，否则开头几拍是空抓——这种组直接标「本次采集失败」。</div>
+    </section>
+
+    <!-- 06 动画 -->
+    <section class="blk" id="s6">
+      <h2><span class="no">06</span>动画：主从映射与帧-动作对</h2>
+      <div class="anim-box">
+        <svg viewBox="0 0 720 250" width="100%" role="img" aria-label="主从映射与帧动作对动画">
+          <g font-size="14" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif">
+            <!-- 主动臂 -->
+            <text x="150" y="30" fill="#7dd3fc" font-weight="bold">主动臂（你的手）</text>
+            <rect x="60" y="190" width="180" height="16" rx="6" fill="#334155"/>
+            <line id="mArm" x1="150" y1="190" x2="150" y2="90" stroke="#fbbf24" stroke-width="8" stroke-linecap="round">
+            </line>
+            <circle cx="150" cy="90" r="9" fill="#fbbf24">
+              <animate attributeName="cy" values="90;60;90;120;90" dur="4s" repeatCount="indefinite"/>
+              <animate attributeName="cx" values="150;110;190;150;150" dur="4s" repeatCount="indefinite"/>
+            </circle>
+            <text x="150" y="235" fill="#94a3b8" font-size="11">7 轴姿态 + 夹爪捏合 → 指令</text>
+            <!-- 从动臂 -->
+            <text x="570" y="30" fill="#86efac" font-weight="bold">从动臂（真机双手）</text>
+            <rect x="480" y="190" width="180" height="16" rx="6" fill="#334155"/>
+            <line x1="570" y1="190" x2="570" y2="90" stroke="#4ade80" stroke-width="8" stroke-linecap="round">
+              <animate attributeName="x2" values="570;530;610;570;570" dur="4s" repeatCount="indefinite"/>
+              <animate attributeName="y2" values="90;60;90;120;90" dur="4s" repeatCount="indefinite"/>
+            </line>
+            <circle cx="570" cy="90" r="9" fill="#4ade80">
+              <animate attributeName="cy" values="90;60;90;120;90" dur="4s" repeatCount="indefinite"/>
+              <animate attributeName="cx" values="570;530;610;570;570" dur="4s" repeatCount="indefinite"/>
+            </circle>
+            <text x="570" y="235" fill="#94a3b8" font-size="11">同拍执行，500Hz 通信跟手</text>
+            <!-- 映射 -->
+            <path d="M260,140 C340,90 380,90 460,140" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="7 6"/>
+            <text x="360" y="96" fill="#7dd3fc" font-size="13">关节角 1:1 映射</text>
+            <!-- 录制时间轴 -->
+            <text x="60" y="152" fill="#94a3b8" font-size="11" text-anchor="start">同拍写入：</text>
+            <rect x="60" y="160" width="160" height="14" rx="4" fill="#0c4a6e"/>
+            <rect x="240" y="160" width="160" height="14" rx="4" fill="#164e63"/>
+            <text x="360" y="171" fill="#a5f3fc" font-size="10" dy="0"></text>
+            <circle r="6" fill="#fbbf24">
+              <animate attributeName="cx" values="60;140;220;300;380;60" dur="4s" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="167;167;167;167;167;167" dur="4s" repeatCount="indefinite"/>
+            </circle>
+            <text x="360" y="112" fill="#7dd3fc" font-size="11">帧 = 画面 + 动作（成对入库）</text>
+          </g>
+        </svg>
+        <div class="anim-cap">动画：黄球（主端）与绿球（从端）沿同一轨迹同步运动表示 1:1 主从映射；下方同一拍的「画面条 + 动作条」被光点扫过，说明每一帧数据都是「看到什么 + 手怎么动」的严格配对。</div>
+      </div>
+      <div class="tip violet"><span class="lab">观察</span>若某几拍主从映射出现延迟或丢拍，画面与动作就会「错帧」——模型学到的映射随之错位。所以采集中出现跟手迟滞要<b>立即停组作废</b>，而不是硬录。</div>
+    </section>
+
+    <!-- 07 互动 -->
+    <section class="blk" id="s7">
+      <h2><span class="no">07</span>互动：有效数据产线估算</h2>
+      <div class="ix-panel">
+        <div class="ix-title">估算「计划轮数 × 通过率」能否凑够案例口径的有效组数</div>
+        <div class="ctl-row">
+          <div class="ctl">单轮耗时（秒）
+            <input type="range" id="cyc" min="4" max="20" value="8" step="1">
+          </div>
+          <div class="ctl">计划轮数
+            <input type="number" id="plans" min="50" max="1000" value="250" step="10" style="width:110px">
+          </div>
+          <div class="ctl">预计失败率 <b id="failV">15</b>%
+            <input type="range" id="fail" min="0" max="50" value="15" step="5">
+          </div>
+          <button class="btn" onclick="calcYield()">估算产线</button>
+          <button class="btn ghost" onclick="resetYield()">重置</button>
+        </div>
+        <div class="io" id="yieldIo"><span class="dim">等待计算……</span></div>
+      </div>
+      <p style="margin-top:10px">复盘口径：家庭案例采集数据约 <b>200 次左右</b>才支撑稳定复现——把失败率压下去，比盲目加轮数更省时间。每组失败都记一笔原因（打滑/碰盖/超时），下一组前先改场景再开录。</p>
+    </section>
+
+    <!-- 08 常见问题 -->
+    <section class="blk" id="s8">
+      <h2><span class="no">08</span>常见问题</h2>
+      <div class="kgrid">
+        <div class="kcard"><div class="kd">Q 3 秒内没握到操作端？</div><div class="kt">该组开头空拍，直接点「本次采集失败」作废；重建心态下一组，别带病录。</div></div>
+        <div class="kcard"><div class="kd">Q 遥操作端拖不动？</div><div class="kt">启动后需等 5 秒「嗒」声、关节回初始姿态再操作；启动脚本必须 source（. ./01start_tele.sh）。</div></div>
+        <div class="kcard"><div class="kd">Q 任务名称能用中文吗？</div><div class="kt">建议英文。名称/描述会写入 tasks 表当训练标签，规避文本编码坑（01 文档要求）。</div></div>
+        <div class="kcard"><div class="kd">Q 每组都要复原桌面吗？</div><div class="kt">要。模型对场景敏感，罐盖位置飘了会让影像与示范对不上——按默认布局拍照核对。</div></div>
+      </div>
+    </section>
+
+    <!-- 09 拓展 -->
+    <section class="blk" id="s9">
+      <h2><span class="no">09</span>拓展阅读</h2>
+      <ul class="check">
+        <li>《01-聆动机器人数据采集流程》：任务创建参数、三分支（成功/失败/停止）处理全图解。</li>
+        <li>《遥操作设备LDT-01软件使用流程(开发者版)》：LED 四色、拖拽模式、插补检查（MAX=28 / MIN=14）与 Q&amp;A。</li>
+        <li>《00-硬件参数》：主从臂电气参数与相机帧率，对照理解「为什么能跟手」。</li>
+        <li>《聆动机器人案例-家庭场景》2.x 采集章节：家庭任务动作分解与编号建议。</li>
+      </ul>
+    </section>
+
+    <!-- 10 思考题 -->
+    <section class="blk" id="s10">
+      <h2><span class="no">10</span>思考题 · 自测</h2>
+      <div class="kgrid">
+        <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">本组产出有效示范 ≥ 目标值，坏组标记清零，编号与好坏记录表齐全。</div></div>
+        <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">画出「主动臂 → 从动臂 → 三路相机 + 关节角入库」的数据通路图。</div></div>
+        <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">独立完成开机 → 新建任务 → 预览 → 采集 → 停止/作废 → 复原的完整循环。</div></div>
+        <div class="kcard"><div class="kd">📐 评分速览</div><div class="kt">安全规范 30% + 数据质量 40% + 记录完整性 30%。</div></div>
+      </div>
+      <div class="tip violet"><span class="lab">思考 1</span>如果把芒果每次放在罐口边沿 2 厘米内随机摆，数据的「多样性」和「一致性」各会发生什么？你会怎么选？</div>
+      <div class="tip violet"><span class="lab">思考 2</span>「本次采集失败」按钮一键剔除很爽，但如果失败组占到三成，该先反省什么？（提示：场景布景、3 秒握持时机、操作熟练度。）</div>
+    </section>
+
+    <nav class="expnav">
+      <a class="prev" href="../exp-01-case-overview/index.html">← 上一个：EXP-01 案例总览</a>
+      <a class="next" href="../exp-03-data-training/index.html">下一个：EXP-03 数据转换与模型训练 →</a>
+    </nav>
+    <footer>
+      <div>IND-04 · 家庭整理应用场景 · EXP-02 LDT-01 遥操作数据采集</div>
+      <div>8 学时 · 真机采集实验 · 基于 聆动课程指导文档《01-聆动机器人数据采集流程》《遥操作设备LDT-01软件使用流程(开发者版)》改编</div>
+    </footer>
+  </main>
+</div>
+
+<script>
+function calcYield(){
+  var cyc = parseInt(document.getElementById('cyc').value,10);
+  var plans = parseInt(document.getElementById('plans').value,10);
+  var fail = parseInt(document.getElementById('fail').value,10);
+  var valid = Math.round(plans * (100 - fail) / 100);
+  var total = cyc * plans;
+  var h = Math.floor(total/3600), m = Math.round((total%3600)/60);
+  var io = document.getElementById('yieldIo');
+  var grade = valid >= 200
+    ? '<span class="ok">达到案例复现口径（约 200 组有效数据）</span>'
+    : '<span class="warn">还差 ' + (200 - valid) + ' 组——提高通过率或增加计划轮数</span>';
+  io.innerHTML = '<span class="ok">预计有效组数 ≈ ' + valid + ' 组</span>'
+    + '　|　计划录制 ≈ ' + h + ' 小时 ' + m + ' 分（单轮 ' + cyc + ' 秒 × ' + plans + ' 轮）'
+    + '\n' + grade
+    + '　<span class="dim">（含组间复原间隙建议再加 30% 时间预算）</span>';
+}
+function resetYield(){
+  document.getElementById('cyc').value = 8;
+  document.getElementById('plans').value = 250;
+  document.getElementById('fail').value = 15;
+  document.getElementById('failV').textContent = 15;
+  document.getElementById('yieldIo').innerHTML = '<span class="dim">等待计算……</span>';
+}
+document.getElementById('fail').addEventListener('input',function(){
+  document.getElementById('failV').textContent = this.value;
+});
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>

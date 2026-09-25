@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-03 · 摄像头配置与主从臂校准 — IND-01 具身智能端到端平台与基础</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+:root{--theme:#0d9488;--theme-deep:#0f766e;--theme-bg:#f0fdfa;--theme-bd:#99f6e4}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:15px;margin-top:14px}
+.vitem{background:#fff;border:1px solid #e2ece9;border-radius:14px;padding:13px}
+.vitem video{width:100%;border-radius:9px;background:#000;aspect-ratio:16/9}
+.vitem h4{font-size:14.5px;font-weight:800;margin:9px 0 5px;color:var(--theme-deep)}
+.vitem p{font-size:12.5px;color:#5b6b78;line-height:1.6}
+.sld{-webkit-appearance:none;appearance:none;width:100%;max-width:420px;height:7px;border-radius:6px;background:#d7e6e3;outline:none;margin:10px 0}
+.sld::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--theme);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25);cursor:pointer}
+.sld::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--theme);border:3px solid #fff;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🦾 IND-01 · <i>端到端平台与基础</i></div>
+  <div class="crumb"><a href="../../../index.html">总首页</a> / <a href="../../../index.html#ind">行业应用</a> / <a href="../index.html">IND-01</a> / EXP-03</div>
+</div>
+
+<div class="wrap">
+
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 学习目标</a>
+  <a href="#s2">02 原理讲解：标定就是对表</a>
+  <a href="#s3">03 硬件与材料</a>
+  <a href="#s4">04 步骤实践：摄像头 + 校准</a>
+  <a href="#s5">05 关键命令：calibrate</a>
+  <a href="#s6">06 动画讲解：坐标对应标定</a>
+  <a href="#s7">07 互动练习：偏差滑杆</a>
+  <a href="#s8">08 常见问题</a>
+  <a href="#s9">09 拓展挑战</a>
+  <a href="#s10">10 思考题</a>
+  <h4>IND-01 · 四个实验</h4>
+  <a href="../exp-01-platform-setup/index.html">EXP-01 平台搭建</a>
+  <a href="../exp-02-arm-assembly/index.html">EXP-02 硬件组装</a>
+  <a href="../exp-03-arm-calibration/index.html">EXP-03 摄像头校准</a>
+  <a href="../exp-04-teleop-checkout/index.html">EXP-04 遥操作排查</a>
+</aside>
+
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-03 · 第 04/05 章 · 验证性 · 8 学时</span>
+  <h1>摄像头配置与主从臂校准</h1>
+  <p class="desc">端到端的"感知端"和"执行端"要能互通语言，靠的都是<b>标定</b>：三路摄像头锁定插口别名，让画面永远知道自己来自哪个位置；四条臂逐一执行 <code>lerobot-calibrate</code>，录下 2047 中位基准与全行程 MIN/POS/MAX，把手感差异抹平。本课配 3 段校准讲解视频，做完后你的主从臂才能"指哪打哪"。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐⭐ · 8 学时</span>
+    <span class="tag">3 段校准视频</span><span class="tag">2047 中位基准</span>
+    <span class="tag">MIN/POS/MAX</span><span class="tag">JSON 校准文件</span>
+  </div>
+</div>
+
+<!-- 01 -->
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>学习目标</h2>
+  <ul class="check">
+    <li>能按第 04 章完成三摄像头接入：<span class="ok">直连不走拓展坞</span>，用抓拍图分辨哪路是左/右/头</li>
+    <li>能读懂 <code>lerobot-find-cameras opencv</code> 输出并<span class="ok">核对 /dev/cam_left·right·head 三个别名</span></li>
+    <li>理解校准的两阶段流程：<span class="ok">2047 中位基准姿态 → 全行程录 MIN/POS/MAX</span></li>
+    <li>能独立校准四条臂（左/右从臂用 --robot，左/右主臂用 --teleop），参数不串</li>
+    <li>能查 JSON 校准文件，并判断<span class="ok">"细微差异正常、较大差异必须重校"</span>与输 'c' 重校的方法</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>原理讲解：标定就是"主从对表"</h2>
+  <p>标定（calibration）好比<b>两块对表</b>：主厨（主臂）和帮厨（从臂）各自站位不同、手长短有微差，开做前两人把"中在哪、两端到哪"对一遍，之后才谈得上跟随。电机角度没有出厂绝对刻度——它只知道"编码器读数 0~4095"，<b>哪个读数是中位、哪个是物理极限，只能靠你亲手掰一遍录下来</b>：</p>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><b>定中位（POS）</b>：把臂摆到行程中间的标准姿态回车——此时全关节基准读数 ≈ <b>2047</b>（电机位置中间值）</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span><b>录全程（MIN/MAX）</b>：逐关节缓缓掰到最大最小，脚本边动边记 → 生成每关节的行程表</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span><b>落盘（JSON）</b>：id / drive_mode / homing_offset / range_min / range_max 写进校准文件，之后每次启动自动加载</div>
+  </div>
+  <p>摄像头侧的"标定"则是<b>身份绑定</b>：video0/3/5 是插拔顺序给的临时名，第 04 章要求<b>摄像头直连、不可用拓展坞、不可变动插口</b>——只有插口固定，ID_PATH 才稳定，udev 才能把"端口 7"永久翻译成 <code>/dev/cam_left</code>。至此感知端（cam_*）与执行端（arm_*）都有了稳定坐标，遥操作才有意义。</p>
+</section>
+
+<!-- 03 -->
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>硬件与材料</h2>
+  <table>
+    <thead><tr><th>对象</th><th>数量</th><th>本课要求</th></tr></thead>
+    <tbody>
+      <tr><td>USB 摄像头（左/右/头）</td><td>3</td><td>插<b>主机背面</b>指定端口（7 / 6 / 1），直连不可用拓展坞，插后不再变动</td></tr>
+      <tr><td>从臂（follower）</td><td>2</td><td>/dev/arm_slave_left·right，so101_follower 校准</td></tr>
+      <tr><td>主臂（leader）</td><td>2</td><td>/dev/arm_master_left·right，so101_leader 校准</td></tr>
+      <tr><td>终端与权限</td><td>—</td><td>conda activate lerobot；sudo chmod 666 /dev/arm_* 后再校准</td></tr>
+      <tr><td>参考视频</td><td>3 段</td><td>主臂校准讲解版 / 从臂校准讲解版 / 从臂校准日志版</td></tr>
+    </tbody>
+  </table>
+  <figure>
+    <img src="images/fig-p04-cam.png" loading="lazy" alt="第 04 章第 2 页：三路摄像头检测结果截图">
+    <figcaption>图 3-1｜第 04 章第 2 页：检出 Camera #0/#1/#2 分别为 /dev/video0、video3、video5，YUYV 640×480@30，查看抓拍图即可分辨位置</figcaption>
+  </figure>
+</section>
+
+<!-- 04 -->
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>步骤实践：先锁摄像头，再校四条臂</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>三摄像头直连主机背面指定端口；lerobot-find-cameras opencv 检出 video0/3/5</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span>打开 outputs/captured_images 看三张抓拍图分辨左右头；udevadm info 查 ID_PATH</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span>写 99-lerobot-cameras.rules 三条别名并重载 → cam_left / cam_right / cam_head 就位</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span>从臂校准：左/右 so101_follower，摆基准（≈2047）回车 → 全行程录 MIN/POS/MAX</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">5</span>主臂校准：左/右 so101_leader（--teleop.* 参数），同两阶段流程</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">6</span>核对 JSON；异常时在提示处输 <b>c</b> 重新校准</div>
+  </div>
+  <div class="vgrid">
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/主臂校准讲解版-poster.jpg" src="./videos/主臂校准讲解版.mp4"></video>
+      <h4>① 主臂校准讲解版</h4>
+      <p>主臂（leader）两阶段校准全程讲解：基准姿态怎么摆、行程怎么掰、日志怎么看。</p>
+    </div>
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/从臂校准讲解版-poster.jpg" src="./videos/从臂校准讲解版.mp4"></video>
+      <h4>② 从臂校准讲解版</h4>
+      <p>从臂（follower）校准讲解：--robot.* 参数、中位 2047 确认与逐关节录程手法。</p>
+    </div>
+    <div class="vitem">
+      <video controls preload="metadata" playsinline poster="./videos/从臂校准日志版-poster.jpg" src="./videos/从臂校准日志版.mp4"></video>
+      <h4>③ 从臂校准日志版</h4>
+      <p>逐行对照校准日志：connected → 中位提示 → Recording positions → MIN/POS/MAX 表。</p>
+    </div>
+  </div>
+  <figure>
+    <img src="images/fig-p04-wire.png" loading="lazy" alt="第 04 章第 5 页：摄像头接线完成图截图">
+    <figcaption>图 3-2｜第 04 章第 5 页：接线完成图——三路摄像头按固定接口插好后不再变动（不可变动摄像头插口）</figcaption>
+  </figure>
+  <div class="tip amber"><span class="lab">⚠ 两别踩</span>① 摄像头<b>不能走拓展坞</b>、不能换口——换了 ID_PATH 就变，别名全失效；② 每次开机若提示已有校准文件，直接回车是沿用旧值，<b>要重校必须输 c 回车</b>。</div>
+  <figure>
+    <img src="images/fig-p05-pg02.png" loading="lazy" alt="第 05 章第 2 页：基准姿态提示截图">
+    <figcaption>图 3-3｜第 05 章第 2 页：日志停在 Move …to the middle of its range of motion and press ENTER——此时把臂摆成基准姿态再回车</figcaption>
+  </figure>
+</section>
+
+<!-- 05 -->
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>关键命令：calibrate 四臂与重校</h2>
+  <pre><span class="c"># ① 摄像头搜索与分辨（第 04 章）</span>
+<span class="g">conda</span> activate lerobot
+<span class="g">rm</span> -rf /home/lz-xl01/lerobot-0.4.1/outputs/captured_images
+<span class="g">lerobot-find-cameras</span> opencv
+<span class="c">#   Camera #0 → /dev/video0 · #1 → /dev/video3 · #2 → /dev/video5（YUYV 640×480@30）</span>
+<span class="g">udevadm</span> info --query=all --name=/dev/video0     <span class="c"># 查 ID_PATH，核对 cam_head 等别名</span>
+
+<span class="c"># ② 从臂校准（第 05 章 2）——左右各一次，只换 port/id</span>
+<span class="g">sudo</span> chmod 666 /dev/arm_*
+<span class="g">lerobot-calibrate</span> \
+  <span class="y">--robot.type=so101_follower</span> \
+  <span class="y">--robot.port=/dev/arm_slave_left</span> \
+  <span class="y">--robot.id=left_follower_arm</span>
+<span class="c">#   右从臂：--robot.port=/dev/arm_slave_right --robot.id=right_follower_arm</span>
+
+<span class="c"># ③ 主臂校准（第 05 章 3）——注意用 --teleop.* 参数</span>
+<span class="g">lerobot-calibrate</span> \
+  <span class="y">--teleop.type=so101_leader</span> \
+  <span class="y">--teleop.port=/dev/arm_master_left</span> \
+  <span class="y">--teleop.id=left_leader_arm</span>
+<span class="c">#   右主臂：--teleop.port=/dev/arm_master_right --teleop.id=right_leader_arm</span>
+
+<span class="c"># ④ 两阶段交互：摆基准回车 → 逐关节掰全程 → 回车出表</span>
+<span class="y">Move … to the middle of its range of motion and press ENTER....</span>
+<span class="y">Move all joints sequentially through their entire ranges of motion. Recording positions. Press ENTER to stop...</span>
+<span class="y">NAME | MIN | POS | MAX   ← 初始全 2047（电机位置中间值），录完如 859|1982|2740</span>
+
+<span class="c"># ⑤ 重新校准：提示处输 c 回车（直接回车=沿用旧文件）</span>
+<span class="y">Press ENTER to use provided calibration file associated with the id … or type 'c' and press ENTER to run calibration:</span>
+
+<span class="c"># ⑥ 校准数据位置（第 05 章 5）</span>
+<span class="c">#   主臂 …/calibration/teleoperators/so101_leader/*.json</span>
+<span class="c">#   从臂 …/calibration/robots/so101_follower/*.json</span>
+<span class="c">#   字段例：{"id":1,"drive_mode":0,"homing_offset":-517,"range_min":854,"range_max":3266}</span></pre>
+  <figure>
+    <img src="images/fig-p05-term.png" loading="lazy" alt="第 05 章第 7 页：主臂校准命令与日志截图">
+    <figcaption>图 3-4｜第 05 章第 7 页：左主臂校准命令（--teleop.*）与 connected、中位提示日志的真实输出</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p05-term-3.png" loading="lazy" alt="第 05 章第 9 页：右主臂校准基准姿态截图">
+    <figcaption>图 3-5｜第 05 章第 9 页：右主臂 right_leader_arm 基准姿态提示——串口号与 id 必须左右对应</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p04-term.png" loading="lazy" alt="第 04 章第 1 页：摄像头直连与搜索命令截图">
+    <figcaption>图 3-6｜第 04 章第 1 页：摄像头搜索指令原文——先 rm -rf 旧抓拍目录再执行 lerobot-find-cameras opencv</figcaption>
+  </figure>
+</section>
+
+<!-- 06 -->
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>动画讲解：主从臂坐标对应标定</h2>
+  <p class="lead">下图上半是主臂、下半是从臂：同一个关节在两块"表"上各自录 MIN/POS/MAX，中位对齐后，主臂掰多少、从臂就跟多少：</p>
+  <div class="anim-box">
+    <svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="主从臂标定坐标对应动画">
+      <rect x="8" y="8" width="704" height="324" rx="12" fill="#111827" stroke="#334155"/>
+      <text x="360" y="34" text-anchor="middle" font-size="13.5" font-weight="700" fill="#5eead4">主从两块"表"对齐 · 2047 中位 ↔ 2047 中位</text>
+
+      <!-- 主臂刻度条 -->
+      <text x="60" y="72" font-size="12" fill="#7dd3fc" font-weight="700">主臂 leader（记录侧）</text>
+      <rect x="60" y="84" width="600" height="26" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.6"/>
+      <g font-size="9.5" fill="#64748b" text-anchor="middle">
+        <text x="60" y="126">MIN 919</text><text x="360" y="126">POS 2047（中位基准）</text><text x="660" y="126">MAX 3209</text>
+      </g>
+      <line x1="360" y1="84" x2="360" y2="110" stroke="#5eead4" stroke-width="2"/>
+      <!-- 主臂游标 -->
+      <circle cx="360" cy="97" r="7" fill="#38bdf8">
+        <animate attributeName="cx" values="80;360;640;360;80" dur="7s" repeatCount="indefinite"/>
+      </circle>
+
+      <!-- 对应光束 -->
+      <g stroke="#5eead4" stroke-width="2" stroke-dasharray="6 6">
+        <line x1="360" y1="118" x2="360" y2="212">
+          <animate attributeName="stroke-dashoffset" values="0;-24" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+      </g>
+      <text x="470" y="170" font-size="10.5" fill="#5eead4">同一关节 · 同一物理角度</text>
+      <text x="470" y="186" font-size="10.5" fill="#64748b">中位对齐后，读数差异 = homing_offset</text>
+
+      <!-- 从臂刻度条 -->
+      <text x="60" y="226" font-size="12" fill="#fde68a" font-weight="700">从臂 follower（跟随侧）</text>
+      <rect x="60" y="238" width="600" height="26" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.6"/>
+      <g font-size="9.5" fill="#64748b" text-anchor="middle">
+        <text x="60" y="280">MIN 859</text><text x="360" y="280">POS 1982 ≈ 2047</text><text x="660" y="280">MAX 2740</text>
+      </g>
+      <line x1="360" y1="238" x2="360" y2="264" stroke="#5eead4" stroke-width="2"/>
+      <!-- 从臂游标跟随（延迟） -->
+      <circle cx="360" cy="251" r="7" fill="#fbbf24">
+        <animate attributeName="cx" values="80;360;640;360;80" dur="7s" begin="0.35s" repeatCount="indefinite"/>
+      </circle>
+
+      <text x="360" y="312" text-anchor="middle" font-size="10.5" fill="#94a3b8">录程：逐关节掰到 MIN/MAX → JSON 落盘 range_min/range_max/homing_offset → 遥操作按表映射</text>
+    </svg>
+  </div>
+  <div class="anim-cap">动画 3-1｜上：主臂游标在 MIN–POS–MAX 表上扫动；下：从臂游标延迟 0.35s 跟随——两表中位（2047 基准）对齐后，读数差异由 homing_offset 补偿，这正是标定的数学本质</div>
+  <figure>
+    <img src="images/fig-p05-term-2.png" loading="lazy" alt="第 05 章第 4 页：右从臂校准命令与基准提示截图">
+    <figcaption>图 3-7｜第 05 章第 4 页：右从臂校准命令与"将机械臂移动至基准姿态"提示——对应动画里的中位对齐动作</figcaption>
+  </figure>
+  <figure>
+    <img src="images/fig-p04-pg06.png" loading="lazy" alt="第 04 章第 6 页：摄像头插口规范截图">
+    <figcaption>图 3-8｜第 04 章第 6 页：摄像头按固定接口插入的规范图——口位固定，别名与"感知坐标"才稳定</figcaption>
+  </figure>
+</section>
+
+<!-- 07 -->
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>互动练习：标定偏差滑杆判读</h2>
+  <p class="lead">文档说"每次校准可能会有细微数值变化，如出现较大数值差异，则说明校准有问题"。拖动滑杆设定本次与上次校准的偏差，看判读结果：</p>
+  <div class="ix-panel">
+    <div class="ix-title">偏差判读台 · 该不该重新校准？</div>
+    <div class="ctl-row">
+      <button class="btn ghost" onclick="setJoint('shoulder_pan')">shoulder_pan</button>
+      <button class="btn ghost" onclick="setJoint('elbow_flex')">elbow_flex</button>
+      <button class="btn ghost" onclick="setJoint('gripper')">gripper</button>
+    </div>
+    <div class="ctl-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+      <label style="font-size:13px;color:#5b6b78">本次 Record MIN 与上次 JSON range_min 的偏差：<b id="devVal" style="color:var(--theme-deep)">40</b> counts（量程 0~4095）</label>
+      <input class="sld" type="range" min="0" max="400" value="40" step="10" id="devSlider" oninput="judgeDev()">
+    </div>
+    <div class="io" id="devIo"><span class="dim">// 调滑杆看判读；先选一个关节名</span>
+<span class="dim">基准参考（左从臂实测）：shoulder_pan 859|1982|2740 · elbow_flex 947|3141|3142 · gripper 2046|2082|3264</span></div>
+  </div>
+</section>
+
+<!-- 08 -->
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>常见问题</h2>
+  <ul class="check">
+    <li><span class="ok">find-cameras 只找到 1~2 个摄像头</span>：有相机走了拓展坞或没插指定端口；回第 04 章"直连 + 按接口插入"重插再来</li>
+    <li><span class="ok">起步表全是 2047 不动</span>：还没进录程阶段——中位回车后要"逐关节掰全程"，再按 ENTER 结束</li>
+    <li><span class="ok">校准提示 PermissionError</span>：先 <code>sudo chmod 666 /dev/arm_*</code> 再执行（第 05 章每条命令前都有这行）</li>
+    <li><span class="ok">想要重校却直接沿用旧值</span>：提示处必须输 <b>c</b> 回车；直接回车是使用已有校准文件</li>
+    <li><span class="ok">左右臂参数抄混</span>：从臂永远 <code>--robot.*</code> / so101_follower、主臂永远 <code>--teleop.*</code> / so101_leader，port/id 左右严格对应</li>
+    <li><span class="ok">两次校准数值差异很大</span>：基准姿态没摆到位或行程没掰满——文档明确"出现较大数值差异……重新执行操作"</li>
+  </ul>
+  <div class="tip amber"><span class="lab">💡 判读尺度</span>细微抖动（几十 counts 内）属于正常装配回差；一个关节的行程跨度（MAX−MIN）约一两千 counts，如果偏差大到"行程都变了"，基本是没掰满或基准没对准。</div>
+</section>
+
+<!-- 09 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>拓展挑战</h2>
+  <div class="tip violet"><span class="lab">🚀 挑战一：建四臂校准档案</span>把四条臂的六关节 MIN/POS/MAX 表（左/右从臂、左/右主臂的文档实测值见第 05 章）抄录成一张 CSV，和你自己实测值做差分，画出"哪条臂哪关节回差最大"。</div>
+  <div class="tip violet"><span class="lab">🚀 挑战二：手改 JSON 观察后果</span>备份 left_leader_arm.json 后，把某个关节 range_min 人为改小 200，启动遥操作观察从臂越界行为，再还原文件——用实验理解 range_min/range_max 的限位保护意义。</div>
+</section>
+
+<!-- 10 -->
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>思考题</h2>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>为什么中位基准取 2047 而不是 0？（提示：12 位编码器量程 0~4095，中位留出两侧对称行程）如果把臂摆到极限位置再回车"定中位"，后续遥操作会发生什么？</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>第 04 章为什么禁止摄像头过拓展坞、且规定"不可变动摄像头插口"？如果实训室临时把头部相机换到别的口，哪些 udev 规则会失效、哪个实验环节最先报错？</div>
+</section>
+
+<nav class="expnav">
+  <a class="prev" href="../exp-02-arm-assembly/index.html"><span class="lb">← 上一个实验</span>EXP-02 机械臂硬件组装</a>
+  <a class="next" href="../exp-04-teleop-checkout/index.html"><span class="lb">下一个实验 →</span>EXP-04 遥操作自检与故障排查</a>
+</nav>
+
+<footer>
+  <span>IND-01 · 具身智能端到端平台与基础 · EXP-03 摄像头配置与主从臂校准</span>
+  <span>8 学时 · 验证性 · 基于 LZ-XL01 指导文档第 04 章《摄像头》、第 05 章《主从臂校准》改编</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// 标定偏差滑杆判读
+var curJoint='shoulder_pan';
+var baseMin={'shoulder_pan':859,'elbow_flex':947,'gripper':2046};
+function setJoint(j){
+  curJoint=j;
+  document.getElementById('devIo').innerHTML='<span class="dim">// 已选关节：'+j+'（上次 range_min='+baseMin[j]+'）</span>\n<span class="dim">拖动下方滑杆设定偏差，自动判读</span>';
+  judgeDev();
+}
+function judgeDev(){
+  var v=parseInt(document.getElementById('devSlider').value,10);
+  document.getElementById('devVal').textContent=v;
+  var io=document.getElementById('devIo');
+  var minNow=baseMin[curJoint]+v;
+  var head='<span class="dim">// '+curJoint+'：上次 range_min='+baseMin[curJoint]+'，本次 Record MIN='+minNow+'（偏差 '+v+'）</span>\n';
+  if(v<=60){
+    io.innerHTML=head+'<span class="ok">✔ 细微数值变化，属正常 —— 文档：每次校准可能会有细微数值变化</span>\n<span class="dim">可沿用本次校准结果，JSON 自动更新 range_min</span>';
+  }else if(v<=200){
+    io.innerHTML=head+'<span class="warn">⚠ 偏差中等：检查是否基准姿态没摆到位、录程没掰满</span>\n<span class="dim">建议复核一次该关节行程，再决定是否输 c 重校</span>';
+  }else{
+    io.innerHTML=head+'<span class="bad">✘ 较大数值差异 → 校准有问题，必须重新执行操作</span>\n<span class="dim">处置：重跑 lerobot-calibrate，在提示处输 c 回车进入重校流程</span>';
+  }
+}
+</script>
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>
