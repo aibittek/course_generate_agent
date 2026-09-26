@@ -1,8 +1,10 @@
 /* ============================================================
    设备开发工作台 · 前端逻辑
    会话列表（SSH 终端 / 文件管理 / 串口 / 远程桌面）+ 多标签 + 分屏 + 独立窗口
-   跨不过浏览器边界的协议（SSH / SFTP）统一由设备端 device_bridge.py 转发（设备与电脑在同一局域网）
+   跨不过浏览器边界的协议（SSH / SFTP）统一由【本机助手】start_helper.py 转发
+   链路：浏览器 → 127.0.0.1:8100（本机助手）→ 设备IP:22（sshd），设备端免安装
    串口为本机 USB 直连（浏览器 Web Serial），数据线插在电脑上，不经任何网络服务
+   远程桌面为 noVNC 直连设备:6080，不经过助手
    ============================================================ */
 (function () {
   'use strict';
@@ -17,7 +19,38 @@
   var KINDS = ['term', 'sftp', 'serial', 'vnc'];
   var BAUD_LIST = [1200, 2400, 4800, 9600, 14400, 19200, 38400, 57600, 76800, 115200,
     128000, 230400, 256000, 460800, 500000, 921600, 1000000, 1500000, 2000000, 3000000];
-  var DEF_BRIDGE_PORT = 8100;
+  var DEF_BRIDGE_PORT = 8100;   // 本机助手默认端口（start_helper.py，只监听 127.0.0.1）
+  var HELPER_HOST = '127.0.0.1';
+  var HELPER_PROTOCOL = 'eai-helper:';   // 需一次性运行平台对应的 register 脚本注册
+  // 平台判定（仅用于展示对应平台的启动/注册指引文案）。
+  // 页面无法直接执行 .bat/.sh，实际拉起靠 eai-helper:// 协议——
+  // 协议在哪个平台注册成功，就会唤起那个平台对应的启动方式。
+  var OS = (function () {
+    var ua = navigator.userAgent || '';
+    // 此处描述的是【页面宿主环境】的操作系统（即本台电脑），用于生成本机引导文案。
+    if (/Windows/i.test(ua)) {
+      return {
+        plat: 'win',
+        reg: '先双击一次 register_helper.bat（一次性注册 eai-helper:// 启动协议）',
+        start: '直接双击 start_helper.bat 手动启动'
+      };
+    }
+    if (/Mac OS X|Macintosh/i.test(ua)) {
+      return {   // macOS 由 register_helper_macos.sh 生成 .app 注册（start_helper.sh 首次运行已自动执行）
+        plat: 'mac',
+        reg: '先执行一次 ./register_helper_macos.sh（一次性生成启动器并注册 eai-helper://）',
+        start: '直接在 device 目录执行 ./start_helper.sh 手动启动'
+      };
+    }
+    if (/Linux|X11/i.test(ua)) {
+      return {
+        plat: 'linux',
+        reg: '先执行一次 ./register_helper.sh（一次性注册 eai-helper:// 启动协议）',
+        start: '直接在 device 目录执行 ./start_helper.sh 手动启动'
+      };
+    }
+    return { plat: '', reg: '', start: '' };
+  })();
   var DEF_SSH_PORT = 22;
   var DEF_VNC_PORT = 6080;
   var uid = 0;
@@ -31,6 +64,14 @@
     try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : dflt; } catch (e) { return dflt; }
   }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+
+  /* 本机助手「已初始化」记忆（与 entryflow.js 共用键）：
+     1=本机协议已注册且成功拉起过 → 入口/连接可静默发 eai-helper://；
+     其他值=全新环境 → 任何地方都不发协议，彻底避免系统「选择应用」弹框 */
+  var KEY_HELPER_READY = 'eai_helper_ready';
+  var KEY_HELPER_PENDING = 'eai_helper_pending';
+  function helperReady() { return lsGet(KEY_HELPER_READY, null); }
+  function markHelperReady() { lsSet(KEY_HELPER_READY, 1); }
 
   function b64enc(u8) {
     var s = '', CH = 0x8000;
@@ -82,7 +123,11 @@
     sessions: [],        // 已保存的会话（左侧列表）
     conns: {},           // bridgeKey -> 已登录连接 { token, user, sshHost, sshPort, homedir, base, wsBase }
     prefs: {},           // 上次用过的设备信息，用于新建时预填
-    sameOrigin: null,    // 页面由桥接服务自己托管时记录 { addr, port }
+    sameOrigin: null,    // 页面由本机助手托管时记录 { addr, port }
+    helper: {            // 本机助手探测结果 { port, online }，连接时按需刷新
+      port: lsGet('eai_helper_port', DEF_BRIDGE_PORT) || DEF_BRIDGE_PORT,
+      online: false
+    },
     split: false, activePane: 'L',
     panes: { L: { tabs: [], active: null }, R: { tabs: [], active: null } },
     seq: 0, popout: false
@@ -114,8 +159,26 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { box.hidden = true; }, kind === 'bad' ? 7000 : 3600);
   }
+  function isSerialActive() {
+    var p = S.activePane && S.panes[S.activePane];
+    var t = (p && p.active) ? findTab(p.active) : null;
+    return !!(t && t.kind === 'serial');
+  }
   function setDeviceLabel(text) {
-    if ($('sbBridge')) $('sbBridge').textContent = text || '';
+    if (!$('sbBridge')) return;
+    if (text && isSerialActive()) return;   // 串口是本机 USB 直连，不显示本机助手字样
+    $('sbBridge').textContent = text || '';
+  }
+  // 标签切换 / 开关标签时刷新右下角：串口激活则清掉助手字样，SSH/SFTP 激活则恢复其链路显示
+  function refreshAnimationByTab() {
+    var p = S.activePane && S.panes[S.activePane];
+    var t = (p && p.active) ? findTab(p.active) : null;
+    if (!t) { if (!allTabs().length) setDeviceLabel(''); return; }
+    if (t.kind === 'serial') { setDeviceLabel(''); return; }
+    if (t.conn) {
+      setDeviceLabel('本机助手 ' + (t.conn.base || '').replace(/^https?:\/\//, '') +
+        ' → ' + t.conn.addr + ':' + (t.conn.sshPort || DEF_SSH_PORT) + ' · ' + t.title);
+    }
   }
   function setUserLabel(text) { if ($('wbUser')) $('wbUser').textContent = text || '未连接'; }
 
@@ -125,9 +188,9 @@
   function blankSession(kind) {
     return {
       id: newId(), kind: kind || 'term', name: '',
-      addr: '', bridgePort: DEF_BRIDGE_PORT,
+      addr: '',
       user: '', password: '', remember: true,
-      sshHost: '127.0.0.1', sshPort: DEF_SSH_PORT, startDir: '',
+      sshPort: DEF_SSH_PORT, startDir: '',
       serialPort: '', serialLabel: '', baud: 115200, dataBits: 8, stopBits: 1, parity: 'none',
       vncPort: DEF_VNC_PORT, at: 0
     };
@@ -137,11 +200,16 @@
     var list = lsGet(LS_SESSIONS, null);
     if (!Array.isArray(list)) list = [];
     S.sessions = list.filter(function (s) { return s && s.id && KINDS.indexOf(s.kind) >= 0; });
-    // 迁移：串口统一为本机直连（Web Serial），清掉历史的设备端串口字段
+    // 迁移：桥接统一走本机助手（127.0.0.1，端口全局共用）；
+    // 串口统一为本机直连（Web Serial），清掉历史的设备端串口字段
     S.sessions.forEach(function (s) {
+      if (s.bridgePort) {
+        S.helper.port = s.bridgePort;
+        lsSet('eai_helper_port', s.bridgePort);
+      }
+      delete s.bridgePort; delete s.sshHost; delete s.target;
       if (s.kind === 'serial') {
-        delete s.target;
-        s.addr = ''; s.user = ''; s.password = ''; s.bridgePort = DEF_BRIDGE_PORT;
+        s.addr = ''; s.user = ''; s.password = '';
         if (!s.serialLabel) s.serialLabel = s.serialPort || '';
       }
     });
@@ -166,7 +234,7 @@
     saveSessions();
   }
   function savePrefs(s) {
-    S.prefs = { addr: s.addr, bridgePort: s.bridgePort, user: s.user };
+    S.prefs = { addr: s.addr, user: s.user };
     lsSet(LS_PREFS, S.prefs);
   }
 
@@ -183,42 +251,53 @@
     if (s.kind === 'vnc') {
       return 'noVNC · ' + (s.addr || '?') + ':' + (s.vncPort || DEF_VNC_PORT);
     }
-    return (s.addr || '?') + ':' + (s.bridgePort || DEF_BRIDGE_PORT) + ' · ' + (s.user || '?');
+    return (s.addr || '?') + ':' + (s.sshPort || DEF_SSH_PORT) + ' · ' + (s.user || '?');
   }
 
   /* ==========================================================
-     连接：每个会话各自登录，token 按桥接地址缓存
+     连接：桥接一律指向本机助手 127.0.0.1（设备端免安装），
+     由助手去 SSH 登录设备；token 按「设备:SSH端口」缓存，
+     多台设备各自独立一条连接，共用同一个助手
      ========================================================== */
-  function bridgeKey(s) { return (s.addr || '') + ':' + (s.bridgePort || DEF_BRIDGE_PORT); }
-  function bridgeBase(s) { return 'http://' + s.addr + ':' + (s.bridgePort || DEF_BRIDGE_PORT); }
-  function bridgeWs(s) {
+  function bridgeKey(sess) {
+    return 'dev:' + ((sess && sess.addr) || '?') + ':' + ((sess && sess.sshPort) || DEF_SSH_PORT);
+  }
+  function bridgeBase() { return 'http://' + HELPER_HOST + ':' + helperPort(); }
+  function bridgeWs() {
     var proto = (location.protocol === 'https:') ? 'wss://' : 'ws://';
-    return proto + s.addr + ':' + (s.bridgePort || DEF_BRIDGE_PORT);
+    return proto + HELPER_HOST + ':' + helperPort();
+  }
+  function helperPort() {
+    return parseInt(S.helper && S.helper.port, 10) || DEF_BRIDGE_PORT;
   }
 
   function login(sess) {
-    var base = bridgeBase(sess);
+    var base = bridgeBase();
     return fetch(base + '/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         user: sess.user, password: sess.password || '',
-        host: sess.sshHost || '127.0.0.1', port: sess.sshPort || DEF_SSH_PORT
+        host: sess.addr, port: sess.sshPort || DEF_SSH_PORT   // 助手代连的目标 = 设备 IP
       })
     })
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j || !j.ok) throw new Error((j && j.error) || '登录失败');
         var conn = {
-          key: bridgeKey(sess), base: base, wsBase: bridgeWs(sess),
+          key: bridgeKey(sess), base: base, wsBase: bridgeWs(),
           token: j.token, user: j.user, sshHost: j.host, sshPort: j.port,
           homedir: j.homedir || '/', addr: sess.addr, sessionId: sess.id
         };
         S.conns[conn.key] = conn;
+        S.helper.online = true;
         return conn;
       })
       .catch(function (e) {
-        if (e instanceof TypeError) throw new Error('无法连接桥接服务 ' + base + '，请确认设备上已运行 device_bridge.py');
+        if (e instanceof TypeError) {
+          S.helper.online = false;
+          throw new Error('无法连接本机助手 ' + base + '（点「连接」会自动尝试启动，也可手动双击 start_helper.bat）');
+        }
         throw e;
       });
   }
@@ -242,7 +321,7 @@
     if (!conn) return;
     delete S.conns[conn.key];
     setStatus('会话已失效，请重新连接', 'err');
-    toast('设备端会话已失效（可能被超时回收或服务重启），请重新打开该会话。', 'bad');
+    toast('会话已失效（可能被助手超时回收或服务重启），请重新打开该会话。', 'bad');
   }
   function apiGet(conn, path, params) {
     return fetch(apiURL(conn, path, params), { cache: 'no-store' })
@@ -263,12 +342,74 @@
     return false;
   }
 
+  /* ---------------------------------------------------------- 本机助手：探测与唤起 */
+  function probeHelper() {
+    return fetch(bridgeBase() + '/api/ping', { cache: 'no-store', mode: 'cors' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        S.helper.online = !!(j && j.service === 'eai-device-bridge');
+        return S.helper.online;
+      })
+      .catch(function () { S.helper.online = false; return false; });
+  }
+
+  // 通过 eai-helper:// 自定义协议唤起（需一次性运行平台对应的 register 脚本注册）。
+  // 每次页面加载只自动尝试一次，避免反复弹浏览器的「外部协议」询问。
+  function launchHelperOnce(force) {
+    if (S.helper.launched && !force) return false;
+    S.helper.launched = true;
+    try {
+      // 用隐藏 iframe 发起，避免未注册协议时把当前页导航走 / 弹错误打断页面
+      var f = document.createElement('iframe');
+      f.style.display = 'none';
+      f.src = HELPER_PROTOCOL + '//start?port=' + helperPort();
+      document.body.appendChild(f);
+      setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 20000);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // 轮询等待助手就绪；waitMs=0 表示不等待，直接返回探测结果
+  function waitForHelper(waitMs) {
+    return new Promise(function (resolve) {
+      var t0 = Date.now();
+      var timer = setInterval(function () {
+        probeHelper().then(function (ok) {
+          if (ok || Date.now() - t0 >= waitMs) {
+            clearInterval(timer);
+            resolve(ok);
+          }
+        });
+      }, 700);
+    });
+  }
+
+  // 连接前确保助手在跑：先探测；不在则经协议唤起一次并轮询等待
+  function ensureHelper() {
+    return probeHelper().then(function (on) {
+      if (on) return true;
+      // 本机协议未注册（全新环境）绝不发协议 —— 免得系统弹「选择应用」框，交由初始化引导处理
+      if (helperReady() !== 1) return false;
+      if (!launchHelperOnce(false)) return false;
+      setStatus('正在启动本机助手 …', 'busy');
+      // 经协议唤起且随后探测成功 = 本机链路已打通，记忆为「已初始化」
+      return waitForHelper(6000).then(function (ok) {   // 首次运行还要 pip 装依赖，多等一会
+        if (ok) markHelperReady();
+        return ok;
+      });
+    }).then(function (on) {
+      if (on) S.helper.online = true;
+      return on;
+    });
+  }
+
   function loadSysInfo(conn) {
     if (!conn) { $('sideSys').innerHTML = ''; return; }
     apiGet(conn, '/api/sys/info').then(function (j) {
       if (authCheck(conn, j) || !j || !j.ok) return;
       var rows = [
-        ['设备', conn.addr + ':' + (conn.base.split(':').pop())],
+        ['设备', conn.addr + ':' + (conn.sshPort || DEF_SSH_PORT)],
+        ['助手', (conn.base || '').replace(/^https?:\/\//, '')],
         ['用户', j.user + '@' + j.host],
         ['系统', j.os || j.uname || '—'],
         ['内核', j.uname || '—'],
@@ -767,28 +908,104 @@
       '  <button class="tbbtn" data-a="clear">清空</button>',
       '  <button class="tbbtn" data-a="scan">扫描</button>',
       '  <span class="flex"></span>',
-      '  <div class="serial-state"><span class="sdot" data-a="dot"></span><span data-a="state">未连接</span></div>',
+      '  <div class="serial-state"><span class="sdot" data-a="dot"></span><span data-a="state">未连接</span>',
+      '    <span class="mono" data-a="bytes" style="color:var(--text-muted)"></span></div>',
       '</div>',
       '<div class="tb">',
       '  <div class="f"><label>行尾符</label><select data-a="eol">',
       '    <option value="crlf" selected>CRLF (\\r\\n)</option><option value="lf">LF (\\n)</option>',
       '    <option value="cr">CR (\\r)</option><option value="">无</option></select></div>',
-      '  <div class="f"><label>显示方式</label><select data-a="view"><option value="text" selected>文本</option><option value="hex">十六进制</option></select></div>',
+      '  <div class="f"><label>显示方式</label><select data-a="view">',
+      '    <option value="term" selected>终端（可交互）</option>',
+      '    <option value="text">原始文本</option>',
+      '    <option value="hex">十六进制</option></select></div>',
+      '  <div class="f"><label>编码</label><select data-a="enc">',
+      '    <option value="utf-8" selected>UTF-8</option><option value="gbk">GBK / GB2312</option>',
+      '    <option value="big5">Big5</option><option value="latin1">Latin-1</option></select></div>',
       '  <label class="chk"><input type="checkbox" data-a="ts"> 时间戳</label>',
-      '  <label class="chk"><input type="checkbox" data-a="echo"> 本地回显</label>',
+      '  <label class="chk"><input type="checkbox" data-a="echo" checked> 本地回显</label>',
+      '  <label class="chk" title="过滤 ANSI 转义序列（终端控制码），十六进制视图始终显示原始字节">',
+      '    <input type="checkbox" data-a="ansi" checked> 过滤转义码</label>',
       '</div>',
-      '<div class="serial-console" data-a="console"></div>',
-      '<div class="serial-send">',
-      '  <input data-a="input" placeholder="输入要发送的内容，回车发送…" autocomplete="off" spellcheck="false" disabled>',
-      '  <button class="tbbtn primary" data-a="send" disabled>发送</button>',
+      '<div class="serial-console" data-a="consoleWrap">',
+      '  <div class="serial-term" data-a="termhost" hidden></div>',
+      '  <div class="serial-log" data-a="console"></div>',
+      '  <div class="serial-prompt" data-a="promptline">',
+      '    <span class="ps">›</span>',
+      '    <textarea data-a="input" rows="1" autocomplete="off" spellcheck="false"',
+      '      placeholder="在此输入命令，回车发送；Tab 键直接发给设备补全" disabled></textarea>',
+      '  </div>',
       '</div>'
     ].join('');
 
     var cons = el.querySelector('[data-a="console"]');
     var input = el.querySelector('[data-a="input"]');
+    var termHost = el.querySelector('[data-a="termhost"]');
+    var promptLine = el.querySelector('[data-a="promptline"]');
+    var term = null, fitAddon = null;
     var port = null, reader = null, writer = null, keepReading = false, closed = false;
     var history = [], hIdx = -1;
     var HAS = ('serial' in navigator);
+    // 收发字节计数：用来区分“设备压根没回数据”和“页面没显示出来”
+    var rxBytes = 0, txBytes = 0, noRxTimer = null, hintedNoRx = false;
+    function paintBytes() {
+      var b = q('bytes');
+      if (b) b.textContent = rxBytes || txBytes ? ('已收 ' + rxBytes + ' B · 已发 ' + txBytes + ' B') : '';
+    }
+    // 解码器要跨 read 复用并开 stream 模式：一个多字节字符（如汉字 3 字节）
+    // 很可能被拆到两次 read 里，每次新建解码器就会把它解成乱码
+    var dec = null;
+    function makeDecoder() {
+      var name = q('enc') ? q('enc').value : 'utf-8';
+      try { dec = new TextDecoder(name, { fatal: false }); }
+      catch (e) { dec = new TextDecoder('utf-8', { fatal: false }); }
+    }
+    // 过滤 ANSI 转义序列：串口对面若是 Linux shell，会发 ESC[?2004h 这类控制码，
+    // 原样显示就是 [ ?2004h 之类的“乱码”。转义序列可能被 read 截断，故用 ansiBuf 暂存
+    var ansiBuf = '';
+    function stripAnsi(s) {
+      s = ansiBuf + s; ansiBuf = '';
+      var out = '', i = 0;
+      while (i < s.length) {
+        if (s.charCodeAt(i) !== 0x1b) { out += s[i]; i++; continue; }
+        var n = s[i + 1];
+        if (n === undefined) { ansiBuf = s.slice(i); break; }
+        if (n === '[') {                    // CSI：ESC [ 参数 终止符(0x40~0x7E)
+          var j = i + 2, closed = false;
+          while (j < s.length) {
+            var cc = s.charCodeAt(j);
+            if (cc >= 0x40 && cc <= 0x7e) { closed = true; j++; break; }
+            j++;
+          }
+          if (!closed) { ansiBuf = s.slice(i); break; }
+          i = j; continue;
+        }
+        if (n === ']') {                    // OSC：ESC ] … BEL 或 ESC \
+          var k = i + 2, end = false;
+          while (k < s.length) {
+            if (s.charCodeAt(k) === 0x07) { k++; end = true; break; }
+            if (s.charCodeAt(k) === 0x1b && s[k + 1] === '\\') { k += 2; end = true; break; }
+            k++;
+          }
+          if (!end) { ansiBuf = s.slice(i); break; }
+          i = k; continue;
+        }
+        // 其它转义：ESC + 若干中间字节(0x20~0x2F) + 终止字节(0x30~0x7E)
+        var m = i + 1, fin = false;
+        while (m < s.length) {
+          var mc = s.charCodeAt(m);
+          if (mc >= 0x30 && mc <= 0x7e) { fin = true; m++; break; }
+          if (mc >= 0x20 && mc <= 0x2f) { m++; continue; }
+          break;                            // 非法字节，按孤立 ESC 处理
+        }
+        if (!fin) {
+          if (m >= s.length) { ansiBuf = s.slice(i); break; }   // 序列可能被截断，等下一块
+          i++; continue;                                        // 孤立 ESC：丢掉它本身
+        }
+        i = m; continue;
+      }
+      return out;
+    }
 
     function q(a) { return el.querySelector('[data-a="' + a + '"]'); }
     function setState(kind, text) {
@@ -800,10 +1017,16 @@
       q('connect').disabled = on;
       q('disconnect').disabled = !on;
       input.disabled = !on;
-      q('send').disabled = !on;
+      if (on && term) term.focus();
     }
     function nearBottom() { return cons.scrollHeight - cons.scrollTop - cons.clientHeight < 40; }
     function write(text, cls) {
+      if (viewMode() === 'term' && term) {
+        // 终端模式下日志/提示也写进终端，否则这些信息会落在被隐藏的文本日志里
+        var color = cls === 'err' ? '\x1b[31m' : (cls === 'tx' ? '\x1b[36m' : '\x1b[90m');
+        term.write(color + text.replace(/\n/g, '\r\n') + '\x1b[0m');
+        return;
+      }
       var stick = nearBottom();
       if (q('ts').checked && cls !== 'sys') {
         var ts = document.createElement('span');
@@ -816,13 +1039,81 @@
       if (stick) cons.scrollTop = cons.scrollHeight;
     }
     function sys(m) { write(m + '\n', 'sys'); }
+    function viewMode() {
+      var v = q('view').value;
+      return (v === 'term' || v === 'hex') ? v : 'text';
+    }
+    // 终端模式：xterm.js 直接接管键盘，逐字符发往串口，
+    // Tab / 方向键 / Ctrl+C 原样交给设备侧 shell 处理（Tab 即补全）
+    function ensureTerm() {
+      if (term) return true;
+      if (!window.Terminal) { sys('未找到 xterm.js（vendor/xterm 缺失），已退回原始文本模式'); return false; }
+      term = new window.Terminal({
+        fontFamily: "'Cascadia Code','JetBrains Mono',Consolas,'Courier New',monospace",
+        fontSize: 13, lineHeight: 1.25, cursorBlink: true, scrollback: 8000,
+        allowProposedApi: true, convertEol: false,
+        theme: {
+          background: '#0f172a', foreground: '#e2e8f0', cursor: '#7dd3fc',
+          selectionBackground: '#334155', black: '#1e293b', red: '#f87171',
+          green: '#5eead4', yellow: '#fbbf24', blue: '#7dd3fc',
+          magenta: '#c4b5fd', cyan: '#67e8f9', white: '#e2e8f0'
+        }
+      });
+      if (window.FitAddon) { fitAddon = new window.FitAddon.FitAddon(); term.loadAddon(fitAddon); }
+      term.open(termHost);
+      term.onData(function (d) {
+        if (!writer) return;
+        txBytes += d.length; paintBytes();
+        try { writer.write(enc(d)).catch(function () { }); } catch (e) { }
+      });
+      return true;
+    }
+    function fitTerm() {
+      if (!fitAddon || !term || termHost.hidden) return;
+      var r = termHost.getBoundingClientRect();
+      if (r.width < 20 || r.height < 20) return;
+      try { fitAddon.fit(); } catch (e) { }
+    }
+    function applyMode() {
+      var isTerm = (viewMode() === 'term');
+      if (isTerm) {
+        // 必须先让容器可见再创建终端：xterm 在 display:none 的容器里会初始化成 0 列宽
+        termHost.hidden = false; cons.hidden = true; promptLine.hidden = true;
+        if (!ensureTerm()) { q('view').value = 'text'; isTerm = false; }
+      }
+      if (!isTerm) { termHost.hidden = true; cons.hidden = false; promptLine.hidden = false; }
+      if (isTerm) { setTimeout(fitTerm, 0); if (term) term.focus(); }
+      else if (!input.disabled) input.focus();
+    }
+    function sendRaw(str) {
+      if (!port || !writer) return;
+      var data = enc(str);
+      txBytes += data.length; paintBytes();
+      try {
+        writer.write(data).catch(function (e) { sys('\n发送失败：' + (e && e.message ? e.message : e)); });
+      } catch (e) { sys('\n发送失败：' + (e && e.message ? e.message : e)); }
+    }
     function writeBytes(u8) {
+      rxBytes += u8.length;
+      paintBytes();
+      if (viewMode() === 'term') {
+        if (term) {
+          // xterm 只认 UTF-8；选了 GBK 等编码时先自行解码再写入
+          var en = q('enc') ? q('enc').value : 'utf-8';
+          if (en === 'utf-8') term.write(u8);
+          else { if (!dec) makeDecoder(); term.write(dec.decode(u8, { stream: true })); }
+        }
+        return;
+      }
       if (q('view').value === 'hex') {
         var a = [];
         for (var i = 0; i < u8.length; i++) a.push(u8[i].toString(16).padStart(2, '0'));
         write(a.join(' ') + ' ', '');
       } else {
-        write(new TextDecoder('utf-8').decode(u8), '');
+        if (!dec) makeDecoder();
+        var txt = dec.decode(u8, { stream: true });
+        if (q('ansi').checked) txt = stripAnsi(txt);
+        write(txt, '');
       }
     }
     function openOpts() {
@@ -876,6 +1167,9 @@
         writer = port.writable.getWriter();
         lock(true);
         setState('on', '已连接 · ' + (q('baud').value || 115200) + 'bps');
+        rxBytes = 0; txBytes = 0; hintedNoRx = false; paintBytes();
+        dec = null;   // 新连接重新开始解码，丢掉上一次的残留字节
+        ansiBuf = '';
         sys('本机串口已打开 · ' + (q('baud').value || 115200) + ' ' +
           q('dataBits').value + q('parity').value.charAt(0).toUpperCase() + q('stopBits').value);
         readLoop();
@@ -916,31 +1210,62 @@
       if (!silent) sys('\n串口已断开。');
       refreshPorts();
     }
-    async function send() {
+    function send() {
       if (!port || !writer) return;
       var t = input.value, eol = q('eol').value;
       var tail = eol === 'crlf' ? '\r\n' : eol === 'lf' ? '\n' : eol === 'cr' ? '\r' : '';
+      var data = enc(t + tail);
+      txBytes += data.length;
+      paintBytes();
+      // 立即回显：不等 USB 写完成回调，避免设备不应答时看起来“没发出去”
+      if (q('echo').checked) write('▸ ' + t + '\n', 'tx');
+      if (t.trim() && history[0] !== t) { history.unshift(t); if (history.length > 60) history.pop(); }
+      hIdx = -1;
+      input.value = '';
       try {
-        await writer.write(enc(t + tail));
-        if (q('echo').checked) write('▸ ' + t + '\n', 'tx');
-        if (t.trim() && history[0] !== t) { history.unshift(t); if (history.length > 60) history.pop(); }
-        hIdx = -1;
-        input.value = '';
+        writer.write(data).catch(function (e) {
+          sys('\n发送失败：' + (e && e.message ? e.message : e));
+        });
       } catch (e) {
         sys('\n发送失败：' + (e && e.message ? e.message : e));
+        return;
       }
+      // 发完 1.5 秒内一个字节都没回来，提示一次排查方向（只提示一次，避免刷屏）
+      var snap = rxBytes;
+      clearTimeout(noRxTimer);
+      noRxTimer = setTimeout(function () {
+        if (closed || rxBytes !== snap || hintedNoRx) return;
+        hintedNoRx = true;
+        sys('已发出 ' + data.length + ' 字节，1.5 秒内未收到任何数据。若设备本该有回应，请检查：' +
+          '① 波特率是否与设备一致；② 行尾符（多数设备需要 CRLF 或 LF）；' +
+          '③ TX/RX 是否接反；④ 该设备是否需要二进制协议帧而非文本命令。');
+      }, 1500);
     }
 
     el.addEventListener('click', function (e) {
       var a = e.target.getAttribute && e.target.getAttribute('data-a');
       if (a === 'connect') connect();
       else if (a === 'disconnect') disconnect(false);
-      else if (a === 'clear') cons.innerHTML = '';
-      else if (a === 'send') send();
+      else if (a === 'clear') { cons.innerHTML = ''; if (term) term.clear(); }
       else if (a === 'scan') refreshPorts();
     });
+    // 点黑色区域任意位置即可开始输入（MobaXterm 手感）
+    q('consoleWrap').addEventListener('mousedown', function (e) {
+      if (viewMode() === 'term') { if (term) term.focus(); return; }
+      if (e.target === input) return;
+      if (!input.disabled) setTimeout(function () { input.focus(); }, 0);
+    });
+    q('view').addEventListener('change', function () { lsSet('eai_serial_view', q('view').value); applyMode(); });
+    q('echo').addEventListener('change', function () { lsSet('eai_serial_echo', q('echo').checked); });
+    q('enc').addEventListener('change', function () { lsSet('eai_serial_enc', q('enc').value); dec = null; });
+    q('ansi').addEventListener('change', function () { lsSet('eai_serial_ansi', q('ansi').checked); ansiBuf = ''; });
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); send(); return; }
+      // Tab 不做焦点切换，直接发给设备（远端 shell 会用它做补全）
+      if (e.key === 'Tab') { e.preventDefault(); sendRaw('\t'); return; }
+      if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault(); sendRaw('\x03'); input.value = ''; return;   // Ctrl+C：中断设备当前命令
+      }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         if (history.length && hIdx < history.length - 1) { hIdx++; this.value = history[hIdx]; }
@@ -963,6 +1288,11 @@
       el: el, kind: 'serial',
       title: cfg.title || '本机串口',
       mount: function () {
+        q('echo').checked = (lsGet('eai_serial_echo', true) !== false);
+        q('enc').value = lsGet('eai_serial_enc', 'utf-8');
+        q('ansi').checked = (lsGet('eai_serial_ansi', true) !== false);
+        q('view').value = lsGet('eai_serial_view', 'term');
+        applyMode();
         if (cfg.port) q('port').value = cfg.port;
         q('baud').value = cfg.baud || 115200;
         if (cfg.dataBits) q('dataBits').value = String(cfg.dataBits);
@@ -978,12 +1308,18 @@
         refreshPorts();
         if (cfg.autoconnect) connect();
       },
-      show: function () { if (!input.disabled) input.focus(); else q('connect').focus(); },
+      show: function () {
+        if (viewMode() === 'term') { setTimeout(fitTerm, 0); if (term) term.focus(); }
+        else if (!input.disabled) input.focus();
+        else q('connect').focus();
+      },
       hide: function () { },
-      refit: function () { },
+      refit: function () { fitTerm(); },
       close: function () {
         closed = true;
         disconnect(true);
+        try { if (term) term.dispose(); } catch (e) { }
+        term = null; fitAddon = null;
       }
     };
   }
@@ -1005,7 +1341,7 @@
       '  <button class="tbbtn" data-a="reload">重载</button>',
       '  <button class="tbbtn" data-a="open">在新窗口打开</button>',
       '</div>',
-      '<iframe class="vnc-frame" data-a="frame" allow="clipboard-read; clipboard-write"></iframe>'
+      '<iframe class="vnc-frame" data-a="frame" allow="clipboard-read; clipboard-write; fullscreen; picture-in-picture"></iframe>'
     ].join('');
     el.querySelector('[data-a="url"]').textContent = url;
     var frame = el.querySelector('[data-a="frame"]');
@@ -1057,6 +1393,7 @@
     try { view.mount(); } catch (e) { console.error(e); }
     renderPane(paneId);
     renderSide();
+    refreshAnimationByTab();
     setStatus('已打开 ' + KIND_NAME[kind] + ' · ' + tab.title, 'on');
     return tab;
   }
@@ -1108,6 +1445,7 @@
     S.activePane = paneId;
     renderPane(paneId);
     renderSide();
+    refreshAnimationByTab();
     var t = findTab(id);
     if (t && t.view.show) { try { t.view.show(); } catch (e) { } }
     if (t && t.view.refit) setTimeout(t.view.refit, 30);
@@ -1128,6 +1466,7 @@
     renderSide();
     var nt = p.active && findTab(p.active);
     if (nt && nt.view.refit) setTimeout(nt.view.refit, 30);
+    refreshAnimationByTab();
     if (!allTabs().length) setStatus('没有打开的标签', '');
   }
 
@@ -1163,6 +1502,7 @@
     renderPane(from);
     renderPane(to);
     renderSide();
+    refreshAnimationByTab();
     setTimeout(function () { if (t.view.refit) t.view.refit(); }, 30);
   }
 
@@ -1213,6 +1553,8 @@
       return;
     }
     if (sess.kind === 'vnc') {
+      // 没存 IP 时复用上次连接过的设备地址（同网段设备通常就是同一台）
+      if (!sess.addr && S.prefs && S.prefs.addr) sess.addr = S.prefs.addr;
       if (!sess.addr) { openModal(sess, '请补充设备地址（IP）'); return; }
       if (!sess.name) sess.name = sess.addr;
       openTab('vnc', {
@@ -1230,12 +1572,29 @@
     if (conn && conn.token) { startTab(sess, conn, paneId); return; }
 
     setStatus('正在连接 ' + sessTitle(sess) + ' …', 'busy');
-    login(sess).then(function (c) {
+    ensureHelper().then(function (on) {
+      if (!on) {
+        if (helperReady() !== 1) {
+          // 从未初始化过：不发协议、不弹系统框，直接给一次性分步引导
+          setStatus('本机助手未初始化', 'err');
+          showGuide('这台电脑还没初始化过本机助手，先按引导操作一次即可（之后全自动）。');
+          throw new Error('本机助手未初始化，已打开初始化引导');
+        }
+        var msg = '未检测到本机助手（' + bridgeBase() + '）。' +
+          (OS.reg ? OS.reg + '（只需一次，之后点连接会自动拉起助手）；' : '') +
+          OS.start + '，再点「连接」。';
+        setStatus('本机助手未启动', 'err');
+        throw new Error(msg);
+      }
+      return login(sess);
+    }).then(function (c) {
       savePrefs(sess);
       startTab(sess, c, paneId);
     }).catch(function (e) {
       setStatus('连接失败：' + e.message, 'err');
       toast('连接 ' + sessTitle(sess) + ' 失败：' + e.message, 'bad');
+      var gm = $('guideModal');
+      if (gm && !gm.hidden) return;   // 引导弹窗优先，不叠弹会话框
       openModal(sess, e.message);
     });
   }
@@ -1250,7 +1609,8 @@
     touchSession(sess);
     if (conn) {
       setUserLabel(conn.user + '@' + conn.addr);
-      setDeviceLabel('桥接：' + conn.base + ' · ' + sessTitle(sess));
+      setDeviceLabel('本机助手 ' + (conn.base || '').replace(/^https?:\/\//, '') +
+        ' → ' + conn.addr + ':' + (conn.sshPort || DEF_SSH_PORT) + ' · ' + sessTitle(sess));
       loadSysInfo(conn);
     }
   }
@@ -1328,8 +1688,8 @@
   function defaultDraft(kind) {
     var s = blankSession(kind);
     var p = S.prefs || {};
-    if (S.sameOrigin) { s.addr = S.sameOrigin.addr; s.bridgePort = S.sameOrigin.port; }
-    else if (p.addr) { s.addr = p.addr; s.bridgePort = p.bridgePort || DEF_BRIDGE_PORT; }
+    if (S.sameOrigin) { s.addr = S.sameOrigin.addr; }
+    else if (p.addr) { s.addr = p.addr; }
     if (p.user) s.user = p.user;
     return s;
   }
@@ -1351,6 +1711,7 @@
     syncTypeCards();
     $('modalNew').hidden = false;
     renderModalBody();
+    if (draft.kind === 'term' || draft.kind === 'sftp') refreshHelperHint();
     setTimeout(function () {
       var first = $('mBody').querySelector('[data-m="addr"]') || $('mBody').querySelector('input');
       if (first) first.focus();
@@ -1400,13 +1761,17 @@
         '</div>' +
         '<label class="chk"><input type="checkbox" data-m="remember"' + (draft.remember ? ' checked' : '') +
         '> 记住密码（保存在本机浏览器，换电脑需重新输入）</label>' +
-        '<details class="fadv"><summary>高级：桥接服务端口</summary>' +
+        '<details class="fadv"><summary>高级：本机助手端口</summary>' +
         '<div class="fgrid one">' +
-        '<div class="gf narrow"><label>桥接服务端口</label>' +
-        '<input data-m="bridgePort" value="' + esc(draft.bridgePort || DEF_BRIDGE_PORT) + '" inputmode="numeric" placeholder="8100"></div>' +
+        '<div class="gf narrow"><label>助手端口</label>' +
+        '<input data-m="helperPort" value="' + helperPort() + '" inputmode="numeric" placeholder="8100"></div>' +
         '</div></details>' +
-        '<div class="fnote">浏览器先连设备上的桥接服务 <code>device_bridge.py</code>（默认端口 8100，一般不用改），' +
-        '再由它登录设备自己的 sshd（上面的 SSH 端口，默认 22）。</div>';
+        '<div class="frow">' +
+        '<button class="btn sm" id="mStartHelper" type="button">启动本机助手</button>' +
+        '<span class="fhint" id="mHelperHint">检测中…</span>' +
+        '</div>' +
+        '<div class="fnote">浏览器只连<b>本机</b>助手 <code>start_helper.py</code>（127.0.0.1，默认端口 8100，' +
+        '仅监听回环地址），再由助手 SSH 登录上面填写的设备——<b>设备端不用安装任何服务</b>。</div>';
     } else if (k === 'serial') {
       html += '<div class="fgrid">' +
         '<div class="gf"><label>串口设备</label>' +
@@ -1452,6 +1817,9 @@
         '再由 noVNC 网页渲染。它不经过桥接服务，因此不需要账号密码。</div>';
     }
     body.innerHTML = html;
+    if (k === 'term' || k === 'sftp') {
+      refreshHelperHint();
+    }
     if (k === 'serial') {
       refreshPortSelect();
       var baudEl = body.querySelector('[data-m="baud"]');
@@ -1479,6 +1847,184 @@
 
   function modalErr(msg) { $('mErr').textContent = msg; return false; }
 
+  /* 本机助手：弹窗内的状态提示与一键启动 */
+  function refreshHelperHint() {
+    var hint = $('mHelperHint');
+    if (!hint) return;
+    hint.textContent = '正在检测本机助手 ' + bridgeBase() + ' …';
+    probeHelper().then(function (ok) {
+      var h = $('mHelperHint');
+      if (!h) return;
+      h.textContent = ok
+        ? '✓ 本机助手运行中（' + bridgeBase() + '），直接点「连接」即可。'
+        : '✗ 未检测到助手 —— 点「启动本机助手」' +
+          (OS.reg ? '；若点了没反应，' + OS.reg : '') +
+          '；或' + OS.start + '。';
+    });
+  }
+
+  function startHelperFromModal() {
+    var hint = $('mHelperHint');
+    // 先应用「高级：助手端口」里手填的端口
+    var pi = $('mBody').querySelector('[data-m="helperPort"]');
+    var hp = pi ? parseInt(pi.value, 10) : 0;
+    if (pi && pi.value.trim() !== '') {
+      if (!hp || hp < 1 || hp > 65535) {
+        if (hint) hint.textContent = '✗ 助手端口只能是 1~65535 的数字（如 8100）';
+        return;
+      }
+      if (hp !== helperPort()) {
+        S.helper.port = hp;
+        S.helper.online = false;
+        S.helper.launched = false;
+        lsSet('eai_helper_port', hp);
+      }
+    }
+    // 协议尚未在本机注册 —— 发协议只会让系统弹「选择应用」框，直接转到初始化引导
+    if (helperReady() !== 1) {
+      if (hint) hint.textContent = '本机协议还没注册，正在打开初始化引导 …';
+      showGuide('本机助手协议还没在这台电脑注册过，先按引导操作一次即可。');
+      return;
+    }
+    setStatus('正在启动本机助手 …', 'busy');
+    launchHelperOnce(true);
+    if (hint) {
+      hint.textContent = '已发出启动请求 —— 浏览器若弹出「外部协议」询问请选择允许；' +
+        '首次运行需安装依赖，约 1~2 分钟…';
+    }
+    waitForHelper(15000).then(function (ok) {
+      if (ok) { S.helper.online = true; S.helper.launched = false; markHelperReady(); }
+      refreshHelperHint();
+      if (ok) {
+        setStatus('本机助手已就绪', '');
+        toast('本机助手已启动：' + bridgeBase());
+      } else {
+        setStatus('助手仍未启动', 'err');
+        var h2 = $('mHelperHint');
+        if (h2) {
+          var steps = [];
+          if (OS.reg) steps.push(OS.reg);
+          steps.push('浏览器弹「外部协议 / 打开方式」询问时选允许、勾选始终允许（若始终没弹，说明本平台协议还没注册）');
+          steps.push('首次运行装依赖需 1~2 分钟，稍等再点一次即可点亮');
+          steps.push(OS.start);
+          var nums = ['①', '②', '③', '④'];
+          h2.textContent = '✗ 启动未成功，按顺序排查：' + steps.map(function (s, i) {
+            return nums[i] + ' ' + s;
+          }).join('；') + '。';
+        }
+        toast('助手未启动：' +
+          (OS.reg ? '多数情况是还没在本平台注册启动协议；' : '') + OS.start + '。', 'bad');
+        showGuide('发出的启动请求没有生效（协议多半还没注册），按引导操作一次即可。');
+      }
+    });
+  }
+
+  /* ==========================================================
+     本机助手 · 一次性初始化引导
+     全新环境绝不发 eai-helper://（未注册就发会弹系统「选择应用」
+     框，普通用户无从下手）：改为 路径 + 分步操作 + 成功判据 +
+     重试检测，完成一次后全程自动。
+     ========================================================== */
+  function guideDir() {
+    // workspace.html 与助手脚本同在 device/ 目录；file: 下可推导出真实路径
+    if (location.protocol !== 'file:') return '';
+    var p = decodeURIComponent(location.pathname || '').replace(/\/[^/]*$/, '');
+    if (/^\/[A-Za-z]:/.test(p)) p = p.slice(1);            // file:///E:/… → /E:/…
+    if (OS.plat === 'win') p = p.replace(/\//g, '\\');     // → E:\…\device
+    return p;
+  }
+
+  function copyText_(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(t);
+    }
+    return new Promise(function (res, rej) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok ? res() : rej(new Error('copy failed'));
+      } catch (e) { rej(e); }
+    });
+  }
+
+  function guideHtml() {
+    var dir = guideDir();
+    var h = '';
+    h += '<p class="guide-what">这台电脑还没初始化过「本机助手」。按下面的步骤<b>操作一次</b>即可，' +
+      '之后点「设备开发」会全自动静默启动，不再出现任何系统提示。</p>';
+    if (dir) {
+      h += '<div class="guide-path">' +
+        '<button class="guide-open" id="gCopy" type="button">复制路径</button>' +
+        '<code id="gDir">' + esc(dir) + '</code></div>';
+    }
+    h += '<ol class="guide-steps">';
+    if (OS.plat === 'win') {
+      h += '<li>点「复制路径」，粘贴到<b>文件资源管理器</b>地址栏后回车，进入 device 目录' +
+        '<span class="fhint">也可以：按 Win+R → 粘贴路径 → 回车</span></li>';
+      h += '<li>双击 <b>start_helper.bat</b>' +
+        '<span class="fhint">窗口会自动完成一次性注册；首次运行在线安装依赖约 1~2 分钟</span></li>';
+      h += '<li>等到出现横幅并保持运行：<span class="guide-cmd">具身智能课程 · 设备开发本机助手</span>' +
+        '<span class="fhint">此窗口别关（关了助手就停）。以后不再需要手动开，点入口会自动静默拉起</span></li>';
+    } else if (OS.plat === 'mac' || OS.plat === 'linux') {
+      h += '<li>打开「终端」，进入 device 目录：' +
+        '<span class="guide-cmd">cd ' + esc(dir || '课程包/device') + '</span></li>';
+      h += '<li>执行启动：<span class="guide-cmd">./start_helper.sh</span>' +
+        '<span class="fhint">首次运行自动注册 eai-helper:// 协议并安装依赖，约 1~2 分钟</span></li>';
+      h += '<li>等到出现横幅并保持运行：<span class="guide-cmd">具身智能课程 · 设备开发本机助手</span></li>';
+    } else {
+      h += '<li>到课程包的 <b>device/</b> 目录，运行一次本平台的启动脚本（' +
+        esc(OS.reg || 'start_helper') + '）</li>';
+      h += '<li>等窗口出现横幅：<span class="guide-cmd">具身智能课程 · 设备开发本机助手</span></li>';
+    }
+    h += '</ol>';
+    h += '<div class="guide-ok"><b>怎么算成功：</b>看到上面的横幅后，点右下角' +
+      '<b>「我已完成，重试检测」</b>——检测通过即初始化完成，以后全程自动。</div>';
+    h += '<p class="guide-after home">完成后可直接在左侧点「＋ 新建会话」开始使用；' +
+      '若工作台已在其他标签打开，刷新一下即可。</p>';
+    return h;
+  }
+
+  function showGuide(reason) {
+    var m = $('guideModal');
+    if (!m) return;
+    var nm = $('modalNew');            // 引导优先，避免两个弹窗叠加
+    if (nm && !nm.hidden) nm.hidden = true;
+    $('gBody').innerHTML = guideHtml();
+    $('gMsg').textContent = reason || '';
+    m.hidden = false;
+    setStatus('本机助手待初始化（一次即可）', 'busy');
+  }
+
+  function closeGuide() {
+    var m = $('guideModal');
+    if (m) m.hidden = true;
+    var g = $('gMsg');
+    if (g) g.textContent = '';
+  }
+
+  function retryGuide() {
+    var g = $('gMsg');
+    if (g) g.textContent = '正在检测本机助手 ' + bridgeBase() + ' …';
+    probeHelper().then(function (ok) {
+      if (ok) {
+        S.helper.online = true;
+        markHelperReady();              // 探测通过 = 注册+启动均已就绪，入口此后可静默发协议
+        closeGuide();
+        setStatus('本机助手已就绪', 'on');
+        toast('✓ 本机助手已就绪：' + bridgeBase());
+        setDeviceLabel('本机助手 ' + bridgeBase().replace(/^https?:\/\//, '') +
+          ' 就绪 · 仅监听 127.0.0.1');
+        if (!S.sessions.length) openModal();
+      } else if (g) {
+        g.textContent = '✗ 还没检测到：请确认启动窗口出现「具身智能课程 · 设备开发本机助手」横幅' +
+          '且窗口没有关闭，再点一次重试。';
+      }
+    });
+  }
+
   function confirmModal() {
     var v = readModal();
     $('mErr').textContent = '';
@@ -1504,9 +2050,20 @@
       if (!v.addr) return modalErr('请填写设备地址（IP）');
       if (!v.user) return modalErr('请填写用户名');
       if (!v.password) return modalErr('请填写密码');
-      v.bridgePort = parseInt(v.bridgePort, 10) || DEF_BRIDGE_PORT;
       v.sshPort = parseInt(v.sshPort, 10) || DEF_SSH_PORT;
+      // 助手端口是全局设置（所有会话共用一个本机助手）
+      if (v.helperPort != null && String(v.helperPort).trim() !== '') {
+        var hp = parseInt(v.helperPort, 10);
+        if (!hp || hp < 1 || hp > 65535) return modalErr('助手端口只能是 1~65535 的数字（如 8100）');
+        if (hp !== helperPort()) {
+          S.helper.port = hp;
+          S.helper.online = false;
+          S.helper.launched = false;
+          lsSet('eai_helper_port', hp);
+        }
+      }
     }
+    delete v.helperPort;   // 端口存全局，不落到会话记录里
 
     var rec;
     if (editing) {
@@ -1672,10 +2229,35 @@
     if (e.target && e.target.id === 'mPickPort') {
       e.preventDefault(); pickLocalPort();
     }
+    if (e.target && e.target.id === 'mStartHelper') {
+      e.preventDefault(); startHelperFromModal();
+    }
   });
   $('modalNew').addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { e.preventDefault(); confirmModal(); }
     if (e.key === 'Escape') closeModal();
+  });
+
+  /* 初始化引导弹窗（一次性）：关闭 / 复制路径 / 重试检测 */
+  $('gClose').addEventListener('click', closeGuide);
+  $('gClose2').addEventListener('click', closeGuide);
+  $('gRetry').addEventListener('click', retryGuide);
+  $('guideModal').addEventListener('click', function (e) {
+    if (e.target === this) closeGuide();
+    if (e.target && e.target.id === 'gCopy') {
+      e.preventDefault();
+      var el = $('gDir');
+      if (!el) return;
+      copyText_(el.textContent).then(function () {
+        e.target.textContent = '已复制 ✓';
+        setTimeout(function () { e.target.textContent = '复制路径'; }, 1600);
+      }).catch(function () {
+        $('gMsg').textContent = '复制失败，请手动选中路径 Ctrl+C：' + (el.textContent || '');
+      });
+    }
+  });
+  $('guideModal').addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeGuide();
   });
 
   /* ==========================================================
@@ -1684,7 +2266,7 @@
   function disconnectAll() {
     var keys = Object.keys(S.conns);
     if (!keys.length && !allTabs().length) { toast('当前没有活动连接。'); return; }
-    if (!confirm('断开全部连接？设备端会关闭这些 SSH 连接，打开着的本机串口也会一并关闭。')) return;
+    if (!confirm('断开全部连接？本机助手会关闭这些 SSH 连接，打开着的本机串口也会一并关闭。')) return;
     keys.forEach(function (k) {
       var c = S.conns[k];
       fetch(c.base + '/api/logout?token=' + encodeURIComponent(c.token)).catch(function () { });
@@ -1707,20 +2289,25 @@
      初始化
      ========================================================== */
   function detectSameOrigin() {
-    if (location.protocol.indexOf('http') !== 0) return Promise.resolve(null);
-    return fetch('/api/ping', { cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        if (j && j.service === 'eai-device-bridge') {
-          return {
-            addr: location.hostname,
-            port: parseInt(location.port, 10) || 80,
-            serial: j.serial_default || ''
-          };
-        }
-        return null;
-      })
-      .catch(function () { return null; });
+    // 本机助手模式：先探测 127.0.0.1:助手端口；
+    // 页面若由助手托管（或教学服务器在同源反代了桥接接口），再回退探测同源，
+    // 两种情况都把「设备地址」预填为本机地址。
+    return probeHelper().then(function (on) {
+      if (on) return { addr: HELPER_HOST, port: helperPort() };
+      if (location.protocol.indexOf('http') !== 0) return null;
+      return fetch('/api/ping', { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (j && j.service === 'eai-device-bridge') {
+            return {
+              addr: location.hostname,
+              port: parseInt(location.port, 10) || 80
+            };
+          }
+          return null;
+        })
+        .catch(function () { return null; });
+    });
   }
 
   function bootPopout() {
@@ -1739,7 +2326,8 @@
     openTab(p.kind, cfg, p.conn || null);
     if (p.conn) {
       setUserLabel(p.conn.user + '@' + p.conn.addr);
-      setDeviceLabel('桥接：' + p.conn.base + ' · ' + (p.title || ''));
+      setDeviceLabel('本机助手 ' + (p.conn.base || '').replace(/^https?:\/\//, '') +
+        ' → ' + p.conn.addr + ' · ' + (p.title || ''));
       loadSysInfo(p.conn);
     }
     document.title = (p.title || KIND_NAME[p.kind] || '会话') + ' · 设备开发工作台';
@@ -1756,14 +2344,29 @@
     renderPane('L');
     renderPane('R');
     setStatus('就绪 · 从左侧会话列表打开，或点「＋ 新建会话」', '');
-    setDeviceLabel(location.protocol.indexOf('http') === 0 ? '桥接：' + location.origin : '');
 
     detectSameOrigin().then(function (info) {
       if (info) {
         S.sameOrigin = info;
-        setDeviceLabel('桥接：' + location.origin + '（本机托管）');
+        if (info.addr === HELPER_HOST) {
+          // 本机助手在跑：探测通过即视为「已初始化」，之后入口可静默发协议
+          S.helper.port = info.port;
+          S.helper.online = true;
+          markHelperReady();
+          lsSet('eai_helper_port', info.port);
+          setDeviceLabel('本机助手 ' + info.addr + ':' + info.port + ' 就绪 · 仅监听 127.0.0.1');
+        } else {
+          // 页面由设备端旧版桥接托管：仅借用它的地址做预填，连接仍走本机助手
+          setDeviceLabel('已从设备托管页打开 · 本机助手 ' +
+            bridgeBase().replace(/^https?:\/\//, '') + '（连接前会自动探测）');
+        }
+      } else {
+        setDeviceLabel('本机助手 ' + bridgeBase().replace(/^https?:\/\//, '') +
+          ' 未启动 · 连接时会自动尝试启动');
+        // 全新环境（协议未注册）：开局即弹一次性初始化引导，杜绝系统「选择应用」弹框
+        if (helperReady() !== 1) showGuide();
       }
-      if (!S.sessions.length) openModal();
+      if (!S.sessions.length && (!$('guideModal') || $('guideModal').hidden)) openModal();
     });
   }
 

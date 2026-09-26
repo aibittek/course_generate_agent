@@ -88,6 +88,36 @@ code{font-family:var(--font-mono);font-size:.94em;background:var(--bg-soft);
 .fhint{font-size:11.5px;line-height:1.7;color:var(--text-muted)}
 .fhint.ok{color:var(--accent-teal)}
 .fhint.bad{color:var(--accent-rose)}
+
+/* ---------- 初始化引导（本机助手一次性） ---------- */
+.guide-what{font-size:13px;line-height:1.75;color:var(--text-body);margin:0 0 10px}
+.guide-path{display:flex;gap:8px;align-items:center;background:var(--bg-soft);
+  border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin:0 0 14px}
+.guide-open{flex:none;font-family:inherit;font-size:12px;cursor:pointer;
+  border:1px solid var(--accent-blue);border-radius:7px;background:#fff;
+  color:var(--accent-blue);padding:5px 12px}
+.guide-open:hover{background:var(--bg-tint)}
+.guide-path code,.guide-dir{flex:1;min-width:0;font-family:var(--font-mono);font-size:12px;
+  color:var(--text-primary);overflow-wrap:anywhere;background:none;border:none;padding:0}
+.guide-steps{list-style:none;counter-reset:gs;margin:0 0 12px;padding:0}
+.guide-steps li{counter-increment:gs;position:relative;padding-left:34px;margin:0 0 10px;
+  font-size:13px;line-height:1.7;color:var(--text-body)}
+.guide-steps li::before{content:counter(gs);position:absolute;left:0;top:1px;width:22px;height:22px;
+  border-radius:50%;background:var(--accent-blue);color:#fff;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center}
+.guide-steps .route{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.guide-steps .route b{background:var(--bg-tint);border:1px solid var(--accent-blue);
+  color:var(--accent-blue);border-radius:5px;padding:0 6px;font-weight:600}
+.guide-steps .fhint{display:block;margin-top:3px}
+.guide-cmd{display:block;font-family:var(--font-mono);background:var(--term-bg);color:#e2e8f0;
+  border-radius:8px;padding:8px 12px;margin:4px 0 0;font-size:12.5px;overflow-wrap:anywhere}
+.guide-fine{font-size:12.5px;line-height:1.7;color:var(--text-muted);margin:0 0 6px}
+.guide-ok{font-size:12.5px;line-height:1.8;background:rgba(13,148,162,.07);
+  border:1px solid rgba(13,148,162,.25);border-radius:8px;padding:8px 12px;margin:0 0 8px}
+.guide-ok b{color:var(--accent-teal)}
+.guide-close{font-size:13px;font-weight:600;color:var(--text-primary);margin:0 0 6px}
+.guide-after{font-size:12.5px;line-height:1.7;color:var(--text-secondary);margin:0}
+.guide-after.home a{font-weight:600;color:var(--accent-teal)}
 .frow{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .fnote{font-size:11.5px;line-height:1.7;color:var(--text-muted);margin:0 0 12px;
   background:var(--bg-soft);border:1px solid var(--border);border-radius:9px;padding:9px 12px}
@@ -252,19 +282,27 @@ code{font-family:var(--font-mono);font-size:.94em;background:var(--bg-soft);
 .ed-hint .warn{color:var(--accent-amber)}
 
 /* ---------- 串口 ---------- */
-.serial-console{flex:1;margin:10px 12px 0;background:var(--term-bg);border-radius:11px;overflow-y:auto;
+/* 黑色命令行：上方日志可滚动，底部是可直接输入的提示行（MobaXterm 风格） */
+.serial-console{flex:1;margin:10px 12px 0;background:var(--term-bg);border-radius:11px;
   padding:12px 14px;font-family:var(--font-mono);font-size:12.5px;line-height:1.7;color:var(--term-fg);
-  white-space:pre-wrap;word-break:break-all;min-height:0}
-.serial-console::-webkit-scrollbar{width:9px}
-.serial-console::-webkit-scrollbar-thumb{background:#334155;border-radius:9px}
+  display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.serial-log{flex:1;min-height:0;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.serial-log::-webkit-scrollbar{width:9px}
+.serial-log::-webkit-scrollbar-thumb{background:#334155;border-radius:9px}
 .serial-console .sys{color:#64748b}
 .serial-console .tx{color:#7dd3fc}
 .serial-console .err{color:#fca5a5}
 .serial-console .ts{color:#475569}
-.serial-send{display:flex;gap:10px;padding:10px 12px 12px;align-items:stretch;flex:none}
-.serial-send input{flex:1;font-family:var(--font-mono);font-size:12.5px;padding:10px 12px;
-  border:1px solid var(--border);border-radius:9px;background:var(--bg-base);color:var(--text-primary);outline:none}
-.serial-send input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.serial-term{flex:1;min-height:0;display:flex}
+.serial-term[hidden]{display:none}
+.serial-term .termhost{flex:1;min-height:0;padding:0;background:transparent}
+.serial-prompt{flex:none;display:flex;gap:8px;align-items:flex-start;padding-top:4px}
+.serial-prompt[hidden]{display:none}
+.serial-prompt .ps{color:#38bdf8;flex:none;user-select:none}
+.serial-prompt textarea{flex:1;min-height:0;background:transparent;border:none;outline:none;resize:none;
+  padding:0;margin:0;overflow:hidden;font-family:var(--font-mono);font-size:12.5px;line-height:1.7;
+  color:var(--term-fg);caret-color:#38bdf8;white-space:pre-wrap;word-break:break-all}
+.serial-prompt textarea::placeholder{color:#475569}
 .serial-state{font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:8px}
 .sdot{width:8px;height:8px;border-radius:50%;background:var(--text-muted);flex:none}
 .sdot.on{background:var(--accent-teal);box-shadow:0 0 0 3px rgba(13,148,136,.15)}

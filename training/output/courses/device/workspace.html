@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>设备开发工作台 · 具身智能课程</title>
 <link rel="stylesheet" href="vendor/xterm/xterm.css">
-<link rel="stylesheet" href="workspace.css">
+<link rel="stylesheet" href="workspace.css?v=20260926d">
 </head>
 <body>
 
@@ -82,9 +82,26 @@
 <div class="ctx" id="ctx" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
+<!-- ==================== 本机助手一次性初始化引导 ==================== -->
+<div class="modal" id="guideModal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>初始化本机助手（只需一次）</h3>
+      <button class="x" id="gClose" title="关闭">✕</button>
+    </div>
+    <div class="modal-body" id="gBody"></div>
+    <div class="modal-foot">
+      <span class="modal-err" id="gMsg"></span>
+      <button class="btn" id="gClose2">暂时关闭</button>
+      <button class="btn primary" id="gRetry">我已完成，重试检测</button>
+    </div>
+  </div>
+</div>
+
 <script src="vendor/xterm/xterm.js"></script>
 <script src="vendor/xterm/addon-fit.js"></script>
 <script src="vendor/xterm/addon-web-links.js"></script>
-<script src="workspace.js"></script>
+<script src="entryflow.js?v=20260926d"></script>
+<script src="workspace.js?v=20260926d"></script>
 </body>
 </html>

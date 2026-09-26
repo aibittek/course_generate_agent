@@ -171,7 +171,7 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
 <body>
 
 <div class="topbar">
-  <div class="logo"><span class="dot"></span>具身智能课程</div>
+  <a class="logo" href="../index.html" style="text-decoration:none;color:inherit" title="返回课程首页"><span class="dot"></span>具身智能课程</a>
   <nav class="nav">
     <div class="dropdown">
       <a class="dd-toggle" href="javascript:void(0)">人培方案 <span class="arr">▼</span></a>
@@ -185,6 +185,7 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
       <div class="dd-menu">
         <a href="../../products/b2-box/index.html">📦 具身智能实验箱B2旗舰版<small>6 TOPS · 双核架构 · 6 门课 / 65 实验</small></a>
         <a href="../../products/c1-car/index.html">🚗 具身智能机器人小车 C1<small>移动导航 · 机械臂作业 · 7 门课 / 59 实验</small></a>
+        <a href="../../products/ldt-01/index.html">🦾 具身智能实验平台 LDT-01<small>同构双臂遥操作 · 采训推一体 · 数据采集</small></a>
       </div>
     </div>
     <a href="../index.html#core">核心课程</a>
@@ -202,7 +203,7 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
      SSH 登录后直接浏览设备目录结构并在线编辑文件；设备与打开本页的电脑处于同一局域网即可，与网页本身部署在哪里无关。</p>
   <div class="hero-cta">
     <a class="btn primary" href="workspace.html" target="_blank" rel="noopener">启动工作台 →</a>
-    <span class="hint">在新标签页打开，需要设备上已运行桥接服务 <code>device_bridge.py</code>（见下方「设备端准备」）</span>
+    <span class="hint">在新标签页打开，SSH / 文件走<b>本机助手</b> <code>start_helper.py</code>，<b>设备端免安装</b>（见下方「本机准备」）</span>
   </div>
   <div class="badges">
     <span class="badge">⌨ SSH 终端</span>
@@ -219,8 +220,9 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
     <h2><span class="idx">APP</span>一体化工作台</h2>
     <span class="sub">推荐入口：一个页面搞定终端、文件、串口、桌面</span>
   </div>
-  <p class="desc">工作台复用设备上同一个桥接服务：SSH 终端与文件管理共用一条登录会话，登录后即可浏览设备目录结构、
-    在线编辑文件并保存；串口与远程桌面也以标签页形式并存于同一界面。</p>
+  <p class="desc">工作台的 SSH 终端与文件管理走同一条<b>本机助手</b>登录会话：助手部署在这台电脑上（127.0.0.1），用你填写的账号密码
+    以 SSH 直连设备，因此登录后可直接浏览设备目录结构、在线编辑文件并保存；
+    串口与远程桌面也以标签页形式并存于同一界面。</p>
   <div class="feat">
     <div><h4>⌨ SSH 终端</h4><p>多标签并发，可左右分屏、可弹出为独立浏览器窗口，支持窗口自适应与滚动回看。</p></div>
     <div><h4>📁 文件管理 + 编辑器</h4><p>浏览设备目录，上传下载、新建重命名删除，双击文本文件直接在线编辑，Ctrl+S 保存。</p></div>
@@ -256,7 +258,7 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
     </div>
 
     <details class="adv">
-      <summary>端口设置（设备端服务未改端口时无需调整）</summary>
+      <summary>端口设置（工作台 SSH/SFTP 不走这些端口；仅备选直连方案与桌面探测需要）</summary>
       <div class="row ports">
         <div class="field"><label>终端</label><input id="p_ssh" value="7681" inputmode="numeric"></div>
         <div class="field"><label>文件</label><input id="p_files" value="8081" inputmode="numeric"></div>
@@ -273,7 +275,8 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
     <div class="tip">
       <span>💡</span>
       <span>检测仅作提示，<b>不影响打开</b>：某些浏览器会拦截从本地文件发起的探测请求，直接点开工具页同样可用。
-        若三项全部显示离线，请确认设备端服务已启动（见下方「设备端准备」），且电脑与设备在同一网段。</span>
+        「终端 / 文件」如今由工作台 + 本机助手直接 SSH 提供，<b>不依赖此处检测</b>；若「桌面」离线，请确认设备上的
+        websockify+noVNC 已启动（见下方「本机准备」备选方案），且电脑与设备在同一网段。</span>
     </div>
   </div>
 </section>
@@ -284,8 +287,9 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
     <h2><span class="idx">TOOLS</span>开发工具入口</h2>
     <span class="sub">终端 / 文件 / 桌面走网络，串口走本机 USB</span>
   </div>
-  <p class="desc">前三项由设备上的常驻服务提供，网页只负责探测与跳转，数据流是「浏览器 ↔ 设备」点对点，不经过任何中间服务器；
-    串口是<b>本机 USB 直连</b>——数据线插在这台电脑上时用它，不需要设备端任何服务，也不占用网络端口。</p>
+  <p class="desc">工作台里的终端 / 文件由<b>本机助手</b>（<code>start_helper.py</code>，只监听 127.0.0.1）以 SSH 直连设备，<b>设备端零安装</b>；
+    此处仍保留 ttyd / filebrowser / websockify 三个可选直连入口，数据流都是「浏览器 ↔ 本机 / 设备」点对点，不经过任何中间服务器；
+    串口是<b>本机 USB 直连</b>——数据线插在这台电脑上时用它，不需要任何服务，也不占用网络端口。</p>
 
   <div class="grid">
 
@@ -331,48 +335,54 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
   </div>
 </section>
 
-<!-- ============ 设备端准备 ============ -->
+<!-- ============ 本机准备 ============ -->
 <section class="section" id="prepare">
   <div class="section-head">
-    <h2><span class="idx">SETUP</span>设备端准备</h2>
-    <span class="sub">在设备上执行一次，之后开机即可用</span>
+    <h2><span class="idx">SETUP</span>本机准备</h2>
+    <span class="sub">只需在这台电脑上启动一次本机助手，设备端免安装</span>
   </div>
-  <p class="desc">网页端不需要安装任何东西。工作台所需的一切都在设备上的一个 Python 服务里，装好并设为开机自启即可。
-    若只用「本机 USB 直连」，本节可以直接跳过。</p>
+  <p class="desc">数据流变为「浏览器 → <b>本机助手</b>（127.0.0.1）→ 设备 SSH」：助手部署在<b>本机</b>，监听回环地址，
+    用你填写的账号密码通过 SSH 连接设备——<b>设备上不需要安装、部署任何服务</b>，只要 sshd 在监听即可。
+    若只用「本机 USB 直连」串口，本节可以直接跳过。</p>
 
   <div class="steps">
 
     <div class="step">
-      <h4><span class="n">1</span>把桥接服务与前端放到设备上</h4>
-      <p>服务文件在课程仓库的 <code>ros2_ws/fw/device_dev/device_bridge.py</code>，把前端目录一起拷过去。</p>
-      <pre class="cmd"><span class="c"># 在开发机上执行，把 &lt;设备IP&gt; 换成实际地址</span>
-scp ros2_ws/fw/device_dev/device_bridge.py iflytek@<span class="k">&lt;设备IP&gt;</span>:/home/iflytek/
-scp -r training/output/courses/device iflytek@<span class="k">&lt;设备IP&gt;</span>:/home/iflytek/bridge-web</pre>
+      <h4><span class="n">1</span>启动本机助手（两种方式任选）</h4>
+      <p>方式一：打开工作台，点「新建连接」→ 选择 SSH → 点「<b>启动本机助手</b>」按钮，页面会自动拉起服务。<br>
+        方式二：手动双击课程目录里的 <code>start_helper.bat</code>（仅监听 <code>127.0.0.1:8100</code>，关掉窗口即停止）。
+        首次运行会自动从清华源安装 aiohttp / paramiko / pyserial，约需十几秒。</p>
+      <pre class="cmd"><span class="c"># 等价的手动方式（在 training/output/courses/device 目录）</span>
+python start_helper.py <span class="c"># 默认 127.0.0.1:8100；可用 --port 9000 改端口</span></pre>
     </div>
 
     <div class="step">
-      <h4><span class="n">2</span>启动服务（依赖会自动安装）</h4>
-      <p>首次运行会自动从清华源安装 aiohttp / paramiko / pyserial。串口默认值 <code>/dev/ttyACM0 @115200</code> 可按需修改。</p>
-      <pre class="cmd">ssh iflytek@<span class="k">&lt;设备IP&gt;</span>
-python3 device_bridge.py --port 8100 --static /home/iflytek/bridge-web \
-  --serial-port /dev/ttyACM0 --baud 115200</pre>
+      <h4><span class="n">2</span>（可选，一次性）注册 eai-helper 协议</h4>
+      <p>协议注册把 <code>eai-helper://</code> 写进操作系统（Windows=注册表 HKCU，无需管理员；
+        Linux=.desktop + xdg-mime，无需 root；macOS=内置 URL scheme 的启动器 .app + lsregister）。
+        三平台的<b>注册动作已内置在启动脚本里自动完成</b>——<b>只要新机器跑过一次
+        <code>start_helper.bat</code>（Windows）或 <code>./start_helper.sh</code>（Linux/macOS），
+        之后点入口即自动、无窗口拉起助手</b>；也可手动单独执行对应 register 脚本重刷注册。</p>
+      <pre class="cmd">register_helper.bat            <span class="c"># Windows</span>
+./register_helper.sh           <span class="c"># Linux</span>
+./register_helper_macos.sh     <span class="c"># macOS（生成并注册 ~/Applications/eai-helper.app）</span></pre>
     </div>
 
     <div class="step">
-      <h4><span class="n">3</span>打开工作台并登录</h4>
-      <p>回到本页点「启动工作台」，或直接在浏览器访问 <code>http://&lt;设备IP&gt;:8100/</code>。
-        填入设备上的 Linux 账号密码即可——桥接服务用这个账号登录设备自己的 sshd，密码不落盘、不回传。</p>
+      <h4><span class="n">3</span>打开工作台并连接设备</h4>
+      <p>点「启动工作台」→「＋ 新建连接」→ SSH，填写<b>设备 IP</b>（如 <code>192.168.1.100</code>，端口默认 22）
+        与设备上的 Linux 账号密码。助手持这个账号 SSH 登录设备，密码仅存内存、随连接销毁，不落盘。</p>
     </div>
 
   </div>
 
   <details class="adv" style="margin-top:22px">
-    <summary>备选方案：不装桥接服务，改用 ttyd / filebrowser / noVNC</summary>
+    <summary>备选直连方案：ttyd / filebrowser / noVNC（老页面探测用，非必需）</summary>
     <div class="steps" style="margin-top:16px">
 
       <div class="step">
-        <h4><span class="n">A</span>安装三个服务</h4>
-        <p>Debian / Ubuntu 系设备，一条命令装齐（ttyd 承担终端入口）。</p>
+        <h4><span class="n">A</span>安装三个服务（设备上，可选）</h4>
+        <p>Debian / Ubuntu 系设备，一条命令装齐。工作台不需要它们；仅当你想用上面「连接配置」的直连探测入口时才装。</p>
         <pre class="cmd"><span class="c"># 终端（ttyd）／桌面（websockify + noVNC）</span>
 sudo apt update
 sudo apt install -y ttyd novnc websockify
@@ -383,7 +393,7 @@ curl -fsSL https://raw.githubusercontent.com/filebrowser/filebrowser/master/get.
 
       <div class="step">
         <h4><span class="n">B</span>启动服务</h4>
-        <p>三个服务分别监听 7681 / 8081 / 6080，与上方「连接配置」里的默认端口一致。VNC 复用设备上已在运行的 VNC server（默认 5900）。串口始终走本机 USB 直连，无需设备端服务。</p>
+        <p>三个服务分别监听 7681 / 8081 / 6080，与上方「连接配置」里的默认端口一致。VNC 复用设备上已在运行的 VNC server（默认 5900）。串口始终走本机 USB 直连，无需任何服务。</p>
         <pre class="cmd"><span class="c"># 终端 —— 7681</span>
 ttyd -p 7681 -c <span class="k">admin:你的密码</span> -W bash
 
@@ -395,8 +405,27 @@ websockify --web=/usr/share/novnc 6080 127.0.0.1:5900</pre>
       </div>
 
       <div class="step">
-        <h4><span class="n">C</span>把地址填到上方</h4>
-        <p>回到本页「连接配置」，填入设备局域网 IP（如 <code>192.168.1.100</code>），点「检测连接」→ 三项状态变绿即表示服务已就绪。</p>
+        <h4><span class="n">C</span>设备上要有 VNC server（镜像物理桌面）</h4>
+        <p>上面装的 <code>novnc</code>/<code>websockify</code> 只负责「网页化」，5900 那端还需要一个真正的 VNC server。
+        设备已有图形桌面时，用 <code>x11vnc</code> 共享 <code>:0</code> 最省事：</p>
+        <pre class="cmd"><span class="c"># 装 x11vnc（novnc/websockify 同上）</span>
+sudo apt install -y x11vnc
+
+<span class="c"># 共享物理桌面 :0（gdm 登录界面下 -auth guess 会失败，直接指定 Xorg 的授权文件）</span>
+sudo x11vnc -display :0 -auth <span class="k">/run/user/999/gdm/Xauthority</span> \
+     -forever -shared -repeat -noxdamage -rfbport 5900 -localhost -nopw
+
+<span class="c"># Rockchip（RK3576/RK3588）板卡必做：Mali 驱动常加载失败会让物理屏和 VNC 全黑</span>
+<span class="c">#   libGL error: failed to load driver: rockchip</span>
+echo 'LIBGL_ALWAYS_SOFTWARE=1' | sudo tee -a /etc/environment
+sudo systemctl restart gdm</pre>
+        <p style="margin-top:8px">完整的一键部署（含 systemd 开机自启、X 会话重启自动重连、关闭息屏）见
+        <code>README.md</code> 的 <b>3.1 节</b>。</p>
+      </div>
+
+      <div class="step">
+        <h4><span class="n">D</span>把地址填到上方</h4>
+        <p>回到本页「连接配置」，填入设备局域网 IP（如 <code>192.168.1.100</code>），点「检测连接」→ 想要的项目状态变绿即表示服务已就绪。</p>
       </div>
 
     </div>
@@ -404,14 +433,13 @@ websockify --web=/usr/share/novnc 6080 127.0.0.1:5900</pre>
 
   <div class="tip" style="margin-top:20px">
     <span>🔒</span>
-    <span>桥接服务等同于把设备的 <b>shell 与文件系统</b>开放给能访问该端口的人（远程桌面另有 VNC 自己的密码保护），
-      务必使用强密码，并只在教学网段内使用。完整安装说明、systemd 开机自启、防火墙与安全建议见
-      <code>ros2_ws/fw/device_dev/README.md</code>。</span>
+    <span>本机助手只监听 <b>127.0.0.1</b>（回环地址，局域网内其他人无法访问），且从本机发起的仍是常规 SSH 登录——
+      设备侧只需保证 sshd 在线与账号密码强度即可。完整说明见同目录 <code>README.md</code>。</span>
   </div>
 </section>
 
 <footer>
-  具身智能课程 · 设备开发 · 一体化工作台（device_bridge）· 备选：ttyd / filebrowser / websockify+noVNC
+  具身智能课程 · 设备开发 · 一体化工作台（本机助手 start_helper · 设备端免安装）· 备选：ttyd / filebrowser / websockify+noVNC
 </footer>
 
 <script>
@@ -582,6 +610,23 @@ websockify --web=/usr/share/novnc 6080 127.0.0.1:5900</pre>
   },{threshold:.12});
   document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
 })();
+</script>
+<script src="entryflow.js?v=20260926b"></script>
+<script>
+/* 点击入口：统一入口流 control（entryflow.js）。
+   本机已成功拉起过（eai_helper_ready=1）→ 手势内发 eai-helper://，操作系统按平台
+   翻译到已注册脚本无窗口拉起；全新环境 → 不发协议，直接进工作台由初始化引导弹窗接管
+   （避免系统弹「选择应用」框）。助手在跑时新进程秒退，幂等安全；日志见 helper.log。 */
+document.querySelectorAll('a[href*="workspace.html"]').forEach(function (a) {
+  a.addEventListener('click', function (e) {
+    if (e.defaultPrevented) return;                 // 同标签：接管导航
+    var href = a.href;
+    var newTab = (a.getAttribute('target') === '_blank');
+    if (newTab) { EAI.entry(href, true); return; }  // 新标签：先发协议，其余交给浏览器默认行为
+    e.preventDefault();
+    EAI.entry(href, false);                         // 同标签：发协议 + 延迟跳转由 EAI 统一调度
+  });
+});
 </script>
 </body>
 </html>

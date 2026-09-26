@@ -94,19 +94,28 @@ body{margin:0;background:var(--bg-base);color:var(--text-body);
 .sdot.busy{background:var(--accent-amber);animation:pulse 1s infinite}
 .state .mono{font-family:var(--font-mono);font-size:12.5px;color:var(--text-body)}
 /* 控制台 */
-.console{background:#0f172a;border-radius:11px;height:430px;overflow-y:auto;padding:14px 16px;
+/* 黑色命令行：上方日志可滚动，底部是可直接输入的提示行（MobaXterm 风格） */
+.console{background:#0f172a;border-radius:11px;height:430px;padding:14px 16px;
   font-family:var(--font-mono);font-size:12.5px;line-height:1.7;color:#e2e8f0;
-  white-space:pre-wrap;word-break:break-all;scroll-behavior:auto}
-.console::-webkit-scrollbar{width:9px}
-.console::-webkit-scrollbar-thumb{background:#334155;border-radius:9px}
+  display:flex;flex-direction:column;overflow:hidden}
+.clog{flex:1;min-height:0;overflow-y:auto;white-space:pre-wrap;word-break:break-all;scroll-behavior:auto}
+.clog::-webkit-scrollbar{width:9px}
+.clog::-webkit-scrollbar-thumb{background:#334155;border-radius:9px}
 .console .sys{color:#64748b}
 .console .tx{color:#7dd3fc}
 .console .err{color:#fca5a5}
 .console .ts{color:#475569}
-.send{display:flex;gap:10px;margin-top:14px;align-items:stretch}
-.send input{flex:1;font-family:var(--font-mono);font-size:13px;padding:11px 13px;border:1px solid var(--border);
-  border-radius:9px;background:var(--bg-base);color:var(--text-primary);outline:none;transition:.2s}
-.send input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.cterm{flex:1;min-height:0;display:flex}
+.cterm[hidden]{display:none}
+.cterm .xterm{height:100%}
+.cterm .xterm-viewport{background:transparent!important;scrollbar-width:thin}
+.cprompt{flex:none;display:flex;gap:8px;align-items:flex-start;padding-top:4px}
+.cprompt[hidden]{display:none}
+.cprompt .ps{color:#38bdf8;flex:none;user-select:none}
+.cprompt textarea{flex:1;background:transparent;border:none;outline:none;resize:none;padding:0;margin:0;
+  overflow:hidden;font-family:var(--font-mono);font-size:12.5px;line-height:1.7;color:#e2e8f0;
+  caret-color:#38bdf8;white-space:pre-wrap;word-break:break-all}
+.cprompt textarea::placeholder{color:#475569}
 .hint{font-size:12px;color:var(--text-muted);margin-top:9px;line-height:1.7}
 /* 提示条 */
 .tip{margin-top:16px;display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.75;
@@ -130,11 +139,14 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
   .nav{display:none}.hero h1{font-size:27px}.sep{display:none}
 }
 </style>
+<link rel="stylesheet" href="vendor/xterm/xterm.css">
+<script src="vendor/xterm/xterm.js"></script>
+<script src="vendor/xterm/addon-fit.js"></script>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="logo"><span class="dot"></span>具身智能课程</div>
+  <a class="logo" href="../index.html" style="text-decoration:none;color:inherit" title="返回课程首页"><span class="dot"></span>具身智能课程</a>
   <nav class="nav">
     <div class="dropdown">
       <a class="dd-toggle" href="javascript:void(0)">人培方案 <span class="arr">▼</span></a>
@@ -148,6 +160,7 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
       <div class="dd-menu">
         <a href="../../products/b2-box/index.html">📦 具身智能实验箱B2旗舰版<small>6 TOPS · 双核架构 · 6 门课 / 65 实验</small></a>
         <a href="../../products/c1-car/index.html">🚗 具身智能机器人小车 C1<small>移动导航 · 机械臂作业 · 7 门课 / 59 实验</small></a>
+        <a href="../../products/ldt-01/index.html">🦾 具身智能实验平台 LDT-01<small>同构双臂遥操作 · 采训推一体 · 数据采集</small></a>
       </div>
     </div>
     <a href="../index.html#core">核心课程</a>
@@ -253,21 +266,35 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
       <div class="field">
         <label>显示方式</label>
         <select id="view">
-          <option value="text" selected>文本</option>
+          <option value="term" selected>终端（可交互）</option>
+          <option value="text">原始文本</option>
           <option value="hex">十六进制</option>
         </select>
       </div>
+      <div class="field">
+        <label>编码</label>
+        <select id="enc">
+          <option value="utf-8" selected>UTF-8</option>
+          <option value="gbk">GBK / GB2312</option>
+          <option value="big5">Big5</option>
+          <option value="latin1">Latin-1</option>
+        </select>
+      </div>
       <label class="chk"><input type="checkbox" id="ts"> 时间戳</label>
-      <label class="chk"><input type="checkbox" id="echo"> 本地回显发送内容</label>
+      <label class="chk"><input type="checkbox" id="echo" checked> 本地回显发送内容</label>
+      <label class="chk" title="过滤 ANSI 转义序列（终端控制码），十六进制视图始终显示原始字节"><input type="checkbox" id="ansi" checked> 过滤转义码</label>
     </div>
 
-    <div class="console" id="console"></div>
-
-    <div class="send">
-      <input id="input" placeholder="输入要发送的内容，回车发送…" autocomplete="off" spellcheck="false" disabled>
-      <button class="btn primary" id="btnSend" disabled>发送</button>
+    <div class="console" id="consoleWrap">
+      <div class="cterm" id="termhost" hidden></div>
+      <div class="clog" id="console"></div>
+      <div class="cprompt" id="promptline">
+        <span class="ps">›</span>
+        <textarea id="input" rows="1" autocomplete="off" spellcheck="false"
+          placeholder="在此输入命令，回车发送；Tab 键直接发给设备补全" disabled></textarea>
+      </div>
     </div>
-    <div class="hint">提示：连接成功后输入框才可用。发送内容按上面选择的「行尾符」自动追加；十六进制视图下每字节以空格分隔显示。</div>
+    <div class="hint">提示：连接成功后即可直接在黑色区域输入。「终端」模式下逐字符发送，Tab 补全、方向键、Ctrl+C 都由设备侧 shell 处理；「原始文本 / 十六进制」模式为整行发送，适合调试二进制协议。</div>
   </div>
 </section>
 
@@ -284,6 +311,51 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
   var port=null, reader=null, writer=null, keepReading=false;
   var enc=new TextEncoder(), dec=new TextDecoder('utf-8',{fatal:false});
   var history=[], hIdx=-1;
+  // 过滤 ANSI 转义序列：串口对面若是 Linux shell，会发 ESC[?2004h 这类控制码，
+  // 原样显示就是 [ ?2004h 之类的“乱码”。转义序列可能被 read 截断，故用 ansiBuf 暂存
+  var ansiBuf='';
+  function stripAnsi(s){
+    s=ansiBuf+s; ansiBuf='';
+    var out='', i=0;
+    while(i<s.length){
+      if(s.charCodeAt(i)!==0x1b){ out+=s[i]; i++; continue }
+      var n=s[i+1];
+      if(n===undefined){ ansiBuf=s.slice(i); break }
+      if(n==='['){
+        var j=i+2, closed=false;
+        while(j<s.length){
+          var cc=s.charCodeAt(j);
+          if(cc>=0x40&&cc<=0x7e){ closed=true; j++; break }
+          j++;
+        }
+        if(!closed){ ansiBuf=s.slice(i); break }
+        i=j; continue;
+      }
+      if(n===']'){
+        var k=i+2, end=false;
+        while(k<s.length){
+          if(s.charCodeAt(k)===0x07){ k++; end=true; break }
+          if(s.charCodeAt(k)===0x1b&&s[k+1]==='\\'){ k+=2; end=true; break }
+          k++;
+        }
+        if(!end){ ansiBuf=s.slice(i); break }
+        i=k; continue;
+      }
+      var m=i+1, fin=false;
+      while(m<s.length){
+        var mc=s.charCodeAt(m);
+        if(mc>=0x30&&mc<=0x7e){ fin=true; m++; break }
+        if(mc>=0x20&&mc<=0x2f){ m++; continue }
+        break;
+      }
+      if(!fin){
+        if(m>=s.length){ ansiBuf=s.slice(i); break }
+        i++; continue;
+      }
+      i=m; continue;
+    }
+    return out;
+  }
 
   /* ---------- 兼容性提示 ---------- */
   function compat(){
@@ -312,7 +384,7 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
     $('btnConnect').disabled=on;
     $('btnDisconnect').disabled=!on;
     $('input').disabled=!on;
-    $('btnSend').disabled=!on;
+    if(on && term) term.focus();
   }
 
   /* ---------- 终端输出 ---------- */
@@ -325,6 +397,12 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
     return c.scrollHeight-c.scrollTop-c.clientHeight < 40;
   }
   function write(str,cls){
+    if(viewMode()==='term' && term){
+      // 终端模式下提示也写进终端，否则这些信息会落在被隐藏的文本日志里
+      var color = cls==='err' ? '\x1b[31m' : (cls==='tx' ? '\x1b[36m' : '\x1b[90m');
+      term.write(color + str.replace(/\n/g,'\r\n') + '\x1b[0m');
+      return;
+    }
     var c=$('console'), stick=nearBottom();
     if($('ts').checked && cls!=='sys'){
       var s=document.createElement('span'); s.className='ts'; s.textContent=stamp(); c.appendChild(s);
@@ -336,11 +414,22 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
     if(stick) c.scrollTop=c.scrollHeight;
   }
   function writeBytes(bytes){
+    if(viewMode()==='term'){
+      if(term){
+        // xterm 只认 UTF-8；选了 GBK 等编码时先自行解码再写入
+        var en=$('enc').value;
+        if(en==='utf-8') term.write(bytes);
+        else term.write(dec.decode(bytes,{stream:true}));
+      }
+      return;
+    }
     if($('view').value==='hex'){
       var a=[]; for(var i=0;i<bytes.length;i++) a.push(bytes[i].toString(16).padStart(2,'0'));
       write(a.join(' ')+' ','');
     }else{
-      write(dec.decode(bytes,{stream:true}),'');
+      var txt=dec.decode(bytes,{stream:true});
+      if($('ansi').checked) txt=stripAnsi(txt);
+      write(txt,'');
     }
   }
   function sys(msg){ write(msg+'\n','sys') }
@@ -370,6 +459,8 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
       keepReading=true;
       writer=port.writable.getWriter();
       lock(true);
+      try{ dec=new TextDecoder($('enc').value,{fatal:false}) }catch(e){}
+      ansiBuf='';
       setState('on','已连接', (desc(port)||'') + ' · ' + $('baud').value + ' ' +
         $('dataBits').value + $('parity').value.charAt(0).toUpperCase() + $('stopBits').value);
       sys('串口已打开：'+$('baud').value+' '+$('dataBits').value+$('parity').value.charAt(0).toUpperCase()+$('stopBits').value);
@@ -411,6 +502,56 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
     refreshPorts();
   }
 
+  /* ---------- 显示模式：终端 / 原始文本 / 十六进制 ---------- */
+  var term=null, fitAddon=null;
+  function viewMode(){
+    var v=$('view').value;
+    return (v==='term'||v==='hex') ? v : 'text';
+  }
+  // 终端模式：xterm.js 直接接管键盘，逐字符发往串口，
+  // Tab / 方向键 / Ctrl+C 原样交给设备侧 shell 处理（Tab 即补全）
+  function ensureTerm(){
+    if(term) return true;
+    if(!window.Terminal){ sys('未找到 xterm.js（vendor/xterm 缺失），已退回原始文本模式'); return false }
+    term=new window.Terminal({
+      fontFamily:"'Cascadia Code','JetBrains Mono',Consolas,'Courier New',monospace",
+      fontSize:13, lineHeight:1.25, cursorBlink:true, scrollback:8000,
+      allowProposedApi:true, convertEol:false,
+      theme:{ background:'#0f172a', foreground:'#e2e8f0', cursor:'#7dd3fc',
+        selectionBackground:'#334155', black:'#1e293b', red:'#f87171',
+        green:'#5eead4', yellow:'#fbbf24', blue:'#7dd3fc',
+        magenta:'#c4b5fd', cyan:'#67e8f9', white:'#e2e8f0' }
+    });
+    if(window.FitAddon){ fitAddon=new window.FitAddon.FitAddon(); term.loadAddon(fitAddon) }
+    term.open($('termhost'));
+    term.onData(function(d){
+      if(!writer) return;
+      try{ writer.write(enc.encode(d)).catch(function(){}) }catch(e){}
+    });
+    return true;
+  }
+  function fitTerm(){
+    if(!fitAddon||!term||$('termhost').hidden) return;
+    var r=$('termhost').getBoundingClientRect();
+    if(r.width<20||r.height<20) return;
+    try{ fitAddon.fit() }catch(e){}
+  }
+  function applyMode(){
+    var isTerm=(viewMode()==='term');
+    if(isTerm){
+      // 必须先让容器可见再创建终端：xterm 在 display:none 的容器里会初始化成 0 列宽
+      $('termhost').hidden=false; $('console').hidden=true; $('promptline').hidden=true;
+      if(!ensureTerm()){ $('view').value='text'; isTerm=false }
+    }
+    if(!isTerm){ $('termhost').hidden=true; $('console').hidden=false; $('promptline').hidden=false }
+    if(isTerm){ setTimeout(fitTerm,0); if(term) term.focus() }
+    else if(!$('input').disabled) $('input').focus();
+  }
+  function sendRaw(str){
+    if(!port||!writer) return;
+    try{ writer.write(enc.encode(str)).catch(function(){}) }catch(e){}
+  }
+
   /* ---------- 发送 ---------- */
   async function send(){
     if(!port || !writer) return;
@@ -418,12 +559,13 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
     var eol=$('eol').value;
     var tail = eol==='crlf' ? '\r\n' : eol==='lf' ? '\n' : eol==='cr' ? '\r' : '';
     var data=enc.encode(t+tail);
+    // 立即回显，不等 USB 写完成回调（设备不应答时也能确认已发出）
+    if($('echo').checked) write('▸ '+t+'\n','tx');
+    if(t.trim() && history[0]!==t){ history.unshift(t); if(history.length>60) history.pop() }
+    hIdx=-1;
+    $('input').value='';
     try{
       await writer.write(data);
-      if($('echo').checked) write('▸ '+t+'\n','tx');
-      if(t.trim() && history[0]!==t){ history.unshift(t); if(history.length>60) history.pop() }
-      hIdx=-1;
-      $('input').value='';
     }catch(e){
       sys('\n发送失败：'+(e && e.message ? e.message : e));
     }
@@ -449,12 +591,29 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
   }
 
   /* ---------- 事件 ---------- */
+  $('enc').addEventListener('change',function(){
+    try{ dec=new TextDecoder($('enc').value,{fatal:false}) }
+    catch(e){ dec=new TextDecoder('utf-8',{fatal:false}) }
+  });
+  $('ansi').addEventListener('change',function(){ ansiBuf='' });
+  $('view').addEventListener('change',applyMode);
+  // 点黑色区域任意位置即可开始输入（MobaXterm 手感）
+  $('consoleWrap').addEventListener('mousedown',function(e){
+    if(viewMode()==='term'){ if(term) term.focus(); return }
+    if(e.target===$('input')) return;
+    if(!$('input').disabled) setTimeout(function(){ $('input').focus() },0);
+  });
+  window.addEventListener('resize',function(){ fitTerm() });
   $('btnConnect').addEventListener('click',function(){ connect(null) });
   $('btnDisconnect').addEventListener('click',function(){ disconnect(false) });
-  $('btnClear').addEventListener('click',function(){ $('console').innerHTML='' });
-  $('btnSend').addEventListener('click',send);
+  $('btnClear').addEventListener('click',function(){ $('console').innerHTML=''; if(term) term.clear() });
   $('input').addEventListener('keydown',function(e){
     if(e.key==='Enter'){ e.preventDefault(); send(); return }
+    // Tab 不做焦点切换，直接发给设备（远端 shell 会用它做补全）
+    if(e.key==='Tab'){ e.preventDefault(); sendRaw('\t'); return }
+    if(e.ctrlKey && (e.key==='c'||e.key==='C')){
+      e.preventDefault(); sendRaw('\x03'); $('input').value=''; return   // Ctrl+C：中断设备当前命令
+    }
     if(e.key==='ArrowUp'){
       e.preventDefault();
       if(history.length && hIdx<history.length-1){ hIdx++; this.value=history[hIdx] }
@@ -473,6 +632,7 @@ footer{max-width:1080px;margin:52px auto 0;padding:22px 40px 40px;border-top:1px
   }
 
   /* ---------- 初始化 ---------- */
+  applyMode();
   compat();
   if(HAS){ setState('','未连接',''); refreshPorts() }
   else { $('btnConnect').disabled=true }

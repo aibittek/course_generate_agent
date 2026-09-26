@@ -1,4 +1,4 @@
-/* 智慧交通沙盘综合案例 · 实验页公共脚本：scrollspy + 章节 reveal
+/* 机器人小车智慧交通综合案例 · 实验页公共脚本：scrollspy + 章节 reveal
    母版: industry/ind05-industrial-inspection/shared/tutorial.js */
 (function(){
   const secs=[...document.querySelectorAll('section.blk')];
