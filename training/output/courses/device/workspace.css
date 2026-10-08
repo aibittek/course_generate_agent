@@ -200,8 +200,12 @@ code{font-family:var(--font-mono);font-size:.94em;background:var(--bg-soft);
 .view.on{display:flex;flex-direction:column}
 
 /* ---------- 终端 ---------- */
-.termhost{flex:1;min-height:0;background:var(--term-bg);padding:8px 4px 4px 10px;overflow:hidden}
+.termhost{flex:1;min-height:0;background:var(--term-bg);padding:8px 16px 4px 10px;overflow:hidden}
 .termhost .xterm{height:100%}
+/* 滚动条走廊：让 xterm-viewport 向右扩进宿主的 16px 内边距，
+   脱离 fit 量出的画布宽度区——否则 xterm-screen 画布正好盖住滚动条，
+   表现为"看得见、点不动"（xterm.js #1751 同型问题，VS Code 亦采外置走廊方案） */
+.termhost .xterm .xterm-viewport{right:-16px}
 .termhost .xterm-viewport{background:transparent!important;scrollbar-width:thin}
 .termhost .xterm-viewport::-webkit-scrollbar{width:9px}
 .termhost .xterm-viewport::-webkit-scrollbar-thumb{background:#334155;border-radius:9px}
@@ -295,7 +299,7 @@ code{font-family:var(--font-mono);font-size:.94em;background:var(--bg-soft);
 .serial-console .ts{color:#475569}
 .serial-term{flex:1;min-height:0;display:flex}
 .serial-term[hidden]{display:none}
-.serial-term .termhost{flex:1;min-height:0;padding:0;background:transparent}
+.serial-term .termhost{flex:1;min-height:0;padding:0 16px 0 0;background:transparent}
 .serial-prompt{flex:none;display:flex;gap:8px;align-items:flex-start;padding-top:4px}
 .serial-prompt[hidden]{display:none}
 .serial-prompt .ps{color:#38bdf8;flex:none;user-select:none}
@@ -379,3 +383,12 @@ code{font-family:var(--font-mono);font-size:.94em;background:var(--bg-soft);
   .app{grid-template-columns:1fr}
   .side{display:none}
 }
+
+/* ---------- 标签拖拽排序 ---------- */
+.tab{position:relative;user-select:none}
+.tab[draggable="true"]{cursor:grab}
+.tab.dragging{opacity:.4}
+.tab.dropl::before,.tab.dropr::after{content:"";position:absolute;top:5px;bottom:5px;width:3px;
+  background:var(--accent-blue);border-radius:3px}
+.tab.dropl::before{left:1px}
+.tab.dropr::after{right:4px}

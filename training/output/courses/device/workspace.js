@@ -405,6 +405,7 @@
 
   function loadSysInfo(conn) {
     if (!conn) { $('sideSys').innerHTML = ''; return; }
+    S.lastSysKey = conn.addr + '|' + (conn.key || conn.base || '');
     apiGet(conn, '/api/sys/info').then(function (j) {
       if (authCheck(conn, j) || !j || !j.ok) return;
       var rows = [
@@ -422,6 +423,20 @@
         return '<div><span class="k">' + esc(r[0]) + '</span> ' + esc(r[1]) + '</div>';
       }).join('');
     });
+  }
+
+  /* 切换标签时同步左上账号标签 + 左侧设备信息；同一台设备（addr|key 相同）不重复拉取 */
+  function syncLabelsForTab(t) {
+    if (!t) return;
+    var c = t.conn || null;
+    setUserLabel(c && c.user && c.addr ? (c.user + '@' + c.addr) : (t.title || '未连接'));
+    if (!c) {
+      if (S.lastSysKey) { S.lastSysKey = ''; loadSysInfo(null); }
+      return;
+    }
+    var key = c.addr + '|' + (c.key || c.base || '');
+    if (key === S.lastSysKey) return;
+    loadSysInfo(c);
   }
 
   /* ---------------------------------------------------------- 通用右键菜单 */
@@ -1398,6 +1413,27 @@
     return tab;
   }
 
+  /* ---------- 标签拖拽排序（标准 HTML5 DnD 三段式：dragstart 记 id → dragover 必 preventDefault 并用中点定插位 → drop 先改数据数组再重渲染） ---------- */
+  var dragTabId = null, dropRef = null;
+  function clearDropHints() {
+    var list = document.querySelectorAll('.tab.dropl,.tab.dropr');
+    for (var i = 0; i < list.length; i++) { list[i].classList.remove('dropl'); list[i].classList.remove('dropr'); }
+  }
+  function reorderTab(id, toPane, refId, after) {
+    var from = paneOf(id);
+    if (!from || !refId || id === refId) return;
+    if (from !== toPane) moveTab(id);   // 跨栏：先迁到对侧（自动开分屏）
+    var arr = S.panes[toPane].tabs;
+    var fi = arr.findIndex(function (x) { return x.id === id; });
+    var ri = arr.findIndex(function (x) { return x.id === refId; });
+    if (fi < 0 || ri < 0) { renderPane(toPane); return; }
+    var item = arr.splice(fi, 1)[0];
+    ri = arr.findIndex(function (x) { return x.id === refId; }); // splice 后重定位参考项
+    arr.splice(ri + (after ? 1 : 0), 0, item);
+    renderPane(toPane);
+    setStatus(from === toPane ? '已调整标签顺序' : '已移动标签并排序');
+  }
+
   function renderPane(paneId) {
     var p = S.panes[paneId], bar = $('tabbar' + paneId);
     bar.innerHTML = '';
@@ -1432,6 +1468,37 @@
         ];
         showMenu(e.clientX, e.clientY, items);
       });
+      /* 标签拖拽排序：按住标签可在栏内换位，拖到另一栏则跨栏并插入该位置 */
+      el.draggable = true;
+      el.addEventListener('dragstart', function (e) {
+        dragTabId = t.id;
+        el.classList.add('dragging');
+        try { e.dataTransfer.setData('text/plain', t.id); e.dataTransfer.effectAllowed = 'move'; } catch (err) { }
+      });
+      el.addEventListener('dragend', function () {
+        el.classList.remove('dragging');
+        clearDropHints();
+        dragTabId = null; dropRef = null;
+      });
+      el.addEventListener('dragover', function (e) {
+        if (!dragTabId || dragTabId === t.id) return;
+        e.preventDefault();
+        try { e.dataTransfer.dropEffect = 'move'; } catch (err) { }
+        clearDropHints();
+        var r = el.getBoundingClientRect();
+        var leftSide = (e.clientX - r.left) < r.width / 2;
+        el.classList.add(leftSide ? 'dropl' : 'dropr');
+        dropRef = { pane: paneId, id: t.id, after: !leftSide };
+      });
+      el.addEventListener('dragleave', function () { el.classList.remove('dropl'); el.classList.remove('dropr'); });
+      el.addEventListener('drop', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        var dragId = '';
+        try { dragId = e.dataTransfer.getData('text/plain'); } catch (err) { }
+        dragId = dragId || dragTabId;
+        if (dragId && dropRef) reorderTab(dragId, dropRef.pane, dropRef.id, dropRef.after);
+        clearDropHints(); dragTabId = null; dropRef = null;
+      });
       bar.appendChild(el);
     });
     var t = p.tabs.filter(function (x) { return x.id === p.active; })[0];
@@ -1447,6 +1514,7 @@
     renderSide();
     refreshAnimationByTab();
     var t = findTab(id);
+    if (t) syncLabelsForTab(t);
     if (t && t.view.show) { try { t.view.show(); } catch (e) { } }
     if (t && t.view.refit) setTimeout(t.view.refit, 30);
   }
