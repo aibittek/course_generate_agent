@@ -7,6 +7,28 @@
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{--theme:#d97706;--theme-deep:#b45309;--theme-bg:#fef3c7;--theme-bd:#fde68a}
+/* 01 问题引入 · 三场景纵向长图（全部展开、同时播放） */
+.mw{margin:14px 0 6px;border:1px solid var(--theme-bd);border-radius:14px;overflow:hidden;background:#111827}
+.mw-pane{border-bottom:1px solid #1e293b}
+.mw-pane:last-child{border-bottom:none}
+.mw-head{display:flex;align-items:center;gap:10px;padding:10px 14px 0}
+.mw-head .step-no{width:24px;height:24px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;flex:none;font-weight:700}
+.mw-head .step-t{font-size:13.5px;color:#e2e8f0;font-weight:700}
+.mw-stage{position:relative;height:306px}
+.mw-stage svg{position:absolute;inset:0;width:100%;height:100%}
+.mw-cap{margin:0;padding:4px 14px 14px;font-size:13px;line-height:1.7;color:#cbd5e1}
+.mw-cap b{color:#93c5fd}
+.mw-lead{margin:10px 0 0;color:#475569;font-size:13.5px}
+/* 支柱三 · 真实工具截图 */
+.shotrow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.shotrow figure{margin:0}
+.shotrow img{width:100%;border-radius:10px;border:1px solid var(--theme-bd);display:block}
+.shotrow figcaption{font-size:12.5px;color:#64748b;margin-top:6px;text-align:center;line-height:1.5}
+@media (max-width:860px){.shotrow{grid-template-columns:1fr}}
+.pillar-more{margin-top:8px;font-size:12.5px}
+.pillar-more a{color:var(--theme-deep);font-weight:700;text-decoration:none}
+.pillar-more a:hover{text-decoration:underline}
+@media (prefers-reduced-motion: reduce){.mw-stage svg *{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -22,14 +44,11 @@
   <h4>本页目录</h4>
   <a href="#s1" class="now">01 问题引入：机器人软件为什么需要中间件</a>
   <a href="#s2">02 核心原理：ROS2 的三大设计支柱</a>
-  <a href="#s3">03 原理动画：Master 宕机 vs DDS 组网</a>
-  <a href="#s4">04 专题：RMW 抽象层与 Humble 发行版</a>
-  <a href="#s5">05 互动实验台：亲手触发"单点故障"</a>
-  <a href="#s6">06 命令精讲：环境验证三板斧</a>
-  <a href="#s7">07 实操 1 · ROS2 的 Hello World：talker</a>
-  <a href="#s8">08 实操 2 · 零配置互联：listener 与系统监控</a>
-  <a href="#s9">09 注意事项与验收清单</a>
-  <a href="#s10">10 实验总结与思考题</a>
+  <a href="#s4">03 RMW 抽象层与 Humble 发行版</a>
+  <a href="#s7">04 实操 1 · ROS2 的 Hello World：talker</a>
+  <a href="#s8">05 实操 2 · 零配置互联：listener 与系统监控</a>
+  <a href="#s9">06 注意事项与验收清单</a>
+  <a href="#s10">07 实验总结与思考题</a>
   <h4>CH1 · ROS2 基础</h4>
   <a href="../exp-01-ros2-intro/index.html">EXP-01 ROS2 简介</a>
   <a href="../exp-02-cli-tools/index.html">EXP-02 命令工具</a>
@@ -42,7 +61,7 @@
 <div class="exp-head">
   <span class="code">EXP-01 · 第 1 章 · 验证性 · 2 学时</span>
   <h1>ROS2 简介：机器人软件的操作系统</h1>
-  <p class="desc">ROS 是什么？为什么机器人需要"中间件"？本实验从<b>机器人软件的协作之痛</b>出发，讲清 ROS2 的三大设计支柱，用动画拆解 <b>ROS1 中心化 Master</b> 与 <b>ROS2 去中心化 DDS</b> 的架构跃迁，再通过 talker / listener 第一次跑通你自己的 ROS2 通信系统。</p>
+  <p class="desc">ROS 是什么？为什么机器人需要"中间件"？本实验从<b>机器人软件的协作之痛</b>出发，讲清 ROS2 的三大设计支柱，拆解 <b>ROS1 中心化 Master</b> 与 <b>ROS2 去中心化 DDS</b> 的架构发展变化，再通过 talker / listener 跑通第一个 ROS2 的 HelloWorld 程序。</p>
   <div class="meta">
     <span class="tag hl">难度 ⭐ · 2 学时</span>
     <span class="tag">ROS2 Humble</span><span class="tag">DDS 中间件</span>
@@ -53,9 +72,124 @@
 <!-- 01 -->
 <section class="blk" id="s1">
   <h2><span class="no">01</span>问题引入：机器人软件为什么需要中间件</h2>
-  <p>一台服务机器人身上有激光雷达、摄像头、底盘、机械臂、语音模块——由<b>不同厂商、不同语言、不同进程</b>开发。如果没有统一的通信层，你会遇到：</p>
+  <p>把机器人比作一个人：<b>摄像头是眼睛、麦克风是耳朵、决策程序是大脑、机械臂和底盘是手脚</b>——那"中间件"就是这套<b>神经系统</b>，把不同器官的信号翻译成统一语言。</p>
+
+  <div class="mw" id="mw01">
+    <div class="mw-pane">
+      <div class="mw-head"><span class="step-no">1</span><span class="step-t">人体自带的"中间件" —— 神经系统把器官连成整体</span></div>
+      <div class="mw-stage">
+      <svg viewBox="0 0 680 300" role="img" aria-label="人体器官到机器人部件的类比映射，神经系统好比中间件">
+        <text x="24" y="26" font-size="14" font-weight="700" fill="#e2e8f0">人体自带的“中间件”：神经系统把器官连成整体</text>
+        <rect x="50" y="46" width="170" height="54" rx="10" fill="#78350f" stroke="#f59e0b" stroke-width="1.2"/>
+        <text x="135" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="#fcd34d">眼睛 · 耳朵</text>
+        <text x="135" y="88" text-anchor="middle" font-size="12" fill="#fde68a">感知外界</text>
+        <rect x="255" y="46" width="170" height="54" rx="10" fill="#78350f" stroke="#f59e0b" stroke-width="1.2"/>
+        <text x="340" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="#fcd34d">大脑</text>
+        <text x="340" y="88" text-anchor="middle" font-size="12" fill="#fde68a">思考与决策</text>
+        <rect x="460" y="46" width="170" height="54" rx="10" fill="#78350f" stroke="#f59e0b" stroke-width="1.2"/>
+        <text x="545" y="68" text-anchor="middle" font-size="14" font-weight="700" fill="#fcd34d">双手 · 双腿</text>
+        <text x="545" y="88" text-anchor="middle" font-size="12" fill="#fde68a">执行动作</text>
+        <path d="M220 73 H252" fill="none" stroke="#5eead4" stroke-width="1.6"/>
+        <path d="M425 73 H457" fill="none" stroke="#5eead4" stroke-width="1.6"/>
+        <text x="236" y="60" text-anchor="middle" font-size="11" fill="#5eead4">传入</text>
+        <text x="441" y="60" text-anchor="middle" font-size="11" fill="#5eead4">指令</text>
+        <circle r="5" fill="#5eead4"><animate attributeName="cx" values="222;251" dur="1.4s" repeatCount="indefinite"/><animate attributeName="cy" values="73;73" dur="1.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.4s" repeatCount="indefinite"/></circle>
+        <circle r="5" fill="#5eead4"><animate attributeName="cx" values="427;456" dur="1.4s" begin="0.5s" repeatCount="indefinite"/><animate attributeName="cy" values="73;73" dur="1.4s" begin="0.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.4s" begin="0.5s" repeatCount="indefinite"/></circle>
+        <g stroke="#64748b" stroke-width="1" stroke-dasharray="3 4">
+          <path d="M135 100 V198" fill="none"/><path d="M340 100 V198" fill="none"/><path d="M545 100 V198" fill="none"/>
+        </g>
+        <text x="146" y="155" font-size="15" fill="#94a3b8" font-weight="700">=</text>
+        <text x="351" y="155" font-size="15" fill="#94a3b8" font-weight="700">=</text>
+        <text x="556" y="155" font-size="15" fill="#94a3b8" font-weight="700">=</text>
+        <rect x="50" y="204" width="170" height="54" rx="10" fill="#1e3a5f" stroke="#38bdf8" stroke-width="1.2"/>
+        <text x="135" y="226" text-anchor="middle" font-size="13" font-weight="700" fill="#7dd3fc">摄像头·雷达·麦克风</text>
+        <text x="135" y="246" text-anchor="middle" font-size="12" fill="#bae6fd">传感器</text>
+        <rect x="255" y="204" width="170" height="54" rx="10" fill="#1d4ed8" stroke="#60a5fa" stroke-width="1.2"/>
+        <text x="340" y="226" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">决策程序（ROS2 节点）</text>
+        <text x="340" y="246" text-anchor="middle" font-size="12" fill="#bfdbfe">订阅输入 · 发布指令</text>
+        <rect x="460" y="204" width="170" height="54" rx="10" fill="#1e3a5f" stroke="#38bdf8" stroke-width="1.2"/>
+        <text x="545" y="226" text-anchor="middle" font-size="13" font-weight="700" fill="#7dd3fc">机械臂 · 底盘</text>
+        <text x="545" y="246" text-anchor="middle" font-size="12" fill="#bae6fd">执行器</text>
+        <text x="340" y="284" text-anchor="middle" font-size="12.5" fill="#5eead4">神经系统 ↔ ROS2 中间件：把不同器官“翻译”成统一信号，大脑只管决策</text>
+      </svg>
+      </div>
+      <p class="mw-cap">神经系统把眼、耳、手、脚连成一个整体——传感器提供输入、决策做判断、执行器负责动作，<b>ROS2 就是给机器人铺的这套"神经系统"</b>。</p>
+    </div>
+
+    <div class="mw-pane">
+      <div class="mw-head"><span class="step-no">2</span><span class="step-t">没有 ROS2 —— 每个零件一种"方言"，大脑听不懂</span></div>
+      <div class="mw-stage">
+
+      <svg viewBox="0 0 680 300" role="img" aria-label="没有中间件的机器人，零件各说各的方言，决策程序听不懂">
+        <text x="24" y="26" font-size="14" font-weight="700" fill="#e2e8f0">没有 ROS2：每个零件一种“方言”，大脑？！</text>
+        <rect x="60" y="44" width="185" height="40" rx="9" fill="#450a0a" stroke="#f87171" stroke-width="1.2"/>
+        <text x="152" y="69" text-anchor="middle" font-size="12.5" fill="#fca5a5">相机：USB · 私有协议</text>
+        <rect x="452" y="44" width="195" height="40" rx="9" fill="#450a0a" stroke="#f87171" stroke-width="1.2"/>
+        <text x="549" y="69" text-anchor="middle" font-size="12.5" fill="#fca5a5">雷达：串口 · 0x55 包</text>
+        <rect x="55" y="232" width="200" height="40" rx="9" fill="#450a0a" stroke="#f87171" stroke-width="1.2"/>
+        <text x="155" y="257" text-anchor="middle" font-size="12.5" fill="#fca5a5">电机：CAN 总线报文</text>
+        <rect x="435" y="232" width="215" height="40" rx="9" fill="#450a0a" stroke="#f87171" stroke-width="1.2"/>
+        <text x="542" y="257" text-anchor="middle" font-size="12.5" fill="#fca5a5">大脑：？！全都听不懂</text>
+        <path d="M245 64 L310 82" fill="none" stroke="#f87171" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <path d="M452 64 L375 82" fill="none" stroke="#f87171" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <path d="M255 252 L312 205" fill="none" stroke="#f87171" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <path d="M435 252 L372 205" fill="none" stroke="#f87171" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <g font-size="14" font-weight="700" fill="#ef4444" text-anchor="middle">
+          <text x="275" y="68">✕</text><text x="416" y="68">✕</text><text x="278" y="234">✕</text><text x="407" y="234">✕</text>
+        </g>
+        <rect x="305" y="80" width="70" height="42" rx="8" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+        <rect x="325" y="70" width="30" height="10" rx="3" fill="#475569"/>
+        <circle cx="340" cy="101" r="11" fill="#0f172a" stroke="#38bdf8" stroke-width="1.6"/>
+        <rect x="290" y="130" width="100" height="76" rx="10" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+        <text x="340" y="168" text-anchor="middle" font-size="26" font-weight="700" fill="#f87171">？！</text>
+        <path d="M290 148 L262 178" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+        <path d="M390 148 L418 178" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="315" cy="210" r="13" fill="#475569"/><circle cx="365" cy="210" r="13" fill="#475569"/>
+        <text x="340" y="288" text-anchor="middle" font-size="12.5" fill="#fca5a5">5 个零件 = 10 套转接程序，每换一个型号全部重写 —— 机器人软件的原罪</text>
+      </svg>
+      </div>
+      <p class="mw-cap">相机说 USB 方言、雷达说串口方言、电机说 CAN 方言，决策程序<b>听谁的都费劲</b>——直接的后果就是下面这行红字：<b>转接程序随零件数爆炸，换型号全部重写</b>。</p>
+    </div>
+
+    <div class="mw-pane">
+      <div class="mw-head"><span class="step-no">3</span><span class="step-t">装上 ROS2 —— 都说"普通话"，大脑只管听与发</span></div>
+      <div class="mw-stage">
+
+      <svg viewBox="0 0 680 300" role="img" aria-label="装上ROS2的机器人，零件统一发布订阅话题，决策节点只管听与发">
+        <text x="24" y="26" font-size="14" font-weight="700" fill="#e2e8f0">装上 ROS2：都说“普通话”，大脑只管听与发</text>
+        <rect x="50" y="44" width="580" height="56" rx="12" fill="#1e40af" stroke="#60a5fa" stroke-width="1.4"/>
+        <text x="340" y="68" text-anchor="middle" font-size="14.5" font-weight="700" fill="#ffffff">ROS2 消息总线（话题 = 微信群）</text>
+        <text x="340" y="88" text-anchor="middle" font-size="11.5" fill="#bfdbfe">统一数据格式 · 自动发现 · 一个挂了不牵连别人</text>
+        <circle r="5" fill="#93c5fd"><animate attributeName="cx" values="80;600" dur="3s" repeatCount="indefinite"/><animate attributeName="cy" values="72;72" dur="3s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="3s" repeatCount="indefinite"/></circle>
+        <path d="M135 176 V100" fill="none" stroke="#60a5fa" stroke-width="1.4"/>
+        <path d="M545 176 V100" fill="none" stroke="#60a5fa" stroke-width="1.4"/>
+        <rect x="60" y="176" width="150" height="52" rx="10" fill="#1e3a5f" stroke="#38bdf8" stroke-width="1.2"/>
+        <text x="135" y="198" text-anchor="middle" font-size="13.5" font-weight="700" fill="#7dd3fc">相机节点</text>
+        <text x="135" y="218" text-anchor="middle" font-size="12" fill="#bae6fd">发布 /image</text>
+        <rect x="470" y="176" width="150" height="52" rx="10" fill="#1e3a5f" stroke="#38bdf8" stroke-width="1.2"/>
+        <text x="545" y="198" text-anchor="middle" font-size="13.5" font-weight="700" fill="#7dd3fc">雷达节点</text>
+        <text x="545" y="218" text-anchor="middle" font-size="12" fill="#bae6fd">发布 /scan</text>
+        <circle r="5" fill="#4ade80"><animate attributeName="cy" values="174;104" dur="1.6s" repeatCount="indefinite"/><animate attributeName="cx" values="135;135" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.6s" repeatCount="indefinite"/></circle>
+        <circle r="5" fill="#4ade80"><animate attributeName="cy" values="174;104" dur="1.6s" begin="0.7s" repeatCount="indefinite"/><animate attributeName="cx" values="545;545" dur="1.6s" begin="0.7s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.6s" begin="0.7s" repeatCount="indefinite"/></circle>
+        <rect x="305" y="142" width="70" height="38" rx="8" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+        <rect x="325" y="133" width="30" height="9" rx="3" fill="#475569"/>
+        <circle cx="340" cy="161" r="10" fill="#0f172a" stroke="#38bdf8" stroke-width="1.6"/>
+        <rect x="290" y="186" width="100" height="72" rx="10" fill="#1d4ed8" stroke="#60a5fa" stroke-width="1.4"/>
+        <text x="340" y="214" text-anchor="middle" font-size="13.5" font-weight="700" fill="#ffffff">决策节点</text>
+        <text x="340" y="236" text-anchor="middle" font-size="11.5" fill="#bfdbfe">订 /image · 发 /cmd_vel</text>
+        <circle cx="315" cy="262" r="12" fill="#475569"/><circle cx="365" cy="262" r="12" fill="#475569"/>
+        <path d="M340 100 V142" fill="none" stroke="#93c5fd" stroke-width="1.4" stroke-dasharray="6 4"/>
+        <text x="352" y="126" font-size="11" fill="#93c5fd">订阅 / 发布</text>
+        <text x="340" y="292" text-anchor="middle" font-size="12.5" fill="#86efac">换零件 = 换一个会说“普通话”的节点，别人的代码一行不改</text>
+      </svg>
+      </div>
+      <p class="mw-cap">相机发 /image、雷达发 /scan，决策节点<b>听普通话收、发普通话指令</b>——换零件 = 换一个会说"普通话"的节点，<b>别人的代码一行不改</b>。中间件干的就是"统一说话"这件事。</p>
+    </div>
+  </div>
+
+  <p class="mw-lead">四步把"为什么需要中间件"说透：</p>
   <div class="flow">
-    <div class="step"><span class="n">1</span>每个模块一种私有协议，两两对接要写 N×(N−1)/2 转接代码</div>
+    <div class="step"><span class="n">1</span>每个模块一种私有协议：3 个部件要写 3 组转接，5 个部件要写 10 组——部件越多，转接代码越爆炸</div>
     <div class="arr"></div>
     <div class="step"><span class="n">2</span>进程发现、断线重连、丢包重传全部手写，一改全崩</div>
     <div class="arr"></div>
@@ -63,35 +197,19 @@
     <div class="arr"></div>
     <div class="step"><span class="n">4</span>上层算法变成可插拔积木：换雷达 = 换一个发布同一话题的节点</div>
   </div>
-  <div class="tip amber"><span class="lab">💡 一句话定义</span>ROS（Robot Operating System）<b>不是操作系统</b>：不管理硬件，它是一个<b>通信框架 + 工具集 + 包生态</b>，运行在 Linux 之上，为机器人软件提供"进程之间如何说话"的标准答案。</div>
+  <div class="tip amber"><span class="lab">💡 一句话定义</span>ROS（Robot Operating System）<b>不是操作系统</b>：不管理硬件，它是一个<b>通信框架 + 工具集 + 包生态</b>，运行在 Linux 之上，为机器人软件提供"进程之间如何说话"的标准答案。<br><b>简单来说，</b>ROS2 = 机器人的<b>"普通话 + 微信群 + 一键工具箱"</b>——谁写的应用都能插上就跑，多台电脑自动成网。本课所有内容，都是在拆解这句话。</div>
 </section>
 
 <!-- 02 -->
 <section class="blk" id="s2">
   <h2><span class="no">02</span>核心原理：ROS2 的三大设计支柱</h2>
   <div class="kgrid">
-    <div class="kcard"><div class="kd">支柱一</div><div class="kt">去中心化的分布式图</div><p>没有 Master 单点。每个节点自带 DDS 参与者身份，通过<b>多播自动发现</b>彼此，组成一张"节点-话题"关系图。</p></div>
-    <div class="kcard"><div class="kd">支柱二</div><div class="kt">语言与框架无关</div><p>Python（rclpy）、C++（rclcpp）乃至 Swift/Java 都能发声——接口由 <b>IDL 消息定义</b>统一约束，与实现语言解耦。</p></div>
-    <div class="kcard"><div class="kd">支柱三</div><div class="kt">工具生态开箱即用</div><p>ros2 CLI、rqt、rviz2、rosbag2、launch——同一套图信息喂给全部工具，"看不见的系统"随时可自省。</p></div>
+    <div class="kcard"><div class="kd">支柱一</div><div class="kt">去中心化的分布式图</div><p>没有 Master 单点。每个节点自带 DDS 参与者身份，通过<b>多播自动发现</b>彼此，组成一张"节点-话题"关系图。<b>就像一个微信群：谁上线大家自动看见，谁退群也不影响别人聊天。</b></p><p class="pillar-more">👉 本支柱专属展开：<b>见下方"总机 vs 群聊"对比</b></p></div>
+    <div class="kcard"><div class="kd">支柱二</div><div class="kt">语言与框架无关</div><p>Python（rclpy）、C++（rclcpp）乃至 Swift/Java 都能发声——接口由 <b>IDL 消息定义</b>统一约束，与实现语言解耦。</p><p class="pillar-more">👉 本支柱专属展开：<a href="#s2b">见下方"同一份消息合同"图解</a></p></div>
+    <div class="kcard"><div class="kd">支柱三</div><div class="kt">工具生态开箱即用</div><p>ros2 CLI、rqt、rviz2、rosbag2、launch——同一套图信息喂给全部工具，"看不见的系统"随时可自省。</p><p class="pillar-more">👉 本支柱专属展开：<a href="#s2c">下方三张真实运行截图</a> · 完整工具链见 EXP-02</p></div>
   </div>
-  <table>
-    <thead><tr><th>对比维度</th><th>ROS1（Melodic 及以前）</th><th>ROS2（Foxy / Humble / …）</th></tr></thead>
-    <tbody>
-      <tr><td>通信架构</td><td>中心化：<code>Master(rosmaster)</code> 统一注册</td><td>去中心化：DDS 点对点，无中心进程</td></tr>
-      <tr><td>底层协议</td><td>TCPROS（自研 TCP 长连接）</td><td>RTPS（DDS 标准，UDP + 多播发现）</td></tr>
-      <tr><td>节点发现</td><td>启动必须先起 Master，向它注册</td><td>多播自动发现，谁先谁后无所谓</td></tr>
-      <tr><td>编译系统</td><td>catkin_make 单一 CMake 大工程</td><td>colcon 每包独立构建，支持混合语言</td></tr>
-      <tr><td>生命周期</td><td>节点崩了只能重启整个进程</td><td>Managed Node 四状态，可"待机-激活"恢复</td></tr>
-      <tr><td>服务质量</td><td>无 QoS，可靠性不可配</td><td>QoS 三要素（可靠性/持久性/历史）可按话题配置</td></tr>
-    </tbody>
-  </table>
-  <div class="tip tealb"><span class="lab">🔍 关键跃迁</span>ROS1 的 Master 是"电话总机"——总机不在，全网瘫痪；ROS2 的 DDS 是"群聊"——任何两个人先加上好友（发现），之后直接私聊（P2P 传输）。<b>这决定了 ROS2 天生适合多机、车载与机器人集群场景。</b></div>
-</section>
 
-<!-- 03 -->
-<section class="blk" id="s3">
-  <h2><span class="no">03</span>原理动画：Master 宕机 vs DDS 组网</h2>
-  <p class="lead">左图：ROS1 所有节点都要经 Master 注册，Master 一倒，<b>新节点找不到彼此</b>；右图：ROS2 节点间直接多播出一张网，任意单节点下线<b>不影响其余节点通信</b>。</p>
+    <p class="lead">先看一个熟悉的场景再看机器：老式总机转接电话——<b>总机下班，全网失联</b>；微信群——<b>谁上线自动进群直接聊，谁退群都不影响别人</b>。ROS1 选了总机（Master），ROS2 选了群聊（DDS）：节点自己多播发现，任意一个挂掉，其余照常。下面左半边是总机模式的下场，右半边是群聊模式的底气：</p>
   <div class="anim-box">
     <svg viewBox="0 0 720 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ROS1 中心化 Master 与 ROS2 去中心化 DDS 对比动画">
       <rect x="8" y="8" width="344" height="294" rx="12" fill="#111827" stroke="#334155"/>
@@ -149,11 +267,73 @@
     </svg>
   </div>
   <div class="anim-cap">动画 1-1｜左：Master 一倒全网失联；右：消息在网状直连中持续流动（6 秒循环）</div>
+
+  <p class="lead" style="font-size:14.5px;margin-top:18px">Python 写的节点和 C++ 写的节点，<b>语言不通凭什么直接对话</b>？——因为它们事先签好了同一份"消息合同"（IDL）：</p>
+
+  <div class="anim-box" id="s2b">
+    <svg viewBox="0 0 720 264" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="支柱二：Python 与 C++ 节点靠同一份 IDL 消息合同对话">
+      <rect x="0" y="0" width="720" height="264" rx="12" fill="#0f172a"/>
+      <text x="360" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="#e2e8f0">支柱二 · 语言无关：同一份"合同"，各自说母语</text>
+      <rect x="255" y="52" width="210" height="54" rx="10" fill="#064e3b" stroke="#34d399" stroke-width="1.5"/>
+      <text x="360" y="74" text-anchor="middle" font-size="13" font-weight="700" fill="#6ee7b7">IDL 消息合同 · std_msgs/String</text>
+      <text x="360" y="94" text-anchor="middle" font-size="11.5" fill="#a7f3d0">"字符串 data" —— 双方共同签字画押</text>
+      <path d="M300 106 L215 150" fill="none" stroke="#34d399" stroke-width="1.2" stroke-dasharray="5 4"/>
+      <path d="M420 106 L505 150" fill="none" stroke="#34d399" stroke-width="1.2" stroke-dasharray="5 4"/>
+      <rect x="60" y="150" width="170" height="66" rx="10" fill="#1e3a5f" stroke="#38bdf8" stroke-width="1.5"/>
+      <text x="145" y="174" text-anchor="middle" font-size="13.5" font-weight="700" fill="#7dd3fc">节点 A · Python</text>
+      <text x="145" y="194" text-anchor="middle" font-size="11.5" fill="#bae6fd">rclpy · 把数据装进"合同信封"</text>
+      <rect x="490" y="150" width="170" height="66" rx="10" fill="#1e3a5f" stroke="#38bdf8" stroke-width="1.5"/>
+      <text x="575" y="174" text-anchor="middle" font-size="13.5" font-weight="700" fill="#7dd3fc">节点 B · C++</text>
+      <text x="575" y="194" text-anchor="middle" font-size="11.5" fill="#bae6fd">rclcpp · 拆"合同信封"读数据</text>
+      <path d="M230 183 H305" fill="none" stroke="#fbbf24" stroke-width="2.5"/>
+      <path d="M415 183 H490" fill="none" stroke="#fbbf24" stroke-width="2.5"/>
+      <circle cx="360" cy="183" r="30" fill="#111827" stroke="#fbbf24" stroke-width="2"/>
+      <text x="360" y="179" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fbbf24">话题</text>
+      <text x="360" y="195" text-anchor="middle" font-size="10.5" fill="#fcd34d">/chatter</text>
+      <g fill="#4ade80">
+        <circle r="5"><animate attributeName="cx" values="235;305" dur="1.3s" repeatCount="indefinite"/><animate attributeName="cy" values="183;183" dur="1.3s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;1;0;0" dur="1.3s" repeatCount="indefinite"/></circle>
+        <circle r="5" fill="#60a5fa"><animate attributeName="cx" values="415;485" dur="1.3s" begin="0.65s" repeatCount="indefinite"/><animate attributeName="cy" values="183;183" dur="1.3s" begin="0.65s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;1;0;0" dur="1.3s" begin="0.65s" repeatCount="indefinite"/></circle>
+      </g>
+      <text x="360" y="244" text-anchor="middle" font-size="12" fill="#86efac">换语言 = 换个"写信人"，收发双方都不用动 —— 开源社区的包拿来就能接入</text>
+    </svg>
+  </div>
+  <div class="anim-cap">动画 1-2｜支柱二：Python 按同一份 IDL 合同发出（绿点）→ 话题中转 → C++ 按合同收下（蓝点）—— 母语不同，字节相同</div>
+
+  <table>
+    <thead><tr><th>对比维度</th><th>ROS1（Melodic 及以前）</th><th>ROS2（Foxy / Humble / …）</th></tr></thead>
+    <tbody>
+      <tr><td>通信架构</td><td>中心化：<code>Master(rosmaster)</code> 统一注册</td><td>去中心化：DDS 点对点，无中心进程</td></tr>
+      <tr><td>底层协议</td><td>TCPROS（自研 TCP 长连接）</td><td>RTPS（DDS 标准，UDP + 多播发现）</td></tr>
+      <tr><td>节点发现</td><td>启动必须先起 Master，向它注册</td><td>多播自动发现，谁先谁后无所谓</td></tr>
+      <tr><td>编译系统</td><td>catkin_make 单一 CMake 大工程</td><td>colcon 每包独立构建，支持混合语言</td></tr>
+      <tr><td>生命周期</td><td>节点崩了只能重启整个进程</td><td>Managed Node 四状态，可"待机-激活"恢复</td></tr>
+      <tr><td>服务质量</td><td>无 QoS，可靠性不可配</td><td>QoS 三要素（可靠性/持久性/历史）可按话题配置</td></tr>
+    </tbody>
+  </table>
+
+  <p class="lead" style="font-size:14.5px;margin-top:18px">支柱三不是口号——下面是 <b>ROS2 Humble 实机运行的真实截图</b>（三张均取自本课程配套实验现场，点击图片可放大）：</p>
+  <div class="shotrow" id="s2c">
+    <figure>
+      <a href="images/tool-cli-list.png" target="_blank" rel="noopener"><img src="images/tool-cli-list.png" alt="ros2 topic list 真实输出：相机话题清单" loading="lazy"></a>
+      <figcaption>① ros2 CLI · <code>topic list</code> 一眼清点全系统话题</figcaption>
+    </figure>
+    <figure>
+      <a href="images/tool-cli-echo.png" target="_blank" rel="noopener"><img src="images/tool-cli-echo.png" alt="ros2 topic echo 真实消息字段输出" loading="lazy"></a>
+      <figcaption>② topic echo · 实时抽看消息内容与字段结构</figcaption>
+    </figure>
+    <figure>
+      <a href="images/tool-rviz.png" target="_blank" rel="noopener"><img src="images/tool-rviz.png" alt="RViz2 图形界面：按话题添加点云显示" loading="lazy"></a>
+      <figcaption>③ RViz2 · 把激光点云画成三维画面</figcaption>
+    </figure>
+  </div>
+  <p style="margin-top:10px;font-size:13.5px;color:#475569">还有更多"开箱即用"在等你：<b>rqt</b> 图形化大全家、<b>turtlesim</b> 教学小海龟、<b>rosbag2</b> 录放时间机器、<b>launch</b> 一键拉起全系统——同一张计算图喂给所有工具，EXP-02 起逐个上手。</p>
+
+  <div class="tip tealb"><span class="lab">🔍 关键跃迁</span>ROS1 的 Master 是"电话总机"——总机不在，全网瘫痪；ROS2 的 DDS 是"群聊"——任何两个人先加上好友（发现），之后直接私聊（P2P 传输）。<b>这决定了 ROS2 天生适合多机、车载与机器人集群场景。</b></div>
 </section>
 
-<!-- 04 -->
+<!-- 03 -->
 <section class="blk" id="s4">
-  <h2><span class="no">04</span>专题：RMW 抽象层与 Humble 发行版</h2>
+  <h2><span class="no">03</span>RMW 抽象层与 Humble 发行版</h2>
   <p>ROS2 在应用与 DDS 实现之间插入了 <b>RMW（ROS MiddleWare）抽象层</b>，同一份代码可以运行在不同 DDS 实现上：</p>
   <div class="flow">
     <div class="step"><span class="n">1</span><b>rcl 语言客户端层</b>：rclpy（Python）/ rclcpp（C++），API 完全一致</div>
@@ -165,31 +345,9 @@
   <div class="kgrid">
     <div class="kcard"><div class="kd">发行版字母表</div><div class="kt">Humble Hawksbill（本课程）</div><p>2022.05 发布的 <b>LTS 版本，支持至 2027.05</b>；此前 Foxy（2020）、Galactic（2021），此后 Iron、Jazzy。配套 Ubuntu 22.04。</p></div>
     <div class="kcard"><div class="kd">切换 DDS 实现</div><div class="kt">一个环境变量完成</div><p><code>RMW_IMPLEMENTATION=rmw_cyclonedds_cpp</code>——排障时用来隔离"是不是 DDS 实现的锅"，无需改一行代码。</p></div>
-    <div class="kcard"><div class="kd">生命周期管理</div><div class="kt">Managed Node 四状态</div><p>Unconfigured → Inactive → Active → Finalized：节点可"待机而不退出"，故障后原地恢复（EXP-10 深入）。</p></div>
+    <div class="kcard"><div class="kd">生命周期管理</div><div class="kt">Managed Node 四状态</div><p>Unconfigured → Inactive → Active → Finalized：节点可"待机而不退出"，故障后原地恢复。</p></div>
   </div>
-</section>
-
-<!-- 05 -->
-<section class="blk" id="s5">
-  <h2><span class="no">05</span>互动实验台：亲手触发"单点故障"</h2>
-  <p class="lead">点击下方按钮，对比两种架构在<b>关键进程退出</b>时的表现，并读出系统诊断：</p>
-  <div class="ix-panel">
-    <div class="ix-title">单点故障对照台 · SPoF Lab</div>
-    <div class="ctl-row">
-      <button class="btn" onclick="killMaster()">💥 让 ROS1 Master 宕机</button>
-      <button class="btn ghost" onclick="killRos2Node()">🔌 让 ROS2 某节点下线</button>
-      <button class="btn ghost" onclick="resetLab()">↺ 复位</button>
-    </div>
-    <div class="io" id="spofIo"><span class="dim">// 点击上方按钮，观察两个架构家族的故障扩散范围</span>
-<span class="ok">ROS1: 四节点已向 Master 注册，全网可互相寻址。</span>
-<span class="ok">ROS2: 四节点 SPDP 多播已互相发现，RTPS 连接就绪。</span></div>
-  </div>
-  <div class="tip"><span class="lab">💡 换个角度想</span>ROS2 里"某个节点下线"只是图上少了一个顶点——这正是机器人软件微服务化的基础：<b>允许局部失败，不允许全局瘫痪</b>。</div>
-</section>
-
-<!-- 06 -->
-<section class="blk" id="s6">
-  <h2><span class="no">06</span>命令精讲：环境验证三板斧</h2>
+  <h3>环境验证三板斧</h3>
   <pre><span class="c"># ① 确认发行版（预期输出 humble）</span>
 <span class="g">echo</span> $ROS_DISTRO
 <span class="y">humble</span>
@@ -201,30 +359,55 @@
 <span class="g">ros2</span> --help
 <span class="c"># ... verbs: action bag interface launch node param pkg run service topic ...</span>
 <span class="c">#            ↑ 八大动词组，EXP-02 逐一拆解</span></pre>
+  <div class="tip tealb"><span class="lab"> turtlesim 冒烟测试（可选 · 60 秒）</span>需要图形界面：设备本地桌面直接跑；远程用 <b>VNC</b> 或 <b>MobaXterm（X11 转发）</b>，先敲 <code>echo $DISPLAY</code> 确认非空。下面三条命令按序复制执行：</div>
+  <pre><span class="c"># ① 装包（只需一次）</span>
+<span class="g">sudo</span> apt install ros-humble-turtlesim
+
+<span class="c"># ② 弹出海龟窗口，保持开着</span>
+<span class="g">ros2</span> run turtlesim turtlesim_node
+
+<span class="c"># ③ 再开一个终端，按 ↑↓←→ 方向键遥控海龟</span>
+<span class="g">ros2</span> run turtlesim turtle_teleop_key
+<span class="c"># 报 No executable found？说明命令被拼接过，先跑 ros2 pkg executables turtlesim 核对</span></pre>
+  <figure style="margin:14px 0 0">
+    <a href="images/turtlesim-window.png" target="_blank" rel="noopener"><img src="images/turtlesim-window.png" alt="实机桌面弹出 TurtleSim 窗口截图" loading="lazy" style="width:100%;border:1px solid var(--theme-bd);border-radius:10px;display:block"></a>
+    <figcaption style="font-size:12.5px;color:#64748b;margin-top:6px;text-align:center">实测效果：第 ② 条回车后，桌面弹出 TurtleSim 蓝色窗口（设备实拍，点击可放大）</figcaption>
+  </figure>
+  <p style="margin-top:10px;font-size:13.5px;color:#475569">💡 三步跑通即说明<b>图形环境、话题发布、订阅执行</b>全部正常——方向键海龟之所以听话，是 <code>teleop_key</code> 在往 <code>/turtle1/cmd_vel</code> 话题发"速度"消息，海龟订阅到就动（EXP-06 细讲）。</p>
   <div class="tip amber"><span class="lab">⚠️ 为什么 source 是"三板斧"之一</span>ROS2 的一切命令都靠 <code>setup.bash</code> 注入的环境变量找到：不 source，<code>ros2</code> 直接 command not found；换了工作空间不 source <code>install/setup.bash</code>，你编译的包就"不存在"。<b>这是新手第一大坑，贯穿全课程。</b></div>
+
+
 </section>
 
-<!-- 07 -->
+<!-- 04 -->
 <section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 1 · ROS2 的 Hello World：talker</h2>
+  <h2><span class="no">04</span>实操 1 · ROS2 的 Hello World：talker</h2>
   <div class="flow">
-    <div class="step"><span class="n">1</span>开终端 A：source 环境后运行 <code>ros2 run demo_nodes_cpp talker</code></div>
+    <div class="step"><span class="n">1</span>首次先装官方示例包：<code>sudo apt install ros-humble-demo-nodes-cpp</code>（只需一次，装过就跳过）</div>
     <div class="arr"></div>
-    <div class="step"><span class="n">2</span>观察输出：<code>[INFO] ... Publishing: 'Hello World: N'</code> 每秒刷新</div>
+    <div class="step"><span class="n">2</span>再开终端 A：source 环境后运行 <code>ros2 run demo_nodes_cpp talker</code></div>
     <div class="arr"></div>
-    <div class="step"><span class="n">3</span>后台发生的事：DDS 发现 → 节点创建 → 在 /chatter 注册 Publisher → 定时器驱动发消息</div>
+    <div class="step"><span class="n">3</span>观察输出：<code>[INFO] ... Publishing: 'Hello World: N'</code> 每秒刷新</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span>后台发生的事：DDS 发现 → 节点创建 → 在 /chatter 注册 Publisher → 定时器驱动发消息</div>
   </div>
-  <pre><span class="c"># 终端 A</span>
+  <pre><span class="c"># ① 首次先装官方示例包（已装跳过；缺它必报 package not found）</span>
+<span class="g">sudo</span> apt install ros-humble-demo-nodes-cpp
+<span class="c"># 核对: ros2 pkg executables demo_nodes_cpp  →  应列出 talker / listener</span>
+
+<span class="c"># ② 终端 A：加载环境（新开终端必做）</span>
 <span class="g">source</span> /opt/ros/humble/setup.bash
+
+<span class="c"># ③ 启动 talker，保持运行</span>
 <span class="g">ros2</span> run demo_nodes_cpp talker
 <span class="c"># [INFO] [1712...]: Publishing: 'Hello World: 1'</span>
 <span class="c"># [INFO] [1712...]: Publishing: 'Hello World: 2'</span></pre>
-  <div class="tip tealb"><span class="lab">🔍 run 命令解剖</span><code>ros2 run &lt;包名&gt; &lt;可执行文件&gt;</code>——它只做一件事：去 <b>ament 索引</b>里按包名找到 install 目录，启动其中的可执行文件。找不到包？99% 是没 source 或没编译。</div>
+  <div class="tip tealb"><span class="lab">🔍 run 命令解剖</span><code>ros2 run &lt;包名&gt; &lt;可执行文件&gt;</code>——它只做一件事：去 <b>ament 索引</b>里按包名找到 install 目录，启动其中的可执行文件。找不到包？按序排查：<b>①没装（本节第一步）→ ②没 source → ③自己的包才轮到没编译</b>。</div>
 </section>
 
-<!-- 08 -->
+<!-- 05 -->
 <section class="blk" id="s8">
-  <h2><span class="no">08</span>实操 2 · 零配置互联：listener 与系统监控</h2>
+  <h2><span class="no">05</span>实操 2 · 零配置互联：listener 与系统监控</h2>
   <div class="flow">
     <div class="step"><span class="n">1</span>另开终端 B：<code>ros2 run demo_nodes_cpp listener</code>——无需任何"连接配置"</div>
     <div class="arr"></div>
@@ -244,9 +427,9 @@
   <div class="tip"><span class="lab">💡 弹性验证（试一下）</span>① 先启动 listener 再启动 talker——照样通（发现无顺序）；② Ctrl+C 杀掉 talker 重启——listener 自动恢复接收。<b>把 Master 概念从脑子里删掉，这就是 DDS。</b></div>
 </section>
 
-<!-- 09 -->
+<!-- 06 -->
 <section class="blk" id="s9">
-  <h2><span class="no">09</span>注意事项与验收清单</h2>
+  <h2><span class="no">06</span>注意事项与验收清单</h2>
   <ul class="check">
     <li><b>每个新终端</b>都执行过 <code>source /opt/ros/humble/setup.bash</code>，<code>echo $ROS_DISTRO</code> 输出 <span class="ok">humble</span></li>
     <li>talker 输出 <span class="ok">Publishing: 'Hello World: N'</span>，序列号持续递增</li>
@@ -266,17 +449,17 @@
   </table>
 </section>
 
-<!-- 10 -->
+<!-- 07 -->
 <section class="blk" id="s10">
-  <h2><span class="no">10</span>实验总结与思考题</h2>
+  <h2><span class="no">07</span>实验总结与思考题</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">跑通 talker / listener 双节点</div><p>用 node / topic 四件套俯瞰系统，完成第一次 ROS2 Hello World。</p></div>
-    <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">三大支柱 + 架构跃迁</div><p>去中心化、语言无关、工具生态；六维理解 ROS1 → ROS2 的必然性。</p></div>
+    <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">三大支柱 + 架构发展变化</div><p>去中心化、语言无关、工具生态；六维理解 ROS1 → ROS2 的必然性。</p></div>
     <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">环境验证与自省命令</div><p>source 三板斧、ros2 run、node/topic list · info · echo · hz。</p></div>
     <div class="kcard"><div class="kd">❓ 排障思路</div><div class="kt">command not found 家族</div><p>先查 source → 再查 apt 安装 → 再查 DOMAIN_ID 与多播。</p></div>
   </div>
   <div class="tip violet"><span class="lab">📝 思考题 1</span>订阅端默认拿不到"自己上线之前"发布的消息。若想让<b>晚启动的订阅者补收历史消息</b>，应调 QoS 的哪个要素？把你的答案带到 EXP-06 话题通讯去验证。</div>
-  <div class="tip violet"><span class="lab">📝 思考题 2</span>假如要"匿名"观察一个正在运行的机器人系统（不改任何代码），本实验的哪些命令已经足够？这样做有什么安全隐患？（提示：第 08 节终端 C；与 DDS-Security / SROS2 相关）</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>假如要"匿名"观察一个正在运行的机器人系统（不改任何代码），本实验的哪些命令已经足够？这样做有什么安全隐患？（提示：第 05 节终端 C；与 DDS-Security / SROS2 相关）</div>
 </section>
 
 <nav class="expnav">
@@ -292,32 +475,7 @@
 </main>
 </div>
 
-<script>
-// 单点故障实验台
-function killMaster(){
-  document.getElementById('spofIo').innerHTML =
-'<span class="dim">// ROS1：向 Master 注册 / 寻址</span>\n' +
-'<span class="bad">💥 Master 进程退出（exit code 1）</span>\n' +
-'<span class="bad">✘ 新节点 rosnewbot 无法注册 —— 启动失败</span>\n' +
-'<span class="warn">⚠ 既有节点存量连接尚在，但任何"新发现"全部失效：加话题 = 全网瘫</span>\n' +
-'<span class="bad">故障等级：全局（Global outage）</span>\n\n' +
-'<span class="ok">ROS2 对照：无 Master，本操作不存在对应故障面。</span>';
-}
-function killRos2Node(){
-  document.getElementById('spofIo').innerHTML =
-'<span class="dim">// ROS2：kill -9 底盘节点</span>\n' +
-'<span class="warn">⚠ /odom 话题发布者消失，订阅方收到断线事件</span>\n' +
-'<span class="ok">✔ 其余三节点 SPDP 会话不受影响，/scan /cmd_vel 正常收发</span>\n' +
-'<span class="ok">✔ 新节点上线仍可被多播发现并加入网络</span>\n' +
-'<span class="ok">故障等级：局部（Isolated loss）—— 允许局部失败，不允许全局瘫痪</span>';
-}
-function resetLab(){
-  document.getElementById('spofIo').innerHTML =
-'<span class="dim">// 已复位。点击按钮重新实验</span>\n' +
-'<span class="ok">ROS1: 四节点已向 Master 注册，全网可互相寻址。</span>\n' +
-'<span class="ok">ROS2: 四节点 SPDP 多播已互相发现，RTPS 连接就绪。</span>';
-}
-</script>
+
 <script src="../shared/tutorial.js" defer></script>
 </body>
 </html>
