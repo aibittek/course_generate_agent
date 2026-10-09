@@ -19,12 +19,11 @@
   <a href="#s2">02 核心原理：四层目录结构</a>
   <a href="#s3">03 colcon 构建四阶段动画</a>
   <a href="#s4">04 Underlay / Overlay：叠层查找原理</a>
-  <a href="#s5">05 交互：叠层覆盖实验台</a>
-  <a href="#s6">06 colcon 命令精讲</a>
-  <a href="#s7">07 实操 A：从零创建工作空间</a>
-  <a href="#s8">08 实操 B：Overlay 覆盖四连击</a>
-  <a href="#s9">09 注意事项与验收清单</a>
-  <a href="#s10">10 本课总结与思考题</a>
+  <a href="#s6">05 colcon 命令精讲</a>
+  <a href="#s7">06 实操 A：从零创建工作空间</a>
+  <a href="#s8">07 实操 B：Overlay 覆盖五连击</a>
+  <a href="#s9">08 注意事项与验收清单</a>
+  <a href="#s10">09 本课总结与思考题</a>
   <h4>CH1 · ROS2 基础</h4>
   <a href="../exp-01-ros2-intro/index.html">EXP-01 ROS2 简介</a>
   <a href="../exp-02-cli-tools/index.html">EXP-02 命令工具</a>
@@ -36,7 +35,7 @@
   <span class="code">EXP-03 · 第 1 章 · 验证性 · 2 学时</span>
   <h1>工作空间与 colcon：代码放在哪、怎么编</h1>
   <p class="desc">工作空间是 ROS2 的"工程边界"：src 放源码、build 编译、install 交付、log 留痕；colcon 负责编译，Overlay/Underlay 机制负责让新旧代码层层覆盖。</p>
-  <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 colcon · overlay · symlink</span></div>
+  <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">纯软件 · 不接硬件</span><span class="tag">关键词 colcon · overlay · symlink</span></div>
 </div>
 
 <section class="blk" id="s1">
@@ -132,28 +131,8 @@
 </div>
 </section>
 
-<section class="blk" id="s5">
-<h2><span class="no">05</span>交互：叠层覆盖实验台</h2>
-<div class="ix-panel">
-  <div class="ix-title">Overlay Lab · source 顺序决定谁生效</div>
-  <div class="ctl-row">
-    <label class="ctl">我的包 my_pkg 是否与系统层重名？
-      <select id="same" onchange="checkOverlay()"><option value="yes">是（重名，将被争夺）</option><option value="no">否（独立新增包）</option></select>
-    </label>
-    <label class="ctl">source 顺序（谁最后执行谁在最上）
-      <select id="order" onchange="checkOverlay()"><option value="ws_last">先系统层，后我的工作空间（正确）</option><option value="sys_last">先我的工作空间，后系统层（颠倒）</option></select>
-    </label>
-  </div>
-  <div class="io" id="ovIo">// 选择条件后自动解析查找结果…</div>
-  <div class="ctl-row" style="margin-top:8px">
-    <button class="btn ghost" onclick="document.getElementById('same').value='yes';document.getElementById('order').value='ws_last';checkOverlay()">对我有利的姿势</button>
-    <button class="btn ghost" onclick="document.getElementById('same').value='yes';document.getElementById('order').value='sys_last';checkOverlay()">经典的翻车姿势</button>
-  </div>
-</div>
-</section>
-
 <section class="blk" id="s6">
-<h2><span class="no">06</span>colcon 命令精讲</h2>
+<h2><span class="no">05</span>colcon 命令精讲</h2>
 <p>标准四步曲——顺序不能乱：</p>
 <pre><span class="c"># ① 确认底层已加载（装完 ROS2 的默认动作，或显式执行）</span>
 source /opt/ros/humble/setup.bash
@@ -172,26 +151,39 @@ colcon build --event-handlers console_direct+<span class="y"># 实时滚动输�
 </section>
 
 <section class="blk" id="s7">
-<h2><span class="no">07</span>实操 A：从零创建工作空间</h2>
+<h2><span class="no">06</span>实操 A：从零创建工作空间</h2>
 <div class="flow">
   <div class="step"><div class="n">1</div>安装构建工具（多数桌面版已自带）：<code>sudo apt install python3-colcon-common-extensions</code></div>
   <div class="step"><div class="n">2</div>建目录骨架：<code>mkdir -p ~/ros2_ws/src</code>——src 是识别工作空间的标志。</div>
   <div class="step"><div class="n">3</div>在 src 里建一个测试包（细节见 EXP-04）。</div>
   <div class="step"><div class="n">4</div>回到根目录 build → source → 验证三连。</div>
 </div>
-<pre><span class="b">cd</span> ~/ros2_ws/src
+<pre><span class="c"># ① 检查工具链（讲义步骤1）：应显示 build/test/list 等子命令</span>
+<span class="g">colcon</span> --help | head -1
+<span class="c"># command not found？ sudo apt install python3-colcon-common-extensions -y</span>
+
+<span class="c"># ② 建目录骨架（src 是识别工作空间的标志）</span>
+<span class="b">mkdir</span> -p ~/ros2_ws/src
+<span class="g">tree</span> -L 2 ~/ros2_ws        <span class="c"># 此时只有 src/ —— build/install/log 编译后才会生成</span>
+
+<span class="c"># ③ 在 src 里建一个测试包（细节见 EXP-04）</span>
+<span class="b">cd</span> ~/ros2_ws/src
 ros2 pkg create --build-type ament_python \
   --node-name hello_node --dependencies rclpy my_test_pkg
+
+<span class="c"># ④ 回根目录：build → source → 验证</span>
 <span class="b">cd</span> ~/ros2_ws
-colcon build
+colcon build                            <span class="y"># 预期：Summary: 1 package finished</span>
 source install/setup.bash
 ros2 pkg list | grep my_test_pkg   <span class="g"># my_test_pkg 出现 ✅</span>
+<span class="g">tree</span> -L 1 ~/ros2_ws                 <span class="c"># 四层齐了：build/ install/ log/ src/ ✅</span>
+<span class="g">ls</span> ~/ros2_ws/install/                <span class="c"># 含 setup.bash 等环境脚本 ✅</span>
 grep -o 'your_ws[^:]*' $COLCON_PREFIX_PATH   <span class="g"># 确认你的层在列表里</span></pre>
 </section>
 
 <section class="blk" id="s8">
-<h2><span class="no">08</span>实操 B：Overlay 覆盖四连击</h2>
-<p>验证"后 source 者胜"，请严格按顺序执行并记录每步输出：</p>
+<h2><span class="no">07</span>实操 B：Overlay 覆盖五连击</h2>
+<p>纯终端实操，全程在设备上执行。验证"后 source 者胜"与"Underlay 不可跳过"，请严格按顺序执行并记录每步输出：</p>
 <pre><span class="c"># ① 正确顺序：系统层先，自己层后</span>
 source /opt/ros/humble/setup.bash
 source ~/ros2_ws/install/setup.bash
@@ -205,12 +197,17 @@ ros2 pkg prefix my_test_pkg   <span class="g"># → 报错 not found 或落到�
 <span class="c"># ③ 看清环境变量里的排列</span>
 echo $COLCON_PREFIX_PATH | tr ':' '\n'
 
-<span class="c"># ④ 一键恢复：删产物重新来过（永远安全的操作）</span>
+<span class="c"># ④ 反向验证：新开终端，只加载自己的层、跳过 Underlay</span>
+source ~/ros2_ws/install/setup.bash
+ros2 --help                   <span class="y"># → 仍 command not found ⚠</span>
+<span class="c"># 原因：Overlay 只"追加"路径，不自带 ros2 本体 —— Underlay 不能省</span>
+
+<span class="c"># ⑤ 一键恢复：删产物重新来过（永远安全的操作）</span>
 rm -rf build install log &amp;&amp; colcon build</pre>
 </section>
 
 <section class="blk" id="s9">
-<h2><span class="no">09</span>注意事项与验收清单</h2>
+<h2><span class="no">08</span>注意事项与验收清单</h2>
 <div class="check">
   <ul>
     <li>四层目录齐全：src/build/install/log，且 git 仓库里只跟踪 src</li>
@@ -218,7 +215,7 @@ rm -rf build install log &amp;&amp; colcon build</pre>
     <li><code>ros2 pkg list</code> 能搜到自己刚建的包</li>
     <li><code>echo $COLCON_PREFIX_PATH</code> 中你的工作空间排在 /opt/ros 之前</li>
     <li>能口头解释：为什么 build/install 可以随便删？为什么顺序颠倒包会"消失"？</li>
-    <li>成功复现"实操 B"四连击的两种不同结果</li>
+    <li>成功复现"实操 B"五连击：正序命中 / 颠倒抢跑 / 跳过 Underlay 后 <code>ros2 --help</code> 仍不可用</li>
   </ul>
 </div>
 <table>
@@ -231,7 +228,7 @@ rm -rf build install log &amp;&amp; colcon build</pre>
 </section>
 
 <section class="blk" id="s10">
-<h2><span class="no">10</span>本课总结与思考题</h2>
+<h2><span class="no">09</span>本课总结与思考题</h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">结构</div><div class="kt">src / build / install / log</div><p>唯一手写层是 src；三个生成层随时可删，这是 out-of-source 的全部意义。</p></div>
   <div class="kcard"><div class="kd">工具</div><div class="kt">colcon 四阶段</div><p>Discovery → Topological → Build → Install，依赖排序保证编译顺序正确。</p></div>
@@ -251,27 +248,6 @@ rm -rf build install log &amp;&amp; colcon build</pre>
 </main>
 </div>
 <script>
-function checkOverlay(){
-  var same=document.getElementById('same').value, order=document.getElementById('order').value, out='';
-  if(same==='yes'&&order==='ws_last'){
-    out='<span class="dim">// ros2 pkg prefix my_pkg</span>\n'
-      +'<span class="ok">→ /home/&lt;你&gt;/ros2_ws/install/my_pkg</span>\n'
-      +'<span class="ok">✓ 后 source 的 Overlay 压在 Underlay 之上，你的版本生效。</span>\n'
-      +'<span class="dim">COLCON_PREFIX_PATH = …ros2_ws/install : /opt/ros/humble</span>';
-  }else if(same==='yes'&&order==='sys_last'){
-    out='<span class="dim">// ros2 pkg prefix my_pkg</span>\n'
-      +'<span class="bad">→ 解析到 /opt/ros/humble/…（系统版本）</span>\n'
-      +'<span class="bad">✘ 你的代码被系统层压住：改了白改，运行的永远是官方旧版。</span>\n'
-      +'<span class="warn">⚠ 自查：echo $COLCON_PREFIX_PATH，你的路径必须排在最前。</span>\n'
-      +'<span class="warn">⚠ 修复：新终端重新按「先系统、后自己」顺序 source。</span>';
-  }else if(same==='no'){
-    out='<span class="dim">// ros2 pkg prefix my_pkg</span>\n'
-      +'<span class="ok">→ /home/&lt;你&gt;/ros2_ws/install/my_pkg</span>\n'
-      +'<span class="ok">✓ 底层没有同名包，不存在争夺——但 source 顺序坏习惯仍然会坑到未来的重名场景。</span>';
-  }
-  document.getElementById('ovIo').innerHTML=out;
-}
-checkOverlay();
 </script>
 <script src="../shared/tutorial.js" defer></script>
 </body>
