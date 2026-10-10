@@ -301,7 +301,7 @@ function fkCalc(){
   var r=L1*Math.cos(t2)+L2*Math.cos(t2+t3);
   var z=d+L1*Math.sin(t2)+L2*Math.sin(t2+t3);
   var reach=Math.sqrt(r*r+z*z);
-  var tag=(reach&lt;=0.4)?'<span class="ok">在 r_max=0.4 可达球内</span>':'<span class="warn">超出 r_max=0.4 参考球，实臂可能无解</span>';
+  var tag=(reach<=0.4)?'<span class="ok">在 r_max=0.4 可达球内</span>':'<span class="warn">超出 r_max=0.4 参考球，实臂可能无解</span>';
   document.getElementById('ixout').innerHTML=
     'FK 简化正解：θ2='+t2.toFixed(3)+' rad, θ3='+t3.toFixed(3)+' rad\n'
     +'→ 平面位置 r='+r.toFixed(4)+' m, z='+z.toFixed(4)+' m, 离底座中心 '+reach.toFixed(4)+' m\n'
@@ -311,7 +311,7 @@ function errCalc(){
   var tx=parseFloat(document.getElementById('tx').value),ty=parseFloat(document.getElementById('ty').value),tz=parseFloat(document.getElementById('tz').value);
   var fx=parseFloat(document.getElementById('fx').value),fy=parseFloat(document.getElementById('fy').value),fz=parseFloat(document.getElementById('fz').value);
   var e=Math.sqrt(Math.pow(fx-tx,2)+Math.pow(fy-ty,2)+Math.pow(fz-tz,2))*1000;
-  var ok=e&lt;1.0;
+  var ok=e<1.0;
   document.getElementById('ixout').innerHTML=
     '闭环误差 = √(Δx²+Δy²+Δz²) = <span class="'+(ok?'ok':'bad')+'">'+e.toFixed(2)+' mm</span>\n'
     +(ok?'<span class="ok">达标：&lt; 1mm，FK/IK 往返一致</span>':'<span class="bad">超标：阈值 1mm——检查 IK 是否走了奇异分支或坐标系没对齐</span>')

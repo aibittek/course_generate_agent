@@ -89,7 +89,7 @@
 <table>
 <tr><th>环节</th><th>真实参数/接口</th></tr>
 <tr><td>启动</td><td><code>ros2 launch car1_app visual_grasp.launch.py</code>（5 个 NodeAction：realsense2_camera 驱动 + visual_grasp_node 等）</td></tr>
-<tr><td>HSV 阈值</td><td>yellow (20,100,100)-(40,255,255)；red (0,100,100)-(10,255,255)；blue (100,100,100)-(130,255,255)；green (40,100,100)-(80,255,255)</td></tr>
+<tr><td>HSV 阈值</td><td><b>默认认红（H 环两端两段并集）</b>：主段 (0,100,80)-(15,255,255) ∪ 副段 (160,100,80)-(180,255,255)；换色用 hsv_tuner.py，参考区间 yellow (20,100,100)-(40,255,255) · blue (100,100,100)-(130,255,255) · green (40,100,100)-(80,255,255)</td></tr>
 <tr><td>掩膜</td><td>cv2.inRange → morphologyEx OPEN+CLOSE（5×5）→ findContours → minEnclosingCircle 质心</td></tr>
 <tr><td>反投影</td><td><code>X=(u−cx)·d/fx, Y=(v−cy)·d/fy, Z=d</code>；典型内参 fx≈614, fy≈614, cx≈320, cy≈240；深度 uint16 mm ÷1000，有效窗 0&lt;d≤2.0m</td></tr>
 <tr><td>TF</td><td>tf_buffer.transform(point, "base_link", "camera_depth_optical_frame")；链路 …→link5→tcp_link→camera_depth_optical_frame；REP-103：X右/Y下/Z前</td></tr>
@@ -187,21 +187,21 @@
   <div class="ctl-row">
     <label class="ctl">目标颜色预设
       <select id="col" onchange="fillHsv()">
+        <option value="r" selected>红 red 主段 (0-15) · 默认</option>
         <option value="y">黄 yellow (20-40)</option>
-        <option value="r">红 red (0-10)</option>
         <option value="b">蓝 blue (100-130)</option>
         <option value="g">绿 green (40-80)</option>
       </select>
     </label>
-    <label class="ctl">H 下限<input type="number" id="h0" value="20"></label>
-    <label class="ctl">H 上限<input type="number" id="h1" value="40"></label>
+    <label class="ctl">H 下限<input type="number" id="h0" value="0"></label>
+    <label class="ctl">H 上限<input type="number" id="h1" value="15"></label>
     <label class="ctl">u<input type="number" id="u" value="360"></label>
     <label class="ctl">v<input type="number" id="v" value="260"></label>
     <label class="ctl">深度 d (mm)<input type="number" id="d" value="500"></label>
     <button class="btn" onclick="maskCheck()">判掩膜窗口</button>
     <button class="btn" onclick="bpCalc()">反投影</button>
   </div>
-  <div class="io" id="ixout">HSV 的 S/V 讲义阈值均为 100~255（太灰太暗不算目标）。反投影内参：fx=fy=614、cx=320、cy=240；深度 uint16 单位 mm，须 /1000，有效窗 0&lt;d≤2.0m。</div>
+  <div class="io" id="ixout">默认红目标 = <b>两段并集</b>：主段 H∈[0,15] ∪ 副段 [160,180]（红卡在 H 环两端），S≥100、V≥80（launch 实参 [0,100,80]）；本台窗口只模拟主段。反投影内参：fx=fy=614、cx=320、cy=240；深度 uint16 单位 mm，须 /1000，有效窗 0&lt;d≤2.0m。</div>
 </div>
 <p>先点"判掩膜窗口"：H 区间与预设完全一致报 ok，部分重叠报 warn（会漏检边缘色阶），完全无关报 bad。再点"反投影"：输入质心像素与深度毫米数，按 <code>X=(u−cx)·d/fx, Y=(v−cy)·d/fy, Z=d</code> 算相机系坐标——和你在 rqt Mask 栏看到的白色团块互为印证。若报"深度无效"，对照讲义"深度单位混淆：uint16 是 mm 不是 m"与 0&lt;d≤2.0m 窗口。</p>
 </section>
@@ -241,7 +241,7 @@ ros2 run tf2_ros tf2_echo base_link camera_depth_optical_frame
 
 <span class="c"># 步骤 5 · 人机协同四服务（Trigger 类，命令体留空）</span>
 ros2 service call /visual_grasp/start   std_srvs/srv/Trigger "{}"
-<span class="y"># 日志：[INFO] State: IDLE -&gt; OBSERVE → Detected yellow object at pixel (320, 240) → OBSERVE -&gt; CONFIRM</span>
+<span class="y"># 日志：[INFO] State: IDLE -&gt; OBSERVE → Detected red object at pixel (320, 240) → OBSERVE -&gt; CONFIRM</span>
 ros2 service call /visual_grasp/confirm std_srvs/srv/Trigger "{}"   <span class="y"># 确认后进入 PICK</span>
 ros2 service call /visual_grasp/skip    std_srvs/srv/Trigger "{}"   <span class="y"># 放弃本目标（重复抓取也自动 skip）</span>
 ros2 service call /visual_grasp/abort   std_srvs/srv/Trigger "{}"   <span class="y"># 中止回 IDLE</span></pre>
@@ -302,26 +302,26 @@ ros2 launch car1_app visual_grasp.launch.py wait_for_confirmation:=false
 <script>
 function fillHsv(){
   var c=document.getElementById('col').value;
-  var r={y:[20,40],r:[0,10],b:[100,130],g:[40,80]}[c];
+  var r={y:[20,40],r:[0,15],b:[100,130],g:[40,80]}[c];
   document.getElementById('h0').value=r[0];
   document.getElementById('h1').value=r[1];
 }
 function maskCheck(){
   var c=document.getElementById('col').value;
-  var std={y:[20,40],r:[0,10],b:[100,130],g:[40,80]}[c];
-  var name={y:'yellow',r:'red',b:'blue',g:'green'}[c];
+  var std={y:[20,40],r:[0,15],b:[100,130],g:[40,80]}[c];
+  var name={y:'yellow',r:'red 主段(0,15)+副段160~180',b:'blue',g:'green'}[c];
   var h0=parseInt(document.getElementById('h0').value),h1=parseInt(document.getElementById('h1').value);
   var s,hit,half;
   if(h0===std[0]&&h1===std[1]){s='<span class="ok">ok：与讲义 '+name+' 阈值 ('+std[0]+','+std[1]+') 完全一致</span>';hit=true;half=false;}
   else{
-    hit=(h0&lt;=std[1]&&h1&gt;=std[0]);
-    half=hit&&!(h0&lt;=std[0]&&h1&gt;=std[1]);
+    hit=(h0<=std[1]&&h1>=std[0]);
+    half=hit&&!(h0<=std[0]&&h1>=std[1]);
     s=hit?(half?'<span class="warn">warn：与 '+name+' 区间部分重叠——边缘色阶会被漏检/误检，建议覆盖全区间</span>':'<span class="warn">warn：覆盖了 '+name+' 但偏窄，光照变化时易掉线</span>'):'<span class="bad">bad：与 '+name+' 阈值无重叠，该颜色目标不会出现在 Mask 栏</span>';
   }
   var w=Math.max(0,Math.min(h1,179)-Math.max(h0,0));
   document.getElementById('ixout').innerHTML=
     'HSV 掩膜窗口判定：H∈['+h0+','+h1+']（宽度 '+w+'）\n'+s+'\n'
-    +'S/V 讲义阈值恒为 100~255；开闭运算核 5×5；最小轮廓面积 500（&lt;500 熔断不抓）\n'
+    +'S≥100、V≥80（launch 默认 [0,100,80]）；开闭运算核 5×5；最小轮廓面积 500（&lt;500 熔断不抓）\n'
     +'<span class="dim">依据 rqt Mask 栏二值图调参：目标成实心白块、背景基本全黑即到位</span>';
 }
 function bpCalc(){
@@ -329,7 +329,7 @@ function bpCalc(){
       v=parseFloat(document.getElementById('v').value),
       dmm=parseFloat(document.getElementById('d').value);
   var fx=614.0,cx=320.0,cy=240.0;
-  if(!(dmm&gt;0)||dmm/1000&gt;2.0){
+  if(!(dmm>0)||dmm/1000>2.0){
     document.getElementById('ixout').innerHTML=
       '<span class="bad">深度无效：d='+dmm+'mm，要求 0 &lt; d ≤ 2000mm（有效窗 0&lt;d≤2.0m）</span>\n'
       +'<span class="dim">先查深度图是否有空洞/反光，uint16 单位是 mm 不是 m</span>';
@@ -337,7 +337,7 @@ function bpCalc(){
   }
   var d=dmm/1000.0;
   var X=(u-cx)*d/fx, Y=(v-cy)*d/fy, Z=d;
-  var offCenter=(Math.abs(u-cx)&lt;3&&Math.abs(v-cy)&lt;3)?'（质心≈光轴中心）':'';
+  var offCenter=(Math.abs(u-cx)<3&&Math.abs(v-cy)<3)?'（质心≈光轴中心）':'';
   document.getElementById('ixout').innerHTML=
     '相机系反投影（camera_depth_optical_frame，X右/Y下/Z前）：\n'
     +'X = ('+u+'−320)×'+d.toFixed(3)+'/614 = <b>'+X.toFixed(4)+'</b> m\n'

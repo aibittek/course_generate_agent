@@ -54,8 +54,8 @@
 <div class="exp-head">
   <span class="code">EXP-05 · 第 2 章 · 综合性 · 4 学时</span>
   <h1>逆运动学解算</h1>
-  <p class="desc">把浏览器里的 IK 搬进 Python：直接调用 car1 的 ik_solve / fk_solve 库，跑 100 样本闭环批量验证，用 system_offset_analysis 量化你这台机器"天生歪"的 4° 与 2.3°，再按下减法补偿，把 +2.5mm 系统误差压到 +0.3mm。</p>
-  <span class="tag hl">⭐⭐⭐ · IK 库 API · --direct 直连</span>
+  <p class="desc">把浏览器里的 IK 搬进 Python：用真实 API 跑 FK/IK 闭环，正视当前 <b>3/4 点位 FAIL、18~23mm</b> 的现状——识别"求解成功 ≠ 解准确"的静默偏差，用"理论链 vs 实机链"双实测完成归因，看懂源码里真实的补偿（config.py 几何常量 + Y_TCP），最后经 <code>--direct</code> 直连串口把解下发到实机。</p>
+  <span class="tag hl">⭐⭐⭐ · IK 库 API · 闭环归因 · --direct 直连</span>
 </div>
 
 <!-- 01 -->
@@ -63,55 +63,61 @@
 <h2><span class="no">01</span>问题引入</h2>
 <p>EXP-04 你在浏览器里验证了 FK/IK 的数学。但真机控制器是 Python 写的：arm_controller 要在几十毫秒内把 <code>/arm/target_pose</code> 反解成五路 PWM，靠的正是 <code>arm/kinematics/</code> 下的 IK 库。问题来了——</p>
 <ul class="check">
-  <li>数学上完美的 IK，装到<b>你这台</b>机械臂上就准了吗？舵机安装有公差、连杆有加工误差，实际臂会"多弯一点点"。</li>
-  <li>怎么科学地量出这个偏差？量出来以后，是改 DH 参数还是打补丁？</li>
+  <li>求解器返回了一组关节角、<code>error</code> 字段还是空的，这组角就<b>一定准</b>吗？（答案：不一定——这叫<b>静默偏差</b>）</li>
+  <li>怎么科学地量出偏差？量出来以后，怎么区分是"模型算错了"还是"这台机器装歪了"？</li>
   <li>调算法时每次都要开一整套 ROS2 吗？能不能绕过节点、脚本直连串口单测？</li>
 </ul>
-<p>本实验给出工程答案：用 <code>batch_fk_ik()</code> 批量闭环量化精度，用 <code>system_offset_analysis()</code> 抓出系统偏移（J2 +4.0°、J3 +2.3°），用"减法补偿"修正，用 <code>--direct</code> 直连模式提速调试。</p>
+<p>本实验给出工程答案：先跑 <code>test_fk_ik.py</code> 内置闭环测试——<b>如实面对当前 4 个用例 3 个 FAIL、误差 18~23mm 的真实现状</b>；再用 <code>demo_ik_closed_loop.py</code> 200 样本三档 pitch 暴露规律；用"理论链 vs 实机链"分量法归因；读源码里真实的补偿 <code>config.py</code> 几何常量与 <code>Y_TCP</code>；最后用 <code>--direct</code> 直连实机验证。</p>
+<div class="tip amber"><b>先撕掉两个旧说法（讲义源码核对红线）：</b>仓库里<b>没有</b> <code>system_offset_analysis()</code>、<b>没有</b> <code>config/system_offset.yaml</code>、<b>没有</b> "J2 +4°/J3 +2.3°" 这组偏移值，也<b>没有</b> <code>batch_fk_ik()</code>——旧指南把误差归因为"装配偏移 + 减法补偿（2.5mm→0.3mm）"的说法无法复现，<b>别写进实验报告</b>；一切以本页的实测与复算为准。</div>
 </section>
 
 <!-- 02 -->
 <section class="blk" id="s2">
 <h2><span class="no">02</span>原理通俗讲解</h2>
-<p><b>FK 是"验算"，IK 是"解题"。</b>考试时：IK 拿到目标点这张"题目"，解出五个关节角这份"答案"；FK 则是把答案代回原题验算——答案代回去对不上（误差大），说明解错了或机器歪了。闭环测试就是"出题→解题→验算"的自动流水线。</p>
-<p><b>系统偏移 = 你的椅子天生矮了两厘米。</b>每个人坐某把椅子都觉得"够不到桌"，不是你手短，是椅子矮——换谁来都一样，这就是<b>系统误差</b>（可补偿）；而每次坐下高度还随机晃两毫米，那是<b>随机误差</b>（只能提工艺）。car1 的实测：未补偿时闭环误差均值 +2.5mm，补偿后 +0.3mm——扣掉的就是那两把"歪椅子"：J2 多 4.0°、J3 多 2.3°。</p>
-<p><b>减法补偿：软件"少发一点"。</b>IK 假设臂是标准几何，实际臂 J2 多长了 4°，那就让软件发指令时<b>少 4°</b>（q[1] -= 0.0698、q[2] -= 0.0401），实际关节反而到位了。好比知道秤缺一斤，装货时少放一斤。</p>
+<p><b>FK 是"验算"，IK 是"解题"。</b>考试时：IK 拿到目标点这张"题目"，解出五个关节角这份"答案"；FK 则是把答案代回原题验算。闭环测试就是"出题 → 解题 → 验算"的自动流水线——<b>只有验算过了，答案才算对</b>。</p>
+<p><b>静默偏差 = 改卷老师只查"写了没有"，不看"写得对不对"。</b>IK 的 <code>error</code> 字段为空，只说明"目标可达、我给了你一组角"；这组角经 FK 回代可能差 18mm——它全程不报错，误差是<b>静默</b>的。所以本实验第一条纪律：<b>每次求解必做 FK 反算，&gt;1.5mm 即弃用该点。</b></p>
+<p><b>系统误差还能确诊，靠"对照"不靠"拍脑袋"。</b>旧版拿"J2 +4° 的装配偏移"当系统误差例子——源码查无此值。现行证据链干净得多：同一套数学，<b>pitch=90° 时 P95≈0.001mm（模型自洽），pitch=180°/0° 误差却涨到几十上百毫米</b>——误差跟"工具体朝哪"强相关，嫌疑就落在<b>J4→TCP 工具体在 IK 与 FK 两侧的建模不一致</b>（L_TCP/PHI_TCP/Y_TCP 定义差异），而不是机械装歪。修法自然是把两端模型对齐，而不是打偏移补丁。</p>
 <div class="kgrid">
-  <div class="kcard"><div class="kd">补偿 vs 改 DH</div><div class="kt">微调贴纸 vs 重画图纸</div><p>改 DH 会动整个工作空间预测模型；offset 补偿不碰"基线图纸"（DH），随时可禁用对比，多人协作时 DH 是公共基线、offset 是个人微调。</p></div>
-  <div class="kcard"><div class="kd">--direct 模式</div><div class="kt">不走驾校，直接上手摸车</div><p>绕过 ROS2 节点，脚本直连串口发 PWM。底层算法调试少一层中间商，时序更可控——但安全责任也全在你。</p></div>
+  <div class="kcard"><div class="kd">真实补偿</div><div class="kt">几何常量 = 标定 = 补偿</div><p>装配偏差直接写进 config.py 的 J2_offset/link1/link2/tool，<b>FK 与 IK 共用</b>——改一处、两条链同时变；另有 Y_TCP=0.215mm 内建于 IK 的 q1 补偿。<b>不存在独立 offset 文件</b>。</p></div>
+  <div class="kcard"><div class="kd">pitch 纪律</div><div class="kt">0° 朝上 · 90° 水平 · 180° 朝下</div><p>本库 pitch 从<b>竖直</b>量起（与 arm_controller.py:166 注释一致）。别照 fk.py/ik_analytical.py 顶部 "0 = horizontal forward" 的旧 docstring——讲义注明那是错的。</p></div>
+  <div class="kcard"><div class="kd">--direct 模式</div><div class="kt">不走驾校，直接上手摸车</div><p>绕过 ROS2 节点，pyserial 直连 <code>/dev/stm32</code> 发 PWM（串口与波特率硬编码，<b>只认 --direct/--debug</b>）。底层算法调试少一层中间商——安全责任也全在你。</p></div>
 </div>
 </section>
 
 <!-- 03 -->
 <section class="blk" id="s3">
 <h2><span class="no">03</span>关联知识点</h2>
-<p><b>IK 库两大 API</b>（源码 <code>arm/kinematics/ik_analytical.py</code>、<code>fk.py</code>）：</p>
+<p><b>IK 库公开 API</b>（源码 <code>arm/kinematics/kinematics/ik_analytical.py</code>、<code>fk.py</code>、<code>transform.py</code>，以 <code>grep "^def "</code> 为准）：</p>
 <table>
-<tr><th>接口</th><th>签名</th><th>返回</th></tr>
-<tr><td>ik_solve</td><td><code>ik_solve(target_xyz, target_pitch, prefer_elbow='up')</code></td><td>长度 5 的弧度列表 [q1..q5]；失败返回 None</td></tr>
-<tr><td>fk_solve</td><td><code>fk_solve(joint_angles)</code></td><td>4×4 位姿矩阵 T，位置取 T[:3,3]，RPY 用 transform.matrix_to_euler(T)</td></tr>
+<tr><th>接口</th><th>签名</th><th>返回 / 说明</th></tr>
+<tr><td>solve_analytical_ik</td><td><code>solve_analytical_ik(target_pos, target_pitch_rad, cal, g)</code></td><td>IKSolution：q1~q5、<b>branch</b>（elbow-up/down，<b>无手选参数</b>）、error、actualPitch</td></tr>
+<tr><td>solve_analytical_ik_auto_pitch</td><td><code>solve_analytical_ik_auto_pitch(target_pos, preferred_pitch_rad=0.0)</code></td><td>同上，pitch 不可达时自动搜索最近可行角</td></tr>
+<tr><td>solution_to_pwm / solution_to_dict</td><td><code>solution_to_pwm(sol)</code></td><td>5 路 PWM（如 [1500,1741,1913,2178,1500]）/ 关节角 dict</td></tr>
+<tr><td>fk_solve</td><td><code>fk_solve(joint_angles)</code></td><td>4×4 numpy 位姿 T；位置 <code>T[:3,3]</code>，姿态 <code>matrix_to_euler(T)</code></td></tr>
+<tr><td>compute_fk</td><td><code>compute_fk({arm_joint1..5: rad})</code></td><td>(Point3D, T)；另有 <code>compute_fk_position_only(dict)</code> 只回位置</td></tr>
+<tr><td>validate_fk_round_trip</td><td><code>validate_fk_round_trip(target, angles, tolerance_mm=1.5)</code></td><td>闭环误差判定被 test_fk_ik.py 调用</td></tr>
 </table>
-<p>目标姿态用 <b>pitch（俯仰角）</b>描述：pitch=180° 即夹爪垂直向下——这是抓取的标配姿态。示例目标 <code>(0.28, 0, 0.1) + pitch=180°</code>。</p>
-<p><b>批量闭环指标</b>（<code>batch_fk_ik(n=100)</code>）：工作空间随机采样 100 点 → 逐点 IK → FK 反算 → 统计。car1 解析法典型性能：</p>
+<p><b>闭环现状（讲义实测基线，不是目标值）：</b>——阈值与现状的差距正是本实验要研究的对象：</p>
 <table>
-<tr><th>指标</th><th>阈值</th><th>实测基线</th></tr>
-<tr><td>平均误差 Avg</td><td>&lt; 0.5mm</td><td>0.42 mm</td></tr>
-<tr><td>最大误差 Max</td><td>&lt; 1.5mm</td><td>1.23 mm</td></tr>
-<tr><td>P95 误差</td><td>—</td><td>0.89 mm</td></tr>
-<tr><td>成功率</td><td>100%</td><td>100%（误差阈值内）</td></tr>
+<tr><th>测试</th><th>指标</th><th>当前实测</th></tr>
+<tr><td>test_fk_ik.py · test_round_trip（4 点，容差 1.5mm）</td><td>PASS/FAIL</td><td><b>3 FAIL</b>：18.40 / 22.95 / 21.73 mm；Test3 (0.200,−0.030,0.180)=0.00mm PASS</td></tr>
+<tr><td>demo_ik_closed_loop.py 200 样本 · <b>pitch=90°</b></td><td>成功率(&lt;1.5mm)</td><td><b>99.0%</b>（Avg 0.151 / P95 0.001 / Max 15.698 mm）</td></tr>
+<tr><td>同上 · <b>pitch=180°</b>（抓取常用）</td><td>成功率(&lt;1.5mm)</td><td><b>72.0%</b>（Avg 9.379 / Max 84.622 mm）</td></tr>
+<tr><td>同上 · <b>pitch=0°</b></td><td>成功率(&lt;1.5mm)</td><td><b>61.5%</b>（Avg 17.015 / Max 108.541 mm）</td></tr>
+<tr><td>IK 自身报错</td><td>失败数</td><td><b>0</b>——全部偏差都是静默的（error 为空）</td></tr>
 </table>
-<p><b>偏移标定值</b>（system_offset_analysis 实测）：J2 offset = +4.0°（0.0698 rad）、J3 offset = +2.3°（0.0401 rad）。另注：批量验证遇 "matrix not invertible" 是奇异点，讲义规定 5cm 球内跳过。</p>
+<p>三条事实速记：① 已知规律 <b>pitch 45°~180° 的点位误差≈0，pitch=0°/−45° 可达十几到几十毫米且不报错</b>（如 (0.25,0,0.15) 在 0°/−45° 偏差 18/81mm）；② 最大可达半径 <b>0.4029m</b>，越界报 <code>Out of reach</code>；③ 批量统计脚本就是 <code>demo_ik_closed_loop.py</code>（离线）——<b>仓库没有 batch_fk_ik()</b>。</p>
 </section>
 
 <!-- 04 -->
 <section class="blk" id="s4">
 <h2><span class="no">04</span>实验目标</h2>
 <ul class="check">
-  <li>掌握 IK 库 API：会 import ik_solve / fk_solve，处理返回 None（目标不可达）的情况。</li>
-  <li>独立完成 100 样本闭环批量测试，得到 Avg/Max/P95/成功率四指标，并与基线对表。</li>
-  <li>运行 system_offset_analysis 识别 J2+4.0°、J3+2.3° 系统偏移，理解"减法补偿"推导。</li>
-  <li>在补偿开/关两种配置下对比误差（+2.5mm → +0.3mm），说出补偿相对改 DH 的三点优势。</li>
-  <li>会在 --direct 直连串口模式与 ROS2 模式间切换，并遵守先 test_servo_direct.py 验机的安全顺序。</li>
+  <li>理解 IK 库（config / transform / fk / ik_analytical）的模块化拆分与接口设计 —— 原理理解</li>
+  <li>掌握 FK/IK 闭环验证方法与误差统计，能识别"求解成功 ≠ 解准确"的<b>静默偏差</b> —— 流程掌握</li>
+  <li>独立使用 interactive_ik_test.py 完成实机 IK 闭环测试（先 n 核 PWM、再 y 下发） —— 独立完成</li>
+  <li>能把"理论链（IK→FK，纯计算）"与"实机链（IK→舵机→真实末端）"<b>分开实测</b>并给出误差归因 —— 独立完成</li>
+  <li>在 --direct 直连模式与 ROS2 模式间切换调试，并能用 FK 反算核对任意 IK 解 —— 迁移应用</li>
 </ul>
 </section>
 
@@ -120,160 +126,180 @@
 <h2><span class="no">05</span>实验环境与准备</h2>
 <table>
 <tr><th>项</th><th>要求</th></tr>
-<tr><td>主入口</td><td><code>arm/kinematics/kinematics/interactive_ik_test.py</code>（交互式 IK 测试）</td></tr>
-<tr><td>IK 库</td><td>ik_analytical.py（解析 IK）、fk.py（正解）、transform.py（4×4 矩阵运算）</td></tr>
-<tr><td>工作目录</td><td><code>~/ros2_ws/src/xflz_eai_car1/arm/kinematics/</code></td></tr>
-<tr><td>标定数据</td><td>偏移配置 joint2_rad: 0.0698、joint3_rad: 0.0401（enabled 开关控制）</td></tr>
-<tr><td>模式</td><td>--direct 直连串口（--port /dev/ttyUSB0 --baud 1000000）；不带则走 ROS2</td></tr>
-<tr><td>安全前置</td><td>实机前先 <code>python test_servo_direct.py</code> 的 interactive_mode 逐关节验 PWM 与软限位</td></tr>
+<tr><td>工作目录</td><td><code>~/ros2_ws/src/xflz_eai_car1/arm/kinematics/</code>（import kinematics.* 依赖在此目录）</td></tr>
+<tr><td>核心库</td><td><code>kinematics/ik_analytical.py</code>、<code>fk.py</code>、<code>transform.py</code>、<code>config.py</code>（几何标定常量）</td></tr>
+<tr><td>测试入口</td><td><code>kinematics/test_fk_ik.py</code>（FK/IK/闭环套件，纯离线）、<code>kinematics/demo_ik_closed_loop.py</code>（200 样本统计，脚本放上一级目录运行）</td></tr>
+<tr><td>工具脚本</td><td><code>pwm_to_fk_demo.py</code>（5 路 PWM→TCP 位姿，不吃 ROS）、<code>interactive_ik_test.py</code>（位姿→PWM 交互问答）</td></tr>
+<tr><td>串口</td><td><code>/dev/stm32</code> @1Mbps 8N1（<b>硬编码：无 --port/--baud，只认 --direct / --debug</b>）；直连与 ROS2 二选一，直连前 <code>bash ~/ros2_ws/cleanup_ros.sh</code></td></tr>
+<tr><td>标定工具</td><td>刻度标定尺（实测末端位置）、水平仪（讲义 1.3 环境清单）</td></tr>
+<tr><td>安全前置</td><td>实机前先进 <code>arm/car1_arm_controller/test/</code> 执行 <code>python3 test_servo_direct.py</code>，interactive_mode 逐关节验 PWM 与软限位（含回中 <code>1500 1500 1500 1500 1500</code>）</td></tr>
 </table>
-<div class="tip amber"><b>首跑安全须知：</b>示例目标 (0.28, 0, 0.1) 仅是算法演示输入——首次实机验证请先把目标 z 抬高、r 缩小，<b>逐步逼近</b>到该点，不要一步到位；且强烈建议先用 test_servo_direct.py 确认设备状态与软限位正常，再运行 interactive_ik_test.py。</div>
+<div class="tip amber"><b>首发安全须知（讲义警告浓缩）：</b>① 下发前逐关节核对打印的 5 路 PWM 是否全部落在 500~2500 且不贴极限——任一路贴边即目标超出安全包络，<b>禁止执行</b>；② 设备虽有堵转保护，但堵转瞬时电流磨损齿轮，<b>PWM 误用导致损坏不在质保范围</b>；③ 默认目标 (0.28, 0, 0.10)+pitch=180° 只是算法示例，首发<b>先抬高 z、缩小 r 逐步逼近</b>；④ 先输 <code>n</code> 只看解，确认后再 <code>y</code>；任何抖动/异响/发烫立即断电。</div>
 </section>
 
 <!-- 06 -->
 <section class="blk" id="s6">
-<h2><span class="no">06</span>动画讲解：逆解构型切换 + 系统偏移的"减法"</h2>
+<h2><span class="no">06</span>动画讲解：多解切换 + 静默偏差三连击</h2>
 <div class="anim-box">
 <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg">
   <rect x="0" y="0" width="640" height="300" fill="#0b1120"></rect>
-  <line x1="30" y1="250" y2="250" x2="610" stroke="#334155" stroke-width="2"></line>
-  <line x1="30" y1="250" x2="610" y2="250" stroke="#334155" stroke-width="2"></line>
-  <!-- 目标点（同一） -->
-  <circle cx="330" cy="110" r="8" fill="none" stroke="#f87171" stroke-width="2.5">
-    <animate attributeName="opacity" values="1;1" dur="3s" repeatCount="indefinite"/>
-  </circle>
-  <text x="345" y="105" fill="#fca5a5" font-size="13" font-family="monospace">target (x,y,z) · pitch=180°</text>
-  <!-- 构型 A：手肘朝上（虚实线交替） -->
+  <line x1="30" y1="250" x2="330" y2="250" stroke="#334155" stroke-width="2"></line>
+  <line x1="40" y1="250" x2="40" y2="30" stroke="#334155" stroke-width="2"></line>
+  <!-- 同一目标点 -->
+  <circle cx="240" cy="110" r="8" fill="none" stroke="#f87171" stroke-width="2.5"></circle>
+  <text x="255" y="105" fill="#fca5a5" font-size="13" font-family="monospace">target · pitch=180°</text>
+  <!-- 构型 A：elbow-up -->
   <g>
-    <polyline points="100,250 160,140 330,110" fill="none" stroke="#fbbf24" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="80,250 130,140 240,110" fill="none" stroke="#fbbf24" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
       <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.38;0.46;0.9;1" dur="8s" repeatCount="indefinite"/>
     </polyline>
-    <text x="150" y="70" fill="#fbbf24" font-size="13" font-family="monospace">
-      prefer_elbow='up'  q=[q1, q2↑, ...]
+    <text x="70" y="70" fill="#fbbf24" font-size="13" font-family="monospace">
+      branch=elbow-up（优先返回）
       <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.38;0.46;0.9;1" dur="8s" repeatCount="indefinite"/>
     </text>
   </g>
-  <!-- 构型 B：手肘朝下 -->
+  <!-- 构型 B：elbow-down -->
   <g>
-    <polyline points="100,250 80,150 330,110" fill="none" stroke="#60a5fa" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="80,250 60,150 240,110" fill="none" stroke="#60a5fa" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
       <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.38;0.46;0.9;1" dur="8s" repeatCount="indefinite"/>
     </polyline>
-    <text x="440" y="225" fill="#60a5fa" font-size="13" font-family="monospace">
-      prefer_elbow='down'  同一目标 · 另一组角
+    <text x="70" y="92" fill="#60a5fa" font-size="13" font-family="monospace">
+      branch=elbow-down（同一目标另一组解）
       <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.38;0.46;0.9;1" dur="8s" repeatCount="indefinite"/>
     </text>
   </g>
-  <!-- 减法补偿示意 -->
+  <text x="30" y="285" fill="#64748b" font-size="12" font-family="monospace">多解：枚举两分支、按 |q3| 大者优先 elbow-up；API 无手选参数，看返回的 branch 字段</text>
+  <!-- 右半：静默偏差 -->
+  <line x1="345" y1="30" x2="345" y2="270" stroke="#1e293b" stroke-width="2"></line>
   <g font-family="monospace" font-size="14">
-    <text x="440" y="45" fill="#94a3b8">IK 理想解 q2  ──────▸</text>
-    <rect x="596" y="33" width="8" height="14" fill="#4ade80">
-      <animate attributeName="width" values="0;0;8;8" keyTimes="0;0.5;0.6;1" dur="8s" repeatCount="indefinite"/>
-    </rect>
-    <text x="440" y="70" fill="#f87171">− 0.0698 rad (4°)   − 0.0401 rad (2.3°)</text>
-    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.5;0.6;1" dur="8s" repeatCount="indefinite"/>
-    <text x="440" y="95" fill="#4ade80">发给舵机：q − offset ▸ 实际臂正好到位</text>
-    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.5;0.6;1" dur="8s" repeatCount="indefinite"/>
+    <text x="365" y="55" fill="#4ade80">① sol.error = ""（空）→ 求解"成功" ✓</text>
+    <text x="365" y="90" fill="#fbbf24">② FK 回代验算中…</text>
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.42;0.5;0.86;0.92;1" dur="8s" repeatCount="indefinite"/>
+    <text x="365" y="125" fill="#f87171">
+      ③ |Δ| = 18.40 mm ＞ 1.5 mm → FAIL ✗
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.48;0.56;0.86;0.92;1" dur="8s" repeatCount="indefinite"/>
+    </text>
+    <text x="365" y="150" fill="#64748b" font-size="12">全程不报错——误差是"静默"的</text>
   </g>
-  <text x="30" y="285" fill="#64748b" font-size="12" font-family="monospace">同一目标点 · 两组解都达标：多解由 prefer_elbow 挑选；系统偏移只在输出端做减法，不动 DH 基线</text>
+  <!-- 三档 pitch 成功率条 -->
+  <g font-family="monospace" font-size="12">
+    <text x="365" y="185" fill="#94a3b8">200 样本成功率(&lt;1.5mm)：</text>
+    <rect x="365" y="195" width="198" height="14" fill="#38bdf8"><animate attributeName="width" values="0;0;198" keyTimes="0;0.5;1" dur="8s" repeatCount="indefinite"/></rect>
+    <text x="570" y="206" fill="#7dd3fc">90° 99.0%</text>
+    <rect x="365" y="216" width="143" height="14" fill="#fbbf24"><animate attributeName="width" values="0;0;143" keyTimes="0;0.5;1" dur="8s" repeatCount="indefinite"/></rect>
+    <text x="515" y="227" fill="#fcd34d">180° 72.0%</text>
+    <rect x="365" y="237" width="122" height="14" fill="#f87171"><animate attributeName="width" values="0;0;122" keyTimes="0;0.5;1" dur="8s" repeatCount="indefinite"/></rect>
+    <text x="494" y="248" fill="#fca5a5">0° 61.5%</text>
+    <text x="365" y="268" fill="#64748b" font-size="11">工具体朝向一变，误差巨变 → 嫌疑在 J4→TCP 建模一致性</text>
+  </g>
 </svg>
 </div>
-<p class="anim-cap">动画 8 秒一循环：前半段同一目标点在 elbow-up / elbow-down 两种构型间切换（IK 多解）；后半段演示输出端的减法补偿——q[1]−0.0698、q[2]−0.0401 叠加后再下发，DH 参数原封不动。</p>
+<p class="anim-cap">动画 8 秒一循环：左半同一目标点在 elbow-up / elbow-down 两构型间切换（IK 多解，分支由 <code>branch</code> 字段标明）；右半三连击——求解器报"成功"→ FK 回代出 18.40mm → 三档 pitch 成功率 99%/72%/61.5%：<b>错得很有规律，正是"工具体建模不一致"的指纹</b>。</p>
 </section>
 
 <!-- 07 -->
 <section class="blk" id="s7">
-<h2><span class="no">07</span>互动讲解：误差判定与偏移补偿台</h2>
+<h2><span class="no">07</span>互动讲解：误差判定与归因台</h2>
 <div class="ix-panel">
-  <div class="ix-title">互动台 · 闭环误差判定 + 减法补偿实验</div>
+  <div class="ix-title">互动台 A · 闭环误差归因判定（先分类，再动手）</div>
   <div class="ctl-row">
-    <label class="ctl">FK 反算误差 (mm)<input type="number" id="em" value="2.5" step="0.1"></label>
-    <label class="ctl">J2 指令 (rad)<input type="number" id="j2" value="0.5" step="0.01"></label>
-    <label class="ctl">J3 指令 (rad)<input type="number" id="j3" value="0.8" step="0.01"></label>
-    <label class="ctl"><span class="ctl">补偿开关</span>
-      <select id="ofs"><option value="on">enabled=true（默认）</option><option value="off">enabled=false</option></select>
-    </label>
-    <button class="btn" onclick="judgeErr()">误差判定</button>
-    <button class="btn" onclick="applyOfs()">应用补偿</button>
+    <label class="ctl">FK 反算误差 (mm)<input type="number" id="em" value="18.4" step="0.01"></label>
+    <label class="ctl">目标 pitch<select id="ep"><option value="90">90°（水平）</option><option value="180" selected>180°（抓取常用朝下）</option><option value="0">0°（朝上）</option></select></label>
+    <button class="btn" onclick="judgeErr()">归因判定</button>
   </div>
-  <div class="io" id="ixout">指标阈值：Avg&lt;0.5mm · Max&lt;1.5mm · 成功率 100%。补偿常量：J2−0.0698 rad(4°)、J3−0.0401 rad(2.3°)。基线：未补偿均值 +2.5mm → 补偿后 +0.3mm。</div>
+  <div class="io" id="ixout">阈值：闭环容差 1.5mm（Avg 目标 &lt;0.5mm）。当前真实基线：4 点 3 FAIL（18.40/22.95/21.73mm）；200 样本 90°→99.0% · 180°→72.0% · 0°→61.5%，IK 报错 0 次——全是静默偏差。</div>
 </div>
-<p>玩法：输入批量测试打印的 Avg 误差点"误差判定"——2.5mm 判为 <span class="bad">未补偿系统误差</span>，0.3mm 判为 <span class="ok">已补偿达标</span>。再输入你输出给舵机的 J2/J3 弧度点"应用补偿"，观察下发前被减掉的两个常量。这正是 <code>ik_solve(..., use_offset=False/True)</code> 两种调用的差异白盒。</p>
+<div class="ix-panel" style="margin-top:.6rem">
+  <div class="ix-title">互动台 B · 几何常量灵敏度（config.py 是"标定即补偿"的旋钮）</div>
+  <div class="ctl-row">
+    <label class="ctl">L_TCP 扰动 ΔL (mm)<input type="range" id="dl" min="-2" max="2" step="0.1" value="0.6"><output id="dlo" style="font-family:monospace;color:var(--theme)">+0.6</output></label>
+    <label class="ctl">对照场景<select id="dy"><option value="0">改前（基线）</option><option value="1">讲义步骤7.3：某 link*.y +0.5mm</option></select></label>
+    <button class="btn" onclick="sensCalc()">计算示意</button>
+  </div>
+  <canvas id="sensCv" width="640" height="150" style="background:#0b1120;border-radius:8px"></canvas>
+  <div class="io" id="sxout">示意曲线：两端模型一致（Δ=0）时闭环误差最小；扰动任一几何常量，FK 与 IK <b>同时</b>被改写——灵敏度方向可信，量级以你重跑 test_fk_ik.py 的实测为准。</div>
+</div>
+<p>玩法：台 A 输入 test_fk_ik / demo_ik_closed_loop 打印的误差——18.4mm 判为<b>工具体建模不一致量级</b>（与 pitch 强相关），0.0mm 判 <span class="ok">达标</span>，几十上百毫米看你敢不敢用于抓取。台 B 拖动 ΔL 观察"一个常量、两条链路"的联动——这就是讲义说的"<b>几何常量既是标定也是补偿，没有独立 offset 文件</b>"。</p>
 </section>
 
 <!-- 08 -->
 <section class="blk" id="s8">
 <h2><span class="no">08</span>实操步骤</h2>
 <div class="flow">
-  <div class="step"><b>Step 1 · 验机</b><br>test_servo_direct.py 逐关节手发 PWM，确认软限位。</div>
+  <div class="step"><b>Step 1 · 验机</b><br>test_servo_direct 逐关节发 PWM，回中 1500×5。</div>
   <div class="arr">→</div>
-  <div class="step"><b>Step 2 · 单点 IK</b><br>(0.28,0,0.1) + pitch=180°，看解与 FK 回算。</div>
+  <div class="step"><b>Step 2 · API 与套件</b><br>grep 出真签名；试跑 test_fk_ik（预期 3/4 FAIL）。</div>
   <div class="arr">→</div>
-  <div class="step"><b>Step 3 · 批量闭环</b><br>batch 100 样本，对四指标基线。</div>
+  <div class="step"><b>Step 3 · 批量闭环</b><br>demo_ik_closed_loop 200 样本×三档 pitch。</div>
   <div class="arr">→</div>
-  <div class="step"><b>Step 4 · 偏移分析</b><br>system_offset_analysis 抓 4°/2.3°。</div>
+  <div class="step"><b>Step 4 · 归因与几何</b><br>理论/实机分量 + print_calibration。</div>
   <div class="arr">→</div>
-  <div class="step"><b>Step 5 · 补偿对账</b><br>开关补偿各跑一遍，2.5mm→0.3mm。</div>
+  <div class="step"><b>Step 5 · 实机+对比</b><br>--direct 先 n 后 y；解析 vs 数值进仿真器。</div>
 </div>
-<pre><span class="c"># 步骤 1 · 先验机（强烈建议在 interactive_ik_test.py 之前执行）</span>
-cd ~/ros2_ws/src/xflz_eai_car1/arm/car1_arm_controller/test
-python3 test_servo_direct.py
-<span class="y"># interactive_mode 逐关节手发 PWM，确认设备状态与软限位正常</span>
+<pre><span class="c"># Step 2a · 以源码为准看 API（目录：arm/kinematics/）</span>
+cd ~/ros2_ws/src/xflz_eai_car1/arm/kinematics
+grep "^def " kinematics/ik_analytical.py
+<span class="g"># def solve_analytical_ik(target_pos, target_pitch_rad, cal, g)</span>
+<span class="g"># def solve_analytical_ik_auto_pitch(target_pos, preferred_pitch_rad=0.0)</span>
+<span class="g"># def solution_to_pwm(solution)</span>
 
-<span class="c"># 步骤 2~4 · 启动交互式测试（--direct 直连串口，绕过 ROS2 节点）</span>
-python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py \
-  --direct --port /dev/ttyUSB0 --baud 1000000
-<span class="y"># 菜单：[1]Single Point IK  [2]Batch  [3]Workspace Scan  [4]System Offset Analysis  [5]Send PWM  [q]Quit</span>
+<span class="c"># Step 2b · 内置测试套件（纯离线：FK / IK / 闭环 / PWM / 限位 五连测）</span>
+cd kinematics &amp;&amp; python3 test_fk_ik.py
+<span class="y"># IK → FK Round-Trip 汇总（当前真实输出）：</span>
+<span class="b">#   Test 1: Target (0.250, 0.000, 0.150) m   Error: 18.40 mm (tolerance: 1.5)  ❌ FAIL</span>
+<span class="b">#   Test 3: Target (0.200, -0.030, 0.180) m  Error: 0.00 mm                     ✓ PASS</span>
+<span class="b">#   Round-trip test summary: 1 passed, 3 failed</span>
+<span class="y"># → 求解器没报 error，但回代 18~23mm：静默偏差实锤，别调大容差掩盖</span>
 
-<span class="c"># [1] 单点 IK：输入目标 (0.28, 0, 0.1)、目标 pitch=180°（末端夹爪垂直向下）</span>
-<span class="g"># 预期：IK 解 [q1≈0, q2≈..., ...] → FK 反算 (0.280, 0.000, 0.100)，末端姿态接近垂直向下</span>
+<span class="c"># Step 3 · 200 样本三档 pitch 统计（脚本放 arm/kinematics/ 下运行）</span>
+python3 demo_ik_closed_loop.py
+<span class="g"># pitch=180°  Avg 9.379  Max 84.622  P95 55.116 mm  成功率 72.0%</span>
+<span class="g"># pitch=90°   Avg 0.151  Max 15.698  P95  0.001 mm  成功率 99.0%</span>
+<span class="g"># pitch=0°    Avg 17.015 Max 108.541 P95 73.219 mm  成功率 61.5%</span>
+<span class="g"># IK 失败(不可达/超限): 0 —— 一个都没报错，全是静默的</span></pre>
+<pre><span class="c"># Step 4a · 归因（讲义步骤6 方法：理论链与实机链分开量）</span>
+<span class="c"># 理论链 = 上面 test_fk_ik 的 18.40mm（纯计算，与硬件无关）</span>
+<span class="c"># 实机链 = 挑误差 0.00mm 的点（如 Test3）下发后用刻度标定尺量真实末端</span>
+<span class="y"># 结论分支：模型一致点上"实测−FK"&lt;2mm → 机械尚可，FAIL 主因是模型不一致</span>
 
-<span class="c"># [2] 批量闭环 batch_fk_ik(n=100)</span>
-<span class="g"># Avg position error: 0.42 mm    Max: &lt;1.5mm    P95: 0.89 mm    成功率: 100%</span>
-<span class="y"># 报错 "matrix not invertible" → 奇异点，按 5cm 球半径跳过</span>
+<span class="c"># Step 4b · 看真实补偿（源码核对：没有 system_offset.yaml / apply_offset）</span>
+cd ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics
+python3 -c "from config import GEOM; print('Y_TCP =', GEOM.Y_TCP*1000, 'mm')"
+<span class="g"># Y_TCP = 0.215 mm —— J2_offset.y+link1.y+link2.y+tool.y 汇总，供 q1 补偿与 Y 平面约束</span>
+<span class="y"># 灵敏度实验（离线！）：微调某个 link*.y 0.5mm → 重跑 test_fk_ik.py 对比闭环误差</span>
 
-<span class="c"># [4] 系统偏移分析</span>
-<span class="g"># J2 offset: +4.0° (0.0698 rad)</span>
-<span class="g"># J3 offset: +2.3° (0.0401 rad)</span></pre>
-<pre><span class="c"># 步骤 5 · 偏移补偿（配置开关 enabled=true 时 ik_solve 内部自动施加）</span>
-<span class="c"># 配置片段（偏移标定 yaml）：</span>
-<span class="b">#   joint2_rad: 0.0698  # +4°</span>
-<span class="b">#   joint3_rad: 0.0401  # +2.3°</span>
+<span class="c"># Step 5a · 实机 --direct（串口硬编码 /dev/stm32；直连前停 ROS2 独占口）</span>
+bash ~/ros2_ws/cleanup_ros.sh
+python3 src/xflz_eai_car1/arm/kinematics/kinematics/interactive_ik_test.py --direct
+<span class="y"># 问答式（无菜单）：X [0.28] / Y [0.0] / Z [0.10] / 俯仰角 [180] → 直接回车 = 默认点</span>
+<span class="g"># 输出：PWM 值(发到舵机) 5 路 + 误差: x.xx mm（IK→FK 反算，&gt;1.5mm 说明该点解不准）</span>
+<span class="y"># 发送提示 先输 n！核对 5 路均在 500~2500 再重跑输 y；首发抬高 z、缩小 r 逐步逼近</span>
+<span class="c"># ROS2 模式对照：起 bringup+arm_controller 后 ros2 run car1_kinematics interactive_ik_test</span>
 
-<span class="c"># API 内等价逻辑：IK 输出后做减法</span>
-from kinematics.ik_analytical import ik_solve
-q = ik_solve((0.2, 0.0, 0.2), target_pitch=0.0)   <span class="c"># 内部自动应用补偿</span>
-<span class="y"># q[1] -= 0.0698   # 少发 4°   实际臂 J2"多 4°"正好抵消</span>
-<span class="y"># q[2] -= 0.0401   # 少发 2.3°</span>
-
-<span class="c"># 对比补偿前后（同一目标点，看误差均值 +2.5mm → +0.3mm）</span>
-from kinematics.ik_analytical import ik_solve
-q_before = ik_solve((0.2, 0.0, 0.2), 0.0, use_offset=False)
-q_after  = ik_solve((0.2, 0.0, 0.2), 0.0, use_offset=True)
-
-<span class="c"># 不依赖菜单的迷你 API 演示</span>
-from kinematics.ik_analytical import ik_solve
-from kinematics.fk import fk_solve
-q = ik_solve((0.2, 0.0, 0.2), target_pitch=0.0)
-T = fk_solve(q)      <span class="c"># 4×4 矩阵，位置 T[:3,3]</span></pre>
+<span class="c"># Step 5b · 解析 vs 数值（Python 端只有解析法；数值法 DLS 在 Web 仿真器 JS 里）</span>
+cd ~/ros2_ws/src/xflz_eai_car1/test/car1_web_server &amp;&amp; python3 server_cors.py 8000
+<span class="y"># http://localhost:8000/viewer/ 切 Analytical/Numerical 对比同点五关节角；lambda 默认 0.5</span></pre>
 </section>
 
 <!-- 09 -->
 <section class="blk" id="s9">
 <h2><span class="no">09</span>重点与易错点</h2>
-<div class="tip tealb"><b>核心口诀：</b>IK 出口打补丁，DH 图纸不乱动。补偿只发生在"IK 输出 → 下发舵机"这一毫米的路上；工作空间预测、仿真器、URDF 全部使用原始 DH——所以仿真与实机既能分离，又能一键对比。</div>
+<div class="tip tealb"><b>核心口诀：</b>error 为空 ≠ 解对，<b>FK 回代是唯一照妖镜</b>；几何图纸（config.py）FK/IK 两端共用，<b>别再造偏移文件</b>——改图就说改图，改完必重跑闭环对账。</div>
 <table>
 <tr><th>坑</th><th>现象</th><th>对策</th></tr>
-<tr><td>ik_solve 返回 None</td><td>打印 None，无角可发</td><td>目标点超出工作空间——缩 r、抬 z 再试（对照 EXP-04 可达率）</td></tr>
-<tr><td>一步到位奔袭目标</td><td>首跑就撞限位/撞桌</td><td>先抬高 z、缩小 r 逐步逼近 (0.28,0,0.1)</td></tr>
-<tr><td>没验机就跑 IK</td><td>异常角直接下发</td><td>先 test_servo_direct.py interactive_mode 验设备与软限位</td></tr>
-<tr><td>matrix not invertible</td><td>批量测试中断</td><td>奇异点，5cm 球内跳过该样本</td></tr>
-<tr><td>补偿方向搞反</td><td>误差不降反升（2.5→更大）</td><td>记住是<b>减法</b>：q[1]−=0.0698、q[2]−=0.0401；拿 use_offset 两态对拍</td></tr>
-<tr><td>--direct 参数缺失</td><td>脚本找不到口</td><td><code>--direct --port /dev/ttyUSB0 --baud 1000000</code> 三项齐全</td></tr>
+<tr><td>只看 error 字段</td><td>求解"成功"却差 18mm</td><td>每次必跑 FK 反算；interactive_ik_test 打印的 误差 &gt;1.5mm 即弃用该点/该 pitch</td></tr>
+<tr><td>以为闭环必全绿</td><td>想调大容差"修"通过</td><td>当前真实就是 3/4 FAIL、180° 仅 72%——如实写进报告，这是待解问题不是环境问题</td></tr>
+<tr><td>套用旧版 J2+4°/J3+2.3°</td><td>报告编造数据</td><td>源码查无此值与补偿函数（讲义红线）；一切以实测/复算为准</td></tr>
+<tr><td>pitch 朝向搞反</td><td>工具朝上当朝下</td><td>记纪律 <b>0°上 · 90°平 · 180°下</b>（arm_controller.py:166），勿信旧 docstring</td></tr>
+<tr><td>误加 --port/--baud</td><td>脚本不认参数</td><td>只解析 --direct/--debug，串口波特率硬编码 /dev/stm32 @1Mbps</td></tr>
+<tr><td>直连与 ROS2 抢口</td><td>串口打开失败</td><td>二选一，直连前 cleanup_ros.sh；ls -l /dev/stm32 查软链权限</td></tr>
+<tr><td>一步到位奔袭目标</td><td>首发撞限位/撞桌</td><td>先 test_servo_direct 验机核软限位；默认点先 n 后 y；抬 z 缩 r 逐步逼近</td></tr>
+<tr><td>在 Python 找数值法</td><td>没有 numerical_ik.py</td><td>数值法只在仿真器 ik-numerical.js（DLS，lambda=0.5/maxIter=200）</td></tr>
 </table>
 <ul class="check">
-  <li>交付四指标：Avg 0.42 / Max 1.23 / P95 0.89 mm / 成功率 100%，与基线同量级才算通过。</li>
-  <li>偏移补偿前后各留一组数据：+2.5mm 与 +0.3mm，写进实验报告。</li>
-  <li>想清楚再答面试：为什么不直接改 DH，而要维护 offset？（提示：三点优势——基线、可禁用、协作。）</li>
+  <li>交付五件套：<b>test_fk_ik 四点结果表 + demo 200 样本三档 pitch 统计 + 归因表（理论链/实机链分列）+ Y_TCP 打印截图 + 解析vs数值对比表</b>。</li>
+  <li>归因表里每个超差点必须回答：pitch 多少？error 空吗？与工具体朝向相关吗？</li>
+  <li>评分锚点（讲义 1.9）：API 使用 15 + 闭环与归因 30 + 几何标定理解 15 + 直连调试 15 + 解析vs数值 10 + 报告 15 = 100。</li>
 </ul>
 </section>
 
@@ -281,13 +307,14 @@ T = fk_solve(q)      <span class="c"># 4×4 矩阵，位置 T[:3,3]</span></pre>
 <section class="blk" id="s10">
 <h2><span class="no">10</span>总结与思考</h2>
 <div class="kgrid">
-  <div class="kcard"><div class="kd">双 API</div><div class="kt">ik_solve / fk_solve</div><p>一个解题一个验算，None 即不可达。</p></div>
-  <div class="kcard"><div class="kd">闭环四指标</div><div class="kt">Avg/Max/P95/成功率</div><p>0.42 / 1.23 / 0.89 mm / 100%。</p></div>
-  <div class="kcard"><div class="kd">系统偏移</div><div class="kt">J2 4° · J3 2.3°</div><p>0.0698 与 0.0401 rad，减法补偿。</p></div>
-  <div class="kcard"><div class="kd">直连调试</div><div class="kt">--direct 模式</div><p>绕过 ROS2，先验机再上手。</p></div>
+  <div class="kcard"><div class="kd">双层 API</div><div class="kt">solve_*_ik → IKSolution</div><p>q1~q5 + branch + error；fk_solve → 4×4 T。error 空只代表可达有解。</p></div>
+  <div class="kcard"><div class="kd">闭环真实基线</div><div class="kt">99% / 72% / 61.5%</div><p>200 样本三档 pitch；4 点套件 3 FAIL（18~23mm）；错得有规律=可归因。</p></div>
+  <div class="kcard"><div class="kd">真实补偿</div><div class="kt">config.py 几何常量</div><p>FK/IK 共用一条图纸 + Y_TCP 0.215mm；无独立 offset 文件。</p></div>
+  <div class="kcard"><div class="kd">直连调试</div><div class="kt">--direct（仅两参）</div><p>/dev/stm32 独占，先 cleanup_ros.sh；先 n 后 y、逐步逼近。</p></div>
 </div>
-<div class="tip violet"><b>思考题 1：</b>补偿把均值从 2.5mm 压到 0.3mm，但 Max 仍有 1.23mm——这部分残余误差没有均值可补。它可能来自哪些环节？（提示：舵机回差、连杆柔性、PWM 量化……对照 EXP-02 的脉冲分辨率想一想。）</div>
-<div class="tip violet"><b>思考题 2：</b>如果下周换了另一台 car1，它的 J2 偏移是 −2.5°——只允许你改一个配置文件，整条补偿链路（标定→配置→IK 输出→舵机）应该怎么改？为什么"个人微调"必须和"公共 DH 基线"分开放？</div>
+<div class="tip violet"><b>思考题 1：</b>为什么 car1 选解析法作主路径？什么场景才需要切到数值法（DLS）？（提示：5 自由度非冗余 vs 奇异/超限处理——对照 EXP-04 的两法对���实验。）</div>
+<div class="tip violet"><b>思考题 2：</b>pitch=90° 闭环几乎无误差、180°/0° 却差几十毫米——从 FK/IK 的<b>J4→TCP 工具体建模</b>角度推一推：最可能是哪个量两边定义不一致？你打算设计什么实验验证？（提示：L_TCP 参与 J4→TCP 位移，工具水平时它的建模差异恰好"隐形"。）</div>
+<div class="tip violet"><b>思考题 3：</b><code>solution.error</code> 为空到底代表什么？它为什么撑不起"IK 可用"的结论？（提示：对照讲义 1.8 第 5 题。）</div>
 </section>
 
 <nav class="expnav">
@@ -303,28 +330,69 @@ T = fk_solve(q)      <span class="c"># 4×4 矩阵，位置 T[:3,3]</span></pre>
 
 <script>
 function judgeErr(){
-  var e=parseFloat(document.getElementById('em').value)||0;
+  var e=parseFloat(document.getElementById('em').value);
+  if(isNaN(e)){document.getElementById('ixout').innerHTML='<span class="bad">请输入误差数值</span>';return;}
+  var p=document.getElementById('ep').value;
   var lv,tip;
-  if(e&lt;0.5){lv='ok';tip='Avg 达标（&lt;0.5mm）——处于已补偿/精密区间';}
-  else if(e&lt;1.5){lv='warn';tip='可接受但未到基线：对照 Max&lt;1.5mm 阈值，检查是否漏补偿 J3';}
-  else{lv='bad';tip='超标（≥1.5mm）——典型为未补偿的系统误差（基线 +2.5mm），确认 offset enabled=true';}
+  if(e<1.5){
+    if(e<0.5){lv='ok';tip='达标（&lt;0.5mm 目标线）——该点/该 pitch 下模型自洽，可用于实机';}
+    else{lv='ok';tip='容差内（&lt;1.5mm）——可用，但已贴近边界，写进报告并注明 pitch='+p+'°';}
+  }else if(e<5){
+    lv='warn';tip='超差但量级小（1.5~5mm）——先排除单位/坐标系笔误；若出现在模型一致的点上，再考虑机械/装配因素（刻度尺实机对照）';
+  }else if(e<30){
+    lv='bad';
+    tip='典型"工具体建模不一致"量级（5~30mm）——对照真实基线 18.40/22.95/21.73mm：'
+      +'解没报 error 却回代差这么多，且与 pitch 强相关 → 查 config.py 的 L_TCP/PHI_TCP/Y_TCP 与 fk.py 里 J4→TCP 的定义是否一致'
+      +(p==='90'?'（注意：pitch=90° 正常应接近 0——若 90° 也到这个量级，优先查单位与坐标轴顺序！）':'');
+  }else{
+    lv='bad';tip='＞30mm：先查低级错误——pitch 朝向用反（0上90平180下）、米/毫米混用、坐标系不一致；排除后才轮到深水区 pitch=0°/−45° 的模型问题（已知 0° 下 200 样本均值就有 17mm）';
+  }
+  var base = p==='90'?'正常 pitch=90° 应在 0.151mm（Avg）量级'
+           : p==='180'?'抓取常用 pitch=180° 当前成功率仅 72.0%（Avg 9.379mm）'
+           : 'pitch=0° 当前成功率仅 61.5%（Avg 17.015mm），深水区';
   document.getElementById('ixout').innerHTML=
-    '闭环误差 '+e.toFixed(2)+' mm → <span class="'+lv+'">'+tip+'</span>\n'
-    +'基线参照：未补偿 +2.5mm ／ 补偿后 +0.3mm ／ 批量 Max 阈值 1.5mm\n'
-    +'<span class="dim">真实交付以 batch_fk_ik 的 Avg/Max/P95/成功率 四指标为准</span>';
+    '误差 '+e.toFixed(2)+' mm @ pitch='+p+'° → <span class="'+lv+'">'+tip+'</span>\n'
+    +'参照：'+base+'；套件容差 1.5mm；IK 从不为这种偏差报错（error 为空）\n'
+    +'<span class="dim">归因三问：pitch 多少？error 空吗？换 pitch 误差变不变？——三问定位"模型 or 机械"</span>';
 }
-function applyOfs(){
-  var j2=parseFloat(document.getElementById('j2').value)||0;
-  var j3=parseFloat(document.getElementById('j3').value)||0;
-  var on=document.getElementById('ofs').value==='on';
-  var d2=0.0698,d3=0.0401;
-  var o2=on?(j2-d2):j2, o3=on?(j3-d3):j3;
-  document.getElementById('ixout').innerHTML=
-    (on?'<span class="ok">补偿 enabled=true：输出前做减法</span>':'<span class="warn">补偿 disabled：IK 解原样下发（将重现 +2.5mm 系统误差）</span>')+'\n'
-    +'J2: '+j2.toFixed(4)+' → <b>'+o2.toFixed(4)+'</b> rad  ('+(on?'−0.0698 = −4.0°':'不修正')+')\n'
-    +'J3: '+j3.toFixed(4)+' → <b>'+o3.toFixed(4)+'</b> rad  ('+(on?'−0.0401 = −2.3°':'不修正')+')\n'
-    +'<span class="dim">原理：IK 假设标准几何，实际臂 J2/J3 多 4°/2.3°，软件少发正好抵消（DH 不动）</span>';
+function sensCalc(){
+  var d=parseFloat(document.getElementById('dl').value);
+  var mode=document.getElementById('dy').value;
+  document.getElementById('dlo').textContent=(d>=0?'+':'')+d.toFixed(1);
+  var cv=document.getElementById('sensCv'),c=cv.getContext('2d');
+  var W=640,H=150; c.clearRect(0,0,W,H);
+  c.strokeStyle='#334155';c.lineWidth=1.4;
+  c.beginPath();c.moveTo(50,H-30);c.lineTo(W-20,H-30);c.stroke();
+  c.beginPath();c.moveTo(50,14);c.lineTo(50,H-30);c.stroke();
+  c.fillStyle='#64748b';c.font='11px Consolas,monospace';
+  c.fillText('ΔL_TCP（mm）→',W/2-30,H-10); c.fillText('示意闭环误差',4,20);
+  // U 形示意曲线：|ΔL| 越大 → 误差越大（示意）
+  c.strokeStyle='#f87171';c.lineWidth=2.4;c.beginPath();
+  for(var i=0;i<=80;i++){
+    var x=-2+i/80*4;
+    var y=1.3*x*x;                    // mm^2 意义上的示意
+    var px=50+(x+2)/4*(W-90), py=(H-30)-Math.min(y,60)/60*(H-50);
+    if(i===0)c.moveTo(px,py);else c.lineTo(px,py);
+  }
+  c.stroke();
+  var eSim=1.3*d*d;
+  var px=50+(d+2)/4*(W-90), py=(H-30)-Math.min(eSim,60)/60*(H-50);
+  c.fillStyle='#fbbf24';c.beginPath();c.arc(px,py,5,0,7);c.fill();
+  c.strokeStyle='#4ade80';c.setLineDash([4,4]);c.beginPath();c.moveTo(px,py);c.lineTo(px,H-30);c.stroke();c.setLineDash([]);
+  c.fillStyle='#fbbf24';c.fillText('Δ='+d.toFixed(1)+'mm',px+8,py-6);
+  document.getElementById('sxout').innerHTML=
+    (mode==='1'
+      ? '场景：某 link*.y +0.5mm（讲义步骤7.3 的灵敏度实验，改前先记基线！）\n'
+      :'场景：单常量扰动')+ 
+    'ΔL = <b>'+(d>=0?'+':'')+d.toFixed(1)+' mm</b>\n'
+    +'链路：config.py 几何常量 → <span class="bad">fk.py</span> 与 <span class="bad">ik_analytical.py</span> <b>同时改写</b> → 闭环误差变化\n'
+    +(Math.abs(d)<0.05
+      ? '<span class="k">Δ≈0：两端模型一致（当前仓库的状态只在 pitch=90° 附近近似成立）</span>'
+      : '<span class="warn">示意：ΔL 越大、回代误差越大——但注意当前基线在 pitch=180°/0° 本就不为 0（3/4 FAIL），改常量前必须先跑 test_fk_ik 记录基线</span>')
+    +'\n<span class="dim">曲线为原理示意（U 形，最小点=模型一致），量级以你重跑 test_fk_ik.py 的实测为准</span>';
+  document.getElementById('sxout').dataset.e=eSim;
 }
+sensCalc();
 </script>
 <script src="../shared/tutorial.js" defer></script>
 </body>

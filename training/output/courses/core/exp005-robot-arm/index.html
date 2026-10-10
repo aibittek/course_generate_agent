@@ -102,7 +102,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   <div class="bades">
     <span class="bade">📚 7 个实验</span>
     <span class="bade">⏱️ 32 学时</span>
-    <span class="bade">🤖 六轴机械臂 + ROS2</span>
+    <span class="bade">🤖 六轴机械臂 · 实验箱 B2 / 小车 C1 双载台</span>
     <span class="bade">🎯 前置：ROS2 基础</span>
   </div>
 </section>
@@ -125,12 +125,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <table>
       <thead><tr><th>维度</th><th>取值 / 说明</th><th>首次出现</th></tr></thead>
       <tbody>
-        <tr><td class="k2">硬件平台</td><td>具身智能实验箱 B2 + 六轴机械臂（URDF 名义 5 自由度链 + 夹爪），桌面级桌面抓取场景</td><td>EXP-01</td></tr>
+        <tr><td class="k2">硬件平台</td><td>具身智能实验箱 B2 / 机器人小车 C1（两平台均搭载六轴机械臂，URDF 名义 5 自由度链 + 夹爪），桌面级抓取场景，双载台通用</td><td>EXP-01</td></tr>
         <tr><td class="k2">串口链路</td><td>1 Mbps（1000000 baud）pyserial 直连下位机，0xAA55 双字节帧头 + CRC8 校验</td><td>EXP-02</td></tr>
         <tr><td class="k2">PWM 舵机</td><td>脉宽 500~2500 μs，中位 CENTER_PWM=1500，弧度换算 PWM_TO_RAD=0.002356</td><td>EXP-02</td></tr>
-        <tr><td class="k2">运动学指标</td><td>正/逆运动学闭环误差 &lt; 1.5 mm（Avg &lt; 0.5 mm、Max &lt; 1.5 mm 验收）</td><td>EXP-04 / EXP-05</td></tr>
-        <tr><td class="k2">系统偏移</td><td>J2 +4.0°（0.0698 rad）、J3 +2.3°（0.0401 rad）实测机械偏移，逆解结果需减法补偿</td><td>EXP-05</td></tr>
-        <tr><td class="k2">抓取参数</td><td>gripper_depth 0.02 / approach 0.05 / lift 0.10 / pitch 0，grasp_params.yaml 按物体分组</td><td>EXP-06</td></tr>
+        <tr><td class="k2">运动学指标</td><td>验收线 Avg &lt; 0.5 mm、Max &lt; 1.5 mm；实测现状：test_fk_ik.py 3/4 点位 FAIL、误差 18~23 mm（疑为 IK/FK 几何模型不一致），并非全部达标</td><td>EXP-04 / EXP-05</td></tr>
+        <tr><td class="k2">偏移证伪</td><td>旧版口径 "J2 +4.0°、J3 +2.3° 实测机械偏移" 已证伪——源码中无 system_offset_analysis 与偏移配置，无法复现；误差一律以实测归因为准</td><td>EXP-05</td></tr>
+        <tr><td class="k2">抓取参数</td><td>节点默认 gripper_depth 0.0 / pre_grasp_height 0.03 / grasp_pitch 180°（夹爪朝下）；lift_height 0.05 已声明但源码未使用，按实验实测调优</td><td>EXP-06</td></tr>
         <tr><td class="k2">视觉定位</td><td>HSV 颜色分割 + 深度反投影（fx=fy=614，cx=320，cy=240）+ TF 坐标链变换</td><td>EXP-07</td></tr>
         <tr><td class="k2">软件栈</td><td>ROS2 Humble · MoveIt2 · Gazebo · pyserial · URDF/TF · server_cors Web 仿真器（8000 端口）</td><td>贯穿全课</td></tr>
       </tbody>
@@ -165,11 +165,11 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     </div>
     <div class="kcard">
       <h4><span class="dot" style="background:#0d9488"></span>算得对运动学</h4>
-      <p>手算与代码双轨完成 FK 正解与解析 IK 逆解，用闭环误差 &lt; 1.5 mm 验收，并说清 J2/J3 系统偏移的补偿原理。</p>
+      <p>手算与代码双轨完成 FK 正解与解析 IK 逆解，会跑闭环验证、对照 Avg&lt;0.5 / Max&lt;1.5 mm 验收线，并按讲义口径归因误差（当前 18~23 mm 超差源于 IK/FK 模型不一致，而非机械偏移）。</p>
     </div>
     <div class="kcard">
       <h4><span class="dot" style="background:#e11d48"></span>调得动抓取</h4>
-      <p>配置 grasp_params 参数组，串起"预演 → 设目标 → Trigger 抓取 → 放置"全流程，并能扩展到视觉动态抓取。</p>
+      <p>调 gripper_depth / pre_grasp_height 等节点参数，串起"预演 → 设目标 → Trigger 抓取 → 放置"全流程，并能扩展到视觉动态抓取。</p>
     </div>
   </div>
 
@@ -193,7 +193,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     </li>
     <li>
       <b>STEP 4 · EXP-05 逆运动学解算（4 学时）</b>
-      <span class="kv" style="display:block;margin:.35rem 0 0">用闭环 100 样本验证解算器，定位 J2/J3 机械偏移并完成减法补偿，--direct 实机逼近。</span>
+      <span class="kv" style="display:block;margin:.35rem 0 0">跑 test_fk_ik 闭环验证解算器，按实测口径归因误差（当前 3/4 点位 FAIL、18~23 mm，疑为 IK/FK 模型不一致），--direct 实机逼近。</span>
     </li>
     <li>
       <b>STEP 5 · EXP-03 ROS2 架构与动作回放（4 学时）</b>
@@ -201,13 +201,34 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     </li>
     <li>
       <b>STEP 6 · EXP-06 逆运动学固定抓取（4 学时）</b>
-      <span class="kv" style="display:block;margin:.35rem 0 0">预演 → set_pick_target → Trigger 六阶段抓取，用 grasp_params 调出适配物体的参数组。</span>
+      <span class="kv" style="display:block;margin:.35rem 0 0">预演 → set_pick_target → Trigger 六阶段抓取，调节 gripper_depth / pre_grasp_height 适配不同物体。</span>
     </li>
     <li>
       <b>STEP 7 · EXP-07 视觉动态抓取（8 学时）</b>
       <span class="kv" style="display:block;margin:.35rem 0 0">HSV + 深度反投影 + TF 三件套定位任意摆放的目标，五状态机一键完成"看见即抓起"。</span>
     </li>
   </ol>
+
+  <div class="sec-head reveal">
+    <div class="k">PRINCIPLE LAB · 原理补充（新增）</div>
+    <h2>抓取原理实验室：6 个"为什么"，6 台交互演示</h2>
+    <p>把实验里的关键原理单独拆出来深挖——坐标变换、正/逆运动学、轨迹分步、六阶段抓取 3D、视觉定位，每个模块 = 一句原理 + 一个讲义真实案例 + 一台可拖可调的演示；页内自带完整教学大纲（模块·目标·案例·交互·衔接五列表），与本页 7 个实验的锚点双向互链。</p>
+  </div>
+  <div class="card reveal" style="margin-bottom:1rem">
+    <div class="top"><span class="code">LAB·M1-M6</span><span class="tag">three.js 3D · 离线可用</span></div>
+    <h3><a href="principles/index.html" style="color:var(--accent-rose)">机械臂抓取 · 原理实验室 →</a></h3>
+    <p>M1 坐标系与 TF 变换链 · M2 正运动学（PWM 预演）· M3 逆运动学（拖拽目标 + 闭环 + DLS 阻尼）· M4 轨迹与分步移动 40%/60% · M5 六阶段抓取 3D 实验台（gripper_depth / pre_grasp_height 可视）· M6 HSV+反投影+TF 视觉定位。数学概念全部配交互式图示，滑块一动、公式数值与图形同步变。</p>
+    <div class="kv"><b>衔接</b> · 每模块底部回链对应实验页真实章节 · 案例值全部取自 EXP005 讲义（含 (0.28,0,0.10) 抓取点、五路 PWM 预演、TF 示例 (0.55,0,0.40)、HSV 红色两段阈值）</div>
+    <div class="pills" style="margin-top:.7rem">
+      <a class="pill" href="principles/index.html#outline"><i style="background:#0d9488"></i>📐 教学大纲总览</a>
+      <a class="pill" href="principles/index.html#m1"><i style="background:#e11d48"></i>M1 坐标变换</a>
+      <a class="pill" href="principles/index.html#m2"><i style="background:#2563eb"></i>M2 正运动学</a>
+      <a class="pill" href="principles/index.html#m3"><i style="background:#7c3aed"></i>M3 逆运动学</a>
+      <a class="pill" href="principles/index.html#m4"><i style="background:#0d9488"></i>M4 轨迹规划</a>
+      <a class="pill" href="principles/index.html#m5"><i style="background:#d97706"></i>M5 3D 六阶段抓取</a>
+      <a class="pill" href="principles/index.html#m6"><i style="background:#0891b2"></i>M6 视觉定位</a>
+    </div>
+  </div>
 
   <div class="sec-head reveal">
     <div class="k">ENVIRONMENT</div>
@@ -220,13 +241,13 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
         <tr><th>类别</th><th>需要就位的内容</th></tr>
       </thead>
       <tbody>
-        <tr><td class="k2">硬件</td><td>具身智能实验箱 B2、机械臂实验平台（含夹爪与桌面抓取物块）、深度相机、USB 串口线</td></tr>
+        <tr><td class="k2">硬件</td><td>具身智能实验箱 B2 或 机器人小车 C1（承载机械臂）、机械臂平台（含夹爪与桌面抓取物块）、深度相机（HP60C）、USB 串口线</td></tr>
         <tr><td class="k2">上位机</td><td>Ubuntu 22.04 + ROS2 Humble 桌面版，已安装 colcon、rviz2、rqt、MoveIt2、Gazebo</td></tr>
         <tr><td class="k2">串口权限</td><td>当前用户加入 dialout 组（sudo usermod -aG dialout $USER），重新登录生效；ls -l /dev/ttyUSB* 可见设备</td></tr>
         <tr><td class="k2">Python 依赖</td><td>pyserial、numpy 等讲义 requirements；交互脚本均以 python3 运行</td></tr>
         <tr><td class="k2">Web 仿真器</td><td>server_cors.py 起本地 8000 端口，浏览器访问 http://localhost:8000/viewer（注意 /viewer 后缀）</td></tr>
         <tr><td class="k2">预备知识</td><td>CORE-01 ROS2 基础（节点/话题/服务）、Linux 常用命令、Python 函数与矩阵入门</td></tr>
-        <tr><td class="k2">耗材与视角</td><td>桌面留出机械臂全展空间；抓取物块按 grasp_params 分组摆放；相机视野对准抓取区</td></tr>
+        <tr><td class="k2">耗材与视角</td><td>桌面留出机械臂全展空间；抓取目标默认用红色方块（HSV 红色两段阈值）；相机视野对准抓取区</td></tr>
       </tbody>
     </table>
   </div>
@@ -298,13 +319,13 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <article class="card reveal">
       <div class="top"><span class="code">EXP-05</span><span class="tag">⭐⭐⭐ · 4 学时</span></div>
       <h3>逆运动学解算</h3>
-      <p>ik_solve / fk_solve 库 API 与闭环验证（100 样本 Max 1.23mm、成功率 100%），J2 +4°/J3 +2.3° 系统偏移补偿与 --direct 实机逼近。</p>
-      <div class="kv"><b>关键接口</b> · ik_solve(xyz, pitch, elbow='up') → 5 弧度 · fk_solve → 4×4 齐次矩阵 · 闭环 Avg 0.42 / Max 1.23 mm</div>
-      <div class="meta"><span class="tag">ik_solve</span><span class="tag">闭环验证</span><span class="tag">系统偏移补偿</span><span class="tag">DLS</span></div>
+      <p>IK 库（solve_analytical_ik / fk_solve）API 与 FK/IK 闭环验证（test_fk_ik.py，实测 3/4 点位 FAIL、误差 18~23 mm 待归因；pitch 三档成功率 99/72/61.5%），配 --direct 实机与"理论链 vs 实机链"归因。</p>
+      <div class="kv"><b>关键接口</b> · solve_analytical_ik(target, pitch) → IKSolution(q1~q5+branch+error) · fk_solve → 4×4 齐次矩阵 · 验收线 Avg&lt;0.5 / Max&lt;1.5 mm（当前 3/4 FAIL，以实测为准）</div>
+      <div class="meta"><span class="tag">IKSolution API</span><span class="tag">闭环验证</span><span class="tag">误差归因</span><span class="tag">DLS</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-05-ik-solver/index.html#s1">① 问题引入：算得出的解为何上机就偏</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-05-ik-solver/index.html#s6">② 动画讲解：多解构型切换与偏移叠加</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-05-ik-solver/index.html#s7">③ 互动讲解：误差判定与偏移补偿台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-05-ik-solver/index.html#s1">① 问题引入：求解成功 ≠ 解准确（静默偏差）</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-05-ik-solver/index.html#s6">② 动画讲解：多解切换与静默偏差三连击</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-05-ik-solver/index.html#s7">③ 互动讲解：误差判定与归因台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s7">交互</a></li>
         <li><a class="ttl" href="exp-05-ik-solver/index.html#s8">④ 实操步骤：interactive_ik_test --direct</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s8">实操</a></li>
         <li><a class="ttl" href="exp-05-ik-solver/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s10">验证</a></li>
       </ul>
@@ -339,13 +360,13 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <article class="card reveal">
       <div class="top"><span class="code">EXP-06</span><span class="tag">⭐⭐⭐ · 4 学时</span></div>
       <h3>逆运动学固定抓取</h3>
-      <p>真实接口 set_pick_target / target_pose 与 pick·place Trigger 服务，预演三工具、分步移动 two_stage_move 与六阶段抓取状态机、grasp_params.yaml 调参。</p>
-      <div class="kv"><b>关键参数</b> · gripper_depth 0.02 · approach 0.05 · lift 0.10 · pitch 0（四元数 {0,1,0,0}）· 放置点 (0.059,0.074,0.219)</div>
-      <div class="meta"><span class="tag">抓取状态机</span><span class="tag">两段式移动</span><span class="tag">软限位</span><span class="tag">grasp_params</span></div>
+      <p>真实接口 set_pick_target / target_pose 与 pick·place Trigger 服务，离线预演、分步移动 _move_stepwise、六阶段抓取序列与抓取参数实测调优。</p>
+      <div class="kv"><b>关键参数</b> · gripper_depth 默认 0.0（yaml 实配 -0.033）· pre_grasp_height 0.03 · lift_height 0.05（源码未使用）· grasp_pitch 180°（四元数 {0,1,0,0} 夹爪朝下）· 放置点 (0.059,0.074,0.219)</div>
+      <div class="meta"><span class="tag">抓取状态机</span><span class="tag">分步移动</span><span class="tag">软限位</span><span class="tag">抓取参数调优</span></div>
       <ul class="explist">
         <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s1">① 问题引入：固定目标为何也要"先想再动"</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s1">4 学时 · 开始</a></li>
         <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s6">② 动画讲解：抓取六阶段流程</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s7">③ 互动讲解：抓取参数组配置台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s7">③ 互动讲解：抓取参数调优台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s7">交互</a></li>
         <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s8">④ 实操步骤：预演 → 目标 → pick/place</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s8">实操</a></li>
         <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s10">验证</a></li>
       </ul>
@@ -356,7 +377,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <div class="top"><span class="code">EXP-07</span><span class="tag">⭐⭐⭐ · 8 学时</span></div>
       <h3>视觉动态抓取</h3>
       <p>visual_grasp.launch 一键拉起 5 节点：HSV 颜色分割 + 深度反投影 + TF 变换定位目标，look-then-move 策略与五状态机一键 start/confirm/skip/abort。</p>
-      <div class="kv"><b>关键参数</b> · HSV 黄 (20,100,100)~(40,255,255) · fx=fy=614 · 深度 uint16 ÷1000 · OBSERVE&lt;1s / PICK&lt;8s · 成功率 &gt;85%</div>
+      <div class="kv"><b>关键参数</b> · HSV 默认红色两段 (0,100,80)~(15,255,255) ∪ (160,100,80)~(180,255,255) · fx=fy=614 · 深度 uint16 mm ÷1000 · OBSERVE&lt;1s / PICK&lt;8s · 成功率 &gt;85%</div>
       <div class="meta"><span class="tag">HSV 分割</span><span class="tag">深度反投影</span><span class="tag">TF 定位</span><span class="tag">状态机</span></div>
       <ul class="explist">
         <li><a class="ttl" href="exp-07-visual-grasp/index.html#s1">① 问题引入：机械臂怎么"看见"目标</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-07-visual-grasp/index.html#s1">8 学时 · 开始</a></li>
@@ -371,9 +392,32 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   </div>
 
   <div class="sec-head reveal">
+    <div class="k">CALIBRATION TRACK · 综合专题（课程收尾）</div>
+    <h2>标定专题：五个部分，让机械臂「对齐世界」</h2>
+    <p>第 3 章之后的收尾块：从"为什么会默默抓偏"讲起，按 <b>零位 → TCP 四点法 → 相机内参 → 手眼 → 抓取验证</b> 五步走完完整标定链——工具链全部出自 ros2_ws 实仓（calibration / eye_hand_calibration 两包），每部分配案例与可调交互，最后把 5mm、&gt;85% 串成一条合格链。</p>
+  </div>
+  <div class="grid">
+    <article class="card reveal">
+      <div class="top"><span class="code">CAL</span><span class="tag">⭐⭐ · 2~4 学时 · 设计性</span></div>
+      <h3>标定专题 · 五个部分</h3>
+      <p>① 给每个关节找回"真零点"，② 用四点法把工具尖端钉进数学模型，③ 复核像素到毫米的尺子，④ 解出相机装在哪（AX=XB），⑤ 按依赖顺序做五项绿勾的真机抓取验收——顺序不可倒。</p>
+      <div class="kv"><b>五个部分</b> · servo_calib 零位（PWM−1500）· 四点法 TCP（FINGERTIP 0.033 出处）· fx=614 · AX=XB / Tsai-Lenz（验收 5mm）· 真机成功率 &gt;85%</div>
+      <div class="meta"><span class="tag">机械臂零位标定</span><span class="tag">TCP 四点法</span><span class="tag">相机内参标定</span><span class="tag">手眼标定</span><span class="tag">抓取验证</span></div>
+      <ul class="explist">
+        <li><a class="ttl" href="calibration/index.html#s1">① 机械臂零位标定</a><span class="stars">⭐⭐</span><a class="dur" href="calibration/index.html#s1">部分 1 · servo_calib</a></li>
+        <li><a class="ttl" href="calibration/index.html#s2">② TCP 标定（四点法）</a><span class="stars">⭐⭐⭐</span><a class="dur" href="calibration/index.html#s2">部分 2 · 交互</a></li>
+        <li><a class="ttl" href="calibration/index.html#s3">③ 相机内参标定</a><span class="stars">⭐⭐</span><a class="dur" href="calibration/index.html#s3">部分 3 · 误差注入</a></li>
+        <li><a class="ttl" href="calibration/index.html#s4">④ 手眼标定</a><span class="stars">⭐⭐⭐</span><a class="dur" href="calibration/index.html#s4">部分 4 · AX=XB</a></li>
+        <li><a class="ttl" href="calibration/index.html#s5">⑤ 抓取验证</a><span class="stars">⭐⭐⭐</span><a class="dur" href="calibration/index.html#s5">部分 5 · 验收链</a></li>
+      </ul>
+      <div class="hint"><span>👆 点击部分标题或右侧标签直达专题页对应模块</span></div>
+    </article>
+  </div>
+
+  <div class="sec-head reveal">
     <div class="k">TECH STACK</div>
     <h2>技术栈与硬件平台</h2>
-    <p>全课程围绕 ROS2 Humble + 具身智能实验箱 B2 展开，协议、参数均来自真实源码与实测基线。</p>
+    <p>全课程围绕 ROS2 Humble + 具身智能实验箱 B2 / 机器人小车 C1 展开，协议、参数均来自真实源码与实测基线。</p>
   </div>
   <div class="pills reveal">
     <span class="pill"><i style="background:#dc2626"></i>URDF / TF</span>
@@ -387,7 +431,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <span class="pill"><i style="background:#4f46e5"></i>HSV + 深度 + TF 视觉抓取</span>
     <span class="pill"><i style="background:#be185d"></i>状态机 + 服务化控制</span>
     <span class="pill"><i style="background:#b45309"></i>Web 运动学仿真器</span>
-    <span class="pill"><i style="background:#334155"></i>实验箱 B2 · C1 机械臂</span>
+    <span class="pill"><i style="background:#334155"></i>实验箱 B2 / 机器人小车 C1 载台</span>
   </div>
 
   <div class="sec-head reveal">
