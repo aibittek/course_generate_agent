@@ -86,6 +86,34 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
 .reveal{opacity:0;transform:translateY(22px);transition:opacity .55s ease,transform .55s ease}
 .reveal.show{opacity:1;transform:none}
 @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+/* 原理总览板块 */
+.archpanel{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:1rem 1.1rem;overflow-x:auto}
+.archpanel svg{display:block;min-width:920px;width:100%;height:auto}
+.arch-cap{font-size:.78rem;color:var(--text-muted);text-align:center;margin-top:.55rem}
+.flowline{display:flex;align-items:stretch;gap:.35rem;flex-wrap:wrap;margin:.4rem 0 0}
+.fstep{flex:1 1 150px;min-width:150px;background:var(--bg-surface);border:1.5px solid var(--border);border-radius:12px;padding:.75rem .8rem;cursor:pointer;transition:.2s;position:relative}
+.fstep:hover{border-color:var(--accent-teal);transform:translateY(-2px)}
+.fstep.on{border-color:var(--accent-teal);background:#f0fdfa;box-shadow:0 6px 18px rgba(13,148,136,.16)}
+.fstep .fi{font-family:var(--font-mono);font-size:.68rem;color:var(--accent-teal);font-weight:700;letter-spacing:.08em}
+.fstep b{display:block;font-size:.88rem;margin:.25rem 0 .15rem}
+.fstep span{font-size:.72rem;color:var(--text-secondary);line-height:1.5;display:block}
+.farrow{align-self:center;color:var(--accent-teal);font-size:1.1rem;font-weight:800;flex:0 0 auto}
+.fdetail{margin-top:.8rem;background:var(--bg-muted);border:1px solid var(--border);border-left:4px solid var(--accent-teal);border-radius:10px;padding:.8rem 1rem;font-size:.85rem;line-height:1.8;color:var(--text-secondary)}
+.fdetail b{color:var(--text-primary)}
+.fdetail .pit{display:block;margin-top:.35rem;color:#b45309;font-size:.8rem}
+.know{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem;margin-top:.5rem}
+.know .kbox{background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:.75rem .9rem}
+.know .kbox b{display:block;font-size:1.35rem;color:var(--accent-teal);font-family:var(--font-mono)}
+.know .kbox span{font-size:.75rem;color:var(--text-secondary);line-height:1.6;display:block;margin-top:.2rem}
+.dist{margin-top:.4rem}
+.dist .row{display:flex;align-items:center;gap:.6rem;font-size:.78rem;color:var(--text-secondary);padding:.22rem 0}
+.dist .dn{width:5.2em;flex:none;color:var(--text-primary);font-weight:600}
+.dist .dbar{flex:1;height:9px;background:var(--bg-muted);border-radius:99px;overflow:hidden}
+.dist .dbar i{display:block;height:100%;border-radius:99px}
+.dist .dv{width:2.6em;text-align:right;font-family:var(--font-mono);font-size:.72rem}
+/* 架构图悬停高亮（底板 rect 在 svg 直下层，不在此选择器内） */
+.archpanel svg g rect:hover{stroke:#5eead4;stroke-width:2;filter:brightness(1.18)}
+.archpanel svg g rect{transition:filter .15s,stroke .15s}
 </style>
 </head>
 <body>
@@ -117,6 +145,174 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <div class="stat"><b>4</b><span>知识篇章</span></div>
     <div class="stat"><b>⭐1~3</b><span>难度跨度</span></div>
   </div>
+
+  <div class="sec-head reveal">
+    <div class="k">PRINCIPLES · 原理总览</div>
+    <h2>先看全景：机器是怎么"看懂 → 理解 → 行动"的</h2>
+    <p>12 个实验共用同一条视觉流水线。下面三张图先建立大局观——知道每一步在整条链路里的位置，后面每章的细节才有地方"挂"。</p>
+  </div>
+
+  <!-- A. 全景架构图 -->
+  <div class="archpanel reveal">
+    <svg viewBox="0 0 1080 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="课程全景架构图：从相机输入到可视化与控制输出的五段流水线">
+      <defs>
+        <marker id="aw" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 z" fill="#5eead4"/></marker>
+      </defs>
+      <rect x="0" y="0" width="1080" height="320" rx="12" fill="#0f172a"/>
+      <text x="540" y="30" text-anchor="middle" font-size="15" font-weight="800" fill="#e2e8f0" font-family="sans-serif">课程全景架构 · 一帧图的完整旅程</text>
+
+      <!-- 列框 -->
+      <g font-family="sans-serif">
+        <!-- 1 输入 -->
+        <rect x="14" y="52" width="180" height="238" rx="10" fill="#111c34" stroke="#334155"/>
+        <text x="104" y="76" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7dd3fc">① 输入源</text>
+        <rect x="28" y="92" width="152" height="44" rx="7" fill="#1d4ed8" opacity=".85"/><text x="104" y="111" text-anchor="middle" font-size="11.5" fill="#dbeafe">样例图片 / USB 相机</text><text x="104" y="127" text-anchor="middle" font-size="10.5" fill="#bfdbfe">单图 · 视频 · --camera</text>
+        <rect x="28" y="146" width="152" height="52" rx="7" fill="#0e7490" opacity=".9"/><text x="104" y="166" text-anchor="middle" font-size="11.5" fill="#cffafe">HP60C 深度相机</text><text x="104" y="183" text-anchor="middle" font-size="10.5" fill="#a5f3fc">--ros ascamera 话题</text>
+        <rect x="28" y="208" width="152" height="44" rx="7" fill="#334155"/><text x="104" y="227" text-anchor="middle" font-size="11.5" fill="#e2e8f0">彩色 RGB + 深度 Depth</text><text x="104" y="243" text-anchor="middle" font-size="10.5" fill="#94a3b8">uint16 毫米 · 0=无效</text>
+        <text x="104" y="278" text-anchor="middle" font-size="10.5" fill="#64748b">分工：检测/分割走彩色，测距走深度</text>
+
+        <!-- 2 预处理 -->
+        <rect x="222" y="52" width="180" height="238" rx="10" fill="#111c34" stroke="#334155"/>
+        <text x="312" y="76" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5eead4">② 预处理（统一"画面规格"）</text>
+        <rect x="236" y="92" width="152" height="52" rx="7" fill="#134e4a"/><text x="312" y="112" text-anchor="middle" font-size="11.5" fill="#ccfbf1">letterbox 等比缩放</text><text x="312" y="129" text-anchor="middle" font-size="10.5" fill="#99f6e4">640×640 · pad=0（和训练一致）</text>
+        <rect x="236" y="154" width="152" height="52" rx="7" fill="#134e4a"/><text x="312" y="174" text-anchor="middle" font-size="11.5" fill="#ccfbf1">BGR → RGB · uint8 直喂</text><text x="312" y="191" text-anchor="middle" font-size="10.5" fill="#99f6e4">颜色通道顺序 = 生死线</text>
+        <rect x="236" y="216" width="152" height="52" rx="7" fill="#134e4a"/><text x="312" y="236" text-anchor="middle" font-size="11.5" fill="#ccfbf1">HSV 掩膜 · 形态学开闭</text><text x="312" y="253" text-anchor="middle" font-size="10.5" fill="#99f6e4">传统视觉的"抓色"预处理</text>
+
+        <!-- 3 引擎 -->
+        <rect x="430" y="52" width="238" height="238" rx="10" fill="#0b1224" stroke="#3b82f6" stroke-opacity=".5"/>
+        <text x="549" y="76" text-anchor="middle" font-size="12.5" font-weight="700" fill="#93c5fd">③ 核心引擎（两条路线）</text>
+        <rect x="444" y="90" width="210" height="88" rx="8" fill="#1e293b" stroke="#475569"/>
+        <text x="549" y="110" text-anchor="middle" font-size="11" font-weight="700" fill="#fbbf24">经典视觉 · CPU（OpenCV/NumPy）</text>
+        <text x="549" y="130" text-anchor="middle" font-size="10.5" fill="#e2e8f0">inRange 颜色 · findContours 轮廓</text>
+        <text x="549" y="147" text-anchor="middle" font-size="10.5" fill="#e2e8f0">QRCodeDetector · approxPolyDP</text>
+        <text x="549" y="164" text-anchor="middle" font-size="10.5" fill="#94a3b8">EXP-03/04/05 · 快、可解释、零训练</text>
+        <rect x="444" y="190" width="210" height="92" rx="8" fill="#172554" stroke="#3b82f6"/>
+        <text x="549" y="210" text-anchor="middle" font-size="11" font-weight="700" fill="#93c5fd">深度学习 · RK3576 NPU（RKNN）</text>
+        <text x="549" y="230" text-anchor="middle" font-size="10.5" fill="#dbeafe">YOLOv8 检测（EXP-01）· yolov8n-seg 分割（EXP-06）</text>
+        <text x="549" y="247" text-anchor="middle" font-size="10.5" fill="#dbeafe">Blaze 人脸/姿态/手势关键点（EXP-09~12）</text>
+        <text x="549" y="264" text-anchor="middle" font-size="10.5" fill="#93c5fd">deepsort.rknn ReID 外观（EXP-07）</text>
+        <text x="549" y="279" text-anchor="middle" font-size="10" fill="#64748b">int8/fp16 量化换实时帧率</text>
+
+        <!-- 4 后处理 -->
+        <rect x="696" y="52" width="180" height="238" rx="10" fill="#111c34" stroke="#334155"/>
+        <text x="786" y="76" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5eead4">④ 后处理（还原人能读的结果）</text>
+        <rect x="710" y="92" width="152" height="52" rx="7" fill="#134e4a"/><text x="786" y="112" text-anchor="middle" font-size="11.5" fill="#ccfbf1">DFL 解码 + NMS 去重</text><text x="786" y="129" text-anchor="middle" font-size="10.5" fill="#99f6e4">候选框 → 唯一框</text>
+        <rect x="710" y="154" width="152" height="52" rx="7" fill="#134e4a"/><text x="786" y="174" text-anchor="middle" font-size="11.5" fill="#ccfbf1">坐标反缩放 · 掩码合成</text><text x="786" y="191" text-anchor="middle" font-size="10.5" fill="#99f6e4">回到原图尺寸 · mc@proto</text>
+        <rect x="710" y="216" width="152" height="52" rx="7" fill="#134e4a"/><text x="786" y="236" text-anchor="middle" font-size="11.5" fill="#ccfbf1">关键点逆映射 · Kalman 关联</text><text x="786" y="253" text-anchor="middle" font-size="10.5" fill="#99f6e4">ROI 回原图 · 帧间接 ID</text>
+
+        <!-- 5 输出 -->
+        <rect x="904" y="52" width="162" height="238" rx="10" fill="#111c34" stroke="#334155"/>
+        <text x="985" y="76" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fda4af">⑤ 输出</text>
+        <rect x="918" y="96" width="134" height="66" rx="7" fill="#7f1d1d" opacity=".85"/>
+        <text x="985" y="118" text-anchor="middle" font-size="11.5" fill="#fecdd3">MJPEG 实时视频流</text>
+        <text x="985" y="136" text-anchor="middle" font-size="10.5" fill="#fecaca">浏览器 :8080~8084</text>
+        <text x="985" y="153" text-anchor="middle" font-size="10" fill="#fca5a5">不用装客户端，网页即看</text>
+        <rect x="918" y="176" width="134" height="66" rx="7" fill="#4c1d95" opacity=".9"/>
+        <text x="985" y="198" text-anchor="middle" font-size="11.5" fill="#ede9fe">ROS2 cmd_vel 控制</text>
+        <text x="985" y="216" text-anchor="middle" font-size="10.5" fill="#ddd6fe">体感/手势 → 小车动起来</text>
+        <text x="985" y="233" text-anchor="middle" font-size="10" fill="#c4b5fd">EXP-11/12 · 安全默认关</text>
+        <text x="985" y="278" text-anchor="middle" font-size="10.5" fill="#64748b">看：可视化 · 动：控制</text>
+      </g>
+
+      <!-- 箭头 -->
+      <g stroke="#5eead4" stroke-width="2" fill="none" marker-end="url(#aw)">
+        <path d="M198,166 L216,166"/>
+        <path d="M406,166 L424,166"/>
+        <path d="M672,166 L690,166"/>
+        <path d="M880,166 L898,166"/>
+      </g>
+      <text x="540" y="310" text-anchor="middle" font-size="11" fill="#64748b" font-family="sans-serif">EXP-01~02 深检这条路 · EXP-03~05 经典 CV 这条路 · EXP-06 分割 · EXP-07 跨帧跟踪 · EXP-08 补上距离维度 · EXP-09~12 关键点走向控制</text>
+    </svg>
+  </div>
+  <div class="arch-cap reveal">图：课程全景架构（悬停各框看高亮）。上排经典视觉、下排 NPU 深度学习——12 个实验就是在这两条泳道间穿行。</div>
+
+  <!-- B. 四类任务对比 -->
+  <div class="archpanel reveal" style="margin-top:1rem">
+    <svg viewBox="0 0 1080 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="分类、检测、分割、跟踪四类视觉任务的输出形态对比">
+      <rect x="0" y="0" width="1080" height="236" rx="12" fill="#0f172a"/>
+      <g font-family="sans-serif">
+        <!-- 分类 -->
+        <rect x="14" y="34" width="250" height="184" rx="10" fill="#111c34" stroke="#334155"/>
+        <text x="139" y="60" text-anchor="middle" font-size="13" font-weight="700" fill="#fbbf24">图像分类</text>
+        <text x="139" y="78" text-anchor="middle" font-size="10.5" fill="#94a3b8">整图 → 一个标签</text>
+        <rect x="60" y="92" width="158" height="86" rx="6" fill="#1e293b"/><circle cx="139" cy="135" r="26" fill="#475569"/>
+        <rect x="76" y="186" width="126" height="22" rx="11" fill="#b45309"/><text x="139" y="201" text-anchor="middle" font-size="11.5" fill="#fef3c7">"钢板" 92%</text>
+
+        <!-- 检测 -->
+        <rect x="284" y="34" width="250" height="184" rx="10" fill="#111c34" stroke="#334155"/>
+        <text x="409" y="60" text-anchor="middle" font-size="13" font-weight="700" fill="#5eead4">目标检测</text>
+        <text x="409" y="78" text-anchor="middle" font-size="10.5" fill="#94a3b8">每个物体 → 框 (x,y,w,h) + 类别</text>
+        <rect x="330" y="92" width="158" height="86" rx="6" fill="#1e293b"/>
+        <rect x="348" y="108" width="60" height="40" fill="none" stroke="#22d3ee" stroke-width="2"/>
+        <text x="348" y="104" font-size="10" fill="#67e8f9">裂纹 0.87</text>
+        <rect x="424" y="130" width="52" height="34" fill="none" stroke="#f472b6" stroke-width="2"/>
+        <text x="424" y="126" font-size="10" fill="#f9a8d4">划痕 0.79</text>
+        <rect x="346" y="186" width="126" height="22" rx="11" fill="#0f766e"/><text x="409" y="201" text-anchor="middle" font-size="11.5" fill="#ccfbf1">EXP-01/02/06/07</text>
+
+        <!-- 分割 -->
+        <rect x="554" y="34" width="250" height="184" rx="10" fill="#111c34" stroke="#334155"/>
+        <text x="679" y="60" text-anchor="middle" font-size="13" font-weight="700" fill="#a78bfa">语义分割</text>
+        <text x="679" y="78" text-anchor="middle" font-size="10.5" fill="#94a3b8">每个像素 → 一个类别标签</text>
+        <rect x="600" y="92" width="158" height="86" rx="6" fill="#1e293b"/>
+        <path d="M660,104 q30,6 34,40 q4,34 -34,38 q-38,-4 -34,-38 q4,-34 34,-40z" fill="#7c3aed" opacity=".75" stroke="#a78bfa" stroke-width="2"/>
+        <text x="679" y="201" text-anchor="middle" font-size="11" fill="#ddd6fe">掩码 = mc 系数 × proto 模板</text>
+        <rect x="604" y="186" width="0" height="0" fill="none"/>
+
+        <!-- 跟踪 -->
+        <rect x="824" y="34" width="242" height="184" rx="10" fill="#111c34" stroke="#334155"/>
+        <text x="945" y="60" text-anchor="middle" font-size="13" font-weight="700" fill="#fda4af">多目标跟踪</text>
+        <text x="945" y="78" text-anchor="middle" font-size="10.5" fill="#94a3b8">帧间 → ID 保持一致（含遮挡恢复）</text>
+        <rect x="870" y="92" width="152" height="86" rx="6" fill="#1e293b"/>
+        <rect x="892" y="112" width="44" height="52" fill="none" stroke="#fb7185" stroke-width="2"/>
+        <text x="892" y="108" font-size="10.5" fill="#fda4af">ID=3</text>
+        <rect x="956" y="122" width="44" height="52" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <text x="956" y="118" font-size="10.5" fill="#94a3b8">t+1 预测</text>
+        <path d="M938,138 L952,142" stroke="#fda4af" stroke-width="2" stroke-dasharray="3 3" fill="none"/>
+        <rect x="874" y="186" width="144" height="22" rx="11" fill="#881337"/><text x="946" y="201" text-anchor="middle" font-size="11.5" fill="#fecdd3">Kalman 预测 + 匈牙利匹配</text>
+      </g>
+    </svg>
+  </div>
+  <div class="arch-cap reveal">图：四类任务的输出形态递进——一个标签 → 几个框 → 每个像素 → 跨帧的 ID。分数往右涨，问题也往右变难。</div>
+
+  <!-- 部署流水线（可点击） -->
+  <div class="sec-head reveal" style="margin-top:2.2rem">
+    <div class="k">DEPLOY PIPELINE · 部署流水线</div>
+    <h2>模型从笔记本走到 NPU：五步流水线（点 step 看细节）</h2>
+    <p>这是 EXP-01/02 反复实操的主线，也是知识图谱第 1 章 1.2/1.3/1.4 三节的骨架。点任意一步，下方会展开该步的产物、验收线与经典坑：</p>
+  </div>
+  <div class="flowline reveal" id="pipe">
+    <div class="fstep on" data-i="0" onclick="pipeGo(0)"><span class="fi">STEP 1 · PC</span><b>训练</b><span>yolov8n · 640 · 100ep</span></div>
+    <div class="farrow">→</div>
+    <div class="fstep" data-i="1" onclick="pipeGo(1)"><span class="fi">STEP 2 · PC</span><b>导出 ONNX</b><span>RKNN 优化 fork · 9 输出</span></div>
+    <div class="farrow">→</div>
+    <div class="fstep" data-i="2" onclick="pipeGo(2)"><span class="fi">STEP 3 · PC</span><b>int8 量化</b><span>200 张校准图 · w8a8</span></div>
+    <div class="farrow">→</div>
+    <div class="fstep" data-i="3" onclick="pipeGo(3)"><span class="fi">STEP 4 · 板端</span><b>NPU 推理</b><span>letterbox → 解码+NMS</span></div>
+    <div class="farrow">→</div>
+    <div class="fstep" data-i="4" onclick="pipeGo(4)"><span class="fi">STEP 5 · 验收</span><b>双后端评测</b><span>mAP50 掉点 ≤3%</span></div>
+  </div>
+  <div class="fdetail reveal" id="pipedetail"></div>
+
+  <!-- 知识地图 -->
+  <div class="sec-head reveal" style="margin-top:2.2rem">
+    <div class="k">KNOWLEDGE MAP · 知识地图</div>
+    <h2>大纲怎么分：12 章 · 38 节 · 114 个知识点</h2>
+    <p>对照《教学大纲》与《知识图谱》两份源文档——每章 4h（约 40min 原理讲解 + 3h20min 动手实操），48h 全实验学时。知识点按"概念 / 原理 / 流程 / 公式 / 事实"五类组织，难度呈阶梯分布：</p>
+  </div>
+  <div class="know reveal">
+    <div class="kbox"><b>12 × 4h</b><span>12 章 × 4 学时 = 48h，全部实验学时（理论 0 + 实验 48），单章占比 8.3%</span></div>
+    <div class="kbox"><b>114</b><span>知识点总数：38 节 × 3 个/节，每节配"角色说明 + 何时深入"（第 03 节卡片表）</span></div>
+    <div class="kbox"><b>40 流程类</b><span>最多的一类——本课程"做中学"，每个流程知识点都能对应一条可跑的命令</span></div>
+    <div class="kbox"><b>44 应用级</b><span>难度最高档占 44 个：会跑、会调、会排查才算过（对应第 08/09 节实操与坑表）</span></div>
+  </div>
+  <div class="dist reveal" style="margin-top:.9rem;max-width:760px">
+    <div class="row"><span class="dn">类型分布</span><div class="dbar" role="img" aria-label="类型分布条形图"><i style="width:72%;background:linear-gradient(90deg,#0d9488,#2563eb)"></i></div><span class="dv">5 类</span></div>
+    <div class="row"><span class="dn">偏重</span><div class="dbar"><i style="width:63%;background:linear-gradient(90deg,#2563eb,#7c3aed)"></i></div><span class="dv">流程40</span></div>
+    <div class="row"><span class="dn">偏重</span><div class="dbar"><i style="width:34%;background:linear-gradient(90deg,#d97706,#e11d48)"></i></div><span class="dv">原理32</span></div>
+    <div class="row"><span class="dn">偏重</span><div class="dbar"><i style="width:38%;background:linear-gradient(90deg,#0891b2,#0d9488)"></i></div><span class="dv">概念37</span></div>
+    <div class="row" style="font-size:.72rem;color:var(--text-muted)"><span class="dn">公式3 · 事实2</span><span style="flex:none">＝ 剩余 5 个（反投影公式 / 夹角余弦定理等，集中在 EXP-08/12）</span></div>
+  </div>
+  <div class="notice reveal" style="margin-top:1rem"><span>🗺️</span><span><b>四篇 ↔ 架构的挂接：</b>第 1 篇"检测与分类"练的是图中 <b>③ 引擎层</b>（NPU 检测头 + DFL 解码）；第 2 篇"图像理解"练 <b>②③ 经典 CV 与分割掩码</b>；第 3 篇"跟踪与 3D"在 <b>④ 后处理</b> 加上跨帧关联与深度维度；第 4 篇"人体感知"把 <b>⑤ 输出</b> 接到 ROS2 控制闭环——学完回看这张全景图，每个实验都能在图上指出自己的位置。</span></div>
 
   <div class="sec-head reveal">
     <div class="k">CHAPTER 1</div>
@@ -442,6 +638,23 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
 <script>
 var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('show');io.unobserve(e.target);}});},{threshold:.12});
 document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+</script>
+<script>
+/* 部署流水线五步交互 */
+var PIPE=[
+ '<b>STEP 1 · 训练（PC 上完成）</b>　用仓库里的 ultralytics <b>RKNN 优化 fork</b> 跑 <code>scripts/train.sh</code>：yolov8n · imgsz=640 · epochs=100 · batch=8，数据集 NEU-DET 1800 张按 8:1:1 划分。产物 best.pt / best.onnx / results.csv，验收线 <b>mAP50 = 0.732</b>（P 0.657 / R 0.706）。<span class="pit">⚠ 坑：标签必须是 YOLO 归一化格式（class cx cy w h，全是 0~1 小数）；写错格式训练"能跑"但 mAP 趋近 0。</span>',
+ '<b>STEP 2 · 导出 ONNX（供 RKNN 转换的特制格式）</b>　用优化 fork 的 <code>export_onnx.sh</code> 导出 format=rknn 的 ONNX：<b>9 个输出 = 3 层 × [box64, cls6, cls_sum1]</b>——DFL 的 16-bin 分布头被<b>留在 CPU 侧</b>解码，NPU 只算最重的卷积。<span class="pit">⚠ 坑：直接用官方 ultralytics 导出会少层，转 RKNN 后解码对不上——必须用仓库定制 fork。</span>',
+ '<b>STEP 3 · int8 量化（模型"瘦身"）</b>　rknn-toolkit2 量化时用 <b>200 张校准图</b>统计激活值分布，算出每个张量的 scale/zero_point（w8a8 格式）；约定输入为 <b>RGB 且不做归一化</b>（uint8 直喂）。体积约缩 4 倍、NPU 整数运算提速。<span class="pit">⚠ 坑：校准图要贴近真实产线画面；如果按 BGR 顺序喂校准集，等于用错的"标尺"量一遍，量化白做。</span>',
+ '<b>STEP 4 · 板端 NPU 推理（RK3576 上实时跑）</b>　流水线：letterbox(pad=0 等比缩放) → BGR→RGB → 4 维 NHWC uint8 直喂 NPU → 取回 9 输出做 <b>DFL 解码 + NMS</b> → unletterbox 反缩放画框。板端实测 <b>约 13 FPS</b>，MJPEG 推流到浏览器实时看。<span class="pit">⚠ 坑：letterbox 的 pad 必须与训练时一致（本仓库 pad=0）；不一致 → 所有框整体偏移固定距离，这是 EXP-01 坑表第一大坑。</span>',
+ '<b>STEP 5 · 双后端评测（验收"量化掉了多少精度"）</b>　<code>eval_map.py --backend onnx</code> 与 <code>--backend rknn</code> 各评一次 mAP50，<b>掉点 = onnx − rknn ≤ 3%</b> 为验收线——超过就要回查量化约定（RGB/校准集/pad）。<span class="pit">⚠ 注意：onnx 和 rknn 的绝对分数只能算"量化损失"，不能拿来比谁的模型强。</span>'
+];
+function pipeGo(i){
+  var ss=document.querySelectorAll('#pipe .fstep');
+  for(var k=0;k<ss.length;k++){ss[k].classList.toggle('on',k===i);}
+  var d=document.getElementById('pipedetail');
+  if(d)d.innerHTML=PIPE[i];
+}
+pipeGo(0);
 </script>
 </body>
 </html>

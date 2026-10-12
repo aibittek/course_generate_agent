@@ -12,6 +12,18 @@
   --theme-bg:#ccfbf1;
   --theme-bd:#99f6e4;
 }
+
+/* 指导书截图图廊 */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #99f6e4;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#0f766e;display:flex;gap:.4rem;align-items:center}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
+.fg img{width:100%;display:block;border-radius:6px;background:#fff}
+.fg figcaption{font-size:.74rem;color:var(--text-secondary);line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
@@ -441,7 +453,11 @@
     <pre><span class="c"># 'f' 需要窗口焦点，远程/浏览器场景改在 config / 命令行里直接指定特效类型：</span>
 <span class="c">#   color / thresh / blur / hue / enhance 五种，强度仍由捏合夹角驱动</span>
 <span class="c"># 即：类型用配置定，大小用手势调——两条控制通道分离</span></pre>
-  </section>
+  
+<div class="figs-guide"><h4>🛠️ 指导书步骤截图（实验指导书 · 1 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/5264cd2124d946a88822e237f5c5fb89.png" alt="仿射变换矩阵构造：roi_affine()（hand.py L234-250）使用 medi…" loading="lazy"><figcaption>仿射变换矩阵构造：roi_affine()（hand.py L234-250）使用 medi…</figcaption></figure></div></div>
+
+<div class="figs-guide"><h4>✅ 实验现象截图（实验指导书 · 5 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821100830923.png" alt="运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …" loading="lazy"><figcaption>运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821100946681.png" alt="运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …" loading="lazy"><figcaption>运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821101054253.png" alt="运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …" loading="lazy"><figcaption>运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821101136188.png" alt="运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …" loading="lazy"><figcaption>运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821101202609.png" alt="运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …" loading="lazy"><figcaption>运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …</figcaption></figure></div></div>
+</section>
 
   <!-- 9 -->
   <section class="blk" id="s9">
@@ -623,5 +639,12 @@ function LINE_BAR(){
 runHand();
 </script>
 <script src="../shared/tutorial.js" defer></script>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script>
+function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
+</script>
+
 </body>
 </html>

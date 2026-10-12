@@ -12,6 +12,18 @@
   --theme-bg:#ccfbf1;
   --theme-bd:#99f6e4;
 }
+
+/* 指导书截图图廊 */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #99f6e4;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#0f766e;display:flex;gap:.4rem;align-items:center}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
+.fg img{width:100%;display:block;border-radius:6px;background:#fff}
+.fg figcaption{font-size:.74rem;color:var(--text-secondary);line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
@@ -249,6 +261,10 @@ cmd.linear.x  = 0.15                    <span class="c"># 恒速</span>
 cmd.angular.z = -0.004 * err            <span class="c"># 比例项，限幅 ±0.8</span></pre></div></div>
   </div>
   <div class="tip violet"><span class="lab">🚀 扩展挑战</span>把 epsilon 做成在线可调（如滑块或 ROS 参数），观察实时流里顶点数如何跳变；再把"N 边形"标签换成边长列表，验证矩形的对边是否近似相等。</div>
+
+<div class="figs-guide"><h4>🛠️ 指导书步骤截图（实验指导书 · 1 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820141504801.png" alt="白像素占比: 0.673" loading="lazy"><figcaption>白像素占比: 0.673</figcaption></figure></div></div>
+
+<div class="figs-guide"><h4>✅ 实验现象截图（实验指导书 · 3 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820135450778.png" alt="display.colored_mode: true" loading="lazy"><figcaption>display.colored_mode: true</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820135550076.png" alt="display.colored_mode: false" loading="lazy"><figcaption>display.colored_mode: false</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820141003711.png" alt="实时视频检测" loading="lazy"><figcaption>实时视频检测</figcaption></figure></div></div>
 </section>
 
 <!-- 9 -->
@@ -360,5 +376,12 @@ function runPoly(){
 runPoly();
 </script>
 <script src="../shared/tutorial.js" defer></script>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script>
+function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
+</script>
+
 </body>
 </html>

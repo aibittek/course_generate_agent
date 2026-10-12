@@ -7,6 +7,18 @@
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{--theme:#0d9488;--theme-deep:#0f766e;--theme-bg:#ccfbf1;--theme-bd:#99f6e4}
+
+/* 指导书截图图廊 */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #99f6e4;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#0f766e;display:flex;gap:.4rem;align-items:center}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
+.fg img{width:100%;display:block;border-radius:6px;background:#fff}
+.fg figcaption{font-size:.74rem;color:var(--text-secondary);line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
@@ -241,6 +253,10 @@
 <span class="g">ros2</span> launch ascamera hp60c.launch.py
 <span class="g">python</span> src/app.py --model models/defect_yolov8n_int8.rknn --ros</pre>
   <div class="tip tealb"><span class="lab">🔍 输出标注格式</span>框标签为 <code>类别 置信度 [x1,y1,x2,y2]</code>；类名来自训练集的 yaml（六类英文名）。板端帧率低时可用 <code>--core_mask</code> 指定 NPU 核心组，避免与其他实验的 RKNN 实例抢核。</div>
+
+<div class="figs-guide"><h4>🛠️ 指导书步骤截图（实验指导书 · 4 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/val_batch0_labels.jpg" alt="下面是相关训练的标注照片，可以在 ~/ros2_ws/src/xflz_eai_car1/v…" loading="lazy"><figcaption>下面是相关训练的标注照片，可以在 ~/ros2_ws/src/xflz_eai_car1/v…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/1ebb040adac1e258c00d6e0868727559.jpeg" alt="相关YOLOv8网络架构图" loading="lazy"><figcaption>相关YOLOv8网络架构图</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/confusion_matrix.png" alt="3. 查看混淆矩阵与 PR 曲线（train/confusion_matrix.png、tr…" loading="lazy"><figcaption>3. 查看混淆矩阵与 PR 曲线（train/confusion_matrix.png、tr…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/PR_curve.png" alt="3. 查看混淆矩阵与 PR 曲线（train/confusion_matrix.png、tr…" loading="lazy"><figcaption>3. 查看混淆矩阵与 PR 曲线（train/confusion_matrix.png、tr…</figcaption></figure></div></div>
+
+<div class="figs-guide"><h4>✅ 实验现象截图（实验指导书 · 1 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260819164309192.png" alt="saved -&gt; out.jpg" loading="lazy"><figcaption>saved -&gt; out.jpg</figcaption></figure></div></div>
 </section>
 
 <!-- 09 -->
@@ -332,5 +348,12 @@ function runNms(){
 }
 </script>
 <script src="../shared/tutorial.js" defer></script>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script>
+function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
+</script>
+
 </body>
 </html>

@@ -7,6 +7,18 @@
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{--theme:#0d9488;--theme-deep:#0f766e;--theme-bg:#ccfbf1;--theme-bd:#99f6e4}
+
+/* 指导书截图图廊 */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #99f6e4;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#0f766e;display:flex;gap:.4rem;align-items:center}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
+.fg img{width:100%;display:block;border-radius:6px;background:#fff}
+.fg figcaption{font-size:.74rem;color:var(--text-secondary);line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
@@ -250,6 +262,10 @@
 <span class="c"># ④ 标定值写回 config，后续免 tune 直接跑</span>
 <span class="g">vim</span> config/lab_color.yaml   <span class="c"># h:[0,Hhi]∪[Hlo2,179] / s / v 区间</span></pre>
   <div class="tip tealb"><span class="lab">🔍 auto_hsv_range</span>对当前画面的高饱和像素做百分位统计，自动建议 H/S/V 区间 —— 换环境先跑它再微调，比从 0 摸滑块快十倍。开闭核（5/9）与 min_area（500）改动同样即时生效，<b>核尺寸必须奇数</b>。</div>
+
+<div class="figs-guide"><h4>🛠️ 指导书步骤截图（实验指导书 · 5 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/OIP.webp" alt="参考资源：OpenCV 官方文档 cv2.cvtColor COLOR_BGR2HSV 说明…" loading="lazy"><figcaption>参考资源：OpenCV 官方文档 cv2.cvtColor COLOR_BGR2HSV 说明…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820103851330.png" alt="2. 用一张彩色图可视化 HSV 三通道（H/S/V 分别显示），理解各通道语义" loading="lazy"><figcaption>2. 用一张彩色图可视化 HSV 三通道（H/S/V 分别显示），理解各通道语义</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/format,png-1787193812094-8.png" alt="参考资源：OpenCV 官方文档 cv2.morphologyEx / cv2.getStr…" loading="lazy"><figcaption>参考资源：OpenCV 官方文档 cv2.morphologyEx / cv2.getStr…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820111204789.png" alt="30帧平均帧率: 33.9" loading="lazy"><figcaption>30帧平均帧率: 33.9</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820111609703.png" alt="4. 进阶：调用 auto_hsv_range 自动估计阈值，与手动调参结果对比" loading="lazy"><figcaption>4. 进阶：调用 auto_hsv_range 自动估计阈值，与手动调参结果对比</figcaption></figure></div></div>
+
+<div class="figs-guide"><h4>✅ 实验现象截图（实验指导书 · 1 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820102754705.png" alt="光照变化导致误检/漏检时，--tune 可实时修正阈值" loading="lazy"><figcaption>光照变化导致误检/漏检时，--tune 可实时修正阈值</figcaption></figure></div></div>
 </section>
 
 <!-- 09 -->
@@ -344,5 +360,12 @@ function drawMask(){
 drawMask();
 </script>
 <script src="../shared/tutorial.js" defer></script>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script>
+function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
+</script>
+
 </body>
 </html>
