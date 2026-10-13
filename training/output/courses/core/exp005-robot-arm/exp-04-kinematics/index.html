@@ -7,6 +7,26 @@
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{--theme:#dc2626;--theme-deep:#b91c1c;--theme-bg:#fee2e2;--theme-bd:#fecaca}
+/* 雅可比与奇异性交互演示 */
+.jacdemo{margin:1.1rem 0 .4rem;padding:1rem 1.1rem;background:#fffbeb;border:1px solid #fde68a;border-radius:14px}
+.jacdemo .jd-head{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap;margin-bottom:.55rem}
+.jacdemo .jd-head b{font-size:.98rem;color:#92400e}
+.jacdemo .jd-head .lab{font-size:.72rem;font-weight:700;color:#fff;background:#d97706;border-radius:999px;padding:2px 9px}
+.jacdemo .jd-body{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+.jacdemo .jd-svg{flex:none;background:#fefce8;border:1px solid #fde68a;border-radius:10px}
+.jacdemo .jd-side{flex:1;min-width:235px}
+.jacdemo .jd-row{display:flex;align-items:center;gap:.55rem;font-size:.8rem;color:#78350f;margin:.35rem 0}
+.jacdemo .jd-row input[type=range]{flex:1;accent-color:#d97706}
+.jacdemo .jd-val{font-family:monospace;font-weight:700;width:3.4em;text-align:right}
+.jacdemo .bar{height:9px;background:#fde68a;border-radius:99px;overflow:hidden;margin:.3rem 0 .55rem}
+.jacdemo .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#16a34a,#d97706);transition:width .15s}
+.jacdemo .bar i.sing{background:linear-gradient(90deg,#dc2626,#b91c1c)}
+.jacdemo .jd-status{font-size:.82rem;font-weight:700;padding:.4rem .65rem;border-radius:8px;display:block;margin:.3rem 0}
+.jacdemo .st-ok{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.jacdemo .st-near{background:#fffbeb;color:#b45309;border:1px solid #fde68a}
+.jacdemo .st-sing{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.jacdemo .jd-mat{font-family:monospace;font-size:.78rem;background:#0f172a;color:#e2e8f0;border-radius:8px;padding:.5rem .7rem;margin:.35rem 0 .1rem;white-space:pre;line-height:1.55;overflow-x:auto}
+.jacdemo .jd-note{font-size:.78rem;color:#78350f;line-height:1.7;margin:.45rem 0 0}
 </style>
 </head>
 <body>
@@ -80,6 +100,69 @@
   <div class="kcard"><div class="kd">数值法 DLS</div><div class="kt">闭眼摸象式逐步逼近</div><p>每次只朝"误差变小"的方向挪一小步（Δq = Jᵀ(JJᵀ+λ²I)⁻¹e）。阻尼因子 λ（仿真器默认 0.1）像防抖杆：接近奇异时自动减速，宁可慢也不乱抖。</p></div>
 </div>
 <p><b>大臂不在底座正中心</b>（d=0.085m）是 car1 的一个几何细节：做 IK 几何推导时要用 asin 补偿这一段偏置，否则算出来的指尖总是差一截。通俗说：别人的胳膊长在肩膀正上方，car1 的"肩膀"和"大臂根"错开了 8.5 厘米，量尺子时别忘了这段。</p>
+<h3 id="jacdemo" style="margin:1.3rem 0 0;font-size:1.02rem;color:var(--theme,#dc2626)">进阶 · 雅可比与奇异性：为什么手臂"伸直了就动不了"</h3>
+<p><b>雅可比矩阵 J 就是"汇率表"</b>：关节转得快慢（q̇）要换算成指尖动得快慢（ẋ），靠的就是 ẋ = J·q̇。J 的每一列回答一个问题——"单独转这个关节，指尖往哪个方向、以多大速度走？"两列方向能"张开"的范围越广，指尖越听使唤。</p>
+<div class="jacdemo" id="jacwrap">
+  <div class="jd-head"><b>🗓️ 两连杆奇异位演示</b><span class="lab">拖动滑块 · 无外部依赖</span></div>
+  <div class="jd-body">
+    <svg class="jd-svg" id="jacsvg" width="300" height="200" viewBox="0 0 300 200" role="img" aria-label="两连杆机械臂雅可比方向演示">
+      <line x1="20" y1="170" x2="280" y2="170" stroke="#e2e8f0" stroke-width="2"/>
+      <polygon id="basePoly" points="80,170 68,186 92,186" fill="#78350f"/>
+      <line id="lnk1" x1="80" y1="170" x2="132" y2="79" stroke="#b91c1c" stroke-width="7" stroke-linecap="round"/>
+      <line id="lnk2" x1="132" y1="79" x2="262" y2="154" stroke="#dc2626" stroke-width="6" stroke-linecap="round"/>
+      <circle id="jnt1" cx="132" cy="79" r="6" fill="#fff" stroke="#b91c1c" stroke-width="3"/>
+      <circle id="tipDot" cx="262" cy="154" r="7" fill="#dc2626"/>
+      <defs>
+        <marker id="arw1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker>
+        <marker id="arw2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/></marker>
+      </defs>
+      <line id="vec1" x1="262" y1="154" x2="290" y2="120" stroke="#2563eb" stroke-width="3" marker-end="url(#arw1)"/>
+      <line id="vec2" x1="262" y1="154" x2="295" y2="140" stroke="#7c3aed" stroke-width="3" marker-end="url(#arw2)"/>
+      <text id="tipLab" x="0" y="0" font-size="10" fill="#64748b"></text>
+    </svg>
+    <div class="jd-side">
+      <div class="jd-row"><span>肘部内角 β</span><input type="range" id="jacBeta" min="30" max="180" step="1" value="165"><span class="jd-val" id="jacBetaV">165°</span></div>
+      <div class="jd-row" style="margin-bottom:.1rem"><span style="flex:none">可操作度 |sin β|</span></div>
+      <div class="bar"><i id="jacBar" style="width:26%"></i></div>
+      <span class="jd-status st-near" id="jacStatus">接近奇异</span>
+      <div class="jd-mat" id="jacMat">J = …</div>
+      <p class="jd-note">🖱️ <b>蓝/紫箭头</b> = J 的两列换算方向：<b>转关节 1</b> 与 <b>转关节 2</b> 分别把指尖带向哪。β=180°（完全伸直）时两箭头趋于平行——它们"张不开"了，det(J)→0，这就是<b>奇异位</b>：沿臂方向的"汇率"变成 0，指尖再怎么转关节也够不进那个方向；反过来若想让指尖沿臂方向匀速移动，反解出的关节速度 q̇ = J⁻¹ẋ 会趋于无穷——真机上表现为关节突然暴走或报错。本课 DLS 的阻尼因子 λ（仿真器 0.1）就是给奇异位踩的刹车；07 节闭环验证时若某个位姿附近误差诡异，先想想是不是进了奇异区。</p>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var L1=0.105,L2=0.15,ox=80,oy=170,L1p=105,L2p=150;
+  var s1=-Math.PI/3, cv=document.getElementById('jacBeta');
+  function upd(){
+    var beta=+cv.value, br=beta*Math.PI/180, rel=Math.PI-br;
+    var q1=s1, q2=s1+rel;
+    var e1x=ox+L1p*Math.cos(q1), e1y=oy+L1p*Math.sin(q1);
+    var tx=ox+L1p*Math.cos(q1)+L2p*Math.cos(q2), ty=oy+L1p*Math.sin(q1)+L2p*Math.sin(q2);
+    document.getElementById('lnk2').setAttribute('x1',e1x);document.getElementById('lnk2').setAttribute('y1',e1y);
+    document.getElementById('lnk2').setAttribute('x2',tx);document.getElementById('lnk2').setAttribute('y2',ty);
+    document.getElementById('jnt1').setAttribute('cx',e1x);document.getElementById('jnt1').setAttribute('cy',e1y);
+    document.getElementById('tipDot').setAttribute('cx',tx);document.getElementById('tipDot').setAttribute('cy',ty);
+    var s2q=Math.sin(q2),c2q=Math.cos(q2);
+    var J=[[-(L1*Math.sin(q1)+L2*s2q),-L2*s2q],[L1*Math.cos(q1)+L2*c2q,L2*c2q]];
+    // 单位方向箭头（像素方向 = 数学方向，y 轴屏幕向下取负）
+    function arrow(el,vx,vy){var m=Math.hypot(vx,vy)||1;document.getElementById(el).setAttribute('x1',tx);document.getElementById(el).setAttribute('y1',ty);document.getElementById(el).setAttribute('x2',tx+42*vx/m);document.getElementById(el).setAttribute('y2',ty-42*vy/m);}
+    arrow('vec1',J[0][0],J[1][0]);arrow('vec2',J[0][1],J[1][1]);
+    document.getElementById('jacBetaV').textContent=beta+'°';
+    var ms=Math.abs(Math.sin(br));
+    var bar=document.getElementById('jacBar');bar.style.width=(ms*100).toFixed(1)+'%';bar.classList.toggle('sing',ms<0.13);
+    var st=document.getElementById('jacStatus');
+    if(beta>=178){st.className='jd-status st-sing';st.textContent='奇异位 det(J)≈0 —— 沿臂方向完全够不到，关节速度反解将爆炸';}
+    else if(beta>=150){st.className='jd-status st-near';st.textContent='接近奇异 —— 两方向趋于平行，IK 在此区域误差会变大';}
+    else{st.className='jd-status st-ok';st.textContent='正常区 —— 两方向张得开，指尖行动自如';}
+    function f(v){return (v>=0?' ':'')+v.toFixed(3);}
+    document.getElementById('jacMat').textContent=
+      'J = ['+f(J[0][0])+', '+f(J[0][1])+';\n     '+f(J[1][0])+', '+f(J[1][1])+'] m\n'+
+      'det(J) = '+(L1*L2*Math.sin(br)).toFixed(5)+' m²  (每关节取 ±1 rad/s)';
+  }
+  cv.addEventListener('input',upd);upd();
+})();
+</script>
 </section>
 
 <!-- 03 -->

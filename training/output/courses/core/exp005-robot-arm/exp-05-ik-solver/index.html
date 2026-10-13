@@ -82,6 +82,7 @@
   <div class="kcard"><div class="kd">pitch 纪律</div><div class="kt">0° 朝上 · 90° 水平 · 180° 朝下</div><p>本库 pitch 从<b>竖直</b>量起（与 arm_controller.py:166 注释一致）。别照 fk.py/ik_analytical.py 顶部 "0 = horizontal forward" 的旧 docstring——讲义注明那是错的。</p></div>
   <div class="kcard"><div class="kd">--direct 模式</div><div class="kt">不走驾校，直接上手摸车</div><p>绕过 ROS2 节点，pyserial 直连 <code>/dev/stm32</code> 发 PWM（串口与波特率硬编码，<b>只认 --direct/--debug</b>）。底层算法调试少一层中间商——安全责任也全在你。</p></div>
 </div>
+<div class="tip amber" style="margin-top:.9rem"><b class="lab">奇异位：误差暴涨时的头号嫌疑</b>J 的行列式趋近 0 时（手臂近乎伸直/折死），IK 反解出的关节速度会趋于无穷——数值解在此发散、解析解分母趋零，正是"误差跟工具体朝向强相关"的帮凶之一。概念、汇率表比喻与可拖动的奇异位演示，见 <a href="../exp-04-kinematics/index.html#jacdemo" style="color:var(--theme-deep,#b91c1c);font-weight:700">EXP-04 · 进阶 · 雅可比与奇异性</a>；阻尼 λ=0.1 就是给奇异位踩的刹车。</div>
 </section>
 
 <!-- 03 -->

@@ -133,7 +133,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
 
   <button class="gtoggle" id="gtg" aria-expanded="false" aria-controls="gbox" onclick="gToggle()">
     <span class="gi">🗺️</span>
-    <span class="gt"><b>课程路线图 &amp; 课前指引 — 点击展开</b><span>七步学习路线 · 安全红线 · 学习目标 · 课程参数 · 原理实验室导览 · 环境准备清单（展开后可一键跳转任意章节）</span></span>
+    <span class="gt"><b>课程路线图 &amp; 课前指引 — 点击展开</b><span>七步学习路线 · 安全红线 · 学习路径 · 学习目标 · 课程参数 · 原理实验室导览 · 环境准备清单 · 数学地图（展开后可一键跳转任意章节）</span></span>
     <span class="gh">课程指引</span>
   </button>
   <div id="gbox" hidden>
@@ -170,6 +170,17 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <li><b>抓取前先预演</b>——用 pwm_to_fk_demo 或 Web 仿真器把 5 路 PWM 走一遍，确认不会撞桌再上真机。</li>
     <li><b>先跑安全前置脚本</b>——test_servo_direct 自检通过、串口权限（dialout 组）配好，才允许进入交互模式。</li>
   </ol>
+
+  <div class="sec-head reveal">
+    <div class="k">LEARNING PATH</div>
+    <h2>学习路径建议</h2>
+  </div>
+  <div class="kgrid reveal">
+    <div class="kcard"><h4><span class="dot" style="background:#dc2626"></span>先比喻，后公式</h4><p>每个实验的"原理通俗讲解"先用生活类比（手臂、暗号脉宽、反推姿势）建立直觉，再看 DH 表与 CRC8 —— 按顺序读，公式不再是天书。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>软硬两条路线对照</h4><p>EXP-01 是纯仿真路线，EXP-02 是裸机串口路线，EXP-03 回到 ROS2 架构路线 —— 同一条机械臂三种打开方式，对照着学最快。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>动画与互动台先玩一遍</h4><p>帧格式、连杆几何、抓取流程都有 SVG 动画；PWM↔弧度、FK 正解、HSV 调参都有互动台 —— 先玩懂参数，再上实机少翻车。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>安全红线贯穿始终</h4><p>PWM 必须落在 500~2500μs、目标须逐步逼近、抓取前先预演 —— 实机代价是堵转打齿，把第 09 节的坑表背下来再动手。</p></div>
+  </div>
 
   <div class="sec-head reveal">
     <div class="k">LEARNING OUTCOMES</div>
@@ -273,6 +284,68 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       </tbody>
     </table>
   </div>
+  <div class="sec-head reveal">
+    <div class="k">MATH MAP · 数学地图</div>
+    <h2>课程用到的数学：按薄弱点反查</h2>
+    <p>八个层级从高中三角一路排到统计口径——哪一行生疏，就点右侧"去哪补"直达对应实验小节，现学现用。<b>公式可以不推，概念要认；标 ⭐ 的三处是必须理解的。</b></p>
+  </div>
+  <div class="tbl reveal">
+    <table>
+      <thead><tr><th>层级</th><th>数学工具</th><th>用在课程哪里</th><th>去哪补</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>高中 · 三角</td>
+          <td>sin / cos、<b>atan2</b>、asin、勾股与相似三角形</td>
+          <td>解析法 IK 的地基；d=0.085m 肩部偏置用 asin 补偿；三角形闭合求指尖</td>
+          <td><a href="exp-05-ik-solver/index.html#s2">EXP-05 · 原理</a> · <a href="exp-04-kinematics/index.html#s2">EXP-04 · FK 链</a></td>
+        </tr>
+        <tr>
+          <td>高中 · 线性映射</td>
+          <td>角度 ↔ 弧度 ↔ 脉宽的仿射换算（PWM_TO_RAD）</td>
+          <td>EXP-02 把关节角变成 500~2500μs 安全脉宽下发舵机</td>
+          <td><a href="exp-02-serial-pwm/index.html#s2">EXP-02 · 原理</a></td>
+        </tr>
+        <tr>
+          <td>大一 · 线性代数 ⭐</td>
+          <td>4×4 <b>齐次变换矩阵连乘</b>、DH 参数、旋转矩阵 / 欧拉角 / 四元数、矩阵求逆</td>
+          <td>FK = 变换链连乘；TF 坐标树；DLS 公式里的 Jᵀ(JJᵀ+λ²I)⁻¹</td>
+          <td><a href="exp-04-kinematics/index.html#s2">EXP-04 · 原理</a> · <a href="exp-04-kinematics/index.html#s3">知识点表 DH</a></td>
+        </tr>
+        <tr>
+          <td>大二 · 微分 ⭐</td>
+          <td><b>雅可比矩阵 J</b>、行列式 det(J)、速度换算 ẋ = J·q̇</td>
+          <td>"汇率表"：关节转多快 → 指尖走多快；det(J)→0 即奇异位</td>
+          <td><a href="exp-04-kinematics/index.html#jacdemo">EXP-04 · 雅可比演示（可拖）</a></td>
+        </tr>
+        <tr>
+          <td>进阶 · 数值优化 ⭐</td>
+          <td>阻尼最小二乘 DLS（阻尼因子 λ=0.1）</td>
+          <td>IK 迭代求解、奇异位附近的防抖刹车；原理实验室有可拖 3D 版</td>
+          <td><a href="principles/index.html#m3">原理实验室 M3 · 逆运动学</a></td>
+        </tr>
+        <tr>
+          <td>标定 · 方程与拟合</td>
+          <td>矩阵方程 <b>AX = XB</b>（Tsai-Lenz）、最小二乘</td>
+          <td>手眼标定解"相机装在哪"，验收线 5mm；内参复核同一套思想</td>
+          <td><a href="calibration/index.html#s4">标定专题 · 手眼标定</a></td>
+        </tr>
+        <tr>
+          <td>视觉 · 透视几何</td>
+          <td>针孔相机模型（fx=fy=614, cx=320, cy=240）、深度反投影</td>
+          <td>EXP-07 把像素 + 深度还原成 3D 点，再经 TF 链交给 IK 抓取</td>
+          <td><a href="exp-07-visual-grasp/index.html#s2">EXP-07 · 原理</a></td>
+        </tr>
+        <tr>
+          <td>统计 · 误差口径</td>
+          <td>均值 / 百分位 P95、阈值与归一化、HSV 两段阈值</td>
+          <td>一切验收线（Avg&lt;0.5mm、Max&lt;1.5mm、掉点≤3%）的读法；颜色分割调参</td>
+          <td><a href="exp-05-ik-solver/index.html#s7">EXP-05 · 误差判定与归因台</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="kv reveal" style="margin-top:.6rem"><b>用法</b> · 从上往下即学习顺序：前两行高中数学就够开工；卡在第 3 行不用慌，EXP-04 的动画与互动台会把线代"演"给你看；后三行是选修深度，动手前再回头补。</div>
+
   </div><!-- /#gbox 课程指引 -->
 
   <div class="sec-head reveal">
@@ -438,6 +511,36 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   </div>
 
   <div class="sec-head reveal">
+    <div class="k">BRIDGE · 通往具身智能</div>
+    <h2>学完这门课，离 VLA 还有多远？</h2>
+    <p>具身智能（VLA：视觉-语言-动作模型）是 2025-2026 最热的方向。它并不神秘——你在这门课里手写的每一环，正是 VLA 要"学会替代或指挥"的模块。先看清两种答法的关系，再决定往哪深造。</p>
+  </div>
+  <div class="grid">
+    <article class="card reveal">
+      <div class="top"><span class="code">VLA·A</span><span class="tag">对照读法</span></div>
+      <h3>一帧画面两条路线：手写栈 vs 端到端</h3>
+      <p><b>本课 EXP-07 的答法</b>：HSV 分割 + 深度反投影 + TF 变换读懂"红色物块在哪"（感知）→ IK 与轨迹规划算出"胳膊怎么弯"（规划）→ 六阶段状态机 + PWM 把动作稳稳执行（控制）——每一环都是<b>人写的规则</b>，黑盒度低、可分段验收。<b>VLA 的答法</b>：图像 + 自然语言指令（"把红色物块装进箱子"）直接进一个大模型，输出动作序列——规则没了，换来的是<b>零样本泛化</b>：没见过的物块、没写过的指令也敢试。</p>
+      <div class="kv"><b>逐环对应</b> · 感知头 ≈ HSV+深度+TF 链 · 动作序列 ≈ 六阶段抓取状态机 · 指令解析 ≈ 语音唤醒"小飞小飞"的角色升级（从关键词到语义理解）</div>
+      <div class="meta"><span class="tag">感知</span><span class="tag">规划</span><span class="tag">状态机</span><span class="tag">端到端</span></div>
+    </article>
+    <article class="card reveal">
+      <div class="top"><span class="code">VLA·B</span><span class="tag">诚实的行业站位</span></div>
+      <h3>别急着丢掉经典栈——它是 VLA 的地基</h3>
+      <p>2026 年的真实产线上，<b>"经典栈打底 + 学习模块增强"仍是主流</b>：VLA 擅长开放环境里的"看懂与决策"，但 5mm 级定位精度、&gt;85% 抓取验收、安全红线（急停/力矩释放）这些硬指标，靠的仍是可复现、可分段排查的工程链路——也就是你刚学完的这套。常见分工：<b>VLA 出"抓哪、怎么摆"，本课的 IK、标定与状态机负责"稳稳执行"</b>；奇异位、手眼标定这些概念在学习式方案里一个都躲不掉。</p>
+      <div class="kv"><b>一句话</b> · VLA 决定"上限"（能听懂多复杂的话），经典栈决定"下限"（多稳、多准、敢不敢上产线）——两者都要会，才接得住具身智能岗的面试。</div>
+      <div class="meta"><span class="tag">sim-to-real</span><span class="tag">安全验收</span><span class="tag">精度归因</span></div>
+    </article>
+    <article class="card reveal">
+      <div class="top"><span class="code">VLA·C</span><span class="tag">下一步路径</span></div>
+      <h3>从这门课出发的三级台阶</h3>
+      <p><b>① 数据意识（本周就能做）</b>：用现有真机链路采集"物块位姿 → 动作"演示数据——你已会的 rosbag/仿真器就是采集器。<b>② 仿真里跑通语言→抓取</b>：Hugging Face <b>LeRobot</b>（ACT/Diffusion Policy 等开源实现）或 <b>OpenVLA</b> 推理，在 MuJoCo/Gazebo 里感受端到端策略的强弱点。<b>③ 补学习基础</b>：强化学习入门（Gym 经典控制）+ BERT/VLM 结构科普，再回头看 π0 / GR00T 级别的工作。</p>
+      <div class="kv"><b>衔接锚点</b> · M5 六阶段抓取（principles 3D 实验台）= 你要教给模型的"动作语言" · EXP-04/05 运动学 = 策略输出后的执行层</div>
+      <div class="meta"><span class="tag">LeRobot</span><span class="tag">OpenVLA</span><span class="tag">ACT / π0</span><span class="tag">RL 入门</span></div>
+      <div class="hint"><span>🌐 本页离线可用，外部项目名仅作学习路标——联网后搜 “huggingface lerobot” “openvla” 即达官方仓库</span></div>
+    </article>
+  </div>
+
+  <div class="sec-head reveal">
     <div class="k">TECH STACK</div>
     <h2>技术栈与硬件平台</h2>
     <p>全课程围绕 ROS2 Humble + 具身智能实验箱 B2 / 机器人小车 C1 展开，协议、参数均来自真实源码与实测基线。</p>
@@ -455,17 +558,6 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <span class="pill"><i style="background:#be185d"></i>状态机 + 服务化控制</span>
     <span class="pill"><i style="background:#b45309"></i>Web 运动学仿真器</span>
     <span class="pill"><i style="background:#334155"></i>实验箱 B2 / 机器人小车 C1 载台</span>
-  </div>
-
-  <div class="sec-head reveal">
-    <div class="k">LEARNING PATH</div>
-    <h2>学习路径建议</h2>
-  </div>
-  <div class="kgrid reveal">
-    <div class="kcard"><h4><span class="dot" style="background:#dc2626"></span>先比喻，后公式</h4><p>每个实验的"原理通俗讲解"先用生活类比（手臂、暗号脉宽、反推姿势）建立直觉，再看 DH 表与 CRC8 —— 按顺序读，公式不再是天书。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>软硬两条路线对照</h4><p>EXP-01 是纯仿真路线，EXP-02 是裸机串口路线，EXP-03 回到 ROS2 架构路线 —— 同一条机械臂三种打开方式，对照着学最快。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>动画与互动台先玩一遍</h4><p>帧格式、连杆几何、抓取流程都有 SVG 动画；PWM↔弧度、FK 正解、HSV 调参都有互动台 —— 先玩懂参数，再上实机少翻车。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>安全红线贯穿始终</h4><p>PWM 必须落在 500~2500μs、目标须逐步逼近、抓取前先预演 —— 实机代价是堵转打齿，把第 09 节的坑表背下来再动手。</p></div>
   </div>
 
   <div class="sec-head reveal">
