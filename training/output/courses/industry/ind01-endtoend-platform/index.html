@@ -149,7 +149,7 @@ table.tbl tr:hover td{background:#fafdfc}
     <div class="stat"><b>32</b><span>总学时（4 实验 × 8）</span></div>
     <div class="stat"><b>14</b><span>配套指导视频（mp4）</span></div>
     <div class="stat"><b>10</b><span>参考指导文档章节</span></div>
-    <div class="stat"><b>36</b><span>PDF 界面截图插图</span></div>
+    <div class="stat"><b>38</b><span>插图与硬件实物图</span></div>
   </div>
 
   <section class="sec reveal" id="s1">
@@ -319,16 +319,16 @@ table.tbl tr:hover td{background:#fafdfc}
     <div class="sec-head">
       <div class="k">Assets</div>
       <h2>素材资源清单</h2>
-      <p>全课素材来自 LZ-XL01 指导文件 PDF 与指导视频：36 张章节截图随文插图、14 段指导视频按实验归位并全部生成封面帧，另有课程级 shared 样式与脚本，均以相对路径引用，零外链依赖。</p>
+      <p>全课素材来自 LZ-XL01 指导文件 PDF 与指导视频：28 张接线/终端截图 + 6 张硬件实物图随文插图、14 段指导视频按实验归位并全部生成封面帧；EXP-01 的主机搭建流程已从网页卡片改写、硬件介绍不再直接贴 PDF 原文表格。另有课程级 shared 样式与脚本，均以相对路径引用，零外链依赖。</p>
     </div>
 
     <table class="tbl">
       <tr><th>实验</th><th>PDF 截图</th><th>指导视频</th><th>视频封面</th><th>截图取材章节</th></tr>
-      <tr><td>EXP-01 平台搭建</td><td>8 张</td><td>—</td><td>—</td><td>第 00 章《主机环境搭建》· 第 01 章《机器人硬件介绍》</td></tr>
+      <tr><td>EXP-01 平台搭建</td><td>—（改网页卡片）＋ 6 张硬件实物图</td><td>—</td><td>—</td><td>第 00 章《主机环境搭建》流程网页化 + 第 01 章《机器人硬件介绍》硬件实物图</td></tr>
       <tr><td>EXP-02 硬件组装</td><td>8 张</td><td>9 段</td><td>9 张</td><td>第 02 章《硬件组装》· 第 03 章《机械臂串口》</td></tr>
       <tr><td>EXP-03 摄像头与校准</td><td>8 张</td><td>3 段</td><td>3 张</td><td>第 04 章《摄像头》· 第 05 章《主从臂校准》</td></tr>
       <tr><td>EXP-04 遥操作排查</td><td>12 张</td><td>2 段</td><td>2 张</td><td>第 06/07/14/15 章《单臂遥操作 · 双臂遥操作 · 故障排查 · 命令行脚本操作手册》</td></tr>
-      <tr><td><b>合计</b></td><td><b>36 张</b></td><td><b>14 段</b></td><td><b>14 张</b></td><td>10 个指导章节 · fig- 前缀 + poster 封面命名</td></tr>
+      <tr><td><b>合计</b></td><td><b>28 张接线/终端截图 + 6 张实物图</b></td><td><b>14 段</b></td><td><b>14 张</b></td><td>10 个指导章节 · fig- 前缀 + poster 封面命名</td></tr>
     </table>
 
     <div class="kgrid" style="margin-top:16px">
@@ -344,8 +344,8 @@ table.tbl tr:hover td{background:#fafdfc}
       </div>
       <div class="kcard">
         <div class="step">RULE 3 · 截图随文插图</div>
-        <h4>36 张 fig- 前缀 PNG</h4>
-        <p>pymupdf 渲染指导 PDF 中含终端输出、接线图与界面的页，宽约 1400px，命名 fig-p章-页，全部以 figure + figcaption「图 N-M｜说明」随文引用。</p>
+        <h4>28 张 fig- 前缀 PNG</h4>
+        <p>pymupdf 渲染指导 PDF 中含终端输出与接线图的页，宽约 1400px，命名 fig-p章-页，全部以 figure + figcaption「图 N-M｜说明」随文引用；EXP-01 流程与硬件介绍改为网页卡片呈现，不再贴原表/大段终端截图。</p>
       </div>
     </div>
 
@@ -355,8 +355,8 @@ table.tbl tr:hover td{background:#fafdfc}
 │   ├── tutorial.css            主题类与组件样式
 │   └── tutorial.js             侧栏 scrollspy + reveal 动画
 ├── exp-01-platform-setup/
-│   ├── index.html              十章节实验页
-│   └── images/                 fig-p00 / fig-p01 共 8 张截图
+│   ├── index.html              十章节实验页（流程与硬件全部网页化）
+│   └── images/                 6 张硬件实物图 photo- 前缀
 ├── exp-02-arm-assembly/
 │   ├── index.html              十章节实验页
 │   ├── images/                 fig-p02 / fig-p03 共 8 张截图

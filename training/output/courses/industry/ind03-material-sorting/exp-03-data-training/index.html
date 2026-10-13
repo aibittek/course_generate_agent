@@ -19,6 +19,9 @@
   .quiz-opt:hover{background:var(--theme-bg)}
   .quiz-opt.right{border-color:#16a34a;background:#f0fdf4;font-weight:700}
   .quiz-opt.wrong{border-color:#dc2626;background:#fef2f2}
+  .img-block{margin:14px 0;text-align:center}
+  .img-block img{max-width:100%;border-radius:10px;border:1px solid var(--theme-bd);box-shadow:0 4px 12px rgba(217,119,6,.12)}
+  .img-block figcaption{font-size:12.5px;color:#92400e;margin-top:6px}
 </style>
 </head>
 <body>
@@ -77,10 +80,7 @@
         <div class="kcard"><div class="kd">阶段3 视频</div><div class="kt">ffmpeg concat demuxer 以 -c copy 流复制拼接三路相机视频，不重编码、不掉帧、不耗 CPU。</div></div>
         <div class="kcard"><div class="kd">阶段4 meta</div><div class="kt">info.json（features dtype/shape）+ tasks.parquet（任务名即标签）+ stats.json + episodes 统计。</div></div>
       </div>
-      <figure class="shot">
-        <img src="./images/fig-p04-raw-csv.png" alt="原始 CSV 读取与拼接" loading="lazy">
-        <figcaption>图 3-1｜阶段1 数据流：Episode 180–209 的 [Nᵢ,16] 关节矩阵逐个 concatenate 成 [ΣNᵢ,16]，阶段2 再补 7 元数据列转成 Parquet。</figcaption>
-      </figure>
+      <div class="tip amber"><b>阶段1 数据流：</b>Episode 180–209 的 <code>[Nᵢ,16]</code> 关节矩阵逐个 concatenate 成 <code>[ΣNᵢ,16]</code>；阶段2 再补 7 元数据列（episode_index / frame_index / task 等）转成 Parquet。</div>
       <div class="tip amber"><b>生活化类比：</b>转换 = 把手机相册（散图）按「一次完整分拣」分组、按拍摄时间排好、写上拍摄说明（meta），炼成一本训练教材；训练 = 学徒反复翻这本教材，把你的手法记进肌肉记忆。<b>教材装订错了（帧动作错位），学徒学得越勤奋错得越狠——数据质量 &gt; 数据数量。</b></div>
     </section>
 
@@ -93,14 +93,8 @@
         <div class="kcard"><div class="kd">软件基线</div><div class="kt">Miniconda（清华源）+ Python 3.10（必须）+ PyTorch cu121/cu118 + ffmpeg + LeRobot 0.4.1 editable 安装。</div></div>
         <div class="kcard"><div class="kd">输入物料</div><div class="kt">EXP-02 产出的 save_data 目录（编号不从 0 起、含坏组需 skip/区间截取）。</div></div>
       </div>
-      <figure class="shot">
-        <img src="./images/fig-p03-train-env.png" alt="训练环境搭建" loading="lazy">
-        <figcaption>图 3-2｜环境搭建：sudo apt 安装基础工具、创建 Conda 环境（Python 必须 3.10，否则 LeRobot 依赖不兼容）。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p08-train-cmd.png" alt="依赖安装排错" loading="lazy">
-        <figcaption>图 3-3｜依赖安装与排错：opencv-python-headless 等缺失补装、pip install -e . 超慢时的镜像加速解决方案。</figcaption>
-      </figure>
+      <div class="tip amber"><b>环境搭建：</b><code>sudo apt install -y ...</code> 安装基础工具 → 创建 Conda 环境（<b>Python 必须 3.10</b>，否则 LeRobot 依赖不兼容）→ <code>pip install -e .</code> 安装项目。</div>
+      <div class="tip amber"><b>依赖排错 Top 3：</b>① opencv-python-headless 缺失 → <code>pip install opencv-python-headless</code>；② pip install 超慢 → 加 <code>-i https://pypi.tuna.tsinghua.edu.cn/simple</code> 镜像；③ CUDA 版本不匹配 → 确认 <code>nvidia-smi</code> 与 PyTorch 版本对齐。</div>
     </section>
 
     <!-- 04 操作步骤 -->
@@ -123,18 +117,9 @@
         <li><b>启动训练</b>：lerobot-train 全参数执行；控制台或 JupyterLab 终端观察 log_freq=100 的 loss 输出。</li>
         <li><b>收敛判断与存档</b>：loss 长时间平台化后按 save_freq 取 checkpoint（如 050000/pretrained_model）；OOM 时优先降 batch_size。</li>
       </ol>
-      <figure class="shot">
-        <img src="./images/fig-p18-convert-done.png" alt="转换完成与排错" loading="lazy">
-        <figcaption>图 3-4｜转换收尾排错：episode 163 不存在被跳过属正常；KeyError observation.images.side 多因 stats.json 缺图像统计，按文档补即可。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p09-train-log.png" alt="训练日志入口" loading="lazy">
-        <figcaption>图 3-5｜训练入口：控制台或「JupyterLab → 终端」两种方式启动，进入环境后执行 lerobot-train 观察日志。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p10-loss-plot.png" alt="损失曲线页" loading="lazy">
-        <figcaption>图 3-6｜损失与数据配套：训练前再次确认转换命令（--input/--output/--start 1 --end 50 --task）与环境就绪，loss 曲线整体下降即健康。</figcaption>
-      </figure>
+      <div class="tip amber"><b>转换收尾排错：</b>① Episode 163 不存在被跳过属<b>正常</b>（编号不连续）；② KeyError <code>observation.images.side</code> 多因 stats.json 缺图像统计，按文档补即可；③ ffmpeg 未装导致视频阶段失败 → <code>sudo apt install ffmpeg</code>。</div>
+      <div class="tip amber"><b>训练启动两种方式：</b>① 控制台：<code>conda activate lerobot && cd lerobot && lerobot-train ...</code>；② JupyterLab → 终端：同样命令。两种方式等价，Jupyter 适合边跑边查日志。</div>
+      <div class="tip amber"><b>收敛判断与 loss 曲线：</b>训练前再次确认转换命令（<code>--input</code>/<code>--output</code>/<code>--start 1 --end 50 --task</code>）与环境就绪。loss 曲线整体下降即健康，长时间平台化后按 save_freq 取 checkpoint；OOM 优先降 batch_size。</div>
     </section>
 
     <!-- 05 关键命令 -->
@@ -263,14 +248,8 @@ lerobot-train \
         <div class="kcard"><div class="kd">Q 找不到数据集？</div><div class="kt">确认 --dataset.root 指向 converted_data 且 data/videos/meta 三目录齐全；路径写错会直接 FileNotFoundError。</div></div>
         <div class="kcard"><div class="kd">Q loss 不降？</div><div class="kt">先查数据：帧动作是否错位、任务名是否唯一、坏组是否混入；再查 lr/batch——多数是数据问题不是模型问题。</div></div>
       </div>
-      <figure class="shot">
-        <img src="./images/fig-p11-ckpt-tree.png" alt="checkpoint 目录" loading="lazy">
-        <figcaption>图 3-7｜产物打包（云端路线）：zip -r data.zip data 上传 /root/gpufree-data，训练产出按 save_freq 落 checkpoint 目录取用。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p10-v3-tree.png" alt="v3.0 目录与视频依赖" loading="lazy">
-        <figcaption>图 3-8｜视频阶段前置检查：ffmpeg -version 确认可用，concat demuxer 负责三路相机视频的无损拼接。</figcaption>
-      </figure>
+      <div class="tip amber"><b>产物打包（云端路线）：</b>训练产出按 save_freq 落 checkpoint 目录（如 <code>outputs/sort/ACT/checkpoints/050000/pretrained_model</code>），zip 上传至 <code>/root/gpufree-data</code> 供真机推理取用。</div>
+      <div class="tip amber"><b>视频阶段前置检查：</b><code>ffmpeg -version</code> 确认可用；concat demuxer 负责三路相机视频的无损拼接（<code>-c copy</code> 流复制，不重编码、不掉帧、不耗 CPU）。</div>
     </section>
 
     <!-- 09 拓展 -->

@@ -11,6 +11,27 @@
 .vcard{background:#fff;border:1px solid var(--line,#e2ece9);border-radius:13px;padding:13px}
 .vcard h4{font-size:14px;font-weight:800;margin-bottom:7px}
 .vcard p{font-size:12.5px;color:#5b6b78;line-height:1.6}
+.hwgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:15px;margin-top:16px}
+.hwcard{background:#fff;border:1px solid var(--line,#e2ece9);border-radius:15px;padding:20px 20px 16px;position:relative;overflow:hidden;border-top:4px solid}
+.hwcard.c-arm{background:linear-gradient(180deg,#f0fdfa,#fff 40%)}
+.hwcard.c-master{background:linear-gradient(180deg,#f5f3ff,#fff 40%)}
+.hwcard.c-cam{background:linear-gradient(180deg,#fffbeb,#fff 40%)}
+.hwcard.header{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.hwcard.header .ico{font-size:22px;flex:none}
+.hwcard.header .nm{font-size:16px;font-weight:800;color:#0f172a}
+.hwcard.header .tk{font-size:12px;color:#5b6b78;font-family:var(--font-mono,#000)}
+.hwcard .role{font-size:12px;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
+.hwcard.c-arm .role{color:#0d9488}.hwcard.c-master .role{color:#7c3aed}.hwcard.c-cam .role{color:#d97706}
+.hwcard .dsc{font-size:13.5px;color:#334453;line-height:1.7;margin-bottom:12px}
+.hwcard table{font-size:12.5px;margin:0}
+.hwcard th{font-size:12px;white-space:nowrap}
+.hwcard .pin{font-size:12px;background:#fff;border:1px dashed var(--accent-bd,#99f6e4);color:#0f766e;border-radius:8px;padding:8px 11px;margin-top:12px;line-height:1.6}
+.img-pair{display:grid;gap:16px}
+.img-block{margin:26px 0;text-align:center}
+.img-block img{max-width:100%;height:auto;border:1px solid var(--border,#e2e8f0);border-radius:10px;background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.07)}
+.img-block figcaption{margin-top:8px;font-size:12.5px;color:#5b6b78}
+a.img-zoom{display:inline-block;max-width:100%}
+@media (max-width:900px){.img-pair{grid-template-columns:1fr !important}}
 </style>
 </head>
 <body>
@@ -83,69 +104,121 @@
 <!-- 03 -->
 <section class="blk" id="s3">
   <h2><span class="no">03</span>硬件与材料</h2>
-  <table>
-    <thead><tr><th>类别</th><th>清单</th><th>说明</th></tr></thead>
-    <tbody>
-      <tr><td>主机</td><td>Ubuntu 22.04 LTS 工作站</td><td>用户目录 /home/lz-xl01/，配 NVIDIA 显卡（驱动 595-open）</td></tr>
-      <tr><td>安装介质</td><td>U 盘（卷标 UBUNTU 22_0）</td><td>插主机自动挂载到 /media/lz-xl01/UBUNTU 22_0/，内含 LeRobot 源码与 Miniconda 安装包</td></tr>
-      <tr><td>机械臂</td><td>从臂 ×2、主臂 ×2（SO100 系列）</td><td>四条臂各有 USB 串口，序列号见第 00 章 udev 规则</td></tr>
-      <tr><td>摄像头</td><td>USB 摄像头 ×3</td><td>左手 / 右手 / 头部，640×480@30，按固定 USB 端口接入</td></tr>
-      <tr><td>软件包</td><td>Miniconda、lerobot-0.4.1.zip、VS Code</td><td>均从 U 盘拷贝（或 wget 联网下载 Miniconda）</td></tr>
-    </tbody>
-  </table>
-  <figure>
-    <img src="images/fig-p01-teleop.png" loading="lazy" alt="第 01 章第 1 页：从臂硬件介绍表格截图">
-    <figcaption>图 1-1｜第 01 章「机器人硬件介绍」第 1 页：从臂（follower）部件说明表，点击原书图片可查看完整电子表格</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p01-teleop-2.png" loading="lazy" alt="第 01 章第 2 页：主臂硬件介绍表格截图">
-    <figcaption>图 1-2｜第 01 章第 2 页：主臂（leader）部件说明表——主臂装在桌面供人示范，从臂在工作区执行</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p01-cam.png" loading="lazy" alt="第 01 章第 3 页：摄像头硬件介绍截图">
-    <figcaption>图 1-3｜第 01 章第 3 页：三路摄像头硬件说明——左手、右手、头部各一路，是端到端的"眼睛"</figcaption>
-  </figure>
+  <p>LZ-XL01 平台由<b>三路摄像头（感知端）＋ Ubuntu 主机（决策端）＋ 四条 SO100 机械臂（执行端）</b>组成。下表按"角色—作用—关键依赖"把三大件拆开讲：</p>
+  <div class="hwgrid">
+    <article class="hwcard c-arm">
+      <div class="header"><span class="ico">🦾</span><div>
+        <div class="nm">从臂 · follower ×2</div><div class="tk">执行端 · 学你动作干活的手臂</div>
+      </div></div>
+      <div class="role">角色：被主臂带着示范、真正去抓取/操作</div>
+      <p class="dsc">从臂装在底座上（连小推车），吃 12V 大幅供电，是端到端链路里"动手"的那一只。</p>
+      <table>
+        <tr><th>接口</th><td>USB 串口 · /dev/arm_slave_left / arm_slave_right</td></tr>
+        <tr><th>关节</th><td>SO100 六关节（Joint1~5 + 夹爪）</td></tr>
+        <tr><th>供电</th><td>12V 8A（重载，举东西用）</td></tr>
+        <tr><th>序列号</th><td>5B79019324（左） / 5B79018452（右）</td></tr>
+      </table>
+    </article>
+    <article class="hwcard c-master">
+      <div class="header"><span class="ico">✋</span><div>
+        <div class="nm">主臂 · leader ×2</div><div class="tk">示范端 · 你牵着它示范动作</div>
+      </div></div>
+      <div class="role">角色：被人手掰动、编码器读出角度传给从臂</div>
+      <p class="dsc">主臂装在桌面（卡钳固定），被人手推着做动作，是"示教"的源头。</p>
+      <table>
+        <tr><th>接口</th><td>USB 串口 · /dev/arm_master_left / arm_master_right</td></tr>
+        <tr><th>关节</th><td>SO100 六关节（与从臂一一对应）</td></tr>
+        <tr><th>供电</th><td>5V 2A（轻载，仅示范）</td></tr>
+        <tr><th>序列号</th><td>5B61034506（左） / 5B79018622（右）</td></tr>
+      </table>
+    </article>
+    <article class="hwcard c-cam">
+      <div class="header"><span class="ico">📷</span><div>
+        <div class="nm">USB 摄像头 ×3</div><div class="tk">感知端 · 端到端的"眼睛"</div>
+      </div></div>
+      <div class="role">角色：给系统提供画面，是"感知→决策→执行"的起点</div>
+      <p class="dsc">左手 / 右手 / 头部各一路，直连主机固定端口，只为让画面永远知道自己来自哪个位置。</p>
+      <table>
+        <tr><th>规格</th><td>640×480@30 · YUYV/MJPG</td></tr>
+        <tr><th>接口</th><td>USB 直连 · /dev/cam_left / cam_right / cam_head</td></tr>
+        <tr><th>插口</th><td>主机背面端口 7 / 6 / 1（不可变动、不可走拓展坞）</td></tr>
+        <tr><th>匹配</th><td>按 ID_PATH 写 udev 别名</td></tr>
+      </table>
+    </article>
+  </div>
+  <p style="margin:14px 0 0;font-size:13px;color:#5b6b78">▍实物对照：三大件长这样（来源：LZ-XL01 硬件指导文件）</p>
+  <div class="img-pair" style="grid-template-columns:repeat(3,1fr)">
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-master-arm.jpeg" alt="从臂实物图（带平行夹爪）" loading="lazy" decoding="async">
+      <figcaption>(a) 从臂 follower · 执行端（末端为平行夹爪）</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-master-arm-view.jpeg" alt="主臂实物图（带握把）" loading="lazy" decoding="async">
+      <figcaption>(b) 主臂 leader · 示范端（带握把，人手握持示教）</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-camera.jpeg" alt="USB 摄像头实物图" loading="lazy" decoding="async">
+      <figcaption>(c) USB 摄像头 · 感知端</figcaption>
+    </figure>
+  </div>
+  <p style="margin:16px 0 0;font-size:13px;color:#5b6b78">▍安装位置与接口细节：主从臂怎么装、摄像头怎么架</p>
+  <div class="img-pair" style="grid-template-columns:repeat(3,1fr)">
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-master-clamp.jpeg" alt="主臂 C 型卡钳夹紧桌面边缘" loading="lazy" decoding="async">
+      <figcaption>(d) 主臂 · C 型卡钳旋转夹紧固定桌面边缘</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-master-table.jpeg" alt="从臂连同底座卡到小推车上" loading="lazy" decoding="async">
+      <figcaption>(e) 从臂 · 连底座卡到小推车上</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-camera-ports.jpeg" alt="头部摄像头架设于垂直立柱" loading="lazy" decoding="async">
+      <figcaption>(f) 头部摄像头 · 架设于垂直立柱俯视工作区</figcaption>
+    </figure>
+  </div>
+  <div class="tip teal" style="margin-top:16px"><span class="lab">◆ 一条口诀记三件硬件</span>摄像头<b>感知看</b> → 主机<b>决策算</b> → 机械臂<b>执行动</b>。身份固定的关键字段：臂用<b>序列号</b>（serial），相机用<b>端口位置</b>（ID_PATH）——记住这两点，后面的 udev 规则就秒懂。</div>
 </section>
 
 <!-- 04 -->
 <section class="blk" id="s4">
-  <h2><span class="no">04</span>步骤实践：十一步搭起开发环境</h2>
+  <h2><span class="no">04</span>步骤实践：四阶段、十一步搭起开发环境</h2>
+  <p>环境搭建分<b>四阶段</b>推进：<b>① 系统初始化</b>（U 盘 / 驱动 / 拷贝）→ <b>② 软件栈</b>（Miniconda / VS Code / LeRobot 依赖）→ <b>③ 设备认名</b>（机械臂与相机的 udev 别名）→ <b>④ 验收</b>（三重验证）。一页看完，命令编号与「05 关键命令」一一对应。</p>
+
+  <h3 style="margin-top:6px">阶段 A · 系统初始化（步骤 1~3）</h3>
   <div class="flow">
-    <div class="step"><span class="n">1</span>插 U 盘（卷标 UBUNTU 22_0），确认挂载到 /media/lz-xl01/UBUNTU 22_0/</div>
+    <div class="step"><span class="n">1</span><b>插 U 盘</b>：卷标 <code>UBUNTU 22_0</code>，插入后自动挂载到 <code>/media/lz-xl01/UBUNTU 22_0/</code>，里面装着安装包</div>
     <div class="arr"></div>
-    <div class="step"><span class="n">2</span>装 NVIDIA 驱动：<code>sudo apt install nvidia-driver-595-open …</code>，reboot 后 <code>nvidia-smi</code> 验证</div>
+    <div class="step"><span class="n">2</span><b>装 NVIDIA 驱动</b>：<code>sudo apt install nvidia-driver-595-open nvidia-settings nvidia-prime -y</code> → <code>sudo reboot</code> 重启 → <code>nvidia-smi</code> 验证</div>
     <div class="arr"></div>
-    <div class="step"><span class="n">3</span>拷贝安装包并解压源码：<code>unzip lerobot-0.4.1.zip</code></div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">4</span>静默装 Miniconda 并 <code>conda init bash</code>，<code>source ~/.bashrc</code> 生效</div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">5</span>装 VS Code（微软 GPG 密钥 + 官方源 + apt install code）</div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">6</span>conda 配清华三通道镜像源；<code>conda create -n lerobot python=3.10 -y</code></div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">7</span>进源码目录，pip 配清华源升级并 <code>pip install -e .</code> 开发模式安装 LeRobot</div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">8</span>写机械臂 udev 规则（4 条序列号别名），<code>usermod -aG dialout $USER</code></div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">9</span>写相机 udev 规则（3 条 ID_PATH 别名），<code>usermod -aG video $USER</code></div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">10</span><code>sudo udevadm control --reload-rules</code> + <code>sudo udevadm trigger</code> 重载生效</div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">11</span>三条验证命令全过 → 环境搭建完成</div>
+    <div class="step"><span class="n">3</span><b>拷贝并解压源码</b>：<code>cd /home/lz-xl01/</code> 后 <code>unzip lerobot-0.4.1.zip</code>；U 盘若无 Miniconda 安装包，可 <code>wget</code> 联网下载</div>
   </div>
-  <figure>
-    <img src="images/fig-p00-term.png" loading="lazy" alt="第 00 章第 1 页：前期准备与 NVIDIA 驱动安装终端截图">
-    <figcaption>图 1-4｜第 00 章第 1 页：前期准备（U 盘挂载）与 NVIDIA 驱动安装命令的终端实录</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p00-term-2.png" loading="lazy" alt="第 00 章第 2 页：Miniconda 下载与静默安装终端截图">
-    <figcaption>图 1-5｜第 00 章第 2 页：U 盘无安装包时联网 wget Miniconda，bash -b 静默安装并 conda init bash</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p00-term-3.png" loading="lazy" alt="第 00 章第 3 页：conda 镜像源与 Python 环境创建终端截图">
-    <figcaption>图 1-6｜第 00 章第 3 页：装完 VS Code 后配置 conda 清华镜像源、创建 lerobot 虚拟环境（Python 3.10）</figcaption>
-  </figure>
-  <div class="tip amber"><span class="lab">⚠ 顺序提醒</span>驱动安装后必须 <code>sudo reboot</code> 再验证 <code>nvidia-smi</code>；<code>conda init bash</code> 后必须 <code>source ~/.bashrc</code>，否则新终端里 conda 命令不存在。</div>
+
+  <h3>阶段 B · 软件栈（步骤 4~7）</h3>
+  <div class="flow">
+    <div class="step"><span class="n">4</span><b>装 Miniconda</b>：<code>bash Miniconda3-latest-Linux-x86_64.sh -b</code> 静默安装到 <code>~/miniconda3</code>，再 <code>conda init bash</code> + <code>source ~/.bashrc</code> 使其生效</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">5</span><b>装 VS Code</b>：<code>apt install wget gpg apt-transport-https</code> → 导入微软 GPG 密钥 → 添加官方源 → <code>apt install code -y</code></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">6</span><b>配镜像 + 建环境</b>：加清华 <code>main / r / msys2</code> 三通道并 <code>show_channel_urls yes</code>；<code>conda create -n lerobot python=3.10 -y</code>，随后 <code>conda activate lerobot</code></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">7</span><b>安装 LeRobot</b>：<code>cd ~/lerobot-0.4.1</code> → <code>pip install --upgrade pip</code> → <code>pip install -e .</code>（开发模式，命令后带清华源参数）</div>
+  </div>
+
+  <h3>阶段 C · 设备认名（步骤 8~10）· udev 别名</h3>
+  <div class="flow">
+    <div class="step"><span class="n">8</span><b>机械臂别名</b>：写 <code>/etc/udev/rules.d/99-lerobot-arms.rules</code>（4 条，按序列号 5B61…/5B79… 定 arm_master/slave_left/right）→ <code>usermod -aG dialout $USER</code></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">9</span><b>相机别名</b>：写 <code>99-lerobot-cameras.rules</code>（3 条，按 ID_PATH 端口 7/6/1 定 cam_left/right/head）→ <code>usermod -aG video $USER</code></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">10</span><b>重载生效</b>：<code>sudo udevadm control --reload-rules</code> + <code>sudo udevadm trigger</code>（必须重启终端或注销重登，组权限才刷新）</div>
+  </div>
+
+  <h3>阶段 D · 验收（步骤 11）</h3>
+  <div class="flow">
+    <div class="step"><span class="n">11</span><b>三重验证</b>：<code>python --version</code> → <code>Python 3.10.x</code>；<code>ls /dev/arm_*</code> → 列出全部 4 个别名；<code>ls /dev/cam_*</code> → 列出 cam_head / cam_left / cam_right</div>
+  </div>
+
+  <div class="tip amber" style="margin-top:16px"><span class="lab">⚠ 顺序提醒</span>驱动装完必须 <code>sudo reboot</code> 再验证 <code>nvidia-smi</code>；<code>conda init bash</code> 后必须 <code>source ~/.bashrc</code>；<code>usermod</code> 加组后需<b>注销重登</b>，否则当前会话权限不生效——四阶段顺序不可颠倒。</div>
 </section>
 
 <!-- 05 -->
@@ -187,10 +260,6 @@
 <span class="g">python</span> --version   <span class="c"># → Python 3.10.x</span>
 <span class="g">ls</span> /dev/arm_*      <span class="c"># → arm_master_left arm_master_right arm_slave_left arm_slave_right</span>
 <span class="g">ls</span> /dev/cam_*      <span class="c"># → cam_head cam_left cam_right</span></pre>
-  <figure>
-    <img src="images/fig-p00-term-4.png" loading="lazy" alt="第 00 章第 4 页：pip 安装 LeRobot 与机械臂 udev 规则写入截图">
-    <figcaption>图 1-7｜第 00 章第 4 页：pip install -e . 安装 LeRobot 与九、机械臂 udev 规则文件写入过程</figcaption>
-  </figure>
 </section>
 
 <!-- 06 -->
@@ -245,10 +314,6 @@
     </svg>
   </div>
   <div class="anim-cap">动画 1-1｜主机居中（决策端），左侧从臂、右侧主臂经 USB 串口汇入，下方三路摄像头直连，udev 规则负责把物理端口翻译成稳定别名；光点表示感知→决策→执行的数据闭环</div>
-  <figure>
-    <img src="images/fig-p01-pg04.png" loading="lazy" alt="第 01 章第 4 页：硬件说明附表截图">
-    <figcaption>图 1-8｜第 01 章第 4 页：硬件介绍附表——三大件的规格参数汇总，装机前先通读一遍</figcaption>
-  </figure>
 </section>
 
 <!-- 07 -->

@@ -4,18 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-01 遥操作与数据采集 · IND-02 双臂采训推全流程</title>
-<link rel="stylesheet" href="../shared/tutorial.css">
+<link rel="stylesheet" href="../shared/tutorial.css?v=3">
 <style>
 :root{
   --theme:#7c3aed; --theme-deep:#6d28d9; --theme-bg:#f5f3ff; --theme-bd:#ddd6fe;
 }
+body{overflow-x:clip}
 figure{margin:14px 0;text-align:center}
 figure img{max-width:100%;border:1px solid var(--line,#e2e8f0);border-radius:10px;display:block;margin:0 auto}
 figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
-.vbox{margin:14px 0;text-align:center}
-.vbox video{max-width:100%;border-radius:12px;border:1px solid var(--theme-bd);background:#000}
+.vbox{margin:14px 0;text-align:center;min-width:0}
+.vbox video{display:block;margin:0 auto;max-width:100%;max-height:560px;width:auto;border-radius:12px;border:1px solid var(--theme-bd);background:#000}
+.vduo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:14px 0;align-items:start}
+.vduo .vbox{margin:0}
 .vcap{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
 .tag.hl{background:#ede9fe;color:#6d28d9}
+.img-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:14px 0}
+.img-block{margin:14px 0;text-align:center;min-width:0}
+.img-block img{max-width:100%;border-radius:10px;box-shadow:0 4px 12px rgba(15,23,42,.12)}
+.img-block figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
+.blk{min-width:0;overflow-x:hidden}
+pre{max-width:100%;min-width:0;overflow-x:auto}
+.content{overflow-x:hidden;min-width:0}
+@media(max-width:900px){.vduo{grid-template-columns:1fr}.img-pair{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -70,10 +81,10 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
       <p>整条数据流分三段：<b>①主从控制</b>——主臂编码器读出 6 个关节角度，经串口发给从臂执行，循环速率约 60 Hz（日志显示 <code>time: 16.72ms (60 Hz)</code>）；<b>②多模态感知</b>——左右手腕摄像头 + 头部摄像头把 <code>640×480 / 30 fps</code> 画面同时写入；<b>③数据落盘</b>——每一帧的机器人状态、动作、任务文本与视频被打包成一个 episode，任务结束后的复位期（reset）不算入有效片段。</p>
       <p>存储路径在 <code>~/.cache/huggingface/lerobot/&lt;学生名&gt;/&lt;数据集名&gt;/</code>。录制暂停时视频还要经过 SVT-AV1 编码（日志出现 <code>Map: 100%|…| 479/479</code> 与 <code>SVT-AV1 Encoder Lib v3.0.0</code>），此时机械臂不要动，等 <code>Recording episode 1</code> 出现再开始下一条。</p>
       <p>为什么强调两套频率：关节指令跑 60 Hz 是为了跟手不滞后，图像停在 30 fps 是为了给编码和落盘留带宽——两者由同一个 episode 时间戳对齐，任何一路掉帧都会让"这一帧该出哪只手"的对应关系错位。</p>
-      <figure>
-        <img src="./images/fig-p03-single-teleop-2.png" alt="单臂遥操作终端命令与启动日志截图" loading="lazy">
-        <figcaption>图 1-1｜单臂遥操作启动命令与 SO101 主从连接成功日志（第 06 章）</figcaption>
-      </figure>
+      <div class="img-block">
+        <img src="./images/photo-teleop-single.jpeg" alt="单臂遥操作工位实物照：操作员手持主臂、从臂在桌面跟随执行" loading="lazy">
+        <div class="img-block figcaption">图 1-1｜单臂遥操作工位实景：操作员手持主臂（leader）发出 60 Hz 关节指令，从臂（follower）在桌面实时跟随执行，腕部摄像头与显示器构成视觉反馈闭环（第 06 章）</div>
+      </div>
     </section>
 
     <section class="blk" id="s3">
@@ -106,27 +117,29 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
         <div class="step"><div class="n">Step 2</div>Ctrl+C 停止（日志打印 disconnected 即正常），再看《双臂遥操作》视频。<div class="arr"></div></div>
         <div class="step"><div class="n">Step 3</div>双臂前置：执行 4 条 mkdir + cp 命令，把单臂校准文件复制成 bimanual 左/右文件名（见 §5）。<div class="arr"></div></div>
         <div class="step"><div class="n">Step 4</div>启动双臂遥操作；若未开始多按几下回车；Ctrl+C <b>只能按一次</b>等待自动退出。<div class="arr"></div></div>
-        <div class="step"><div class="n">Step 5</div>开始采集：单臂任务 <code>Put red cube into plate</code>（5 组），双臂任务 <code>Lift the dish lid, put in the red block, and cover the lid.</code>（3 组），录制循环见 §5 命令。</div></div>
+        <div class="step"><div class="n">Step 5</div>开始采集：单臂任务 <code>Put red cube into plate</code>（5 组），双臂任务 <code>Lift the dish lid, put in the red block, and cover the lid.</code>（3 组），录制循环见 §5 命令。<div class="arr"></div></div>
       </div>
       <p>观看两段视频时各抓一个细节：视频 1 看操作员如何用回车确认校准、视频 2 看双臂 12 关节回显表的左右对称结构——这两处正是 §8 排错表的高频出错点。</p>
-      <div class="vbox">
-        <video controls preload="metadata" poster="./videos/单臂遥操作-poster.jpg">
-          <source src="./videos/单臂遥操作.mp4" type="video/mp4">
-          您的浏览器不支持视频播放。
-        </video>
-        <div class="vcap">指导视频 1｜单臂遥操作（第 06 章配套，720×1280 竖屏实录）</div>
+      <div class="vduo">
+        <div class="vbox">
+          <video controls preload="metadata" poster="./videos/单臂遥操作-poster.jpg">
+            <source src="./videos/单臂遥操作.mp4" type="video/mp4">
+            您的浏览器不支持视频播放。
+          </video>
+          <div class="vcap">指导视频 1｜单臂遥操作（第 06 章配套，720×1280 竖屏实录）</div>
+        </div>
+        <div class="vbox">
+          <video controls preload="metadata" poster="./videos/双臂遥操作-poster.jpg">
+            <source src="./videos/双臂遥操作.mp4" type="video/mp4">
+            您的浏览器不支持视频播放。
+          </video>
+          <div class="vcap">指导视频 2｜双臂遥操作（第 07 章配套，12 关节同步主从控制）</div>
+        </div>
       </div>
-      <div class="vbox">
-        <video controls preload="metadata" poster="./videos/双臂遥操作-poster.jpg">
-          <source src="./videos/双臂遥操作.mp4" type="video/mp4">
-          您的浏览器不支持视频播放。
-        </video>
-        <div class="vcap">指导视频 2｜双臂遥操作（第 07 章配套，12 关节同步主从控制）</div>
+      <div class="img-block">
+        <img src="./images/photo-teleop-dual.jpeg" alt="双臂遥操作现场实物照：操作员穿双臂主臂外骨骼、从臂在桌面同步跟随" loading="lazy">
+        <div class="img-block figcaption">图 4-1｜双臂遥操作现场实景：操作员双手各持一套主臂（leader），左右两套从臂（follower）同步跟随，12 关节位置回显在终端 <code>display_data=true</code> 表中实时刷新（第 07 章）</div>
       </div>
-      <figure>
-        <img src="./images/fig-p04-dual-teleop-3.png" alt="双臂遥操作 12 关节 NORM 位置表截图" loading="lazy">
-        <figcaption>图 4-1｜双臂遥操作启动后的 12 关节位置回显表（第 07 章）</figcaption>
-      </figure>
     </section>
 
     <section class="blk" id="s5">
@@ -135,34 +148,73 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
       <pre><span class="c"># ── 单臂遥操作（第 06 章）</span>
 conda activate lerobot
 sudo chmod 666 /dev/arm*
-lerobot-teleoperate --robot.type=so101_follower --robot.port=/dev/arm_slave_left --robot.id=left_follower_arm --teleop.type=so101_leader --teleop.port=/dev/arm_master_left --teleop.id=left_leader_arm
+lerobot-teleoperate \
+  --robot.type=so101_follower --robot.port=/dev/arm_slave_left \
+  --robot.id=left_follower_arm \
+  --teleop.type=so101_leader --teleop.port=/dev/arm_master_left \
+  --teleop.id=left_leader_arm
 
 <span class="c"># ── 双臂前置：复制 4 份校准文件（第 07 章，必须先执行）</span>
 mkdir -p ~/.cache/huggingface/lerobot/calibration/robots/so100_follower/
 mkdir -p ~/.cache/huggingface/lerobot/calibration/teleoperators/so100_leader/
-cp ~/.cache/huggingface/lerobot/calibration/robots/so101_follower/left_follower_arm.json ~/.cache/huggingface/lerobot/calibration/robots/so100_follower/bimanual_follower_left.json
+cp ~/.cache/huggingface/lerobot/calibration/robots/so101_follower/left_follower_arm.json \
+   ~/.cache/huggingface/lerobot/calibration/robots/so100_follower/bimanual_follower_left.json
 <span class="g">（right 从臂、左/右主臂 4 个文件同理，共 4 条 cp）</span>
 
 <span class="c"># ── 双臂遥操作（第 07 章）</span>
-lerobot-teleoperate --robot.type=bi_so100_follower --robot.left_arm_port=/dev/arm_slave_left --robot.right_arm_port=/dev/arm_slave_right --robot.id=bimanual_follower --teleop.type=bi_so100_leader --teleop.left_arm_port=/dev/arm_master_left --teleop.right_arm_port=/dev/arm_master_right --teleop.id=bimanual_leader --display_data=true
+lerobot-teleoperate \
+  --robot.type=bi_so100_follower \
+  --robot.left_arm_port=/dev/arm_slave_left \
+  --robot.right_arm_port=/dev/arm_slave_right \
+  --robot.id=bimanual_follower \
+  --teleop.type=bi_so100_leader \
+  --teleop.left_arm_port=/dev/arm_master_left \
+  --teleop.right_arm_port=/dev/arm_master_right \
+  --teleop.id=bimanual_leader --display_data=true
 
 <span class="c"># ── 单臂数据采集（第 08 章）</span>
 rm -rf /home/lz-xl01/.cache/huggingface/lerobot/liming/put_cube_plate
-lerobot-record --robot.type=so101_follower --robot.port=/dev/arm_slave_left --robot.id=left_follower_arm --robot.cameras='{left: {index: 0, fps: 30, width: 640, height: 480, video_backend: av}, side: {index: 2, fps: 30, width: 640, height: 480, video_backend: av}}' --teleop.type=so101_leader --teleop.port=/dev/arm_master_left --teleop.id=left_leader_arm --display_data=true --dataset.repo_id=liming/put_cube_plate --dataset.num_episodes=5 --dataset.single_task="Put red cube into plate" --dataset.push_to_hub=false --dataset.episode_time_s=16 --dataset.reset_time_s=6
+lerobot-record \
+  --robot.type=so101_follower --robot.port=/dev/arm_slave_left \
+  --robot.id=left_follower_arm \
+  --robot.cameras="{left: {index: 0, fps: 30, width: 640, height: 480, video_backend: av}, \
+side: {index: 2, fps: 30, width: 640, height: 480, video_backend: av}}" \
+  --teleop.type=so101_leader --teleop.port=/dev/arm_master_left \
+  --teleop.id=left_leader_arm --display_data=true \
+  --dataset.repo_id=liming/put_cube_plate --dataset.num_episodes=5 \
+  --dataset.single_task="Put red cube into plate" --dataset.push_to_hub=false \
+  --dataset.episode_time_s=16 --dataset.reset_time_s=6
 
 <span class="c"># ── 双臂数据采集（第 09 章，三摄像头 + 12 关节）</span>
-lerobot-record --robot.type=bi_so100_follower --robot.left_arm_port=/dev/arm_slave_left --robot.right_arm_port=/dev/arm_slave_right --robot.id=bimanual_follower --teleop.type=bi_so100_leader --teleop.left_arm_port=/dev/arm_master_left --teleop.right_arm_port=/dev/arm_master_right --teleop.id=bimanual_leader --robot.cameras='{left: {index: 0, ...}, right: {index: 3, ...}, side: {index: 5, ...}}' --dataset.repo_id=test/bimanual_pick_place --dataset.num_episodes=3 --dataset.single_task="Lift the dish lid, put in the red block, and cover the lid." --dataset.episode_time_s=16 --dataset.reset_time_s=6 --dataset.push_to_hub=false --display_data=true</pre>
+lerobot-record \
+  --robot.type=bi_so100_follower \
+  --robot.left_arm_port=/dev/arm_slave_left \
+  --robot.right_arm_port=/dev/arm_slave_right \
+  --robot.id=bimanual_follower \
+  --teleop.type=bi_so100_leader \
+  --teleop.left_arm_port=/dev/arm_master_left \
+  --teleop.right_arm_port=/dev/arm_master_right \
+  --teleop.id=bimanual_leader \
+  --robot.cameras="{left: {index: 0, ...}, \
+right: {index: 3, ...}, side: {index: 5, ...}}" \
+  --dataset.repo_id=test/bimanual_pick_place --dataset.num_episodes=3 \
+  --dataset.single_task="Lift the dish lid, put in the red block, and cover the lid." \
+  --dataset.episode_time_s=16 --dataset.reset_time_s=6 \
+  --dataset.push_to_hub=false --display_data=true</pre>
       <div class="tip amber"><span class="lab">节奏要点</span><b>num_episodes ≥ 50 才够 ACT 训练</b>；每条录完在 reset 期把方块放回原位；SVT-AV1 编码期间（<code>Map: 100%…</code>）不要碰机械臂。</div>
       <p>摄像头 index 说明：单臂链路用 <code>left: 0</code> 与 <code>side: 2</code> 两路，双臂链路用 <code>left: 0 / right: 3 / side: 5</code> 三路——顺序并非连续编号，是指导文档实测可用的插口位置，换机器后先逐个试出可用 index 再写进命令。</p>
-      <figure>
-        <img src="./images/fig-p07-single-record-4.png" alt="单臂数据采集录制循环日志截图" loading="lazy">
-        <figcaption>图 5-1｜录制循环：Recording episode → Reset the environment → 编码 → 下一条（第 08 章）</figcaption>
-      </figure>
-      <figure>
-        <img src="./images/fig-p08-single-record-5.png" alt="单臂采集真机实拍：红方块放入绿盘场景" loading="lazy">
-        <figcaption>图 5-2｜单臂任务实拍：Put red cube into plate 的初始摆位与执行瞬间（第 08 章）</figcaption>
-      </figure>
-      <p>对照图 5-2 记录初始摆位：方块与盘子的相对位置、桌面反光、摄像头角度三项要在所有 episode 中保持一致——摆位漂移是 EXP-02 loss 忽高忽低的常见隐形原因。</p>
+      <div class="img-pair">
+        <div class="img-block">
+          <img src="./images/photo-record-single.jpeg" alt="单臂数据采集全景实物照：双摄像头、红方块、蓝碗、灰垫" loading="lazy">
+          <div class="img-block figcaption">(a) 单臂数据采集工位全景：双路摄像头（左/侧）对准灰垫上的红方块与蓝碗，从臂在桌面待命</div>
+        </div>
+        <div class="img-block">
+          <img src="./images/photo-record-single-grasp.jpeg" alt="单臂夹爪夹住红方块、绿盘在旁的实拍" loading="lazy">
+          <div class="img-block figcaption">(b) 任务执行瞬间：从臂夹爪精准夹起红方块，绿盘在旁等待放入——每条 episode 都从相同摆位出发</div>
+        </div>
+      </div>
+      <p style="text-align:center;font-size:12.5px;color:var(--mute,#64748b);margin-top:-8px">图 5-1｜单臂数据采集实物照：Put red cube into plate 任务的初始摆位与执行瞬间（第 08 章）</p>
+      <p>对照图 5-1 记录初始摆位：方块与盘子的相对位置、桌面反光、摄像头角度三项要在所有 episode 中保持一致——摆位漂移是 EXP-02 loss 忽高忽低的常见隐形原因。</p>
     </section>
 
     <section class="blk" id="s6">

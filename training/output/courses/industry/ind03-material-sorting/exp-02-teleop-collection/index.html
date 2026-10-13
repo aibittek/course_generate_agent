@@ -23,6 +23,11 @@
   .pair-item.done{opacity:.45;cursor:default;border-color:#16a34a;background:#f0fdf4}
   .pair-item.miss{border-color:#dc2626;background:#fef2f2;animation:.shake .3s}
   @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  .img-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:14px 0}
+  .img-block{margin:14px 0;text-align:center}
+  .img-block img{max-width:100%;border-radius:10px;border:1px solid var(--theme-bd);box-shadow:0 4px 12px rgba(217,119,6,.12)}
+  .img-block figcaption{font-size:12.5px;color:#92400e;margin-top:6px}
+  @media(max-width:900px){.img-pair{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -82,10 +87,11 @@
         <div class="kcard"><div class="kd">质控阀门</div><div class="kt">操作失误立即点「本次采集失败」，该组不入库；坏数据进训练集比数据不足更致命。</div></div>
       </div>
       <div class="tip amber"><b>生活化类比：</b>这就像用矫正牙套——牙套（从动臂）完全按牙模（主动臂动作）走位。若你在示范中途打了喷嚏（碰撞/掉落），这一口「矫正记录」就得作废，否则牙齿会被学歪。</div>
-      <figure class="shot">
-        <img src="./images/fig-p03-boot-check.png" alt="开机与遥操作就绪" loading="lazy">
-        <figcaption>图 2-1｜开机自检到遥操作态：清空从动臂周边杂物 → 一键启动 → 进度条到 100% → 合上夹爪进入遥操作状态。</figcaption>
-      </figure>
+      <div class="tip amber"><b>开机到遥操作 5 步：</b>① 清空从动臂运动范围内一切杂物 → ② 进入 <code>start_bash/02tele_and_record</code> 目录执行 <code>. ./01start_tele.sh</code> → ③ 进度条走到 100% → ④ 合上夹爪触发进入遥操作态 → ⑤ 三摄像头画面同屏即就绪。</div>
+      <div class="img-block">
+        <img src="./images/photo-ldt-remote.jpg" alt="LDT-01 遥操作端：主动臂（人操作）+ 被动支撑 + 捏合夹爪" loading="lazy">
+        <figcaption>图 2-1｜LDT-01 遥操作端：主动臂由人手握持领动，从臂跟随其动作同步执行，二指夹爪捏合 0–90mm。</figcaption>
+      </div>
     </section>
 
     <!-- 03 硬件与材料 -->
@@ -97,18 +103,17 @@
         <div class="kcard"><div class="kd">主动臂 ×2</div><div class="kt">7 轴总线舵机，DC12V、100Hz、12bit，运动半径 554mm——遥操作端的「指挥手」。</div></div>
         <div class="kcard"><div class="kd">从动臂 ×2</div><div class="kt">7 轴谐波关节，DC48V、500Hz、19bit，负载 5kg、半径 850mm + 二指夹爪（0–90mm / 2.5kg / 50Hz）。</div></div>
       </div>
-      <figure class="shot">
-        <img src="./images/fig-p02-camera-layout.png" alt="平台配置与相机" loading="lazy">
-        <figcaption>图 2-2｜平台与视觉配置：工控机（i5-13400F + 4060 Ti 16GB + 64GB + 2TB，Ubuntu 22.04 + ROS2）与四相机布局说明。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p01-robot-overview.png" alt="机器人整机概览" loading="lazy">
-        <figcaption>图 2-3｜整机概览：采训推一体化设计、主从同构双臂、7 自由度构型，是行业课程「物料分拣应用场景」的载体机型。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p06-ldt-connect.png" alt="LDT-01 连接与启动" loading="lazy">
-        <figcaption>图 2-4｜LDT-01 连接启动：进入 start_bash/02tele_and_record 目录执行 . ./01start_tele.sh，随后按步骤上锁扭矩进入遥操作态。</figcaption>
-      </figure>
+      <div class="img-pair">
+        <div class="img-block">
+          <img src="./images/photo-teleop-operator.jpg" alt="操作者穿戴 LDT-01 遥操作端示范采集" loading="lazy">
+          <figcaption>图 2-2｜遥操作采集现场：操作者穿戴 LDT-01 遥操作端，主臂领动，从臂跟随动作同步执行分拣。</figcaption>
+        </div>
+        <div class="img-block">
+          <img src="./images/photo-teleop-closeup.jpg" alt="双臂分拣桌面俯视：左右格 + 物料" loading="lazy">
+          <figcaption>图 2-3｜分拣桌面俯视：双臂就位，蓝色分格收纳盒左格收黑件、右格收银件，物料摆放在中间便于抓取。</figcaption>
+        </div>
+      </div>
+      <div class="tip amber"><b>相机与视觉配置：</b>4 个 RGB 相机（CAM-1 头部 / CAM-2 左腕 / CAM-3 右腕 / 1 备机），92° DFOV、全局快门、最高 1600×1300@60fps，构成策略输入的三路图像流。</div>
       <p>物料清单：黑色零件 ×N、银色零件 ×N、左右分格收纳盒、卷尺（测量桌面到机械臂距离）、LDT-01 遥操作端与急停按钮。开工前清空从动臂运动范围内一切杂物。</p>
     </section>
 
@@ -133,18 +138,8 @@
         <li><b>循环与质控</b>：复位物料进入下一组；任何失误组立即点「本次采集失败」，该组不计入训练。</li>
         <li><b>检查落盘</b>：数据默认存于 /home/lindenbot/save_data（编号即子目录名，最大编号 = 最新一集）。</li>
       </ol>
-      <figure class="shot">
-        <img src="./images/fig-p05-task-new.png" alt="新建任务" loading="lazy">
-        <figcaption>图 2-5｜新建任务：任务管理点新建，名称与描述为必填（描述用英文），「采集数量」写大一些以支持循环采集。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p07-teleop-familiar.png" alt="遥操作熟悉界面" loading="lazy">
-        <figcaption>图 2-6｜遥操作熟悉：开始数据采集后三摄像头画面同屏；正常完成点停止，失误组点「本次采集失败」排除。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p12-done-mark.png" alt="完成标记" loading="lazy">
-        <figcaption>图 2-7｜分步示范要点（工厂场景）：部署场景后「3. 双手放入零件」——左黑入左格、右银入右格，按步标记完成度。</figcaption>
-      </figure>
+      <div class="tip amber"><b>新建任务要点：</b>① 任务管理点「新建」→ ② 名称与描述必填（建议英文，如 <code>sort_black_left_silver_right</code>）→ ③「采集数量」写大一些以支持循环采集 → ④ 保存后任务列表出现新项。</div>
+      <div class="tip amber"><b>遥操作采集要点：</b>点开始数据采集后须在 <b>3 秒内</b> 握持主动臂，三摄像头画面同屏；正常完成点「停止当前组」，失误组点「本次采集失败」排除——<b>坏数据比数据不足更致命</b>。</div>
     </section>
 
     <!-- 05 关键命令 -->
@@ -247,10 +242,7 @@ image_save_num : 1000   <span class="c"># 50Hz 下约 20 秒；0 = 无穷</span>
         <div class="kcard"><div class="kd">Q 为什么描述要英文？</div><div class="kt">任务名/描述会写入数据集 tasks 表作为训练标签，英文避免后续文本编码坑（01 采集流程明确要求英文描述）。</div></div>
         <div class="kcard"><div class="kd">Q 数据太多显存爆了？</div><div class="kt">采集阶段控制单条时长与总数据量：本地 4060 Ti 16G 跑 ACT，量过大易 OOM——宁可采得精，不必采得多。</div></div>
       </div>
-      <figure class="shot">
-        <img src="./images/fig-p17-ldt-screen.png" alt="LDT-01 屏显与故障" loading="lazy">
-        <figcaption>图 2-8｜LDT-01 屏显排障：故障码 61445（STO 急停）恢复与主从不一致的自检步骤示意。</figcaption>
-      </figure>
+      <div class="tip amber"><b>LDT-01 屏显排障：</b>故障码 <code>61445</code>（STO 急停）恢复步骤 → ① 急停按钮确认未按下 → ② 屏显「主从不一致」时按自检步骤 → ③ 重启 start_tele.sh 重新上锁扭矩。</div>
     </section>
 
     <!-- 09 拓展 -->

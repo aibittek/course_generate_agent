@@ -15,6 +15,11 @@
 .sld{-webkit-appearance:none;appearance:none;width:100%;max-width:420px;height:7px;border-radius:6px;background:#d7e6e3;outline:none;margin:10px 0}
 .sld::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--theme);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25);cursor:pointer}
 .sld::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--theme);border:3px solid #fff;cursor:pointer}
+.img-pair{display:grid;gap:16px}
+.img-block{margin:14px 0;text-align:center}
+.img-block img{max-width:100%;height:auto;border:1px solid var(--border,#e2e8f0);border-radius:10px;background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.07)}
+.img-block figcaption{margin-top:8px;font-size:12.5px;color:#5b6b78}
+@media (max-width:900px){.img-pair{grid-template-columns:1fr !important}}
 </style>
 </head>
 <body>
@@ -82,6 +87,17 @@
     <div class="step"><span class="n">3</span><b>落盘（JSON）</b>：id / drive_mode / homing_offset / range_min / range_max 写进校准文件，之后每次启动自动加载</div>
   </div>
   <p>摄像头侧的"标定"则是<b>身份绑定</b>：video0/3/5 是插拔顺序给的临时名，第 04 章要求<b>摄像头直连、不可用拓展坞、不可变动插口</b>——只有插口固定，ID_PATH 才稳定，udev 才能把"端口 7"永久翻译成 <code>/dev/cam_left</code>。至此感知端（cam_*）与执行端（arm_*）都有了稳定坐标，遥操作才有意义。</p>
+  <p style="margin:14px 0 0;font-size:13px;color:#5b6b78">▍实物对照：校准手法与摄像头端口分配</p>
+  <div class="img-pair" style="grid-template-columns:repeat(2,1fr)">
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-calibration-hand1.jpeg" alt="手动掰臂校准实物图" loading="lazy" decoding="async">
+      <figcaption>(a) 校准手法 · 人手握住臂末端，逐关节掰到 MIN/MAX 录程——2047 中位基准对齐后落盘 JSON</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-rear-panel-ports.png" alt="主机背面摄像头端口分配标注图" loading="lazy" decoding="async">
+      <figcaption>(b) 主机背面端口分配 · <b>左手相机 / 右手相机 / 头部相机</b>各占固定 USB 口——插口固定才能让 ID_PATH 稳定</figcaption>
+    </figure>
+  </div>
 </section>
 
 <!-- 03 -->
@@ -97,10 +113,18 @@
       <tr><td>参考视频</td><td>3 段</td><td>主臂校准讲解版 / 从臂校准讲解版 / 从臂校准日志版</td></tr>
     </tbody>
   </table>
-  <figure>
-    <img src="images/fig-p04-cam.png" loading="lazy" alt="第 04 章第 2 页：三路摄像头检测结果截图">
-    <figcaption>图 3-1｜第 04 章第 2 页：检出 Camera #0/#1/#2 分别为 /dev/video0、video3、video5，YUYV 640×480@30，查看抓拍图即可分辨位置</figcaption>
-  </figure>
+  <div class="tip teal" style="margin-top:14px"><span class="lab">◆ 摄像头检测结果</span><code>lerobot-find-cameras opencv</code> 输出三路：<b>Camera #0</b> → /dev/video0（左手）、<b>#1</b> → /dev/video3（右手）、<b>#2</b> → /dev/video5（头部），格式 YUYV 640×480@30。打开 <code>outputs/captured_images</code> 看三张抓拍图即可分辨位置。</div>
+  <p style="margin:14px 0 0;font-size:13px;color:#5b6b78">▍实物对照：摄像头端口分配与校准现场</p>
+  <div class="img-pair" style="grid-template-columns:repeat(2,1fr)">
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-rear-panel-ports.png" alt="主机背面 USB 端口标注：左手/右手/头部相机" loading="lazy" decoding="async">
+      <figcaption>(a) 主机背面端口 · 三路摄像头各占固定 USB 口——不可走拓展坞、不可换口</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-calibration-hand2.jpeg" alt="臂校准现场实物图" loading="lazy" decoding="async">
+      <figcaption>(b) 校准现场 · 人手握住臂末端逐关节掰全程，录下 MIN/POS/MAX 落盘 JSON</figcaption>
+    </figure>
+  </div>
 </section>
 
 <!-- 04 -->
@@ -136,15 +160,17 @@
       <p>逐行对照校准日志：connected → 中位提示 → Recording positions → MIN/POS/MAX 表。</p>
     </div>
   </div>
-  <figure>
-    <img src="images/fig-p04-wire.png" loading="lazy" alt="第 04 章第 5 页：摄像头接线完成图截图">
-    <figcaption>图 3-2｜第 04 章第 5 页：接线完成图——三路摄像头按固定接口插好后不再变动（不可变动摄像头插口）</figcaption>
-  </figure>
+  <div class="img-pair" style="grid-template-columns:repeat(2,1fr);margin-top:14px">
+    <figure class="img-block" style="margin:0">
+      <img src="./images/photo-calibration-hand3.jpeg" alt="臂校准逐关节掰程实物图" loading="lazy" decoding="async">
+      <figcaption>(a) 校准实录 · 逐关节掰到极限位置录 MIN/MAX，红线为电机通信排线</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:0">
+      <img src="./images/photo-calibration-hand4.jpeg" alt="主臂全臂校准定位实物图" loading="lazy" decoding="async">
+      <figcaption>(b) 主臂校准 · 人手定位臂末端摆基准姿态（≈2047），回车后进入录程</figcaption>
+    </figure>
+  </div>
   <div class="tip amber"><span class="lab">⚠ 两别踩</span>① 摄像头<b>不能走拓展坞</b>、不能换口——换了 ID_PATH 就变，别名全失效；② 每次开机若提示已有校准文件，直接回车是沿用旧值，<b>要重校必须输 c 回车</b>。</div>
-  <figure>
-    <img src="images/fig-p05-pg02.png" loading="lazy" alt="第 05 章第 2 页：基准姿态提示截图">
-    <figcaption>图 3-3｜第 05 章第 2 页：日志停在 Move …to the middle of its range of motion and press ENTER——此时把臂摆成基准姿态再回车</figcaption>
-  </figure>
 </section>
 
 <!-- 05 -->
@@ -184,18 +210,7 @@
 <span class="c">#   主臂 …/calibration/teleoperators/so101_leader/*.json</span>
 <span class="c">#   从臂 …/calibration/robots/so101_follower/*.json</span>
 <span class="c">#   字段例：{"id":1,"drive_mode":0,"homing_offset":-517,"range_min":854,"range_max":3266}</span></pre>
-  <figure>
-    <img src="images/fig-p05-term.png" loading="lazy" alt="第 05 章第 7 页：主臂校准命令与日志截图">
-    <figcaption>图 3-4｜第 05 章第 7 页：左主臂校准命令（--teleop.*）与 connected、中位提示日志的真实输出</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p05-term-3.png" loading="lazy" alt="第 05 章第 9 页：右主臂校准基准姿态截图">
-    <figcaption>图 3-5｜第 05 章第 9 页：右主臂 right_leader_arm 基准姿态提示——串口号与 id 必须左右对应</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p04-term.png" loading="lazy" alt="第 04 章第 1 页：摄像头直连与搜索命令截图">
-    <figcaption>图 3-6｜第 04 章第 1 页：摄像头搜索指令原文——先 rm -rf 旧抓拍目录再执行 lerobot-find-cameras opencv</figcaption>
-  </figure>
+  <div class="tip teal" style="margin-top:14px"><span class="lab">◆ 两阶段交互</span>执行 <code>lerobot-calibrate</code> 后终端会提示：<b>"Move … to the middle of its range of motion and press ENTER"</b> → 摆好基准姿态回车 → <b>"Move all joints sequentially through their entire ranges…"</b> → 逐关节掰全程再回车 → 输出 <b>NAME | MIN | POS | MAX</b> 表。若需重校，在提示处输 <code>c</code> 回车（直接回车=沿用旧文件）。</div>
 </section>
 
 <!-- 06 -->
@@ -244,14 +259,6 @@
     </svg>
   </div>
   <div class="anim-cap">动画 3-1｜上：主臂游标在 MIN–POS–MAX 表上扫动；下：从臂游标延迟 0.35s 跟随——两表中位（2047 基准）对齐后，读数差异由 homing_offset 补偿，这正是标定的数学本质</div>
-  <figure>
-    <img src="images/fig-p05-term-2.png" loading="lazy" alt="第 05 章第 4 页：右从臂校准命令与基准提示截图">
-    <figcaption>图 3-7｜第 05 章第 4 页：右从臂校准命令与"将机械臂移动至基准姿态"提示——对应动画里的中位对齐动作</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p04-pg06.png" loading="lazy" alt="第 04 章第 6 页：摄像头插口规范截图">
-    <figcaption>图 3-8｜第 04 章第 6 页：摄像头按固定接口插入的规范图——口位固定，别名与"感知坐标"才稳定</figcaption>
-  </figure>
 </section>
 
 <!-- 07 -->

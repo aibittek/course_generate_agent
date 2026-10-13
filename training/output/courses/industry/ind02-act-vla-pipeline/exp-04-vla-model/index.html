@@ -4,15 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-04 VLA 大模型路线与对比 · IND-02 双臂采训推全流程</title>
-<link rel="stylesheet" href="../shared/tutorial.css">
+<link rel="stylesheet" href="../shared/tutorial.css?v=3">
 <style>
 :root{
   --theme:#7c3aed; --theme-deep:#6d28d9; --theme-bg:#f5f3ff; --theme-bd:#ddd6fe;
 }
+body{overflow-x:clip}
 figure{margin:14px 0;text-align:center}
 figure img{max-width:100%;border:1px solid var(--line,#e2e8f0);border-radius:10px;display:block;margin:0 auto}
 figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
 .tag.hl{background:#ede9fe;color:#6d28d9}
+.img-block{margin:14px 0;text-align:center;min-width:0}
+.img-block img{max-width:100%;border-radius:10px;box-shadow:0 4px 12px rgba(15,23,42,.12)}
+.img-block figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
+.blk{min-width:0;overflow-x:hidden}
+pre{max-width:100%;min-width:0;overflow-x:auto}
+.content{overflow-x:hidden;min-width:0}
 </style>
 </head>
 <body>
@@ -67,10 +74,7 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
       <p><b>② 视觉-语言底座（VLM）</b>——SmolVLA 站在 <code>HuggingFaceTB/SmolVLM2-500M-Video-Instruct</code>（450M 总参数）肩上：图像走视觉编码器（训练时 <code>freeze_vision_encoder=True</code> 冻结，省显存），文本与图像特征在 16 层 VLM 层里做跨模态注意力——"指令里的 red cube 对应画面里那块红色"就是在这层对上的（日志 <code>Reducing the number of VLM layers to 16</code>）。</p>
       <p><b>③ 动作专家（expert）</b>——VLM 输出的融合特征交给动作专家解码出 50 步动作块（<code>chunk_size=50</code>；<code>train_expert_only=True</code> 表示只微调专家与接口层，<code>num_learnable_params=99880992 (100M)</code>，其余 3.5 亿参数冻结）。损失仍是重建 + KL 的回归范式，只是"看和想"的部分换成了大模型。</p>
       <p><b>ACT vs VLA 一览</b>：ACT——无语言、52M 专职小模型、数据要多但专精、一步到位快；VLA——语言驱动、100M 可学/450M 底座、预训练常识可迁移、一条指令切换任务，但更吃显存（batch 16 OOM 就减半）、建议至少 10000 步（示例日志仅测 1000 步）。<b>自回归 vs 并行</b>：VLM 的语言理解部分本质是自回归建模（token 逐个生成的思维链），而动作输出仍走并行块——VLA 是"慢想 + 快动"的组合。</p>
-      <figure>
-        <img src="./images/fig-p02-vla-1.png" alt="VLA 模型安装与依赖截图" loading="lazy">
-        <figcaption>图 2-1｜VLA 扩展依赖安装命令（第 13 章）</figcaption>
-      </figure>
+      <div class="tip violet"><span class="lab">VLA 安装</span>安装 VLA 扩展依赖（第 13 章）：在 lerobot 环境中执行 <code>pip install -e ".[smollvla]"</code>，安装 SmolVLM2 底座与分词器组件，完成后即可用 <code>--policy.type=smolvla</code> 启动训练。</div>
       <div class="tip violet"><span class="lab">一句话总结</span>ACT 是"肌肉记忆"，VLA 是"看得菜谱的肌肉记忆"。语言给了模型一个可插拔的任务入口。</div>
     </section>
 
@@ -113,22 +117,10 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
         <tr><td>账本层</td><td><code>num_learnable_params=99880992 (100M)</code> / <code>num_total_params=450046176 (450M)</code></td><td>只有专家与接口层在学，底座冻结</td></tr>
         <tr><td>曲线层</td><td><code>step:100 loss:0.081</code> → <code>step:1000 loss:0.022</code></td><td>loss / grdn 双降才算健康</td></tr>
       </table>
-      <figure>
-        <img src="./images/fig-p03-vla-2.png" alt="VLA 数据增强与优化器完整配置 dump 截图" loading="lazy">
-        <figcaption>图 4-1｜配置层细节 dump：ColorJitter / SharpnessJitter 数据增强、AdamW lr 1e-4、warmup 1000 步与 30000 步衰减调度（第 13 章）</figcaption>
-      </figure>
-      <figure>
-        <img src="./images/fig-p04-vla-3.png" alt="VLA 训练启动配置日志截图" loading="lazy">
-        <figcaption>图 4-2｜VLA 训练启动：底座、冻结策略与图像尺寸一目了然（第 13 章）</figcaption>
-      </figure>
-      <figure>
-        <img src="./images/fig-p06-vla-5.png" alt="VLA 训练 loss 曲线日志截图" loading="lazy">
-        <figcaption>图 4-3｜训练至 1000 步的 loss / grdn / lr 变化（第 13 章）</figcaption>
-      </figure>
-      <figure>
-        <img src="./images/fig-p07-vla-6.png" alt="VLA 训练结束日志截图" loading="lazy">
-        <figcaption>图 4-4｜训练完成：参数账本与 Step 1000 检查点（第 13 章）</figcaption>
-      </figure>
+      <div class="tip violet"><span class="lab">配置层细节</span>启动日志 dump 全量配置：数据增强含 <code>ColorJitter</code> / <code>SharpnessJitter</code>（默认 enable:false，可开实验）；优化器 <code>AdamW lr=1e-4</code>，warmup 1000 步后接 30000 步余弦衰减调度——比 ACT 的 1e-5 大十倍，因可学参数仅 100M 且底座已冻结（第 13 章）。</div>
+      <div class="tip violet"><span class="lab">启动日志要点</span>VLA 训练启动时核对三行：① <code>pretrained_path: lerobot/smolvla_base</code>（底座已加载）→ ② <code>freeze_vision_encoder=True</code>（视觉编码器冻结）→ ③ 图像尺寸 <code>image_size: (224, 224)</code>（VLM 标准分辨率）——三行齐备即表示进入正式训练循环（第 13 章）。</div>
+      <div class="tip violet"><span class="lab">loss 曲线</span>示例日志 1000 步内 <code>loss:0.081 → 0.022</code>，<code>grdn</code> 同步下降——双降才算健康；VLA 的 loss 绝对值远低于 ACT（8.0 量级）是因为预训练底座已提供良好初始化，不可直接与 ACT 跨模型比绝对 loss（第 13 章）。</div>
+      <div class="tip violet"><span class="lab">训练完成</span>看到 <code>Checkpoint policy after step 1000</code> 与 <code>End of training</code> 后，检查点位于 <code>outputs/…/checkpoints/last/pretrained_model</code>，参数账本打印 <code>num_learnable_params=99880992 (100M)</code> / <code>num_total_params=450046176 (450M)</code>——确认可学参数占比正确即完成（第 13 章）。</div>
     </section>
 
     <section class="blk" id="s5">

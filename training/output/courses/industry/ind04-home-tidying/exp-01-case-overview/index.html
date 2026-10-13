@@ -84,10 +84,8 @@
         <div class="kcard"><div class="kd">学习目标</div><div class="kt">ACT 策略学会「画面 + 关节状态 → 下一段动作」，部署回真机复现闭环。</div></div>
         <div class="kcard"><div class="kd">成败关键</div><div class="kt">芒果/罐子按默认布局摆放、桌面环境与采集时一致，坏示范当场剔除。</div></div>
       </div>
-      <figure class="shot">
-        <img src="./images/fig-case-p01-scene.png" alt="家庭场景介绍：安全要求、任务拆解与默认布局" loading="lazy">
-        <figcaption>图 1-1｜《聆动机器人案例-家庭场景》第 1 页「场景介绍」：安全要求（抓取范围内不站人、保护桌面）、家庭收纳抓-拿-放双臂扩展（左手开盖→右手放物→左盖盖）、默认布局照片与场景测量建议。</figcaption>
-      </figure>
+      <div class="tip amber"><b>场景三大安全要求：</b>① 抓取范围内不站人（双臂 5kg 负载，夹手指尖能捏断笔）；② 保护桌面，金属罐/芒果落下可能砸坏；③ 遥操作时保持急停按钮在手边。</div>
+      <div class="tip amber"><b>家庭收纳任务拆解：</b><b>开 → 拿 → 放 → 盖</b> 四步闭环——左手管罐盖（开/盖）、右手管水果（拿/放），时序固定不乱套。默认布局：不锈钢罐居中、芒果放在罐右侧，采集/复现都按此摆放。</div>
       <div class="tip amber"><b>生活化类比：</b>行为克隆像「跟着大厨学颠勺」——你只看他的手怎么动、锅在哪，不背力学公式；他示范里若混入翻锅失误，你也会学失误——所以<b>坏数据必须剔除，数据质量 &gt; 数据数量</b>。</div>
     </section>
 
@@ -132,18 +130,9 @@
         <li><b>标记坏数据</b>：失误的组点「本次采集失败」，该组不计入训练。</li>
         <li><b>转换 → 训练 → 推理</b>：convert 脚本切段转换 → lerobot-train 训练 ACT → 加载 checkpoint 用 /model_ifrun 服务开关复现闭环。</li>
       </ol>
-      <figure class="shot">
-        <img src="./images/fig-case-p02-boot.png" alt="场景测量与设备开机步骤" loading="lazy">
-        <figcaption>图 1-2｜案例文档第 2 页「设备开机」：卷尺测量桌面到机械臂距离、侧面总电源与开机按钮、开机后夹爪张开收回、登录系统后浏览器输入 localhost:8699/#/robotManage。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-case-p05-capture.png" alt="任务管理与开始采集入口" loading="lazy">
-        <figcaption>图 1-3｜案例文档第 5 页「遥操作采集」：任务管理列表标注「1 开始」进入采集、「2 预览」先看轨迹；点开始数据采集后 3 秒内握持操作端，页面出现三路摄像头画面。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-case-p06-complete.png" alt="完成一组收纳动作采集" loading="lazy">
-        <figcaption>图 1-4｜案例文档第 6 页：按流程完成「左手打开不锈钢盖 → 右手拿芒果放入 → 左手盖回盖」后点「停止当前组数据采集」完成一组，画面显示三摄像头画面、采集用时与左右实时关节节拍。</figcaption>
-      </figure>
+      <div class="tip amber"><b>开机 4 步：</b>① 卷尺测量桌面到机械臂基座距离（<b>采集和复现必须一致</b>）→ ② 依次开侧面总电源 → 主机电源 → ③ 开机后夹爪张开再收回（确认伺服正常）→ ④ 登录 Ubuntu（默认密码 1），浏览器访问 <code>localhost:8699/#/robotManage</code>。</div>
+      <div class="tip amber"><b>任务采集入口：</b>任务管理列表标注「1 开始」进入采集、「2 预览」先看轨迹；点开始数据采集后<b>3 秒内</b>握持操作端（主动臂），页面出现三路摄像头画面（头部 + 左腕 + 右腕）。</div>
+      <div class="tip amber"><b>完成一组采集：</b>按流程完成「左手打开不锈钢盖 → 右手拿芒果放入 → 左手盖回盖」后点「停止当前组数据采集」，画面显示三摄像头画面、采集用时与左右实时关节节拍——<b>坏组立即点「本次采集失败」剔除</b>。</div>
     </section>
 
     <!-- 05 关键命令 -->

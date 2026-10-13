@@ -12,6 +12,11 @@
 .vcard h4{font-size:14px;font-weight:800;margin-bottom:7px}
 .vcard p{font-size:12.5px;color:#5b6b78;line-height:1.6}
 .vcard video{width:100%;border-radius:9px;margin-bottom:8px;background:#000;aspect-ratio:16/9}
+.img-pair{display:grid;gap:16px}
+.img-block{margin:14px 0;text-align:center}
+.img-block img{max-width:100%;height:auto;border:1px solid var(--border,#e2e8f0);border-radius:10px;background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.07)}
+.img-block figcaption{margin-top:8px;font-size:12.5px;color:#5b6b78}
+@media (max-width:900px){.img-pair{grid-template-columns:1fr !important}}
 </style>
 </head>
 <body>
@@ -80,6 +85,17 @@
     <div class="step"><span class="n">3</span><b>串口</b>把目标角发给从臂 → 舵机跟随，NORM 表实时刷新</div>
   </div>
   <p>再看两个关键数字：<b>不带摄像头时 16.74ms（60Hz）</b>几乎全速跟随；<b>加上两路 640×480 摄像头后变 31.59ms（32Hz）</b>，双臂加摄像头 36.29ms（28Hz）——图像采集与显示挤占了节拍。这就是"感知会吃算力预算"的最直观体现。另外，退出时<b>CTRL+C 只能按一次</b>：第一下让程序走 finally 断开串口、关闭相机，连按会打断清理，臂就可能保持失锁前的力矩状态卡住。</p>
+  <p style="margin:14px 0 0;font-size:13px;color:#5b6b78">▍实物对照：单臂工位与双臂遥操作现场</p>
+  <div class="img-pair" style="grid-template-columns:repeat(2,1fr)">
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-teleop-workspace.jpeg" alt="单臂遥操作工位实物图" loading="lazy" decoding="async">
+      <figcaption>(a) 单臂遥操作工位 · 主臂与从臂装在桌面，人手掰动主臂示教，从臂 60Hz 跟随</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-dual-arm-teleop.jpeg" alt="双臂遥操作现场实物图" loading="lazy" decoding="async">
+      <figcaption>(b) 双臂遥操作现场 · 左右主臂被人手牵动，左右从臂同步复现——12 关节 60Hz 节拍</figcaption>
+    </figure>
+  </div>
 </section>
 
 <!-- 03 -->
@@ -95,10 +111,7 @@
       <tr><td>脚本包（本课）</td><td>0_config.yaml + 1~9 号 bash 脚本</td><td>第 15 章命令行脚本操作手册</td></tr>
     </tbody>
   </table>
-  <figure>
-    <img src="images/fig-p06-term.png" loading="lazy" alt="第 06 章第 1 页：串口摄像头编号与遥操作前准备截图">
-    <figcaption>图 4-1｜第 06 章第 1 页：开跑前的编号确认——从臂/主臂串口别名、头部与手臂摄像头编号，外加"安装至桌面、无遮挡"两条准备项</figcaption>
-  </figure>
+  <div class="tip teal" style="margin-top:14px"><span class="lab">◆ 开跑前编号确认</span>从臂/主臂串口别名：<code>/dev/arm_slave_left·right</code> / <code>/dev/arm_master_left·right</code>；摄像头编号：<code>/dev/cam_left</code>（左手）、<code>/dev/cam_right</code>（右手）、<code>/dev/cam_head</code>（头部）。两条准备项：<b>① 主从臂正确安装至桌面、无遮挡；② 接线正确（先电源后 USB）</b>。</div>
 </section>
 
 <!-- 04 -->
@@ -129,14 +142,8 @@
       <p>双臂版完整操作：先复制 4 份校准 JSON，再执行 bi_so100 命令，12 关节同步跟随与单次停止。</p>
     </div>
   </div>
-  <figure>
-    <img src="images/fig-p06-term-2.png" loading="lazy" alt="第 06 章第 3 页：CTRL+C 正常停止打印截图">
-    <figcaption>图 4-2｜第 06 章第 3 页：按一次 ^C 后 right_leader_arm / right_follower_arm 依次 disconnected——这就是"正常停止"的标准长相</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p06-asm.png" loading="lazy" alt="第 06 章第 6 页：NORM 姿态表与视频窗口说明截图">
-    <figcaption>图 4-3｜第 06 章第 6 页：NORM 姿态表（gripper.pos 等六关节）实时刷新，同时弹出夹爪与顶部摄像头画面；停止后视频窗要手动点 X</figcaption>
-  </figure>
+  <div class="tip teal" style="margin-top:14px"><span class="lab">◆ 正常停止与 NORM 表</span>按一次 <b>CTRL+C</b> 后终端打印 <code>right_leader_arm disconnected</code> / <code>right_follower_arm disconnected</code>——这就是"正常停止"的标准长相。运行时终端实时刷新 <b>NORM 六关节表</b>（gripper.pos / shoulder_pan / shoulder_lift / elbow_flex / wrist_flex / wrist_roll），同时弹出夹爪与顶部摄像头视频窗口；停止后视频窗需<b>手动点 X 关闭</b>。</div>
+  <div class="tip amber"><span class="lab">⚠ 两别踩</span>① 摄像头<b>不能走拓展坞</b>、不能换口——换了 ID_PATH 就变，别名全失效；② 每次开机若提示已有校准文件，直接回车是沿用旧值，<b>要重校必须输 c 回车</b>。</div>
 </section>
 
 <!-- 05 -->
@@ -183,18 +190,7 @@
 <span class="g">bash</span> 1_calibrate_all.sh        <span class="c"># 依次校准 左从→右从→左主→右主</span>
 <span class="g">bash</span> 2.3_teleoperate_left_with_cameras.sh   <span class="c"># 左臂带摄像头遥操作</span>
 <span class="g">bash</span> 3_teleoperate_dual_arm.sh <span class="c"># 内含 mkdir+4cp+双臂命令，一键完成</span></pre>
-  <figure>
-    <img src="images/fig-p07-term.png" loading="lazy" alt="第 07 章第 2 页：双臂校准文件复制命令截图">
-    <figcaption>图 4-4｜第 07 章第 2 页：4 条 cp 把 left/right_follower|leader 校准复制成 bimanual_*——不做这步双臂命令会找不到校准数据</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p15-term.png" loading="lazy" alt="第 15 章第 6 页：左臂带摄像头遥操作脚本截图">
-    <figcaption>图 4-5｜第 15 章第 6 页：2.3_teleoperate_left_with_cameras.sh 脚本实录——先 chmod 放权限再执行带摄像头命令，失败即 exit 1</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p15-term-3.png" loading="lazy" alt="第 15 章第 12 页：双臂遥操作脚本截图">
-    <figcaption>图 4-6｜第 15 章第 12 页：3.1 双臂带摄像头脚本的命令段——mkdir+校准检查+chmod+bi_so100 命令全打包在一脚本里</figcaption>
-  </figure>
+  <div class="tip teal" style="margin-top:14px"><span class="lab">◆ 双臂校准复制要点</span>4 条 <code>cp</code> 把 so101 单臂校准 JSON 改名为 bimanual_* 复制到 so100 目录——<b>不做这步双臂命令会找不到校准数据</b>。脚本 <code>3_teleoperate_dual_arm.sh</code> 已将 mkdir + 4cp + bi_so100 命令全打包，一键完成。</div>
 </section>
 
 <!-- 06 -->
@@ -252,9 +248,9 @@
     </svg>
   </div>
   <div class="anim-cap">动画 4-1｜一次遥操作循环：人手掰主臂 → 编码器角度入串口 → teleoperate 按 60Hz 节拍翻译 → 从臂舵机复现；粉色旁路是摄像头，图像汇入后节拍变慢（60 → 32 → 28Hz），光点就是一拍数据的旅程</div>
-  <figure>
-    <img src="images/fig-p07-teleop.png" loading="lazy" alt="第 07 章第 7 页：双臂带摄像头视频窗口与停止说明截图">
-    <figcaption>图 4-7｜第 07 章第 7 页：双臂带摄像头运行画面——左右夹爪 + 顶部三窗并排，CTRL+C 正常关闭后视频窗仍需手动点 X</figcaption>
+  <figure class="img-block" style="margin-top:14px">
+    <img src="./images/photo-dual-arm-teleop.jpeg" alt="双臂遥操作现场实物图" loading="lazy" decoding="async">
+    <figcaption>双臂带摄像头遥操作现场 · 左右夹爪 + 顶部摄像头画面并排运行，CTRL+C 正常关闭后视频窗仍需手动点 X</figcaption>
   </figure>
 </section>
 
@@ -283,22 +279,6 @@
     <li><span class="ok">遥操作没反应、一直没节拍打印</span>：第 07 章提示"如果未开始，则多点击几下回车继续"；同时核对串口别名与校准 JSON 是否已按 4 条 cp 复制成 bimanual_*</li>
     <li><span class="ok">双臂找不到校准</span>：第 07 章强调 cp "务必执行"——so101 单臂的 JSON 文件名与 bimanual 所需文件名不同，不复制就对不上号</li>
   </ul>
-  <figure>
-    <img src="images/fig-p14-port.png" loading="lazy" alt="第 14 章第 1 页：串口权限报错截图">
-    <figcaption>图 4-8｜第 14 章第 1 页：PermissionError [Errno 13] 全 traceback——根因在 openPort 阶段被系统拒绝，解法就一行 chmod 666</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p14-term.png" loading="lazy" alt="第 14 章第 2 页：报错调用栈续页截图">
-    <figcaption>图 4-9｜第 14 章第 2 页：调用栈延伸到 lerobot_calibrate.py 的 connect(calibrate=False)——权限问题会在任何 connect 阶段炸出</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p14-pg03.png" loading="lazy" alt="第 14 章第 3 页：录制数据集参数日志截图">
-    <figcaption>图 4-10｜第 14 章第 3 页：lerobot-record 的 dataset 参数日志——repo_id: 'test/put_cube_on_plate' 与已有目录冲突时即触发 FileExistsError</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p07-term-2.png" loading="lazy" alt="第 07 章第 4 页：单次 CTRL+C 正常停止打印截图">
-    <figcaption>图 4-11｜第 07 章第 4 页：按一次 ^C 后四路（左右 leader/left right follower）依次 disconnected——"只能按一次"的标准验证画面</figcaption>
-  </figure>
   <div class="tip amber"><span class="lab">💡 排障心法</span>先问"上一次做到哪一步"：连接类报错查第 03/05 章（别名、chmod、校准），数据类报错查 repo_id 目录（改名或 rm -rf），机械状态类报错先断电复位——永远先看 traceback 最后一行，再回来对表。</div>
 </section>
 
@@ -307,10 +287,6 @@
   <h2><span class="no">09</span>拓展挑战</h2>
   <div class="tip violet"><span class="lab">🚀 挑战一：读懂 0_config.yaml 流水线</span>按第 15 章打开 <code>0_config.yaml</code>：把 task_name、student_name、episode_time=6、reset_time=2、episode_num=2、train_steps=1000、batch_size=8 逐项用自己的话注释；再沿 1_calibrate_all → 2.x_teleoperate → 4_record → 5_train → 6_inference 的调用链，画出"校准→遥操作演练→采集→训练→推理"数据流向草图。</div>
   <div class="tip violet"><span class="lab">🚀 挑战二：中英脚本对照</span>把本页第 05 节你手敲过的单臂命令，仿照 2.1_teleoperate_left.sh 的 if [ $? -eq 0 ] 结构补全右臂版脚本（端口换 /dev/arm_*_right、id 换 right_*），要求带权限设置、成功/失败两种收尾 echo。</div>
-  <figure>
-    <img src="images/fig-p15-term-2.png" loading="lazy" alt="第 15 章第 8 页：右臂带摄像头遥操作脚本截图">
-    <figcaption>图 4-12｜第 15 章第 8 页：2.4 右臂摄像头脚本——对照左臂版找不同（端口/ID/cam_left→cam_right），正是挑战二的标准答案样式</figcaption>
-  </figure>
 </section>
 
 <!-- 10 -->

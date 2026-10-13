@@ -15,6 +15,9 @@
   figure.shot{margin:18px 0;border:1px solid var(--theme-bd);border-radius:12px;overflow:hidden;background:#fff}
   figure.shot img{display:block;width:100%;height:auto}
   figure.shot figcaption{padding:10px 14px;font-size:13px;color:#92400e;background:var(--theme-bg);border-top:1px solid var(--theme-bd)}
+  .img-block{margin:14px 0;text-align:center}
+  .img-block img{max-width:100%;border-radius:10px;border:1px solid var(--theme-bd);box-shadow:0 4px 12px rgba(217,119,6,.12)}
+  .img-block figcaption{font-size:12.5px;color:#92400e;margin-top:6px}
 </style>
 </head>
 <body>
@@ -74,14 +77,13 @@
         <div class="kcard"><div class="kd">双闸门</div><div class="kt">DRY_RUN=True 只跑仿真不下发；/model_ifrun 服务 true/false 随时接管/交还，双重保险。</div></div>
       </div>
       <div class="tip amber"><b>生活化类比：</b>真机推理像「刚拿到驾照的新手」——脑海里的动作块是背熟的套路（chunk_size=100），脚下还要靠限滑（三层平滑）防止一脚地板油；教练的副刹就是 DRY_RUN 与 /model_ifrun 两个开关。</div>
-      <figure class="shot">
-        <img src="./images/fig-p03-dry-run-cfg.png" alt="推理配置与 DRY_RUN" loading="lazy">
-        <figcaption>图 4-1｜推理配置要点：ACT 不含 PaliGemma tokenizer、observation 字典不含 task 字段、状态为 16 维向量，DRY_RUN 开关控制是否真下发。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p06-terminals.png" alt="节点架构与接口" loading="lazy">
-        <figcaption>图 4-2｜节点运行机制：fixed 版恒等映射、安全机制分层，以及 ROS2 订阅/发布/服务三类接口清单。</figcaption>
-      </figure>
+      <div class="tip amber"><b>推理配置要点：</b>ACT 不含 PaliGemma tokenizer、observation 字典不含 task 字段、状态为 16 维向量。<code>DRY_RUN</code> 开关控制是否真下发动作——<b>强烈建议首次推理先用 DRY_RUN 验证</b>。</div>
+      <div class="tip amber"><b>节点运行机制：</b>fixed 版恒等映射 → 安全机制分层 → ROS2 三类接口：<b>订阅</b>（/camera 图像、/joint_states 关节角）+ <b>发布</b>（/cmd_joints 动作）+ <b>服务</b>（/model_ifrun 开关）。</div>
+      <div class="tip amber"><b>模型加载与 ramp：</b><code>MODEL_PATH</code> 指定 checkpoint（如 <code>outputs/sort/ACT/checkpoints/050000/pretrained_model</code>），准备阶段 <code>start_cmd</code> 取当前实测弧度渐升，<b>杜绝起点跳变</b>。</div>
+      <div class="img-block">
+        <img src="./images/photo-final-demo.jpg" alt="双臂自主分拣：黑件入左格、银件入右格" loading="lazy">
+        <figcaption>图 4-1｜真机分拣完成：训练好的 ACT 策略部署回 LDT-01，双臂自主完成「左手抓黑件入左格、右手抓银件入右格」的分拣循环。</figcaption>
+      </div>
     </section>
 
     <!-- 03 硬件与材料 -->
@@ -93,10 +95,11 @@
         <div class="kcard"><div class="kd">复现场景</div><div class="kt">与采集完全一致的桌面、收纳盒位姿、黑/银零件；开工前卷尺复测距离。</div></div>
         <div class="kcard"><div class="kd">安全设备</div><div class="kt">急停按钮、2 米半圆清场、双人值守（一人盯程序一人盯机械臂）。</div></div>
       </div>
-      <figure class="shot">
-        <img src="./images/fig-p05-model-path.png" alt="MODEL_PATH 与 ramp" loading="lazy">
-        <figcaption>图 4-3｜模型加载与 ramp 准备：MODEL_PATH 指定 checkpoint，准备阶段 start_cmd 取当前实测弧度渐升，杜绝起点跳变。</figcaption>
-      </figure>
+      <div class="tip amber"><b>模型加载与 ramp 准备：</b>三终端启动 ROS2 推理节点后，<code>MODEL_PATH</code> 指向 checkpoint 目录，准备阶段 <code>start_cmd</code> 取当前实测弧度渐升——像起步缓抬离合，杜绝起点跳变。</div>
+      <div class="img-block">
+        <img src="./images/photo-sorting-action.jpg" alt="双臂分拣动作瞬间：正在抓取银色零件" loading="lazy">
+        <figcaption>图 4-2｜分拣动作瞬间：训练好的策略正在抓取银色零件，准备放入右侧收纳格。</figcaption>
+      </div>
     </section>
 
     <!-- 04 操作步骤 -->
@@ -129,22 +132,10 @@
           <li>双臂当前位姿与采集起点接近（ramp 才能平滑接管）。</li>
         </ul>
       </div>
-      <figure class="shot">
-        <img src="./images/fig-p07-service-call.png" alt="服务开关调用" loading="lazy">
-        <figcaption>图 4-4｜开闸动作：激活 lerobot 环境、运行推理节点后，ros2 service call /model_ifrun 下发 true/false 控制自主分拣起停。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p07-case-replay.png" alt="案例复盘与失败标记" loading="lazy">
-        <figcaption>图 4-5｜质量回溯：采集中误差点「本次采集失败」——该组不计入训练；复盘时据此核对有效样本量是否达标。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p12-convert-tree.png" alt="数据上传与部署树" loading="lazy">
-        <figcaption>图 4-6｜云端联动：采集数据经上传按钮传至云服务器，一键安装后解压转换数据，训练与推理共享同一数据出口。</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="./images/fig-p19-final-demo.png" alt="最终成功判据" loading="lazy">
-        <figcaption>图 4-7｜成功判据：机械臂能正常将零件放入收纳盒中，则实验成功——黑件左格、银件右格，动作连贯不交叉。</figcaption>
-      </figure>
+      <div class="tip amber"><b>开闸动作：</b>激活 lerobot 环境 → 运行推理节点 → <code>ros2 service call /model_ifrun std_srvs/srv/SetBool data:\{data: true\}</code> 下发 true/false 控制自主分拣起停。</div>
+      <div class="tip amber"><b>质量回溯：</b>采集中误差点「本次采集失败」——该组不计入训练；复盘时据此核对有效样本量是否达标（训练集数量 = 采集总数 - 失败标记数）。</div>
+      <div class="tip amber"><b>云端联动：</b>采集数据经上传按钮传至云服务器，一键安装后解压转换数据，训练与推理共享同一数据出口。</div>
+      <div class="tip amber"><b>成功判据：</b>机械臂能正常将零件放入收纳盒中则实验成功——<b>黑件左格、银件右格，动作连贯不交叉</b>。连续 3 轮无失误即为通过。</div>
     </section>
 
     <!-- 05 关键命令 -->

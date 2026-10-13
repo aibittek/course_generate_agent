@@ -4,15 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-03 云服务器使用与真机推理 · IND-02 双臂采训推全流程</title>
-<link rel="stylesheet" href="../shared/tutorial.css">
+<link rel="stylesheet" href="../shared/tutorial.css?v=3">
 <style>
 :root{
   --theme:#7c3aed; --theme-deep:#6d28d9; --theme-bg:#f5f3ff; --theme-bd:#ddd6fe;
 }
+body{overflow-x:clip}
 figure{margin:14px 0;text-align:center}
 figure img{max-width:100%;border:1px solid var(--line,#e2e8f0);border-radius:10px;display:block;margin:0 auto}
 figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
 .tag.hl{background:#ede9fe;color:#6d28d9}
+.img-block{margin:14px 0;text-align:center;min-width:0}
+.img-block img{max-width:100%;border-radius:10px;box-shadow:0 4px 12px rgba(15,23,42,.12)}
+.img-block figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
+.blk{min-width:0;overflow-x:hidden}
+pre{max-width:100%;min-width:0;overflow-x:auto}
+.content{overflow-x:hidden;min-width:0}
 </style>
 </head>
 <body>
@@ -66,14 +73,8 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
       <p><b>训练侧</b>：LeRobot 镜像把 CUDA、PyTorch、LeRobot 依赖预装好，一条 <code>pip install -e .</code> 即完成源码安装。数据靠 zip 上传，训练产出的 <code>checkpoints/last/pretrained_model</code> 是一个自包含目录（config + 权重 + 处理器），下载回本地即可用。</p>
       <p><b>推理侧</b>：推理复用了采集命令 <code>lerobot-record</code>，但<b>去掉了 --teleop</b>，改为加 <code>--policy.path=/…/checkpoints/last/pretrained_model</code>。此时每个控制周期的数据流变成：三摄像头图像 + 6 维状态 → 喂给策略 → 得到 100 步动作块 → 取前 n 步下发给关节 → 下一周期再推理。日志里 <code>'policy': {input_features: observation.images.left/side (3,480,640), observation.state (6,), output_features action (6,)}</code> 就是这份"策略契约"。<code>episode_time_s=60</code> 让机器人有一分钟自主发挥。</p>
       <p><b>为什么 repo_id 加 eval_ 前缀</b>：推理也要开启 recorder 记录表现（方便回看与评估），但这些数据不是训练原料，用 <code>eval_</code> 命名和训练集彻底分开，避免后来者把"机器人的尝试"误当成"人类示范"混进训练。</p>
-      <figure>
-        <img src="./images/fig-p04-cloud-3.png" alt="云服务器 JupyterLab 终端操作截图" loading="lazy">
-        <figcaption>图 2-1｜云实例 JupyterLab 终端：pip install -e . 部署 LeRobot（第 11 章）</figcaption>
-      </figure>
-      <figure>
-        <img src="./images/fig-p04-inference-3.png" alt="推理命令与 policy 配置加载日志截图" loading="lazy">
-        <figcaption>图 2-2｜推理启动日志：policy 输入输出特征与加载来源（第 12 章）</figcaption>
-      </figure>
+      <div class="tip violet"><span class="lab">云端部署</span>JupyterLab 新终端执行 <code>cd /data/lerobot/</code> + <code>pip install -e .</code>，安装完成后终端无报错返回提示符，即可进入训练流程（第 11 章）。</div>
+      <div class="tip violet"><span class="lab">推理契约</span>推理启动日志打印 <code>'policy': {input_features: observation.images.left/side (3,480,640), observation.state (6,), output_features action (6,)}</code>——这正是策略的输入输出契约：三路图像 + 6 维状态进、6 维动作出（第 12 章）。</div>
       <div class="tip violet"><span class="lab">对照记忆</span>采集 = record + teleop；推理 = record + policy.path。<b>同一个命令，换掉"谁来给动作"。</b></div>
     </section>
 
@@ -108,28 +109,16 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
         <div class="step"><div class="n">Step 3</div>上传本地打包的 zip 数据集（JupyterLab 上传按钮或 scp），解压到 <code>~/.cache/huggingface/lerobot/&lt;名&gt;/</code> 对应位置。<div class="arr"></div></div>
         <div class="step"><div class="n">Step 4</div>云端训练（命令见 §5），或跳过此步使用本地已训好的检查点。<div class="arr"></div></div>
         <div class="step"><div class="n">Step 5</div>下载 <code>pretrained_model</code> 到本地推理机，摆好红方块与盘子，运行推理命令（§5 第二条）。<div class="arr"></div></div>
-        <div class="step"><div class="n">Step 6</div>校准提示 Mismatch 时按 ENTER；<code>Recording episode 0</code> 出现后机器人开始自主抓取，看满 60 秒或按一次 Ctrl+C 退出。收工后：云实例 → 更多 → 释放实例（复制确认 ID 前五位）。</div></div>
+        <div class="step"><div class="n">Step 6</div>校准提示 Mismatch 时按 ENTER；<code>Recording episode 0</code> 出现后机器人开始自主抓取，看满 60 秒或按一次 Ctrl+C 退出。收工后：云实例 → 更多 → 释放实例（复制确认 ID 前五位）。<div class="arr"></div></div>
       </div>
-      <figure>
-        <img src="./images/fig-p02-cloud-1.png" alt="云平台租用实例选卡页面截图" loading="lazy">
-        <figcaption>图 4-1｜租用实例：选择 L40S 显卡（第 11 章）</figcaption>
-      </figure>
-      <figure>
-        <img src="./images/fig-p05-inference-4.png" alt="真机自主执行任务截图" loading="lazy">
-        <figcaption>图 4-2｜推理中的真机：机器人自主执行 Put red cube into plate（第 12 章）</figcaption>
-      </figure>
-      <figure>
-        <img src="./images/fig-p06-inference-5.png" alt="推理退出与 Ctrl+C 日志截图" loading="lazy">
-        <figcaption>图 4-3｜推理退出：Recording episode 0 开始自动抓取，Ctrl+C 仅按一次（第 12 章）</figcaption>
-      </figure>
-      <figure>
-        <img src="./images/fig-p05-cloud-4.png" alt="云端安装完成后上传数据集截图" loading="lazy">
-        <figcaption>图 4-4｜安装完成后在 JupyterLab 上传本地打包的采集数据（第 11 章）</figcaption>
-      </figure>
-      <figure>
-        <img src="./images/fig-p07-cloud-6.png" alt="云平台释放实例确认弹窗截图" loading="lazy">
-        <figcaption>图 4-5｜收工关机：复制实例 ID 前五位确认后释放，防止持续计费（第 11 章）</figcaption>
-      </figure>
+      <div class="tip violet"><span class="lab">租用实例要点</span>gpufree.cn 控制台 → 租用实例 → 显卡选 <b>L40S</b> → 搜索"lerobot"镜像 → 立即创建，等待状态变为 RUNNING 即可进入 JupyterLab（第 11 章）。</div>
+      <div class="img-block">
+        <img src="./images/photo-inference-real.jpeg" alt="推理真机实物照：从臂自主执行红方块放入盘子的任务" loading="lazy">
+        <div class="img-block figcaption">图 4-1｜推理真机实景：加载 ACT 检查点后，从臂自主执行 Put red cube into plate——摆位与采集时完全一致，动作完全来自策略输出（第 12 章）</div>
+      </div>
+      <div class="tip amber"><span class="lab">推理退出</span><code>Recording episode 0</code> 出现后机器人开始自主抓取，看满 60 秒自动退出或 <b>Ctrl+C 仅按一次</b>；连按会导致机械臂姿态异常，尾部 FATAL / 核心已转储提示属于正常清理噪音。</div>
+      <div class="tip violet"><span class="lab">数据上传</span>安装完成后在 JupyterLab 用上传按钮或 scp 将本地 <code>put_cube_plate.zip</code> 传到云端，解压到 <code>~/.cache/huggingface/lerobot/liming/put_cube_plate/</code> 对应位置，确认 parquet 文件可见即可开始训练（第 11 章）。</div>
+      <div class="tip amber"><span class="lab">收工关机</span>实例控制台 → 更多 → 释放实例，弹窗要求复制实例 ID 前五位确认——务必完成此步，否则实例持续计费（第 11 章）。</div>
     </section>
 
     <section class="blk" id="s5">
@@ -150,10 +139,7 @@ lerobot-record --robot.type=so101_follower --robot.port=/dev/arm_slave_left --ro
         <li><span class="ok">✓</span><b>key 命令不含 teleop</b>：日志显示 <code>teleop: None</code>，动作完全来自策略。</li>
         <li><span class="ok">✓</span><b>退出</b>：时间到自动退出，或 Ctrl+C <b>一次</b>；连按会导致机械臂姿态异常（KeyboardInterrupt 落在 busy_wait 里属正常）。</li>
       </ul>
-      <figure>
-        <img src="./images/fig-p07-inference-6.png" alt="推理结束退出日志截图" loading="lazy">
-        <figcaption>图 5-1｜推理结束的退出日志（尾部 FATAL / 核心已转储提示可忽略）</figcaption>
-      </figure>
+      <div class="tip violet"><span class="lab">退出日志解读</span>推理结束后尾部可能打印 <code>FATAL: exception not rethrown</code> 或"核心已转储"提示——这属于 pynput 清理期的正常噪音，确认已打印 <code>Exiting</code> 即可忽略。</div>
     </section>
 
     <section class="blk" id="s6">

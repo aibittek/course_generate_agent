@@ -32,7 +32,7 @@ main a:hover{text-decoration:underline}
 .side a{display:block;font-size:13px;color:#475569;padding:5px 10px;border-radius:8px;margin-bottom:2px}
 .side a:hover{background:var(--bg-soft);text-decoration:none}
 .side a.now{background:var(--theme-bg);color:var(--theme-deep);font-weight:600;border-left:3px solid var(--theme)}
-.content{padding:32px 40px 80px;min-width:0}
+.content{padding:32px 40px 80px;min-width:0;overflow-x:hidden}
 
 /* exp head */
 .exp-head{margin-bottom:28px}
@@ -130,4 +130,4 @@ tr:nth-child(even) td{background:#fcfdfe}
 
 footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 
-@media(max-width:960px){.wrap{grid-template-columns:1fr}.side{display:none}.content{padding:24px 18px 70px}}
+@media(max-width:960px){.wrap{grid-template-columns:1fr}.side{display:none}.content{padding:24px 18px 70px;overflow-x:hidden}}

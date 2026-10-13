@@ -4,15 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-02 数据整理与 ACT 模型训练 · IND-02 双臂采训推全流程</title>
-<link rel="stylesheet" href="../shared/tutorial.css">
+<link rel="stylesheet" href="../shared/tutorial.css?v=3">
 <style>
 :root{
   --theme:#7c3aed; --theme-deep:#6d28d9; --theme-bg:#f5f3ff; --theme-bd:#ddd6fe;
 }
+body{overflow-x:clip}
 figure{margin:14px 0;text-align:center}
 figure img{max-width:100%;border:1px solid var(--line,#e2e8f0);border-radius:10px;display:block;margin:0 auto}
 figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
 .tag.hl{background:#ede9fe;color:#6d28d9}
+.img-block{margin:14px 0;text-align:center;min-width:0}
+.img-block img{max-width:100%;border-radius:10px;box-shadow:0 4px 12px rgba(15,23,42,.12)}
+.img-block figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
+.blk{min-width:0;overflow-x:hidden}
+pre{max-width:100%;min-width:0;overflow-x:auto}
+.content{overflow-x:hidden;min-width:0}
 </style>
 </head>
 <body>
@@ -67,10 +74,7 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
       <p><b>② Transformer 编码器-解码器（想）</b>——编码器 4 层、解码器 1 层，维度 512、8 头注意力、前馈 3200。关键创新是 <b>动作分块（action chunking）</b>：模型不是一次预测一步，而是一次吐出未来 <code>chunk_size=100</code> 步的动作序列，避免"走一步看一步"导致的抖动与误差累积。</p>
       <p><b>③ CVAE（造多样性的手）</b>——同一个场景，人示范的动作也会有细微差异。CVAE 在训练时往瓶颈层 <code>latent_dim=32</code> 塞一个随机变量 z，强迫模型学会"同场景不同微动作都合理"；损失函数就是指导文件中的核心公式：<b>loss = reconstruction_loss + kl_weight × kld_loss</b>（<code>kl_weight=10</code>）。重建损失管"像不像示范"，KL 损失管"随机变量像不像标准正态"——一个像老师，一个保持即兴的自由度。</p>
       <p><b>自回归 vs 并行</b>：自回归模型（如 GPT 式输出、某些扩散策略）一 token 一 token 地续写动作，序列长了慢；ACT 借解码器一次性并行输出整段动作块，推理快、适合真机实时控制。代价是长程依赖表达弱——两条路线的取舍在 EXP-04 会再次遇到。</p>
-      <figure>
-        <img src="./images/fig-p02-training-1.png" alt="模型训练章节数据集目录查看截图" loading="lazy">
-        <figcaption>图 2-1｜进入数据集目录查看训练原料（第 10 章）</figcaption>
-      </figure>
+      <div class="tip violet"><span class="lab">数据集就位检查</span>进入缓存目录 <code>cd ~/.cache/huggingface/lerobot/liming/put_cube_plate/</code>，确认存在 <code>data/</code>（parquet 状态-动作序列）与 <code>videos/</code>（编码后视频）两个子目录，文件数与 episode 数一致——这是训练能读到数据的硬证据。</div>
       <div class="tip violet"><span class="lab">参数对应</span>LeRobot 源码 <code>configuration_act.py</code>：num_encoder_layers=4、num_decoder_layers=1、dim_model=518→512、n_heads=8、dim_feedforward=3200、dropout=0.1、use_vae=True、latent_dim=32、kl_weight=10、optimizer_lr=1e-5、weight_decay=1e-4。</div>
     </section>
 
@@ -97,16 +101,10 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
         <div class="step"><div class="n">Step 3</div>清理旧输出 <code>rm -rf …/outputs/put_cube_on_plate_act</code>，然后启动训练命令（§5 第一条）。<div class="arr"></div></div>
         <div class="step"><div class="n">Step 4</div>核对启动日志：Creating dataset → Creating policy → Creating optimizer → Effective batch size → num_learnable_params=51597190 (52M) → Start offline training。<div class="arr"></div></div>
         <div class="step"><div class="n">Step 5</div>每 100 步读一条日志，盯 loss 是否下降；<code>nvtop</code> 观察显存与算力占用。<div class="arr"></div></div>
-        <div class="step"><div class="n">Step 6</div>看到 <code>Checkpoint policy after step 5000</code> 与 <code>End of training</code> 即完成，检查点位于 <code>outputs/put_cube_on_plate_act/checkpoints/last/pretrained_model</code>。</div></div>
+        <div class="step"><div class="n">Step 6</div>看到 <code>Checkpoint policy after step 5000</code> 与 <code>End of training</code> 即完成，检查点位于 <code>outputs/put_cube_on_plate_act/checkpoints/last/pretrained_model</code>。<div class="arr"></div></div>
       </div>
-      <figure>
-        <img src="./images/fig-p03-training-2.png" alt="lerobot-train 启动配置打印截图" loading="lazy">
-        <figcaption>图 4-1｜训练启动时打印的全量配置（batch、steps、ACT 超参逐行可查）</figcaption>
-      </figure>
-      <figure>
-        <img src="./images/fig-p04-training-3.png" alt="训练过程 step loss 日志截图" loading="lazy">
-        <figcaption>图 4-2｜周期日志：step / loss / grdn / lr——判断收敛的四个数字</figcaption>
-      </figure>
+      <div class="tip violet"><span class="lab">启动日志六行</span>训练命令执行后会依次打印：① <code>Creating dataset</code> → ② <code>Creating policy</code>（ACT 配置全量打印）→ ③ <code>Creating optimizer</code>（AdamW + lr schedule）→ ④ <code>Effective batch size: 32</code> → ⑤ <code>num_learnable_params=51597190 (52M)</code> → ⑥ <code>Start offline training</code>。看到第⑥行即表示进入正式训练循环。</div>
+      <div class="tip violet"><span class="lab">周期日志四数</span>每 100 步打印 <code>step / loss / grdn / lr</code>：step 稳步涨说明数据吞吐正常；loss 持续降说明策略在学；grdn（梯度范数）被 <code>grad_clip_norm=10.0</code> 裁剪，长期贴 10 则学习不稳定；lr 由调度器控制缓慢变化。</div>
       <div class="tip amber"><span class="lab">注意</span>指导文件示例日志中 batch_size 显示 32、steps 显示 5000（命令行写 8/1000 为最小示例）。实际以你打印出的 cfg 为准；<code>loss:8.088 → 逐段下降</code> 才是健康信号。</div>
     </section>
 
@@ -134,10 +132,7 @@ nvtop</pre>
         <li><span class="ok">✓</span><b>smpl</b>：已消耗的样本计数（3K = 3072），配合 step 判断数据吞吐是否正常。</li>
         <li><span class="ok">✓</span><b>updt_s</b>：单步更新耗时，突然变大先查是否有别的进程抢 GPU。</li>
       </ul>
-      <figure>
-        <img src="./images/fig-p05-training-4.png" alt="训练结束检查点保存截图" loading="lazy">
-        <figcaption>图 5-1｜Checkpoint policy after step N / End of training（第 10 章）</figcaption>
-      </figure>
+      <div class="tip violet"><span class="lab">检查点验证</span>训练结束看到 <code>Checkpoint policy after step 5000</code> 与 <code>End of training</code> 后，进入 <code>outputs/put_cube_on_plate_act/checkpoints/last/pretrained_model</code> 确认存在 <code>config.json</code>（策略配置）、<code>model.safetensors</code>（权重）与 <code>processor</code> 目录——三件齐全即可交给 EXP-03 加载推理。</div>
     </section>
 
     <section class="blk" id="s6">

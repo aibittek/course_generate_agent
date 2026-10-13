@@ -12,6 +12,11 @@
 .vitem video{width:100%;border-radius:9px;background:#000;aspect-ratio:16/9}
 .vitem h4{font-size:14.5px;font-weight:800;margin:9px 0 5px;color:var(--theme-deep)}
 .vitem p{font-size:12.5px;color:#5b6b78;line-height:1.6}
+.img-pair{display:grid;gap:16px}
+.img-block{margin:14px 0;text-align:center}
+.img-block img{max-width:100%;height:auto;border:1px solid var(--border,#e2e8f0);border-radius:10px;background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.07)}
+.img-block figcaption{margin-top:8px;font-size:12.5px;color:#5b6b78}
+@media (max-width:900px){.img-pair{grid-template-columns:1fr !important}}
 </style>
 </head>
 <body>
@@ -79,6 +84,17 @@
     <div class="step"><span class="n">3</span><b>端口会变、序列号不变</b>：重启后 ttyACM0/2/3 顺序可能重排，但每块板的序列号（如 5B79018622）是出厂烧死的——所以找口后要写 udev 别名</div>
   </div>
   <p>再看"六关节"：SO100 系列每条臂有 6 个受控自由度——底座水平旋转（shoulder_pan）、肩俯仰（shoulder_lift）、肘俯仰（elbow_flex）、腕俯仰（wrist_flex）、腕滚转（wrist_roll）、夹爪开合（gripper）。<b>设电机编号就是告诉每个关节里的电机"你是几号"</b>，编号错一个，未来遥操作时手臂就会"往东施力往西动"。</p>
+  <p style="margin:14px 0 0;font-size:13px;color:#5b6b78">▍实物对照：左电源右串口的接线规则与主机端口分配</p>
+  <div class="img-pair" style="grid-template-columns:repeat(2,1fr)">
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-wiring-power-serial.png" alt="机械臂电机控制板接线特写：左侧电源线、右侧串口线" loading="lazy" decoding="async">
+      <figcaption>(a) 电机控制板接线特写 · 左为<b>电源线</b>（5V 或 12V）、右为<b>串口线</b>（USB）——"先通电再插 USB"顺序不可颠倒</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-rear-ports.png" alt="主机背面 USB 端口标注：左手相机 / 右手相机 / 头部相机" loading="lazy" decoding="async">
+      <figcaption>(b) 主机背面端口分配 · <b>左手相机 / 右手相机 / 头部相机</b>各占固定 USB 口——端口位置即身份，重启不变</figcaption>
+    </figure>
+  </div>
 </section>
 
 <!-- 03 -->
@@ -96,14 +112,21 @@
     </tbody>
   </table>
   <p style="margin-top:12px">口诀：摄像头线要"按顺序插背面"，串口线可"随便插拓展坞"——两者约束完全不同，别混。</p>
-  <figure>
-    <img src="images/fig-p02-wire.png" loading="lazy" alt="第 02 章第 1 页：主臂组装接线图截图">
-    <figcaption>图 2-1｜第 02 章第 1 页：主臂组装接线图——左边电源线（5V 2A）、右边串口线，卡钳旋转夹紧固定桌面</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p02-port.png" loading="lazy" alt="第 02 章第 3 页：从臂组装接线图截图">
-    <figcaption>图 2-2｜第 02 章第 3 页：从臂组装接线图——从臂连底座卡上小推车，电源 12V 8A，同样左电源右串口</figcaption>
-  </figure>
+  <p style="margin:14px 0 0;font-size:13px;color:#5b6b78">▍实物对照：主臂上桌、从臂上车、全系统组装完成态</p>
+  <div class="img-pair" style="grid-template-columns:repeat(3,1fr)">
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-master-clamp-desk.jpeg" alt="主臂 C 型卡钳夹紧桌面边缘实物图" loading="lazy" decoding="async">
+      <figcaption>(a) 主臂上桌 · C 型卡钳旋转夹紧固定桌面边缘，5V 2A 供电</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-full-system-cart.png" alt="双臂+摄像头全系统组装在小推车上实物图" loading="lazy" decoding="async">
+      <figcaption>(b) 全系统组装完成 · 双臂 + 中柱摄像头 + 底座卡到小推车上</figcaption>
+    </figure>
+    <figure class="img-block" style="margin:10px 0 0">
+      <img src="./images/photo-wiring-detail.png" alt="从臂接线特写：左侧电源线右侧串口线" loading="lazy" decoding="async">
+      <figcaption>(c) 从臂接线特写 · 左电源（12V 8A）、右串口——与主臂同规则</figcaption>
+    </figure>
+  </div>
 </section>
 
 <!-- 04 -->
@@ -167,14 +190,6 @@
       <p>腕滚转关节：最后一个旋转自由度，装完接夹爪即构成完整六关节手臂。</p>
     </div>
   </div>
-  <figure>
-    <img src="images/fig-p02-teleop.png" loading="lazy" alt="第 02 章第 2 页：主臂安装视频参考截图">
-    <figcaption>图 2-3｜第 02 章第 2 页：文档标注「具体流程可参考主臂安装.mp4」——对应上方视频①</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p02-teleop-2.png" loading="lazy" alt="第 02 章第 4 页：从臂安装视频参考截图">
-    <figcaption>图 2-4｜第 02 章第 4 页：文档标注「具体流程可参考视频从臂安装.mp4」——对应上方视频②</figcaption>
-  </figure>
   <div class="tip amber"><span class="lab">⚠ 装配纪律</span>每装完一个关节，先<b>手动全程掰一遍</b>确认无卡滞再装下一个；发现卡滞立即拆检，别等通电了才发现——那时候你已经不知道是哪个关节装偏了。</div>
 </section>
 
@@ -207,22 +222,7 @@
 
 <span class="c"># ⑥ 之后所有命令直接用稳定别名</span>
 <span class="c">#   /dev/arm_slave_left · /dev/arm_slave_right · /dev/arm_master_left · /dev/arm_master_right</span></pre>
-  <figure>
-    <img src="images/fig-p03-port.png" loading="lazy" alt="第 03 章第 1 页：lerobot-find-port 输出清单截图">
-    <figcaption>图 2-5｜第 03 章第 1 页：先接电源后插 USB，执行 lerobot-find-port 后列出全部可用端口的真实输出</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p03-port-2.png" loading="lazy" alt="第 03 章第 2 页：拔线定位端口与 udevadm 查询截图">
-    <figcaption>图 2-6｜第 03 章第 2 页：拔掉一只臂后回车，输出 The port …is '/dev/ttyACM0'，随后用 udevadm info 查串口信息</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p03-term.png" loading="lazy" alt="第 03 章第 3 页：udevadm 查询输出的 ID_PATH 与候选字段截图">
-    <figcaption>图 2-7｜第 03 章第 3 页：udevadm 输出续——ID_USB_DRIVER、ID_PATH 等字段，就是相机/串口 udev 规则的匹配依据</figcaption>
-  </figure>
-  <figure>
-    <img src="images/fig-p03-port-3.png" loading="lazy" alt="第 03 章第 4 页：四条串口别名汇总与串口接线图截图">
-    <figcaption>图 2-8｜第 03 章第 4 页：四条串口别名汇总（arm_slave/master_left/right）与串口接线图——本实验的最终验收物</figcaption>
-  </figure>
+  <div class="tip teal" style="margin-top:14px"><span class="lab">◆ find-port 口诀</span><b>先通电 → 再插 USB → 运行 find-port → 拔线看差异</b>。每次重启端口号可能变，但序列号不变——所以 find-port 找到后必须写 udev 别名固化身份，别靠记 ttyACM 编号。</div>
 </section>
 
 <!-- 06 -->
