@@ -12,6 +12,18 @@
   --theme-bg:#ccfbf1;
   --theme-bd:#99f6e4;
 }
+
+/* 指导书截图图廊 */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #99f6e4;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#0f766e;display:flex;gap:.4rem;align-items:center}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
+.fg img{width:100%;display:block;border-radius:6px;background:#fff}
+.fg figcaption{font-size:.74rem;color:var(--text-secondary);line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
@@ -244,6 +256,10 @@
 <span class="c"># 属设计内降级：确认模型文件路径后再切换回 mode: deepsort</span></pre></div></div>
   </div>
   <div class="tip violet"><span class="lab">🚀 扩展挑战</span>把 nn_budget 从 100 降到 20 再跑长视频：外观库"失忆"后，长时间遮挡的车还能接回原 ID 吗？再把结果通过 ROS2 topic 发布（照抄 EXP-11 的 publish_cmd_vel 模式），做"区域入侵换 ID 报警"。</div>
+
+<div class="figs-guide"><h4>🛠️ 指导书步骤截图（实验指导书 · 3 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/1ebb040adac1e258c00d6e0868727559.jpeg" alt="相关YOLOv8网络架构图" loading="lazy"><figcaption>相关YOLOv8网络架构图</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820160047483.png" alt="IoU 计算：交并比 $\text{IoU}(A,B) = \frac{|A \cap B|…" loading="lazy"><figcaption>IoU 计算：交并比 $\text{IoU}(A,B) = \frac{|A \cap B|…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820160346076.png" alt="ReID模型框架如下" loading="lazy"><figcaption>ReID模型框架如下</figcaption></figure></div></div>
+
+<div class="figs-guide"><h4>✅ 实验现象截图（实验指导书 · 3 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820153940571.png" alt="执行现象：运行 pytest tests/ -v 约 10-20 秒，输出 38 个用例全部…" loading="lazy"><figcaption>执行现象：运行 pytest tests/ -v 约 10-20 秒，输出 38 个用例全部…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820154112741.png" alt="人移动ID稳稳跟踪" loading="lazy"><figcaption>人移动ID稳稳跟踪</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820154206605.png" alt="人移动ID稳稳跟踪" loading="lazy"><figcaption>人移动ID稳稳跟踪</figcaption></figure></div></div>
 </section>
 
 <!-- 9 -->
@@ -351,5 +367,12 @@ function runMatch(){
 runMatch();
 </script>
 <script src="../shared/tutorial.js" defer></script>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script>
+function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
+</script>
+
 </body>
 </html>

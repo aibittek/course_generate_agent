@@ -12,6 +12,18 @@
   --theme-bg:#ccfbf1;
   --theme-bd:#99f6e4;
 }
+
+/* 指导书截图图廊 */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #99f6e4;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#0f766e;display:flex;gap:.4rem;align-items:center}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
+.fg img{width:100%;display:block;border-radius:6px;background:#fff}
+.fg figcaption{font-size:.74rem;color:var(--text-secondary);line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
@@ -273,6 +285,10 @@ pts468 = (pts_norm.reshape(-1, 3)[:467] @ np.linalg.inv(M).T)</pre></div></div>
 <span class="y">109 passed</span></pre></div></div>
   </div>
   <div class="tip violet"><span class="lab">🚀 扩展挑战</span>取眼部 12 点实现 EAR 眨眼检测（连续 N 帧低于阈值判闭眼）；或用 SolvePNP 配合 6 个锚点估计头姿 yaw/pitch，做"没看屏幕就提醒"。</div>
+
+<div class="figs-guide"><h4>🛠️ 指导书步骤截图（实验指导书 · 3 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820170410617.png" alt="Blaze 架构演进：BlazeFace（2019，Google）是 MediaPipe 的…" loading="lazy"><figcaption>Blaze 架构演进：BlazeFace（2019，Google）是 MediaPipe 的…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/v2-84f08e9fef72bbd32f533ab4c068151c_720w.webp" alt="芯片算力和精度（int8、fp16、双精度、单精度等等）的关系" loading="lazy"><figcaption>芯片算力和精度（int8、fp16、双精度、单精度等等）的关系</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/53465316-4a282000-3a02-11e9-8e85-0006e3100da0.png" alt="(5) 脸部轮廓：点 10→338→297→332→284→251→389→356→454→…" loading="lazy"><figcaption>(5) 脸部轮廓：点 10→338→297→332→284→251→389→356→454→…</figcaption></figure></div></div>
+
+<div class="figs-guide"><h4>✅ 实验现象截图（实验指导书 · 2 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820165757651.png" alt="性能：FPS ≥10（fp16 混合量化，NPU）；MJPEG :8081/face.mjp…" loading="lazy"><figcaption>性能：FPS ≥10（fp16 混合量化，NPU）；MJPEG :8081/face.mjp…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820172101101.png" alt="性能：FPS ≥10（fp16 混合量化，NPU）；MJPEG :8081/face.mjp…" loading="lazy"><figcaption>性能：FPS ≥10（fp16 混合量化，NPU）；MJPEG :8081/face.mjp…</figcaption></figure></div></div>
 </section>
 
 <!-- 9 -->
@@ -383,5 +399,12 @@ function runFace(){
 runFace();
 </script>
 <script src="../shared/tutorial.js" defer></script>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script>
+function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
+</script>
+
 </body>
 </html>

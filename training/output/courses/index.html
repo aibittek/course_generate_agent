@@ -43,7 +43,10 @@ body{margin:0;background:var(--bg-base);color:var(--text-body);
   font-size:13px;color:var(--text-body);text-decoration:none;transition:.2s;margin-left:0!important}
 .dd-menu a:hover{background:var(--bg-tint);color:var(--accent-blue)}
 .dd-menu a small{font-size:11.5px;color:var(--text-muted);font-weight:400}
-.dd-menu a+a{border-top:1px solid var(--border)}
+.dd-menu a+a,.dd-menu a+.soon,.dd-menu .soon+.soon{border-top:1px solid var(--border)}
+.dd-menu .soon{display:flex;flex-direction:column;gap:2px;padding:10px 13px;border-radius:8px;
+  font-size:13px;color:var(--text-muted);cursor:default}
+.dd-menu .soon small{font-size:11.5px;color:var(--text-muted);font-weight:400;opacity:.85}
 /* Hero */
 .hero{max-width:960px;margin:0 auto;padding:56px 40px 8px;text-align:center}
 .hero .eyebrow{display:inline-block;font-size:12.5px;letter-spacing:.14em;color:var(--accent-blue);
@@ -154,6 +157,14 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
         <a href="../products/b2-box/index.html">📦 具身智能实验箱B2旗舰版<small>6 TOPS · 双核架构 · 6 门课 / 65 实验</small></a>
         <a href="../products/c1-car/index.html">🚗 具身智能机器人小车 C1<small>移动导航 · 机械臂作业 · 7 门课 / 59 实验</small></a>
         <a href="../products/ldt-01/index.html">🦾 具身智能实验平台 LDT-01<small>同构双臂遥操作 · 采训推一体 · 数据采集</small></a>
+      </div>
+    </div>
+    <div class="dropdown">
+      <a class="dd-toggle" href="javascript:void(0)">快速上手 <span class="arr">▼</span></a>
+      <div class="dd-menu">
+        <a href="../products/b2-box/quickstart/index.html">📦 实验箱 B2 快速上手<small>供电 → 取出机械臂 → 登录 → 智慧工厂四功能演示</small></a>
+        <span class="soon">🚗 小车 C1 快速上手<small>⏳ 指南编写中</small></span>
+        <span class="soon">🦾 实验平台 LDT-01 快速上手<small>⏳ 指南编写中</small></span>
       </div>
     </div>
     <a href="#core">核心课程</a>

@@ -12,6 +12,18 @@
   --theme-bg:#ccfbf1;
   --theme-bd:#99f6e4;
 }
+
+/* 指导书截图图廊 */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #99f6e4;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#0f766e;display:flex;gap:.4rem;align-items:center}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
+.fg img{width:100%;display:block;border-radius:6px;background:#fff}
+.fg figcaption{font-size:.74rem;color:var(--text-secondary);line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
@@ -273,6 +285,10 @@ for i, px, py, vis in kept:
 <span class="y">tests/test_render.py .......          [45/45]  passed</span></pre></div></div>
   </div>
   <div class="tip violet"><span class="lab">🚀 扩展挑战</span>输出肩-肘-腕三点夹角（向量余弦），实时显示在 MJPEG 流上——这套角度特征正是 EXP-11 动作分类的第一块积木；再试 i8 vs fp16 两种量化在"举手极限姿势"上的掉点差异。</div>
+
+<div class="figs-guide"><h4>🛠️ 指导书步骤截图（实验指导书 · 1 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821090257502.png" alt="33 点索引约定：BlazePose 的 33 个关键点遵循 MediaPipe 官方索引—…" loading="lazy"><figcaption>33 点索引约定：BlazePose 的 33 个关键点遵循 MediaPipe 官方索引—…</figcaption></figure></div></div>
+
+<div class="figs-guide"><h4>✅ 实验现象截图（实验指导书 · 2 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820173535847.png" alt="pytest 验证：PYTHONPATH=car1_pose_landmark:$PYTHO…" loading="lazy"><figcaption>pytest 验证：PYTHONPATH=car1_pose_landmark:$PYTHO…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820173756242.png" alt="pytest 验证：PYTHONPATH=car1_pose_landmark:$PYTHO…" loading="lazy"><figcaption>pytest 验证：PYTHONPATH=car1_pose_landmark:$PYTHO…</figcaption></figure></div></div>
 </section>
 
 <!-- 9 -->
@@ -394,5 +410,12 @@ function runPose(){
 runPose();
 </script>
 <script src="../shared/tutorial.js" defer></script>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script>
+function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
+</script>
+
 </body>
 </html>

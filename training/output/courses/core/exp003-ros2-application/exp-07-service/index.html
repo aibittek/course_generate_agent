@@ -5,7 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-07 · 服务通信：指纹验证 — 机器人 ROS2 应用与开发</title>
 <link rel="stylesheet" href="../shared/tutorial.css">
-<style>:root{--theme:#db2777;--theme-deep:#be185d;--theme-bg:#fce7f3;--theme-bd:#fbcfe8}</style>
+<style>:root{--theme:#db2777;--theme-deep:#be185d;--theme-bg:#fce7f3;--theme-bd:#fbcfe8}
+/* 指导书实操截图图廊 */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#334155;display:flex;gap:.4rem;align-items:center}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
+.fg img{width:100%;display:block;border-radius:6px;background:#fff}
+.fg figcaption{font-size:.74rem;color:#64748b;line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+</style>
 </head>
 <body>
 <div class="topbar">
@@ -206,6 +218,8 @@ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprin
 <span class="c">#  ↑ 请求为空必须传 "{}"；调用前先把手指放上，否则等 50 次轮询(~10s)后</span>
 <span class="g">#  → success: false  message: 超时，未检测到手指</span></pre>
 <p>三连的价值：<b>不写一行客户端代码</b>即可验证服务端逻辑——排障时先 CLI、再代码，顺序不能反。想看接口字段定义，接 EXP-09 的 <code>ros2 interface show</code>。</p>
+
+<div class="figs-guide"><h4>📸 指导书实操与现象截图（3 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821183258468.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821183429592.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821183542587.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure></div></div>
 </section>
 
 <section class="blk" id="s9">
@@ -262,5 +276,12 @@ function pickMech(){document.getElementById('mechIo').innerHTML=MECH[document.ge
 pickMech();
 </script>
 <script src="../shared/tutorial.js" defer></script>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script>
+function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
+</script>
+
 </body>
 </html>

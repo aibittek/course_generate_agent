@@ -12,6 +12,18 @@
   --theme-bg:#ccfbf1;
   --theme-bd:#99f6e4;
 }
+
+/* 指导书截图图廊 */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #99f6e4;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#0f766e;display:flex;gap:.4rem;align-items:center}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
+.fg img{width:100%;display:block;border-radius:6px;background:#fff}
+.fg figcaption{font-size:.74rem;color:var(--text-secondary);line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
@@ -273,6 +285,10 @@ def on_mouse(evt, x, y, flags, param):
     <div class="step"><span class="n">6</span><div><b>扩展：把"测距仪"变成每帧输出</b>——取画面中心 3×3 深度中值作为"前方距离"，超阈值打印告警（衔接 EXP-11 的判停逻辑）。</div></div>
   </div>
   <div class="tip violet"><span class="lab">🚀 扩展挑战</span>全图反投影生成点云（np.meshgrid 一次性向量化，别写双层循环）；再把 EXP-01 的检测框叠上"中位数深度"，输出带距离的 3D 检测表。</div>
+
+<div class="figs-guide"><h4>🛠️ 指导书步骤截图（实验指导书 · 2 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/1157643a6d094c2589f57e1c7aaed5a6.png" alt="深度传感器工作原理：HP60C 采用主动红外深度传感技术（结构光或 ToF），发射红外散斑或…" loading="lazy"><figcaption>深度传感器工作原理：HP60C 采用主动红外深度传感技术（结构光或 ToF），发射红外散斑或…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820164529174.png" alt="其中 $f_x, f_y$ 为焦距（单位：像素），$c_x, c_y$ 为主点（光轴与成像平…" loading="lazy"><figcaption>其中 $f_x, f_y$ 为焦距（单位：像素），$c_x, c_y$ 为主点（光轴与成像平…</figcaption></figure></div></div>
+
+<div class="figs-guide"><h4>✅ 实验现象截图（实验指导书 · 1 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260820163436128.png" alt="Click (269, 324): z = 309 mm (0.309 m)  xyz=(-…" loading="lazy"><figcaption>Click (269, 324): z = 309 mm (0.309 m)  xyz=(-…</figcaption></figure></div></div>
 </section>
 
 <!-- 9 -->
@@ -379,5 +395,12 @@ function runProj(){
 runProj();
 </script>
 <script src="../shared/tutorial.js" defer></script>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script>
+function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
+</script>
+
 </body>
 </html>
