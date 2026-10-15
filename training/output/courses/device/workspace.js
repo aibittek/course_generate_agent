@@ -212,6 +212,20 @@
         s.addr = ''; s.user = ''; s.password = '';
         if (!s.serialLabel) s.serialLabel = s.serialPort || '';
       }
+      // 迁移：自动名快照与当前参数不一致的僵尸（曾编辑过 IP/波特率、名称还停在旧值）→ 清掉，标题按现值重算
+      if (s.name) {
+        var stale = false;
+        var ipRe = /^\d{1,3}(\.\d{1,3}){3}$/;
+        if (s.kind === 'serial' && s.name.indexOf('本机串口 @') === 0) {
+          stale = s.name !== '本机串口 @' + (s.baud || 115200);
+        } else if (ipRe.test(s.name)) {
+          stale = !!s.addr && s.name !== s.addr;
+        } else {
+          var at = s.name.lastIndexOf('@');
+          if (at > 0 && ipRe.test(s.name.slice(at + 1))) stale = s.name.slice(at + 1) !== (s.addr || '');
+        }
+        if (stale) s.name = '';
+      }
     });
   }
   function saveSessions() {
@@ -236,6 +250,48 @@
   function savePrefs(s) {
     S.prefs = { addr: s.addr, user: s.user };
     lsSet(LS_PREFS, S.prefs);
+  }
+
+  /* ==========================================================
+     终端字号（缩放）：全局偏好，SSH 终端与串口终端共用。
+     只调 xterm 字号并重新 fit，网页其它排版不动（区别于浏览器整页缩放）
+     ========================================================== */
+  var TERM_FONT_KEY = 'eai_term_font_size';
+  var TERM_FONT_MIN = 10, TERM_FONT_MAX = 28, TERM_FONT_DEFAULT = 15;
+  var termFontSubs = [];
+  function getTermFont() {
+    var v = parseInt(lsGet(TERM_FONT_KEY, 0), 10);
+    return (v >= TERM_FONT_MIN && v <= TERM_FONT_MAX) ? v : TERM_FONT_DEFAULT;
+  }
+  function setTermFont(px) {
+    var v = Math.round(Number(px));
+    if (!v) v = TERM_FONT_DEFAULT;
+    v = Math.max(TERM_FONT_MIN, Math.min(TERM_FONT_MAX, v));
+    if (v !== getTermFont()) lsSet(TERM_FONT_KEY, v);
+    termFontSubs.forEach(function (fn) { try { fn(v); } catch (e) { } });
+    return v;
+  }
+  function subTermFont(fn) {
+    termFontSubs.push(fn);
+    return function () { termFontSubs = termFontSubs.filter(function (f) { return f !== fn; }); };
+  }
+  function setXtermFont(t, px) {
+    if (!t) return;
+    // 写后校验：老版本 options 为只读代理时不生效，退回 setOption
+    try { t.options.fontSize = px; if (t.options.fontSize === px) return; } catch (e) { }
+    try { if (typeof t.setOption === 'function') t.setOption('fontSize', px); } catch (e) { }
+  }
+
+  /* 自动名形态：连接时自动生成的名称（用户名@IP / 纯IP / 本机串口@波特率）。
+     编辑表单没有名称字段，这类名称不会随参数更新，判定为自动名即丢弃重算；
+     按形状而非「与当前地址是否一致」判定——旧 JS 下地址被改过、名停在旧值的存量僵尸同样能清 */
+  function isAutoName(nm) {
+    if (!nm) return false;
+    if (nm.indexOf('本机串口 @') === 0) return true;
+    var ipRe = /^\d{1,3}(\.\d{1,3}){3}$/;
+    if (ipRe.test(nm)) return true;
+    var at = nm.lastIndexOf('@');
+    return at > 0 && ipRe.test(nm.slice(at + 1));
   }
 
   function sessTitle(s) {
@@ -474,16 +530,46 @@
     host.className = 'termhost';
     var bar = document.createElement('div');
     bar.className = 'term-status';
-    bar.innerHTML = '<span class="st">正在连接…</span>';
+    // 右侧缩放组：只改终端字体，不牵动网页其它排版（也可按住 Ctrl 滚滚轮）
+    bar.innerHTML = '<span class="st">正在连接…</span>' +
+      '<span style="flex:1"></span>' +
+      '<span style="display:flex;gap:6px;align-items:center" title="只缩放终端字体，不影响页面其它部分（也可按住 Ctrl 滚动滚轮；永久生效）">' +
+      '<button class="tbbtn" type="button" data-font="-1" style="padding:1px 9px">A−</button>' +
+      '<span data-font-label style="min-width:42px;text-align:center"></span>' +
+      '<button class="tbbtn" type="button" data-font="1" style="padding:1px 9px">A＋</button>' +
+      '<button class="tbbtn" type="button" data-font="0" style="padding:1px 9px" title="恢复默认 15px">↺</button>' +
+      '</span>';
     el.appendChild(host);
     el.appendChild(bar);
 
     var term = null, fit = null, ws = null, ro = null, closed = false, ready = false;
 
     function say(text, cls) {
-      bar.innerHTML = '<span class="' + (cls || 'st') + '"></span>';
-      bar.firstChild.textContent = text;
+      var st = bar.querySelector('.st');
+      if (!st) return;
+      st.className = cls || 'st';
+      st.textContent = text;
     }
+    function applyFont(px) {
+      setXtermFont(term, px);
+      var lab = bar.querySelector('[data-font-label]');
+      if (lab) lab.textContent = px + 'px';
+      if (term) doFit();
+    }
+    bar.addEventListener('click', function (e) {
+      var t = e.target;
+      var d = t && t.getAttribute && t.getAttribute('data-font');
+      if (d == null) return;
+      setTermFont(d === '0' ? TERM_FONT_DEFAULT : getTermFont() + (d === '-1' ? -1 : 1));
+    });
+    host.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      setTermFont(getTermFont() + (e.deltaY < 0 ? 1 : -1));
+    }, { passive: false });
+    var unsubFont = subTermFont(applyFont);
+    applyFont(getTermFont());
+
     function connect() {
       if (!window.Terminal) { say('未找到 xterm.js（vendor/xterm 目录缺失），终端无法工作', 'bad'); return; }
       if (!conn) { say('缺少连接信息', 'bad'); return; }
@@ -491,7 +577,7 @@
       host.innerHTML = '';
       term = new window.Terminal({
         fontFamily: "'Cascadia Code','JetBrains Mono',Consolas,'Courier New',monospace",
-        fontSize: 13, lineHeight: 1.25, cursorBlink: true, scrollback: 8000,
+        fontSize: getTermFont(), lineHeight: 1.25, cursorBlink: true, scrollback: 8000,
         allowProposedApi: true, convertEol: false,
         theme: {
           background: '#0f172a', foreground: '#e2e8f0', cursor: '#7dd3fc',
@@ -577,6 +663,7 @@
       refit: doFit,
       close: function () {
         disconnect();
+        if (unsubFont) unsubFont();
         try { if (term) term.dispose(); } catch (e) { }
         term = null;
       }
@@ -941,6 +1028,13 @@
       '  <label class="chk"><input type="checkbox" data-a="echo" checked> 本地回显</label>',
       '  <label class="chk" title="过滤 ANSI 转义序列（终端控制码），十六进制视图始终显示原始字节">',
       '    <input type="checkbox" data-a="ansi" checked> 过滤转义码</label>',
+      '  <span class="flex"></span>',
+      '  <span style="display:flex;gap:6px;align-items:center" title="只缩放终端字体，不影响页面其它部分（也可按住 Ctrl 滚动滚轮）">',
+      '    <button class="tbbtn" type="button" data-font="-1" style="padding:1px 9px">A−</button>',
+      '    <span data-font-label style="min-width:42px;text-align:center"></span>',
+      '    <button class="tbbtn" type="button" data-font="1" style="padding:1px 9px">A＋</button>',
+      '    <button class="tbbtn" type="button" data-font="0" style="padding:1px 9px" title="恢复默认 15px">↺</button>',
+      '  </span>',
       '</div>',
       '<div class="serial-console" data-a="consoleWrap">',
       '  <div class="serial-term" data-a="termhost" hidden></div>',
@@ -957,7 +1051,27 @@
     var input = el.querySelector('[data-a="input"]');
     var termHost = el.querySelector('[data-a="termhost"]');
     var promptLine = el.querySelector('[data-a="promptline"]');
-    var term = null, fitAddon = null;
+    var term = null, fitAddon = null, unsubFontS = null;
+    // 终端缩放（同一套全局偏好）：工具条按钮 + Ctrl/Meta+滚轮，与 SSH 终端一致
+    function applyFontS(px) {
+      setXtermFont(term, px);
+      var lab = el.querySelector('[data-font-label]');
+      if (lab) lab.textContent = px + 'px';
+      if (term) fitTerm();
+    }
+    el.addEventListener('click', function (e) {
+      var t = e.target;
+      var d = t && t.getAttribute && t.getAttribute('data-font');
+      if (d == null) return;
+      setTermFont(d === '0' ? TERM_FONT_DEFAULT : getTermFont() + (d === '-1' ? -1 : 1));
+    });
+    termHost.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      setTermFont(getTermFont() + (e.deltaY < 0 ? 1 : -1));
+    }, { passive: false });
+    unsubFontS = subTermFont(applyFontS);
+    applyFontS(getTermFont());
     var port = null, reader = null, writer = null, keepReading = false, closed = false;
     var history = [], hIdx = -1;
     var HAS = ('serial' in navigator);
@@ -1065,7 +1179,7 @@
       if (!window.Terminal) { sys('未找到 xterm.js（vendor/xterm 缺失），已退回原始文本模式'); return false; }
       term = new window.Terminal({
         fontFamily: "'Cascadia Code','JetBrains Mono',Consolas,'Courier New',monospace",
-        fontSize: 13, lineHeight: 1.25, cursorBlink: true, scrollback: 8000,
+        fontSize: getTermFont(), lineHeight: 1.25, cursorBlink: true, scrollback: 8000,
         allowProposedApi: true, convertEol: false,
         theme: {
           background: '#0f172a', foreground: '#e2e8f0', cursor: '#7dd3fc',
@@ -1075,6 +1189,7 @@
         }
       });
       if (window.FitAddon) { fitAddon = new window.FitAddon.FitAddon(); term.loadAddon(fitAddon); }
+      // 字号读全局偏好（订阅在视图构建期已挂 applyFontS，此处创建时读一次即可）
       term.open(termHost);
       term.onData(function (d) {
         if (!writer) return;
@@ -1333,6 +1448,7 @@
       close: function () {
         closed = true;
         disconnect(true);
+        if (unsubFontS) unsubFontS();
         try { if (term) term.dispose(); } catch (e) { }
         term = null; fitAddon = null;
       }
@@ -2136,9 +2252,12 @@
     var rec;
     if (editing) {
       rec = findSession(draft.id) || blankSession(v.kind);
+      // 表单里没有名称字段，自动名（用户@IP/纯IP/本机串口@波特率）不随参数更新——
+      // 按形状判定后丢弃重算；地址在旧 JS 下被改过、名停在旧值的存量僵尸同样能清
       KINDS.forEach(function (k) { if (k !== v.kind && k in v) delete v[k]; });
       Object.keys(v).forEach(function (k) { rec[k] = v[k]; });
       rec.kind = v.kind;
+      if (isAutoName(rec.name)) rec.name = '';
     } else {
       rec = v;
       rec.id = rec.id || newId();

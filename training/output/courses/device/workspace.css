@@ -300,6 +300,13 @@ code{font-family:var(--font-mono);font-size:.94em;background:var(--bg-soft);
 .serial-term{flex:1;min-height:0;display:flex}
 .serial-term[hidden]{display:none}
 .serial-term .termhost{flex:1;min-height:0;padding:0 16px 0 0;background:transparent}
+/* 串口终端滚动条走廊：这里的终端容器是 .serial-term 自身（没有 .termhost 盖层类），
+   上面 203-211 那套走廊规则匹配不到，xterm-screen 会正好盖住右侧滚动条，
+   表现为"看得见、拖不动"（xterm.js #1751 同型，与 .termhost 同款修法） */
+.serial-term .xterm .xterm-viewport{right:-16px}
+.serial-term .xterm-viewport{background:transparent!important;scrollbar-width:thin}
+.serial-term .xterm-viewport::-webkit-scrollbar{width:9px}
+.serial-term .xterm-viewport::-webkit-scrollbar-thumb{background:#334155;border-radius:9px}
 .serial-prompt{flex:none;display:flex;gap:8px;align-items:flex-start;padding-top:4px}
 .serial-prompt[hidden]{display:none}
 .serial-prompt .ps{color:#38bdf8;flex:none;user-select:none}
