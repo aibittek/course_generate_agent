@@ -133,7 +133,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
 
   <button class="gtoggle" id="gtg" aria-expanded="false" aria-controls="gbox" onclick="gToggle()">
     <span class="gi">🗺️</span>
-    <span class="gt"><b>课程路线图 &amp; 课前指引 — 点击展开</b><span>七步学习路线 · 安全红线 · 学习路径 · 学习目标 · 课程参数 · 原理实验室导览 · 环境准备清单 · 数学地图（展开后可一键跳转任意章节）</span></span>
+    <span class="gt"><b>课程路线图 &amp; 课前指引 — 点击展开</b><span>七步学习路线 · 安全红线 · 学习路径 · 学习目标 · 课程参数 · 原理实验室导览 · 数学地图 · 常见疑问（展开后可一键跳转任意章节）</span></span>
     <span class="gh">课程指引</span>
   </button>
   <div id="gbox" hidden>
@@ -264,27 +264,6 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   </div>
 
   <div class="sec-head reveal">
-    <div class="k">ENVIRONMENT</div>
-    <h2>实验环境与课前准备</h2>
-    <p>开课前按此清单逐项打勾，可避免大部分"环境半小时、实验五分钟"的尴尬。</p>
-  </div>
-  <div class="tbl reveal" style="margin-bottom:1rem">
-    <table>
-      <thead>
-        <tr><th>类别</th><th>需要就位的内容</th></tr>
-      </thead>
-      <tbody>
-        <tr><td class="k2">硬件</td><td>具身智能实验箱 B2 或 机器人小车 C1（承载机械臂）、机械臂平台（含夹爪与桌面抓取物块）、深度相机（HP60C）、USB 串口线</td></tr>
-        <tr><td class="k2">上位机</td><td>Ubuntu 22.04 + ROS2 Humble 桌面版，已安装 colcon、rviz2、rqt、MoveIt2、Gazebo</td></tr>
-        <tr><td class="k2">串口权限</td><td>当前用户加入 dialout 组（sudo usermod -aG dialout $USER），重新登录生效；ls -l /dev/ttyUSB* 可见设备</td></tr>
-        <tr><td class="k2">Python 依赖</td><td>pyserial、numpy 等讲义 requirements；交互脚本均以 python3 运行</td></tr>
-        <tr><td class="k2">Web 仿真器</td><td>server_cors.py 起本地 8000 端口，浏览器访问 http://localhost:8000/viewer（注意 /viewer 后缀）</td></tr>
-        <tr><td class="k2">预备知识</td><td>CORE-01 ROS2 基础（节点/话题/服务）、Linux 常用命令、Python 函数与矩阵入门</td></tr>
-        <tr><td class="k2">耗材与视角</td><td>桌面留出机械臂全展空间；抓取目标默认用红色方块（HSV 红色两段阈值）；相机视野对准抓取区</td></tr>
-      </tbody>
-    </table>
-  </div>
-  <div class="sec-head reveal">
     <div class="k">MATH MAP · 数学地图</div>
     <h2>课程用到的数学：按薄弱点反查</h2>
     <p>八个层级从高中三角一路排到统计口径——哪一行生疏，就点右侧"去哪补"直达对应实验小节，现学现用。<b>公式可以不推，概念要认；标 ⭐ 的三处是必须理解的。</b></p>
@@ -346,6 +325,25 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   </div>
   <div class="kv reveal" style="margin-top:.6rem"><b>用法</b> · 从上往下即学习顺序：前两行高中数学就够开工；卡在第 3 行不用慌，EXP-04 的动画与互动台会把线代"演"给你看；后三行是选修深度，动手前再回头补。</div>
 
+  <div class="sec-head reveal">
+    <div class="k">FAQ</div>
+    <h2>开课前的三个常见疑问</h2>
+  </div>
+  <div class="kgrid reveal">
+    <div class="kcard">
+      <h4><span class="dot" style="background:#d97706"></span>没有真机能学完吗？</h4>
+      <p>能。EXP-01/04/05 全程可用 Gazebo 与 Web 仿真器完成闭环验证；EXP-02/03/06/07 的命令与协议推导可在无硬件条件下通读演练，上机步骤以真机验收为准。</p>
+    </div>
+    <div class="kcard">
+      <h4><span class="dot" style="background:#7c3aed"></span>为什么先仿真、后裸机？</h4>
+      <p>仿真里改坏一个 URDF 只是重载，裸机发错一帧可能堵转。先在数字世界建立"关节角 ↔ 末端位置"的直觉，再下探串口与 PWM，翻车成本最低。</p>
+    </div>
+    <div class="kcard">
+      <h4><span class="dot" style="background:#0891b2"></span>数学基础差怎么办？</h4>
+      <p>只需三角函数与二维向量：FK=逐段累加旋转平移，IK=解一个含 sin/cos 的方程组。第 06 节动画负责建几何直觉，第 07 节互动台负责代数验算，公式不背也能算对。</p>
+    </div>
+  </div>
+
   </div><!-- /#gbox 课程指引 -->
 
   <div class="sec-head reveal">
@@ -362,11 +360,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <div class="kv"><b>关键点</b> · display / demo / Gazebo 三级验证 · joint_state_publisher_gui 拖动关节 · TF 链 base → link → gripper</div>
       <div class="meta"><span class="tag">URDF</span><span class="tag">TF</span><span class="tag">MoveIt2</span><span class="tag">Gazebo</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s1">① 问题引入：屏幕里的机械臂是谁画的</a><span class="stars">⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s6">② 动画讲解：TF 坐标树逐级生长</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s7">③ 互动讲解：关节限位与状态试算台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s8">④ 实操步骤：display → demo → Gazebo</a><span class="stars">⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s10">验证</a></li>
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s1">① 问题引入：机械臂为什么这样设计（含实拍截图）</a><span class="stars">⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s2">② 上手 RViz 仿真：GUI 拖关节看坐标系</a><span class="stars">⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s2">动手</a></li>
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s3">③ 关节 · 限位 · 角色</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s3">精读</a></li>
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s8">④ 深读一：URDF 简化说明</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s8">精读</a></li>
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s9">⑤ 深读二：display 架构解析</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s9">架构</a></li>
+        <li><a class="ttl" href="exp-01-urdf-simulation/index.html#s10">⑥ 总结与思考：验收 + 动手任务</a><span class="stars">⭐</span><a class="dur" href="exp-01-urdf-simulation/index.html#s10">验证</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -560,24 +559,6 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <span class="pill"><i style="background:#334155"></i>实验箱 B2 / 机器人小车 C1 载台</span>
   </div>
 
-  <div class="sec-head reveal">
-    <div class="k">FAQ</div>
-    <h2>开课前的三个常见疑问</h2>
-  </div>
-  <div class="kgrid reveal">
-    <div class="kcard">
-      <h4><span class="dot" style="background:#d97706"></span>没有真机能学完吗？</h4>
-      <p>能。EXP-01/04/05 全程可用 Gazebo 与 Web 仿真器完成闭环验证；EXP-02/03/06/07 的命令与协议推导可在无硬件条件下通读演练，上机步骤以真机验收为准。</p>
-    </div>
-    <div class="kcard">
-      <h4><span class="dot" style="background:#7c3aed"></span>为什么先仿真、后裸机？</h4>
-      <p>仿真里改坏一个 URDF 只是重载，裸机发错一帧可能堵转。先在数字世界建立"关节角 ↔ 末端位置"的直觉，再下探串口与 PWM，翻车成本最低。</p>
-    </div>
-    <div class="kcard">
-      <h4><span class="dot" style="background:#0891b2"></span>数学基础差怎么办？</h4>
-      <p>只需三角函数与二维向量：FK=逐段累加旋转平移，IK=解一个含 sin/cos 的方程组。第 06 节动画负责建几何直觉，第 07 节互动台负责代数验算，公式不背也能算对。</p>
-    </div>
-  </div>
 
 </div>
 

@@ -144,7 +144,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
           <td>同一空间点在 base_link 与相机光学系下的两套读数互换；理解 4×4 齐次变换"乘点"与 REP-103 轴向差异</td>
           <td>EXP-07 视觉链：相机系点 (0,0,0.5) → base_link (0.55,0,0.40)（讲义·实验7 步骤4）；EXP-06 set_pick_target 必须写 frame_id='base_link'（实验6 步骤1）</td>
           <td>TF 树路径高亮 + 源/目标系查询；外参滑块（平移 t_x/t_z、俯仰 γ）驱动双面板（俯视+侧视）实时重投影；旋转矩阵数值联动</td>
-          <td><a href="../exp-01-urdf-simulation/index.html#s6">EXP-01 §TF 坐标树</a> · <a href="../exp-06-fixed-grasp/index.html#s8">EXP-06 §实操</a></td>
+          <td><a href="../exp-01-urdf-simulation/index.html#s3">EXP-01 §TF 链与角色</a> · <a href="../exp-06-fixed-grasp/index.html#s8">EXP-06 §实操</a></td>
         </tr>
         <tr>
           <td class="m"><a href="#m2">M2 正运动学 FK</a></td>
@@ -243,8 +243,8 @@ T<sub>cam→base</sub> =<br>
 
     <div class="tip"><b>数学直觉：</b>旋转矩阵每一列是新坐标系的一个轴在旧坐标系里的坐标；求逆变换在刚体情形 = 旋转转置 + 平移反号，所以 TF 查询 <code>(A→B)</code> 与 <code>(B→A)</code> 永远互逆，点换来换去总能量得回同毫米。</div>
     <div class="linkrow">
-      <a class="lbtn" href="../exp-01-urdf-simulation/index.html#s6">→ EXP-01 §06 TF 坐标树动画（原理引入）</a>
-      <a class="lbtn" href="../exp-01-urdf-simulation/index.html#s7">→ EXP-01 §07 关节限位试算台</a>
+      <a class="lbtn" href="../exp-01-urdf-simulation/index.html#s10">→ EXP-01 §06 动手任务：看 TF 树</a>
+      <a class="lbtn" href="../exp-01-urdf-simulation/index.html#s3">→ EXP-01 §03 关节 · 限位 · 角色</a>
       <a class="lbtn" href="../exp-07-visual-grasp/index.html#s8">→ EXP-07 §08 分阶段启动与服务触发（案例实操）</a>
       <a class="lbtn" href="../exp-06-fixed-grasp/index.html#s8">→ EXP-06 §08 预演→目标→pick/place（frame_id 实操）</a>
     </div>
@@ -891,7 +891,7 @@ dlsReset();
       <a class="lbtn" href="../exp-06-fixed-grasp/index.html#s6">→ EXP-06 §06 抓取六阶段动画（2D 对照）</a>
       <a class="lbtn" href="../exp-06-fixed-grasp/index.html#s7">→ EXP-06 §07 抓取参数调优台（真机参数）</a>
       <a class="lbtn" href="../exp-06-fixed-grasp/index.html#s8">→ EXP-06 §08 实操：预演→目标→pick/place</a>
-      <a class="lbtn" href="../exp-01-urdf-simulation/index.html#s8">→ EXP-01 §08 URDF 联动（结构的"真身"）</a>
+      <a class="lbtn" href="../exp-01-urdf-simulation/index.html#s8">→ EXP-01 §04 URDF 联动（结构的"真身"）</a>
     </div>
   </div>
 </section>

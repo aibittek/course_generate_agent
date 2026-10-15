@@ -273,6 +273,24 @@ ros2 service call /arm_controller/place std_srvs/srv/Trigger "{}"
   <div class="kcard"><div class="kd">六阶段</div><div class="kt">IDLE→…→HOLD</div><p>每步过软限位+奇异检查，遥测看 grasp_state。</p></div>
   <div class="kcard"><div class="kd">四参数</div><div class="kt">depth/pre/lift/pitch</div><p>组随物体换：0.015/0.03/0.025 深度三组预设。</p></div>
 </div>
+<p><b>练习 · 前 / 前左 / 前右三方位抓取</b>——同一半径 0.28 m 旋到三个方位（REP-103 坐标系：<b>x 向前 · y 向左 · z 向上</b>；±45° 取 cos45°≈0.707 → 0.28×0.707≈0.198）。物块要用尺子摆到对应坐标，否则夹空气：</p>
+<pre><span class="c"># 方位一 · 正前（基线）</span>
+ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
+  "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.28, y: 0.0, z: 0.10}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
+ros2 service call /arm_controller/pick std_srvs/srv/Trigger "{}"
+
+<span class="c"># 方位二 · 前左（+y 侧，底座向左转 45°）</span>
+ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
+  "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.198, y: 0.198, z: 0.10}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
+ros2 service call /arm_controller/pick std_srvs/srv/Trigger "{}"
+
+<span class="c"># 方位三 · 前右（−y 侧，底座向右转 45°）</span>
+ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
+  "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.198, y: -0.198, z: 0.10}, orientation: {x: 0.0, y: 1.0, z: 0.0, w: 0.0}}}"
+ros2 service call /arm_controller/pick std_srvs/srv/Trigger "{}"
+
+<span class="y"># 纪律：每换一个方位先用 target_pose 预检可达（09 节预检纪律），确认无 PWM 贴近 500/2500 再 pick</span>
+<span class="y"># 对照观察：STAGE 1 底座转向与 EXP-01 里你用话题转过的 ±45° 对得上号吗？/arm/grasp_state 看迁移</span></pre>
 <div class="tip violet"><b>思考题 1：</b>为什么讲义坚持"先 set_pick_target 记账、再 pick 执行"的两步走？如果把记账和执行合并成一步（发完坐标立即动），调试体验和安全性分别会发生什么退化？</div>
 <div class="tip violet"><b>思考题 2：</b>按 EXP-05 的 pitch 纪律（0°朝上 · 90°水平 · <b>180°夹爪垂直朝下</b>）分析：为什么桌面抓取必须恒 180°？若把 grasp_pitch 误设成 0，接触点会跑到哪、会先撞什么？结合四元数 {0,1,0,0} 说明"grasp_pitch 与 orientation 是同一件事的两种记法"。</div>
 </section>

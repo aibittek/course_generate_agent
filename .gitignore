@@ -69,6 +69,9 @@ ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
 
+# 基础控制器客户端
+xflz_eai_car1_base_controller_client/
+
 # Windows Zone.Identifier metadata
 *:Zone.Identifier
 *.Zone.Identifier
