@@ -1,0 +1,123 @@
+<section class="blk" id="s2">
+<h2><span class="no">02</span>核心原理：三通道与藏在端点里的 5 条线</h2>
+<p class="cs-why" style="font-size:14.5px;color:#475569;line-height:1.9">你在代码里写的 <code>ActionClient</code>/<code>ActionServer</code> 各只是一个端点，但 ROS2 在底下悄悄建了 <b>5 条线</b>：3 条服务线（发 Goal、发 Cancel、取 Result）+ 2 条话题线（Feedback 流、Status 流）。也就是说——<b>你已经把前面三课全用上了</b>：动作 = 服务的配对语义 + 话题的流式能力，封装成一个好用的抽象。把两个节点拆开看全貌（图 8-2）：</p>
+
+<div class="fig-wrap">
+<svg viewBox="0 0 680 400" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <defs>
+    <marker id="b81" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#ea580c"/></marker>
+    <marker id="b82" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#d97706"/></marker>
+    <marker id="b83" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#64748b"/></marker>
+  </defs>
+  <!-- 客户端 -->
+  <rect x="16" y="30" width="192" height="340" rx="14" fill="#fff7ed" stroke="#ea580c" stroke-width="1.6"/>
+  <text x="112" y="54" font-size="13.5" font-weight="700" fill="#c2410c" text-anchor="middle">ActionClient（客户端）</text>
+  <rect x="32" y="70" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
+  <text x="112" y="88" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">send_goal_async</text>
+  <text x="112" y="104" font-size="10" fill="#64748b" text-anchor="middle">→ ① Goal 服务线</text>
+  <rect x="32" y="126" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
+  <text x="112" y="144" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">feedback_callback</text>
+  <text x="112" y="160" font-size="10" fill="#64748b" text-anchor="middle">← ② Feedback 话题线</text>
+  <rect x="32" y="182" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
+  <text x="112" y="200" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">cancel_goal</text>
+  <text x="112" y="216" font-size="10" fill="#64748b" text-anchor="middle">→ ③ Cancel 服务线</text>
+  <rect x="32" y="238" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
+  <text x="112" y="256" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">result_future</text>
+  <text x="112" y="272" font-size="10" fill="#64748b" text-anchor="middle">← ④ Result 服务线</text>
+  <rect x="32" y="294" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
+  <text x="112" y="312" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">status 订阅</text>
+  <text x="112" y="328" font-size="10" fill="#64748b" text-anchor="middle">← ⑤ Status 话题线</text>
+  <text x="112" y="358" font-size="10.5" fill="#c2410c" text-anchor="middle">spin_once 轮转执行器，回调才会发生</text>
+  <!-- DDS -->
+  <rect x="240" y="30" width="200" height="340" rx="14" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="6 4"/>
+  <text x="340" y="54" font-size="13.5" font-weight="700" fill="#334155" text-anchor="middle">DDS 全局数据空间</text>
+  <text x="340" y="88" font-size="11" fill="#c2410c" text-anchor="middle">/rfid_scan/_action/send_goal</text>
+  <text x="340" y="146" font-size="11" fill="#b45309" text-anchor="middle">/rfid_scan/_action/feedback</text>
+  <text x="340" y="204" font-size="11" fill="#64748b" text-anchor="middle">/rfid_scan/_action/cancel_goal</text>
+  <text x="340" y="262" font-size="11" fill="#c2410c" text-anchor="middle">/rfid_scan/_action/get_result</text>
+  <text x="340" y="320" font-size="11" fill="#64748b" text-anchor="middle">/rfid_scan/_action/status</text>
+  <text x="340" y="356" font-size="10.5" fill="#94a3b8" text-anchor="middle">5 条线各走各的，封装前后你感知不到</text>
+  <!-- 服务端 -->
+  <rect x="472" y="30" width="192" height="340" rx="14" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6"/>
+  <text x="568" y="54" font-size="13.5" font-weight="700" fill="#c2410c" text-anchor="middle">ActionServer（服务端）</text>
+  <rect x="488" y="70" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
+  <text x="568" y="88" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">goal_callback</text>
+  <text x="568" y="104" font-size="10" fill="#64748b" text-anchor="middle">收不收这个目标</text>
+  <rect x="488" y="126" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
+  <text x="568" y="144" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">execute_callback（协程）</text>
+  <text x="568" y="160" font-size="10" fill="#64748b" text-anchor="middle">干活的主体，可发反馈</text>
+  <rect x="488" y="182" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
+  <text x="568" y="200" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">cancel_callback</text>
+  <text x="568" y="216" font-size="10" fill="#64748b" text-anchor="middle">同不同意取消</text>
+  <rect x="488" y="238" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
+  <text x="568" y="256" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">publish_feedback</text>
+  <text x="568" y="272" font-size="10" fill="#64748b" text-anchor="middle">循环里周期推送</text>
+  <rect x="488" y="294" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
+  <text x="568" y="312" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">succeed / abort / canceled</text>
+  <text x="568" y="328" font-size="10" fill="#64748b" text-anchor="middle">三种结局，Result 必达</text>
+  <text x="568" y="358" font-size="10.5" fill="#c2410c" text-anchor="middle">一次只处理一个 Goal（抢卡问题）</text>
+  <!-- 箭头 -->
+  <line x1="192" y1="92" x2="236" y2="86" stroke="#ea580c" stroke-width="2.4" marker-end="url(#b81)"/>
+  <line x1="444" y1="86" x2="484" y2="150" stroke="#ea580c" stroke-width="2.4" marker-end="url(#b81)"/>
+  <line x1="484" y1="262" x2="444" y2="144" stroke="#d97706" stroke-width="2.4" marker-end="url(#b82)"/>
+  <line x1="236" y1="144" x2="196" y2="150" stroke="#d97706" stroke-width="2.4" marker-end="url(#b82)"/>
+  <line x1="196" y1="208" x2="236" y2="202" stroke="#64748b" stroke-width="1.8" stroke-dasharray="4 3" marker-end="url(#b83)"/>
+  <line x1="196" y1="262" x2="236" y2="258" stroke="#64748b" stroke-width="1.8" stroke-dasharray="4 3" marker-end="url(#b83)"/>
+  <line x1="444" y1="318" x2="236" y2="318" stroke="#64748b" stroke-width="1.4" stroke-dasharray="3 4"/>
+</svg>
+<figcaption>图 8-2｜一个 Action 端点 = 5 条隐藏线路：3 条服务线（Goal/Cancel/Result）+ 2 条话题线（Feedback/Status）</figcaption>
+</div>
+
+<h3>三通道各管什么</h3>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">通道 1 · Goal</div><div class="kt">客户端 → 服务端</div><p>携带任务参数（timeout_sec: 30）。发送后先拿到"接受/拒绝"的答复（goal_response），再等最终结果。</p></div>
+  <div class="kcard"><div class="kd">通道 2 · Feedback</div><div class="kt">服务端 → 客户端（多次）</div><p>执行期间周期推送状态：SCANNING → CARD_FOUND → READING_UID → VERIFYING。</p></div>
+  <div class="kcard"><div class="kd">通道 3 · Result</div><div class="kt">服务端 → 客户端（一次）</div><p>终态交付：success / card_uid / card_type / message。无论哪种结局，必有且仅有一条。</p></div>
+  <div class="kcard"><div class="kd">隐藏通道 · Cancel</div><div class="kt">客户端 → 服务端</div><p>服务端在循环里查 is_cancel_requested，同意则就地收场回 canceled。</p></div>
+</div>
+
+<table>
+  <tr><th>维度</th><th>话题（EXP-06）</th><th>服务（EXP-07）</th><th>动作（本课）</th></tr>
+  <tr><td>调用语义</td><td>持续数据流，一对多</td><td>单次请求/响应，一对一</td><td>长耗时目标+反馈+结果</td></tr>
+  <tr><td>异步/同步</td><td>异步</td><td>同步</td><td>异步（执行后台化）</td></tr>
+  <tr><td>中间反馈</td><td>无（值到即反馈）</td><td>无</td><td><b>有</b>（Feedback 状态机）</td></tr>
+  <tr><td>可取消</td><td>否</td><td>否</td><td><b>是</b></td></tr>
+  <tr><td>典型场景</td><td>MQ5 浓度发布</td><td>指纹验证</td><td>刷卡等待、导航、抓取</td></tr>
+</table>
+</section>
+
+<section class="blk" id="s3">
+<h2><span class="no">03</span>动画：一次完整 Action 生命周期</h2>
+<p>这张时序图 5.5 秒循环一次：①Goal 出发 → ②Feedback 反复流回 → ③（可选）Cancel 插队 → ④Result 终态。对照图 8-2 认线路：①走 Goal 服务线，②走 Feedback 话题线，④走 Result 服务线。</p>
+<div class="anim-box">
+<svg viewBox="0 0 760 250" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <rect x="40" y="26" width="150" height="44" rx="10" fill="#1e293b" stroke="#ea580c" stroke-width="2"/>
+  <text x="115" y="54" fill="#fff" font-size="14" text-anchor="middle" font-weight="bold">ActionClient</text>
+  <rect x="570" y="26" width="150" height="44" rx="10" fill="#1e293b" stroke="#ea580c" stroke-width="2"/>
+  <text x="645" y="54" fill="#fff" font-size="14" text-anchor="middle" font-weight="bold">ActionServer</text>
+  <line x1="115" y1="70" x2="115" y2="230" stroke="#334155" stroke-width="1.4" stroke-dasharray="5 5"/>
+  <line x1="645" y1="70" x2="645" y2="230" stroke="#334155" stroke-width="1.4" stroke-dasharray="5 5"/>
+  <!-- Goal -->
+  <line x1="120" y1="96" x2="636" y2="96" stroke="#fdba74" stroke-width="2.4"/>
+  <polygon points="636,96 624,90 624,102" fill="#fdba74"/>
+  <text x="378" y="87" fill="#fed7aa" font-size="12.5" text-anchor="middle">① send_goal_async(timeout_sec: 30) → ACCEPTED 立即返回</text>
+  <circle r="6" fill="#fdba74" cx="120" cy="96"><animate attributeName="cx" values="120;636" dur="1.1s" begin="0s;5.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;1;0" dur="5.5s" repeatCount="indefinite"/></circle>
+  <!-- Feedback 多条 -->
+  <line x1="640" y1="132" x2="124" y2="132" stroke="#fcd34d" stroke-width="2" stroke-dasharray="7 5"/>
+  <polygon points="124,132 136,126 136,138" fill="#fcd34d"/>
+  <text x="380" y="123" fill="#fde68a" font-size="12.5" text-anchor="middle">② publish_feedback × N：SCANNING → CARD_FOUND → READING_UID …</text>
+  <circle r="5.5" fill="#fcd34d" cx="640" cy="132"><animate attributeName="cx" values="640;124" dur="0.9s" begin="1.3s;2.4s;3.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;1;0" dur="5.5s" repeatCount="indefinite"/></circle>
+  <!-- Cancel 尝试 -->
+  <line x1="120" y1="166" x2="636" y2="166" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="3 4"/>
+  <polygon points="636,166 626,161 626,171" fill="#94a3b8"/>
+  <text x="378" y="158" fill="#94a3b8" font-size="11.5" text-anchor="middle">③（可选）cancel_goal → 服务端循环内 is_cancel_requested 生效</text>
+  <!-- Result -->
+  <line x1="640" y1="206" x2="124" y2="206" stroke="#86efac" stroke-width="2.4"/>
+  <polygon points="124,206 136,200 136,212" fill="#86efac"/>
+  <text x="380" y="197" fill="#bbf7d0" font-size="12.5" text-anchor="middle">④ result：success=True uid=7E1A3B02 type=MIFARE Classic（恰好一次）</text>
+  <circle r="6" fill="#86efac" cx="640" cy="206"><animate attributeName="cx" values="640;124" dur="1.1s" begin="4.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="5.5s" repeatCount="indefinite"/></circle>
+  <text x="380" y="240" fill="#64748b" font-size="11.5" text-anchor="middle">三种结局：succeed() 成功 · abort() 失败 · canceled() 被取消——Result 必有，Feedback 可零可多</text>
+</svg>
+</div>
+<p class="anim-cap">Goal 立回、Feedback 流式、Result 一次性、Cancel 随时插队——四条时序合成一个"像打电话又像看下载进度条"的抽象。</p>
+</section>

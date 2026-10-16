@@ -1,0 +1,78 @@
+    <!-- 05 交互 -->
+    <section class="blk reveal" id="s5">
+      <h2><span class="sn violet">05</span>QoS 实验台：改一改档位，看消息怎么丢、怎么补</h2>
+      <p class="lead">你已经知道 QoS 是"传输合同"，但合同条款到底有什么体感？下面这个实验台把抽象规则变成了可以在几秒内验证的实验：左边是发布端 <code class="inline">gas_sensor_node</code>，右边是订阅端 <code class="inline">gas_monitor</code>，改完档位点一下"跑 10 条消息"，模拟器就按 DDS 的规则逐条演示。</p>
+
+      <div class="ix-block">
+        <div class="ix-panel">
+          <div class="qos-row">
+            <div class="qos-box">
+              <h5>📤 发布端 gas_sensor_node（提供）</h5>
+              <label>Reliability <select id="pubRel">
+                <option value="R">RELIABLE（提供：可靠）</option>
+                <option value="B">BEST_EFFORT（提供：尽力）</option>
+              </select></label>
+              <label>Durability <select id="pubDur">
+                <option value="V">VOLATILE（不留存量）</option>
+                <option value="T">TRANSIENT_LOCAL（补发存量）</option>
+              </select></label>
+              <label>History Depth <select id="pubDep">
+                <option value="10">KEEP_LAST(10)</option>
+                <option value="1">KEEP_LAST(1)</option>
+                <option value="0">KEEP_ALL</option>
+              </select></label>
+            </div>
+            <div class="qos-box">
+              <h5>📥 订阅端 gas_monitor（要求）</h5>
+              <label>Reliability <select id="subRel">
+                <option value="R">RELIABLE（要求：可靠）</option>
+                <option value="B">BEST_EFFORT（要求：尽力）</option>
+              </select></label>
+              <label>Durability <select id="subDur">
+                <option value="V">VOLATILE（不补发）</option>
+                <option value="T">TRANSIENT_LOCAL（要补发）</option>
+              </select></label>
+              <label>History Depth <select id="subDep">
+                <option value="10">KEEP_LAST(10)</option>
+                <option value="1">KEEP_LAST(1)</option>
+                <option value="0">KEEP_ALL</option>
+              </select></label>
+            </div>
+          </div>
+
+          <div class="switch-row">
+            <input type="checkbox" id="subLate">
+            <label for="subLate">模拟"订阅端晚到"：发布端已经发了 4 条，<b>gas_monitor 才启动</b></label>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn" onclick="simulateQos()">▶ 跑 10 条消息</button>
+            <button class="btn ghost" onclick="resetSim()">重置</button>
+            <span style="font-size:12.5px;color:var(--text-muted)">设定：发布端 0.5s 一条；订阅端是慢消费者（0.8s 才处理一条）</span>
+          </div>
+
+          <div id="qosResult" class="ok" style="margin-top:14px">✔ 兼容 —— 两端 QoS 请求 ≤ 提供，DDS 将建立连接（修改任一档位会实时重算）</div>
+
+          <div style="margin-top:16px">
+            <div class="sim-line"><span class="sim-lb">发布端发出</span><div class="sim-cells" id="simPub"></div></div>
+            <div class="sim-line"><span class="sim-lb">订阅端收到</span><div class="sim-cells" id="simSub"></div></div>
+            <div class="sim-legend">
+              <span><i style="background:#ccfbf1;border:1px solid #5eead4"></i>已发出并送达话题</span>
+              <span><i style="background:#dcfce7;border:1px solid #86efac"></i>回调已处理</span>
+              <span><i style="background:#fef3c7;border:1px solid #fcd34d"></i>存量补发</span>
+              <span><i style="background:#fee2e2;border:1px solid #fecaca"></i>丢弃</span>
+              <span><i style="background:#f1f5f9;border:1px solid #e2e8f0"></i>错过（当时不在线）</span>
+            </div>
+            <div class="sim-log" id="simLog">点击「▶ 跑 10 条消息」开始模拟……</div>
+            <div class="sim-verdict" id="simVerdict" style="display:none"></div>
+          </div>
+        </div>
+        <p class="ix-caption">互动 6-1｜改档位 → 跑消息 → 读结论。三条推荐实验见 04 节末尾的任务单</p>
+      </div>
+
+      <div class="tip">💡 <b>这个模拟在帮你建立三件事的直觉</b>：<br>
+      ① <b>Reliability</b> 决定"传的过程中丢不丢"——BEST_EFFORT 会真的有消息到不了；<br>
+      ② <b>Depth</b> 决定"收端来不及处理时挤掉多少"——KEEP_LAST(1) 在慢消费者面前只剩最新一条；<br>
+      ③ <b>Durability</b> 决定"我晚到了能不能补课"——TRANSIENT_LOCAL 能把加入前最后一条补给你，VOLATILE 则永远错过。</div>
+      <div class="tip amber">⚠️ 注意：模拟器把"慢消费者"参数固定成 0.8s/条，是为了让 depth 的差别在几秒内可见。真实系统里这个数字来自你的回调耗时——回调写得慢，队列就容易堆积。</div>
+    </section>

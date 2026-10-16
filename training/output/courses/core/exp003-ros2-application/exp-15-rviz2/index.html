@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-15 · rviz2 三维可视化 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
 <style>:root{--theme:#65a30d;--theme-deep:#4d7c0f;--theme-bg:#ecfccb;--theme-bd:#d9f99d}
 /* 指导书实操截图图廊 */
 .figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px}
@@ -17,6 +17,22 @@
 #lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
 #lightbox.on{display:flex}
 #lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
+/* 终端步骤卡 */
+.termbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 10px}
+.termbar .tl{background:#0f172a;color:#fff;border-radius:999px;padding:3px 13px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em}
+.termbar b{font-size:14.5px;color:var(--text-primary)}
+.termbar .note{font-size:12.5px;color:var(--text-muted)}
+.cmdstep{--theme:#65a30d;--theme-bg:#ecfccb;--theme-bd:#d9f99d;--theme-deep:#4d7c0f;
+  background:var(--bg-soft);border:1px solid var(--border);border-left:3px solid var(--theme);border-radius:12px;padding:13px 17px;margin:11px 0}
+.cmdstep .cs-hd{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.cmdstep .cs-no{font-family:var(--font-mono);font-size:12px;font-weight:700;background:var(--theme);color:#fff;border-radius:999px;min-width:22px;height:22px;text-align:center;line-height:22px;padding:0 5px;flex:none}
+.cmdstep .cs-hd b{font-size:14.5px;color:var(--text-primary)}
+.cmdstep .cs-where{margin-left:auto;font-family:var(--font-mono);font-size:11px;background:var(--theme-bg);color:var(--theme-deep);border:1px solid var(--theme-bd);border-radius:999px;padding:3px 11px;white-space:nowrap}
+.cmdstep .cs-why{font-size:13.5px;color:#475569;margin:7px 0 0;line-height:1.8}
+.cmdstep pre{margin:9px 0 0;font-size:13px;padding:13px 16px}
+.cmdstep .cs-see{font-size:12.5px;color:#4d7c0f;margin:8px 0 0;line-height:1.75}
+.cmdstep .io{margin:9px 0 0;font-size:12.5px;color:#cbd5e1;background:#0f172a;border-radius:10px;padding:13px 16px;line-height:1.8;font-family:var(--font-mono);white-space:pre-wrap;overflow-x:auto}
 </style>
 </head>
 <body>
@@ -33,8 +49,8 @@
   <a href="#s4">04 原理专题：七大 Display 逐个拆</a>
   <a href="#s5">05 交互实验：rviz 黑屏诊断台</a>
   <a href="#s6">06 命令精讲：启动与图形环境</a>
-  <a href="#s7">07 实操 A：TF 动态演示——看懂坐标树</a>
-  <a href="#s8">08 实操 B：配置保存与团队复现</a>
+  <a href="#s7">07 实操 A：跑起本车模型（car1_description 8 步）</a>
+  <a href="#s8">08 实操 B：导航可视化逐步操作（car1_navigation）</a>
   <a href="#s9">09 注意事项与验收</a>
   <a href="#s10">10 本课总结</a>
   <h4>CH4 · 工具链</h4>
@@ -54,7 +70,8 @@
 
 <!-- 01 问题引入 -->
 <section class="blk" id="s1">
-  <h2><span class="no">01</span>问题引入：机器人眼中的世界长什么样</h2>
+  <h2><span class="no">01</span>问题引入：机器人眼中的世界长什么样<span class="fs">聚焦问题 · 激活旧知</span></h2>
+  <div class="tip"><span class="lab">先回忆</span>EXP-06 里 <code>topic echo</code> 打出来的一串串数字（浓度、温度、坐标）、消息头里的 <code>frame_id</code>——这些抽象数据本章要变成<b>看得见的图形</b>。rviz2 就是所有话题数据的"显示器"，也是后面 TF、URDF、导航的可视化舞台。</div>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>盲人摸象</b><p>echo /scan 一屏数字：[2.31, 2.29, 2.35...]——你知道前方有障碍，但不知道形状</p></div>
     <div class="step"><div class="n">2</div><b>空间数据</b><p>激光点云、机器人模型、路径轨迹，本质都是 3D 空间的点和形状</p></div>
@@ -69,7 +86,7 @@
 
 <!-- 02 原理 -->
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：Fixed Frame 决定"上帝站在哪"</h2>
+  <h2><span class="no">02</span>核心原理：Fixed Frame 决定"上帝站在哪"<span class="fs">示证新知</span></h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">渲染引擎</div><div class="kt">OGRE 3D + 图层化 Display</div><p>rqt 是 2D 控件，rviz2 走 OGRE 实时渲染管线：每个 Display 是一个图层，各自订阅话题、各自把数据变换到统一坐标系后叠加绘制——可独立开关、设属性，互不干扰。</p></div>
     <div class="kcard"><div class="kd">灵魂参数</div><div class="kt">Fixed Frame：观测基准系</div><p>它回答"相机架在哪个坐标系上看世界"。设成 map：整张地图静止，机器人在图上移动；设成 base_laser：机器人钉在原点，墙壁绕着车动。<b>所有数据都会被 TF 变换到这个系</b>再画。</p></div>
@@ -91,7 +108,7 @@
 
 <!-- 03 动画 -->
 <section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：一条雷达点如何画上屏</h2>
+  <h2><span class="no">03</span>动画：一条雷达点如何画上屏<span class="fs">示证新知</span></h2>
   <div class="anim-box">
     <svg viewBox="0 0 760 330" width="100%">
       <defs>
@@ -134,7 +151,7 @@
 
 <!-- 04 Display 精讲 -->
 <section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：七大 Display 逐个拆</h2>
+  <h2><span class="no">04</span>原理专题：七大 Display 逐个拆<span class="fs">示证新知</span></h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">① 地基</div><div class="kt">Grid</div><p>默认就有的网格地面，提供空间标尺。<b>迷失视角时右键 → Reset View</b> 一键回正——这是新手最该记的肌肉记忆。</p></div>
     <div class="kcard"><div class="kd">② 骨骼</div><div class="kt">TF</div><p>Add → TF 自动订阅 /tf 与 /tf_static，RGB 三轴画出每个坐标系，Show Names 显示名字。断链=某段坐标轴消失，比 <code>view_frames</code> 生成 PDF <b>实时</b>得多——PDF 是快照，TF 图层是直播。</p></div>
@@ -144,7 +161,7 @@
     <div class="kcard"><div class="kd">⑥ 规划</div><div class="kt">Path</div><p>nav_msgs/Path 折线，如正弦的 /plan。<b>算法对不对，曲线一眼定</b>：折角突变=规划抽风，路径穿墙=代价地图有洞——比读坐标数组快两个数量级。</p></div>
     <div class="kcard"><div class="kd">⑦ 标注</div><div class="kt">Marker</div><p>万能便签：SPHERE/ARROW/TEXT_VIEW_FACING/Cube/LineStrip 形状，action 分 ADD/DELETE/MODIFY，<b>ns+id</b> 定位实例。想在画面里标"目标点 3"？发个文字 Marker 即可，不用给 rviz 写插件。</p></div>
     <div class="kcard"><div class="kd">配置资产</div><div class="kt">.rviz 文件</div><p>File → Save Config As 导出全部 Display 设置；下次 <code>rviz2 -d xxx.rviz</code> 一键还原。团队共享后，新人开箱即是同款调试视图——配置是工程资产，进 git。</p></div>
-  </table>
+  </div>
   <div class="tip tealb">
     <span class="lab">三方协作链</span>
     RobotModel 不显示时，按数据流逆向查四步：① <code>ros2 topic echo /robot_description --once</code>（URDF 在不在）→ ② <code>ros2 node list | grep state_publisher</code>（rsp 活没活）→ ③ <code>ros2 topic echo /joint_states</code>（关节数据来没来）→ ④ Fixed Frame 是否与 link 树根连通。外加 <code>check_urdf</code> 校验模型语法。
@@ -153,7 +170,7 @@
 
 <!-- 05 交互 -->
 <section class="blk" id="s5">
-  <h2><span class="no">05</span>交互实验：rviz 黑屏诊断台</h2>
+  <h2><span class="no">05</span>交互实验：rviz 黑屏诊断台<span class="fs">应用新知</span></h2>
   <div class="ix-panel">
     <div class="ix-title">Vision Doctor：选一个症状，按"帧→TF→话题→配置"的顺序给出处置</div>
     <div class="ctl-row">
@@ -174,19 +191,38 @@
 
 <!-- 06 命令精讲 -->
 <section class="blk" id="s6">
-  <h2><span class="no">06</span>命令精讲：启动与图形环境</h2>
-  <pre><code><span class="c"># 标准启动（默认订阅 /tf，Display 全手动添加）</span>
+  <h2><span class="no">06</span>命令精讲：启动与图形环境<span class="fs">应用新知</span></h2>
+  <pre><span class="c"># 标准启动（默认 Fixed Frame=map，Display 全手动添加）</span>
 <span class="b">$</span> rviz2
 
-<span class="c"># 携带已保存配置启动（团队标准姿势）</span>
-<span class="b">$</span> rviz2 -d <span class="y">~/ros2_ws/src/my_robot/urdf/nav_default.rviz</span>
+<span class="c"># 携带已保存配置启动（本课实操用的就是这条路径）</span>
+<span class="b">$</span> rviz2 -d <span class="y">~/ros2_ws/install/car1_description/share/car1_description/rviz/car1.rviz</span>
+
+<span class="c"># 用 launch 起（自动带上本车配置，推荐）</span>
+<span class="b">$</span> ros2 launch car1_description display.launch.py          <span class="g"># 车模型 + 关节滑块</span>
+<span class="b">$</span> ros2 launch car1_navigation rviz_navigation.launch.py   <span class="g"># 导航视图</span>
+
+<span class="c"># 边用边查配置路径（不用记死）</span>
+<span class="b">$</span> ros2 pkg prefix car1_description
+<span class="b">$</span> ls $(ros2 pkg prefix car1_description)/share/car1_description/rviz/
 
 <span class="c"># 与导航一起跑时，让 rviz 也认仿真时钟（配合 EXP-11 的 --clock 回放）</span>
 <span class="b">$</span> rviz2 --ros-args -p use_sim_time:=true
 
 <span class="c"># 嵌入式/远程：先确认 GPU 驱动支持 OpenGL，再 ssh -X 转发</span>
 <span class="b">$</span> glxinfo | grep <span class="y">"OpenGL renderer"</span>   <span class="g"># 看是不是硬件渲染（如 Mali-G52）</span>
-<span class="b">$</span> ssh -X pi@192.168.1.100 &amp;&amp; rviz2</code></pre>
+<span class="b">$</span> ssh -X iflytek@10.1.134.9 &amp;&amp; rviz2</pre>
+  <div class="tip amber">
+    <span class="lab">⚠ 最高频的坑：只开"消费者"没开"生产者"</span>
+    新手最常犯的错误就是<b>直接敲 <code>rviz2 -d car1.rviz</code></b>，然后发现：画面全黑 / 车不显示 / <code>ros2 topic list | grep tf</code> 是空的 / <code>tf2_echo base_footprint base_link</code> 一直报
+    <code>Invalid frame ID "base_footprint" ... frame does not exist</code>。<br><br>
+    <b>这不是 rviz 坏了，也不是 tf2_echo 的 bug</b>——因为 TF 树和 <code>/robot_description</code> 是 <b>robot_state_publisher</b> 发的，你只开了显示窗口，没人生产数据，rviz 自然是空的。<br><br>
+    ✔ 正确姿势：<b>永远用 launch 一次把生产者和 rviz 都起好</b>——
+    <br><code>ros2 launch car1_description display.launch.py</code>
+    <br>它同时启动 <code>joint_state_publisher_gui</code> + <code>robot_state_publisher</code> + <code>rviz2</code>，才有东西可看。
+    <br><br>
+    <b>一句话记住</b>：TF 永远要问"谁在发"——只有 <code>robot_state_publisher</code>（配合 <code>joint_state_publisher</code>）在跑，<code>base_footprint</code> 才存在。
+  </div>
   <div class="tip violet">
     <span class="lab">原理：为什么先查 glxinfo</span>
     rviz2 依赖 OGRE→OpenGL 渲染，需要驱动提供硬件上下文。板卡（如 RK 系列 Mali-G52）驱动缺失或跑在 llvmpipe 软件渲染上时，轻则卡成幻灯片，重则启动即退。<b>渲染能力是 rviz2 的地基</b>，比任何 Display 设置都更靠前——黑屏第一问永远是"驱动正常吗"。
@@ -195,48 +231,348 @@
 
 <!-- 07 实操A -->
 <section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 A：TF 动态演示——看懂坐标树</h2>
-  <p>照实验讲义的 TF demo：三段发布器拼出 map→odom→base_link→laser_frame 完整链，直观看到静态偏置+圆弧运动如何逐级叠加。</p>
-  <div class="flow">
-    <div class="step"><div class="n">1</div><b>发布链</b><p>运行讲义 TF demo：map→odom 固定偏置 (1.0, 0.5)，odom→base_link 圆弧运动</p></div>
-    <div class="step"><div class="n">2</div><b>添加图层</b><p>rviz2 → Add → TF → 勾 Show Names → Fixed Frame 选 map</p></div>
-    <div class="step"><div class="n">3</div><b>观察运动</b><p>base_link 轴随圆弧走，laser_frame 始终钉在车前方固定位姿——"变换"活了</p></div>
-    <div class="step"><div class="n">4</div><b>破坏实验</b><p>kill 中间段发布器 → 对应坐标轴消失、子树黄字警告——断链症状复现</p></div>
+  <h2><span class="no">07</span>实操 A：跑起本车模型，看懂 TF 坐标树<span class="fs">应用新知</span></h2>
+  <p>不写一行代码——直接用本机功能包 <code>car1_description</code>（小车 C1 的模型描述包）把真车"画"进 rviz2。全程 8 步，每步都有确定的预期结果，照做即可。</p>
+  <div class="tip"><span class="lab">这一步为什么必做</span>实验指导书里 rviz2 的第一个实操就是"加载机器人模型看 TF"——因为它是后面导航实操（第 08 节）的地基：没有正确的 TF 树，地图、雷达、路径全都画不出来。</div>
+
+  <div class="termbar"><span class="tl">终端</span><b>第 1 步 · 先确认包在哪、装的什么</b><span class="note">新终端</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">1</span><b>确认功能包已编译、路径可查</b><span class="cs-where">终端 1</span></div>
+    <p class="cs-why">拿到功能包的真实安装路径，后面 <code>-d</code> 加载的 rviz 配置文件就在它的 <code>rviz/</code> 子目录里：</p>
+    <pre><span class="g">source</span> /opt/ros/humble/setup.bash
+<span class="g">source</span> ~/ros2_ws/install/setup.bash
+<span class="g">ros2</span> pkg list | grep car1_description
+<span class="g">ros2</span> pkg prefix car1_description
+<span class="g">ros2</span> pkg executables car1_description   <span class="c"># 预期无输出：本包只有 launch，没有可执行文件</span></pre>
+    <div class="io"><span class="dim">$ source /opt/ros/humble/setup.bash</span>
+<span class="dim">$ source ~/ros2_ws/install/setup.bash</span>
+<span class="dim">$ ros2 pkg list | grep car1_description</span>
+car1_description
+<span class="dim">$ ros2 pkg prefix car1_description</span>
+<span class="ok">/home/iflytek/ros2_ws/install/car1_description</span>
+<span class="dim">$ ros2 pkg executables car1_description</span>
+<span class="dim">（无输出——这是正常的：描述包只有 launch/urdf/rviz，没有可执行文件）</span>
+<span class="dim">$ ls /home/iflytek/ros2_ws/install/car1_description/share/car1_description/rviz/</span>
+car1.rviz    <span class="c"># ← 第 4 步要 -d 加载的配置文件</span></div>
+    <p class="cs-see">✔ 若 <code>pkg list</code> 查不到，说明包没编译——先回 EXP-04 用 <code>colcon build</code> 编译。</p>
   </div>
-  <pre><code><span class="c"># 讲义 TF demo 三段发布（示意，完整代码见附带源码）</span>
-<span class="c"># 段1：map→odom 静态偏置  PermanentBroadcaster 发 static</span>
-<span class="c"># 段2：odom→base_link  圆弧：yaw 缓变 + x,y 参数方程，10Hz 填 /tf</span>
-<span class="c"># 段3：base_link→laser_frame  固定 (0.2, 0, 0.15) 前向安装位姿</span>
-<span class="b">$</span> ros2 run tf2_ros static_transform_publisher <span class="y">--frame-id map --child-frame-id odom -x 1.0 -y 0.5</span>
-<span class="b">$</span> rviz2       <span class="g"># Fixed Frame=map，Add→TF，勾 Show Names</span>
-<span class="b">$</span> kill 段2    <span class="g"># 观察 base_link 及其子轴如何"冻结+变黄"</span></code></pre>
-  <div class="tip amber"><span class="lab">观察点</span>static 发布器（_static 后缀）走 /tf_static、只发一次但订阅者缓存永驻；动态走 /tf 持续发。所以"冻结"分两种：动态段被杀是缓存里最后值不再更新，静态段被杀的新订阅者干脆收不到——EXP-16 录包回放 /tf_static 要 <code>--loop</code> 就是同一个原理。</div>
+
+  <div class="termbar"><span class="tl">终端 1</span><b>第 2 步 · 认识 launch 里起了什么</b><span class="note">读代码</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">2</span><b>看一眼 display.launch.py 干了三件事</b><span class="cs-where">终端 1</span></div>
+    <p class="cs-why">这个 launch 会同时启动 <b>三个节点</b>：关节状态 GUI、机器人状态发布器、rviz2 本体。理解它，就知道"画面上的车是谁画出来的"：</p>
+    <pre><span class="g">ros2</span> pkg prefix car1_description   <span class="c"># 复用它拿到 share 路径</span>
+<span class="g">cat</span> /home/iflytek/ros2_ws/install/car1_description/share/car1_description/launch/display.launch.py</pre>
+    <div class="io"><span class="dim"># launch 里的三个 Node：</span>
+<span class="ok">joint_state_publisher_gui</span>   <span class="c"># 1. 弹一个关节滑块窗，手动摆轮子/机械臂</span>
+<span class="ok">robot_state_publisher</span>       <span class="c"># 2. 读 URDF，算出每个 link 的 TF 发到 /tf</span>
+<span class="ok">rviz2</span>  arguments=[<span class="y">'-d', rviz_config</span>]  <span class="c"># 3. 打开 rviz，自动加载 car1.rviz</span></div>
+  </div>
+
+  <div class="termbar"><span class="tl">终端 1</span><b>第 3 步 · 启动！（一条命令起三个节点）</b><span class="note">保持运行</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">3</span><b>launch 启动 display</b><span class="cs-where">终端 1</span></div>
+    <pre><span class="g">ros2</span> launch car1_description display.launch.py</pre>
+    <div class="io"><span class="dim">$ ros2 launch car1_description display.launch.py</span>
+[INFO] [joint_state_publisher_gui]: ...
+[INFO] [robot_state_publisher]: ...
+<span class="ok"># 屏幕上应弹出两个窗口：① 关节滑块小窗 ② rviz2 主窗口</span>
+<span class="warn"># 若报 "cannot find launch file" → 第 1 步的 source 没做</span></div>
+    <p class="cs-see">✔ 此时 rviz 里应该已经能看到一辆小车模型了（因为 car1.rviz 自动勾了 RobotModel 和 TF）。<b>记住这条命令——它是唯一正确的起法</b>，因为它一次性把"生产者"（robot_state_publisher）和"消费者"（rviz2）都起好了。</p>
+  </div>
+
+  <div class="termbar"><span class="tl">rviz2 窗口</span><b>第 4 步 · 认界面：左侧是图层、上方是基准</b><span class="note">看界面</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">4</span><b>对照 car1.rviz 的实际内容认识界面</b><span class="cs-where">rviz 窗口</span></div>
+    <p class="cs-why">打开的本机配置 <code>car1.rviz</code> 内容如下——先认清"哪些是自动加载的"：</p>
+    <pre><span class="c"># car1.rviz 里的关键设置（本机文件实测）</span>
+Global Options:
+  Fixed Frame: <span class="y">base_footprint</span>        <span class="c"># ← 观测基准 = 车底投影点</span>
+Displays:
+  - Grid        (Value: true)            <span class="c"># 地面网格</span>
+  - <span class="ok">RobotModel</span>  (Topic: /robot_description)  <span class="c"># 车模型</span>
+  - <span class="ok">TF</span>          (Show Names: true, Show Axes: true)  <span class="c"># 坐标系轴+名字</span></pre>
+    <div class="io"><span class="dim">左侧 Displays 面板从上到下：</span>
+☑ Grid          地面网格
+☑ RobotModel    小车模型（订阅 /robot_description）
+☑ TF            坐标轴 + 名字标签
+<span class="dim">左上 Global Options → Fixed Frame 显示：</span>
+<span class="ok">base_footprint</span></div>
+  </div>
+
+  <div class="termbar"><span class="tl">rviz2 窗口</span><b>第 5 步 · 用鼠标转起来（七个基本操作）</b><span class="note">看界面</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">5</span><b>把视角玩明白，这是看懂三维的第一步</b><span class="cs-where">rviz 窗口</span></div>
+    <pre><span class="c"># rviz 视口鼠标操作速查</span>
+左键拖拽     → 旋转视角（绕着焦点转）
+中键拖拽     → 平移视角（整个画面平移）
+滚轮         → 缩放（近大远小）
+右键短按     → 弹出上下文菜单（Focal Point / Reset View）
+视口左上      → 显示当前视角名 "Current View"
+下方工具栏     → Interact / MoveCamera / Select 三种工具切换</pre>
+    <div class="io"><span class="dim">操作后应看到：</span>
+<span class="ok">小车模型随鼠标旋转、网格地面跟着倾斜——确认视角控制生效</span>
+<span class="warn">画面乱了按不了？视口右键 → Reset View（或按快捷键直接复位）</span></div>
+  </div>
+
+  <div class="termbar"><span class="tl">终端 2</span><b>第 6 步 · 命令行验证 TF 树真的在发（本机实测值）</b><span class="note">新终端</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">6</span><b>先确认"生产者"在跑，再验证坐标变换</b><span class="cs-where">终端 2</span></div>
+    <p class="cs-why">rviz 的 TF 图层和命令行的 <code>tf2_echo</code> 读的是同一份 <code>/tf</code> 数据。<b>顺序很关键</b>：先查节点和话题（确认生产者活着），再查变换的值。跳过第一步直接 tf2_echo，就是新手最常见的翻车点：</p>
+    <pre><span class="g">source</span> /opt/ros/humble/setup.bash
+<span class="g">source</span> ~/ros2_ws/install/setup.bash
+
+<span class="c"># ① 先确认生产者：这三个节点必须都在</span>
+<span class="g">ros2</span> node list
+
+<span class="c"># ② 再看话题存不存在</span>
+<span class="g">ros2</span> topic list | grep -E <span class="y">"tf|robot_description"</span>
+
+<span class="c"># ③ 最后才查变换（前两步没做就查 = 必然报 frame does not exist）</span>
+<span class="g">ros2</span> run tf2_ros tf2_echo base_footprint base_link</pre>
+    <div class="io"><span class="dim">$ ros2 node list</span>
+<span class="ok">/joint_state_publisher_gui</span>
+<span class="ok">/robot_state_publisher</span>
+<span class="ok">/rviz2</span>
+<span class="dim">$ ros2 topic list | grep -E "tf|robot_description"</span>
+<span class="ok">/robot_description</span>
+<span class="ok">/tf</span>
+<span class="ok">/tf_static</span>
+<span class="dim">$ ros2 topic info /robot_description --verbose</span>
+Publisher count: 1     <span class="c"># ← 发布者 = robot_state_publisher（谁在发，一目了然）</span>
+<span class="dim">$ ros2 run tf2_ros tf2_echo base_footprint base_link</span>
+At time 1792054921.106
+- Translation: [0.000, 0.000, <span class="ok">0.029</span>]
+- Rotation: in RPY (radian) [0.000, -0.000, 0.000]
+<span class="warn"># ↑ 实测：base_joint 把 base_link 抬高 2.9cm —— 这正是 URDF 里 base_joint 的固定偏移</span>
+<span class="warn"># 这条变换同时存在于 /tf_static（固定不变，只发一次，订阅者缓存永驻）</span></div>
+    <p class="cs-see">✔ 若第 ① 步 <code>node list</code> 里没有 <code>robot_state_publisher</code>，说明你只开了 rviz 没开生产者——<b>回第 3 步用 launch 起全套</b>，别怀疑 tf2_echo。</p>
+
+    <p class="cs-why">真机踩过的两个坑（这台上实测到的）：</p>
+    <pre><span class="c"># 坑1：Ctrl+C 杀不干净 tf2_echo（ros2 run 是两层，包装器死了子进程变孤儿，会一直刷同一句报错）</span>
+<span class="g">pkill</span> -x tf2_echo        <span class="c"># 确认 pgrep -x tf2_echo 为空</span>
+
+<span class="c"># 坑2：两个终端的域号必须一致，否则根本不在一个 ROS 图里</span>
+<span class="g">echo</span> $ROS_DOMAIN_ID      <span class="c"># 终端 1 和终端 2 各查一次</span></pre>
+    <div class="io"><span class="dim">$ pkill -x tf2_echo</span>
+<span class="dim">$ pgrep -x tf2_echo</span>
+<span class="ok">（无输出——确认已清干净）</span>
+<span class="dim">$ echo $ROS_DOMAIN_ID   # 终端 1</span>
+<span class="ok">0</span>
+<span class="dim">$ echo $ROS_DOMAIN_ID   # 终端 2（必须和终端 1 相同）</span>
+<span class="ok">0</span>
+<span class="warn"># 若两个终端域号不同 → 各是一个独立 ROS 图，话题/TF 互相看不见</span></div>
+  </div>
+
+  <div class="termbar"><span class="tl">rviz2 窗口</span><b>第 7 步 · 拖动关节滑块，看模型活起来</b><span class="note">看界面</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">7</span><b>joint_state_publisher_gui 的滑块 = 手动喂关节角</b><span class="cs-where">rviz 窗口 + 滑块窗</span></div>
+    <p class="cs-why">滑动滑块 → 它把关节角发到 <code>/joint_states</code> → <code>robot_state_publisher</code> 重算 TF → rviz 里的模型跟着动。整条链路肉眼可见：</p>
+    <pre><span class="c"># 不用敲命令，直接拖动滑块窗里的滑条</span>
+<span class="c"># 若找不到滑块窗：它可能被 rviz 挡住，从任务栏切换到 joint_state_publisher_gui</span></pre>
+    <div class="io"><span class="dim">拖动任意关节滑块后应看到：</span>
+<span class="ok">rviz 里对应部件（如机械臂/轮子）实时转动</span>
+<span class="ok">同时该部件的坐标轴也跟着动——TF 在逐帧更新</span></div>
+  </div>
+
+  <div class="termbar"><span class="tl">终端 1</span><b>第 8 步 · 破坏实验：只开"消费者"，看满屏报错</b><span class="note">对照观察</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">8</span><b>复现"只开 rviz"的经典翻车现场</b><span class="cs-where">终端 1 按 Ctrl+C</span></div>
+    <p class="cs-why">回终端 1 按 <b>Ctrl+C</b> 停掉 launch（三个节点一起退出），然后<b>只</b>敲 rviz2——这就是前面警告里说的"只开消费者"：</p>
+    <pre><span class="c"># 终端 1 按 Ctrl+C 停掉整组 launch（生产者一起没了）</span>
+<span class="g">rviz2</span> -d ~/ros2_ws/install/car1_description/share/car1_description/rviz/car1.rviz
+
+<span class="c"># 另开终端复现报错：</span>
+<span class="g">ros2</span> topic list | grep -E <span class="y">"tf|robot_description"</span>   <span class="c"># 空</span>
+<span class="g">ros2</span> run tf2_ros tf2_echo base_footprint base_link</pre>
+    <div class="io"><span class="dim">$ rviz2 -d .../car1.rviz</span>
+<span class="bad"># 窗口打开但是空的：车不显示，Global Status 报错</span>
+
+<span class="dim">$ ros2 topic list | grep -E "tf|robot_description"</span>
+<span class="bad">（无输出）—— 关键证据：没有任何发布者，话题压根不存在</span>
+
+<span class="dim">$ ros2 run tf2_ros tf2_echo base_footprint base_link</span>
+[INFO] [tf2_echo]: Waiting for transform base_footprint ->  base_link:
+<span class="bad">Invalid frame ID "base_footprint" passed to canTransform argument target_frame
+ - frame does not exist</span>
+<span class="warn"># 它会一直 Waiting —— 不是 tf2_echo 坏了，是 TF 树根本不存在</span>
+
+<span class="ok"># 重新跑第 3 步的 launch（补上生产者）：</span>
+<span class="dim">$ ros2 launch car1_description display.launch.py</span>
+<span class="ok">$ ros2 node list   → /joint_state_publisher_gui /robot_state_publisher /rviz2  ✅ 都在</span>
+<span class="ok">$ tf2_echo ...     → Translation: [0.000, 0.000, 0.029]  ✅ 有数据了</span>
+<span class="ok">$ rviz 里车模型立刻显示 —— 固定坐标系 base_footprint 能被解析了</span></div>
+    <p class="cs-see">✔ 本节灵魂：<b>rviz2 只是"消费者/显示器"，它的一切都来自话题与 TF</b>。看不动画面时，先查数据源（node list / topic list），别怀疑视图工具。</p>
+
+    <div class="tip"><span class="lab">顺带记录：rviz2 退出时的 Segmentation fault 不是故障</span>
+    只开 rviz 时，<b>Ctrl+C 退出 rviz2 会打印 <code>Segmentation fault (core dumped)</code></b>——这是 rviz2/Ogre 在 ARM 上退出时的常见崩溃，<b>不影响任何功能</b>，别当成故障去排查。
+    </div>
+  </div>
+
+  <div class="tip amber">
+    <span class="lab">报错逐行解码（照着对号入座）</span>
+    <b>Package 'py_nodes' not found</b> —— 本机没装这个包名；命令引用了一个不存在的包，改成本机真实包名（如 <code>car1_description</code>）。<br>
+    <b>-bash: $: command not found</b> —— 你把文档里的提示符 <code>$</code> 一起复制进终端了；<code>$</code> 不是命令，删掉即可，这行不算错。<br>
+    <b>topic list 输出为空</b> —— 关键证据：没有发布者，所以没有话题。<br>
+    <b>tf2_echo 一直 Waiting + frame does not exist</b> —— 同上，TF 树不存在。<br>
+    <b>开头那行 Waiting 一闪而过</b> —— 那是启动瞬间的竞态（subscriber 还没建好），紧接着就来数据，属正常，不用管。
+  </div>
+
+  <div class="tip"><span class="lab">环境提醒：venv 与系统 Python</span>
+  若当前 shell 在 <code>ros2_venv</code> 之类的虚拟环境里，<b>C++ 写的 <code>robot_state_publisher</code> 不受影响</b>；但将来跑 Python 节点时要留意 venv 与系统 Python 冲突——ROS2 的 Python 节点依赖系统 <code>rclpy</code>，混用 venv 可能 import 失败。跑 Python 节点前建议 <code>deactivate</code> 后只用 <code>source /opt/ros/humble/setup.bash</code>。
+  </div>
 </section>
 
 <!-- 08 实操B -->
 <section class="blk" id="s8">
-  <h2><span class="no">08</span>实操 B：配置保存与团队复现</h2>
-  <div class="flow">
-    <div class="step"><div class="n">1</div><b>搭视图</b><p>Add 全套：TF + RobotModel + LaserScan(/scan, Size 0.03) + Path(/plan) + Marker</p></div>
-    <div class="step"><div class="n">2</div><b>调属性</b><p>Fixed Frame=map、LaserScan 按距离着色、RobotModel 拉 Alpha 0.8 看穿外壳</p></div>
-    <div class="step"><span class="n">3</span><b>存资产</b><p>File → Save Config As → <code>config/nav_debug.rviz</code>，提交进 git</p></div>
-    <div class="step"><div class="n">4</div><b>一键还原</b><p><code>rviz2 -d config/nav_debug.rviz</code>，队友打开即是同款视图</p></div>
-  </div>
-  <pre><code><span class="c"># .rviz 文件本质是 YAML，可 diff 可 code review</span>
-<span class="b">$</span> cat nav_debug.rviz | head -20    <span class="g"># Panels/Displays/Properties 三段结构清晰</span>
-<span class="b">$</span> git diff config/nav_debug.rviz   <span class="g"># 谁改了共享视图，一目了然</span>
+  <h2><span class="no">08</span>实操 B：加载导航可视化，一步步看懂地图与雷达<span class="fs">融会贯通</span></h2>
+  <p>进阶实操——用本机 <code>car1_navigation</code> 功能包的 <code>navigation.rviz</code> 打开导航专用视图。这份配置比第 07 节复杂得多（订阅 <b>12 个图层话题 + 3 个交互话题</b>），正是理解"rviz 图层如何堆出完整导航画面"的最佳样本。</p>
 
-<span class="c"># Marker 标注示例：在 RViz 画面里放一个"目标点 3"</span>
-<span class="b">$</span> ros2 run rviz2 ...  <span class="g"># 或节点内 publish visualization_msgs/msg/Marker:</span>
-<span class="c">#   header.frame_id = map · ns = goals · id = 3</span>
-<span class="c">#   type = TEXT_VIEW_FACING · action = ADD · text = "G3"</span>
-<span class="c">#   pose = 目标位姿 · color = 透明度1的黄色 · scale.z = 0.3</span></code></pre>
+  <div class="termbar"><span class="tl">终端</span><b>第 1 步 · 看清配置订阅了什么</b><span class="note">读配置</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">1</span><b>把 navigation.rviz 订阅的话题列出来</b><span class="cs-where">终端 1</span></div>
+    <p class="cs-why"><code>.rviz</code> 文件本质是 YAML。先看清它订阅了哪些话题，心里有数再打开就不会被满屏图层吓到：</p>
+    <pre><span class="g">ros2</span> pkg prefix car1_navigation
+<span class="g">cat</span> /home/iflytek/ros2_ws/install/car1_navigation/share/car1_navigation/rviz/navigation.rviz | grep <span class="y">"Value: /"</span></pre>
+    <p class="cs-why">预期输出 <b>15 条</b>——先 12 个图层话题：</p>
+    <div class="io"><span class="dim">$ ros2 pkg prefix car1_navigation</span>
+<span class="ok">/home/iflytek/ros2_ws/install/car1_navigation</span>
+<span class="dim">$ cat .../navigation.rviz | grep "Value: /"</span>
+<span class="c"># ── 12 个图层话题 ──────────────────────────────</span>
+/map                              <span class="c"># 全局栅格地图</span>
+/map_updates                      <span class="c"># 地图增量更新</span>
+/robot_description                <span class="c"># URDF 模型（RobotModel 图层）</span>
+<span class="ok">/scan</span>                             <span class="c"># 激光雷达</span>
+/particle_cloud                   <span class="c"># 粒子滤波定位</span>
+/plan                             <span class="c"># 全局路径</span>
+/local_plan                       <span class="c"># 局部路径</span>
+/global_costmap/costmap           <span class="c"># 全局代价地图</span>
+/global_costmap/costmap_updates
+/local_costmap/costmap            <span class="c"># 局部代价地图</span>
+/local_costmap/costmap_updates
+/local_costmap/published_footprint  <span class="c"># 车体轮廓</span>
+<span class="c"># ── 外加 3 个交互话题（工具用，不是图层）─────────</span>
+/initialpose                      <span class="c"># 2D Pose Estimate 发出</span>
+/goal_pose                        <span class="c"># 2D Goal Pose 发出</span>
+/clicked_point                    <span class="c"># Publish Point 发出</span></div>
+    <div class="tip amber"><span class="lab">📌 同时记住两件事</span>
+    <b>①</b> 这份配置的 <code>Fixed Frame = map</code>（<b>不是</b> <code>base_footprint</code>——那是第 07 节 <code>car1.rviz</code> 的）。<br>
+    <b>②</b> 15 条里只有前 12 条是"图层数据源"，后 3 条是交互工具的话题——<b>数错层数会导致后面排查找错方向</b>。</div>
+  </div>
+
+  <div class="termbar"><span class="tl">终端 1</span><b>第 2 步 · 只起 rviz（先不跑导航）</b><span class="note">保持运行</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">2</span><b>用本机 launch 打开导航视图</b><span class="cs-where">终端 1</span></div>
+    <p class="cs-why">本机已备好一个只起 rviz 的 launch，专门用来先看界面：</p>
+    <pre><span class="g">source</span> /opt/ros/humble/setup.bash
+<span class="g">source</span> ~/ros2_ws/install/setup.bash
+<span class="g">ros2</span> launch car1_navigation rviz_navigation.launch.py</pre>
+    <div class="io"><span class="dim">$ ros2 launch car1_navigation rviz_navigation.launch.py</span>
+[INFO] [rviz2]: rviz2 started with config .../navigation.rviz
+<span class="ok"># rviz 打开，左侧 Displays 面板里应列出 Map / RobotModel / LaserScan / TF / Global Plan… 多项</span>
+<span class="warn"># 但图层基本全空、Global Status 报 Fixed Frame [map] does not exist</span>
+<span class="warn"># ——因为此刻还没有任何节点发 map 坐标系数据。这正是第 3 步要对比的"空"。</span></div>
+    <p class="cs-see">✔ 先看到"全空"再看到"点亮"，才知道每一层是被哪个节点喂出来的——这是本章最重要的观察方法。</p>
+  </div>
+
+  <div class="termbar"><span class="tl">终端 2</span><b>第 3 步 · 起完整导航（关键：关掉它自带的 rviz）</b><span class="note">新终端</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">3</span><b>启动导航主 launch，观察画面从空到满</b><span class="cs-where">终端 2</span></div>
+    <p class="cs-why">这一步一次性拉起 <b>bringup（底盘+IMU+EKF）、lidar、localization（map_server + amcl）、navigation_base（Nav2）</b>。地图用默认的 <code>slam_map</code>（本机唯一的地图），<b>不要改成 map_01</b>。<br>
+    因为终端 1 已经开着 rviz，这里必须用 <code>use_rviz:=false</code> 关掉 launch 自带的第二个 rviz，否则会弹出两个窗口。</p>
+    <pre><span class="g">source</span> /opt/ros/humble/setup.bash
+<span class="g">source</span> ~/ros2_ws/install/setup.bash
+<span class="g">ros2</span> launch car1_navigation navigation.launch.py <span class="y">use_rviz:=false</span></pre>
+    <div class="io"><span class="dim">$ ros2 launch car1_navigation navigation.launch.py use_rviz:=false</span>
+[INFO] [bringup]: chassis + IMU + EKF ...     <span class="c"># → /odom 出现</span>
+[INFO] [lidar]: ...                          <span class="c"># → /scan 出现</span>
+[INFO] [map_server]: Loaded map slam_map     <span class="c"># → 地图图层出现</span>
+[INFO] [amcl]: initial pose ...              <span class="c"># → 粒子云 + map→base_link 出现</span>
+[INFO] [controller_server]: ...              <span class="c"># → 代价地图出现</span>
+<span class="ok"># 回终端 1 的 rviz 看：地图(grid)、雷达点(红)、机器人模型、代价地图(蓝紫) 依次点亮</span>
+<span class="warn"># 若某个图层始终空 → 对应话题没数据，回终端看是哪个节点没起来</span></div>
+    <div class="tip amber"><span class="lab">⚠ 安全提醒：这一步会真打开硬件</span>
+    该 launch 会真去打开 <code>/dev/stm32</code> 驱动<b>底盘和舵机</b>。请先<b>把车架起来或确认周围无遮挡</b>——没有 <code>cmd_vel</code> 时车不会走，但<b>舵机控制器会初始化</b>（可能听到舵机上电动作，属正常）。</div>
+    <p class="cs-see">✔ 这就是"图层即诊断"：rviz 里哪层不亮，就说明对应的那个节点/话题有问题——比翻日志快得多。</p>
+  </div>
+
+  <div class="termbar"><span class="tl">终端 3</span><b>第 4 步 · CLI 逐个核对图层数据</b><span class="note">新终端</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">4</span><b>用 ros2 topic 逐个核对图层是否真有数据</b><span class="cs-where">终端 3</span></div>
+    <p class="cs-why">rviz 画不出东西时，第一件事就是回到命令行确认"数据在不在"。用频率、QoS、内容一眼判断：</p>
+    <pre><span class="g">ros2</span> topic hz /scan                          <span class="c"># 雷达图层：COIN-D6 通常 10Hz 上下（以现场为准）</span>
+<span class="g">ros2</span> topic info /map --verbose               <span class="c"># 地图图层：QoS 里应有 Durability: TRANSIENT_LOCAL</span>
+<span class="g">ros2</span> topic echo /plan --once                 <span class="c"># 路径图层：派了目标点后才有数据</span>
+<span class="g">ros2</span> run tf2_ros tf2_echo map base_link      <span class="c"># 定位图层：map→车体</span></pre>
+    <div class="io"><span class="dim">$ ros2 topic hz /scan</span>
+average rate: <span class="ok">10.02</span>
+<span class="dim">$ ros2 topic info /map --verbose</span>
+Type: nav_msgs/msg/OccupancyGrid
+Publisher count: 1
+QoS profile:
+  Durability: <span class="ok">TRANSIENT_LOCAL</span>   <span class="c"># ← 地图用 latched，晚订阅也收得到</span>
+<span class="dim">$ ros2 run tf2_ros tf2_echo map base_link</span>
+Translation: [1.234, -0.567, 0.000]       <span class="c"># ← 车在地图里的实时位置</span></div>
+    <div class="tip amber"><span class="lab">⚠ 两处输出格式细节（照原稿写会找不到）</span>
+    <b>①</b> QoS 字段实际打印为 <code>Durability: TRANSIENT_LOCAL</code>（在 <code>QoS profile:</code> 段内），<b>不是</b> <code>Durability Policy: Transient Local</code>。<br>
+    <b>②</b> <code>tf2_echo map base_link</code> 若报 <code>extrapolation</code> / frame 不存在，说明 <b>amcl 还没收敛</b>——先去 rviz 用 <b>2D Pose Estimate</b> 给一个初始位姿，再回来查。</div>
+  </div>
+
+  <div class="termbar"><span class="tl">rviz2 窗口</span><b>第 5 步 · 2D Pose Estimate / 2D Goal Pose</b><span class="note">看界面</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">5</span><b>亲手给机器人"指位置"和"派任务"</b><span class="cs-where">rviz 窗口</span></div>
+    <p class="cs-why"><code>navigation.rviz</code> 里确实预装了这三个工具：<code>SetInitialPose</code>(<code>/initialpose</code>)、<code>SetGoal</code>(<code>/goal_pose</code>)、<code>PublishPoint</code>(<code>/clicked_point</code>)。用法就是拖箭头：</p>
+    <pre><span class="c"># rviz 顶部工具栏两个关键按钮：</span>
+<span class="y">2D Pose Estimate</span>  → 在地图上按住拖一个箭头 = 告诉 amcl "车大概在这，朝这个方向"
+                     松手后 /initialpose 发出，粒子云立刻向该处聚拢
+<span class="y">2D Goal Pose</span>      → 拖一个目标箭头 = 给 nav2 派目标
+                     松手后 /goal_pose 发出 → 出现全局路径(绿) + 局部路径(蓝)</pre>
+    <div class="io"><span class="dim">操作 2D Pose Estimate 后应看到：</span>
+<span class="ok">粒子云（/particle_cloud）向箭头处聚拢——定位收敛</span>
+<span class="dim">操作 2D Goal Pose 后应看到：</span>
+<span class="ok">/plan 绿线（全局路径）+ /local_plan 蓝线（局部路径）出现</span>
+<span class="warn">若路径不出现 → 回到终端 3 用 ros2 topic echo /plan --once 确认有无数据</span></div>
+  </div>
+
+  <div class="termbar"><span class="tl">rviz2 窗口</span><b>第 6 步 · 改图层属性，做自己的调试视图</b><span class="note">看界面</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">6</span><b>调 LaserScan 颜色、RobotModel 透明度</b><span class="cs-where">rviz 窗口</span></div>
+    <pre><span class="c"># 展开左侧 Displays 面板里的某项，改它的子属性：</span>
+LaserScan → Topic: /scan · Size (m): 0.03 · Color Transformer: Intensity
+RobotModel → Alpha: 0.8        <span class="c"># 半透明，能看穿外壳看内部结构</span>
+TF        → Show Names: true · Marker Scale: 0.3
+Map       → Color Scheme: map / costmap   <span class="c"># 地图配色</span>
+Grid      → Cell Size: 1 · Plane Cell Count: 20</pre>
+    <div class="io"><span class="dim">改完应立即生效（无需重启）：</span>
+<span class="ok">雷达点变细、车模型半透明、坐标轴标签显示——属性面板是实时的</span></div>
+  </div>
+
+  <div class="termbar"><span class="tl">终端</span><b>第 7 步 · 存成团队配置，一键复现</b><span class="note">落地</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">7</span><b>File → Save Config As，提交进 git</b><span class="cs-where">rviz 窗口 + 终端</span></div>
+    <p class="cs-why">把调好的视图存成 <code>.rviz</code>（YAML），队友 <code>-d</code> 一键还原——团队排查口径从此一致：</p>
+    <pre><span class="c"># rviz 菜单：File → Save Config As → 存到包内 config/nav_debug.rviz</span>
+<span class="g">git</span> add config/nav_debug.rviz
+<span class="g">git</span> diff config/nav_debug.rviz   <span class="c"># 纯 YAML，谁改了哪层一目了然</span>
+<span class="c"># 队友复现：</span>
+<span class="g">rviz2</span> -d config/nav_debug.rviz</pre>
+    <div class="io"><span class="dim">$ cat nav_debug.rviz | head -5</span>
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+<span class="ok"># 三段结构：Panels / Visualization Manager / Window Geometry —— 可 diff 可 review</span></div>
+    <div class="tip amber"><span class="lab">💡 想让配置默认生效？得覆盖 launch 里那个硬编码路径</span>
+    <code>navigation.launch.py</code> 里的 rviz 配置路径是<b>硬编码到源码目录那份</b>（<code>~/ros2_ws/src/xflz_eai_car1/navigation/car1_navigation/rviz/navigation.rviz</code>）。<br>
+    想让它以后默认就用你的配置 → <b>直接把你的 <code>.rviz</code> 覆盖到那个文件</b>；不想动源码 → 每次手动 <code>rviz2 -d 你的配置.rviz</code> 加载。</div>
+  </div>
+
   <table>
     <tr><th>坑</th><th>症状</th><th>解法</th></tr>
     <tr><td>驱动缺失黑屏</td><td>启动闪退/纯黑</td><td>glxinfo 查 Mali 等硬件渲染是否就绪，装驱动或换机器</td></tr>
-    <tr><td>Fixed Frame 不存在</td><td>全部 Display 黄 Warning</td><td>Global Options → Fixed Frame 改成当前 TF 树里真实存在的 frame</td></tr>
-    <tr><td>TF 停在过去</td><td>坐标轴冻结</td><td>查 stamp：动态 TF 的时间戳是否用旧值（回放场景配合 --clock + use_sim_time）</td></tr>
-    <tr><td>Marker 修改无效</td><td>改了没反应</td><td>ADD 是创建/覆盖；DELETE 再 ADD 或直接 MODIFY，且 ns+id 必须一致</td></tr>
+    <tr><td>Fixed Frame 不存在</td><td>全部 Display 黄 Warning</td><td>第 07 节配置是 base_footprint、第 08 节是 map——切配置时按对应系统改 Fixed Frame</td></tr>
+    <tr><td>地图图层空白</td><td>Map 显示但无内容</td><td>地图用 latched QoS，晚订阅也收得到；先 <code>ros2 topic hz /map</code> 确认 map_server 在发</td></tr>
+    <tr><td>路径画不出来</td><td>发了目标点没绿线</td><td>先确认 amcl 定位收敛（tf2_echo map base_link 能查到），再确认 planner 节点已启动</td></tr>
+    <tr><td>起了两个 rviz</td><td>弹出两个窗口抢资源</td><td>已手动开 rviz 时，主 launch 加 <code>use_rviz:=false</code></td></tr>
     <tr><td>视角迷失</td><td>网格和车都找不到了</td><td>视口右键 → Reset View；仍乱则关掉可疑 Display 逐层二分</td></tr>
   </table>
 
@@ -245,15 +581,15 @@
 
 <!-- 09 注意事项 -->
 <section class="blk" id="s9">
-  <h2><span class="no">09</span>注意事项与验收</h2>
+  <h2><span class="no">09</span>注意事项与验收<span class="fs">融会贯通</span></h2>
   <ul class="check">
     <li>验收 1：能口述"消息 → frame_id → TF 链 → Fixed Frame → 绘制"全链路</li>
-    <li>验收 2：同一系统下切换 map/base_link 两种 Fixed Frame，解释画面差异</li>
-    <li>验收 3：TF 图层实时定位一处断链，并说出与 view_frames PDF 的区别</li>
-    <li>验收 4：RobotModel 不显示时按四步逆向排查出根因</li>
-    <li>验收 5：完成 Marker 文字标注（ADD→MODIFY→DELETE 走一遍）</li>
-    <li>验收 6：保存 .rviz 配置，队友用 -d 参数一键复现同款视图</li>
-    <li>验收 7：鼠标操作熟练——左键旋转、中键平移、滚轮缩放、右键菜单</li>
+    <li>验收 2：实操 A 第 3 步一条 launch 起 display，能在 rviz 里看到本车模型与 TF 坐标轴</li>
+    <li>验收 3：<b>核心考点</b>——实操 A 第 8 步复现"只开 rviz"翻车现场（topic list 空 + tf2_echo 报 frame does not exist），能说清"生产者/消费者"关系，并给出正确起法（launch）</li>
+    <li>验收 4：能说出 car1.rviz（Fixed Frame=base_footprint）与 navigation.rviz（map）的差别</li>
+    <li>验收 5：实操 B 第 3 步观察图层逐个点亮，并用 ros2 topic hz/info 验证至少 3 个图层数据</li>
+    <li>验收 6：完成 2D Pose Estimate 定位收敛 + 2D Goal Pose 出现全局/局部路径</li>
+    <li>验收 7：鼠标操作熟练（左键旋转、中键平移、滚轮缩放、右键复位），并保存 .rviz 配置供队友 -d 复现</li>
   </ul>
   <div class="tip"><span class="lab">验收口径</span>
   黄字 Warning 只有两类根因：<b>帧不存在（Fixed Frame 名字错）</b>与<b>链不完整（TF 缺跳）</b>。验收时随机制造一种，要求 30 秒内说出是哪类——能秒判，才算真看懂了本课第 02 节。</div>
@@ -261,7 +597,7 @@
 
 <!-- 10 总结 -->
 <section class="blk" id="s10">
-  <h2><span class="no">10</span>本课总结</h2>
+  <h2><span class="no">10</span>本课总结<span class="fs">融会贯通</span></h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">定位</div><div class="kt">取景器，不是数据源</div><p>rviz2 只订阅、变换、渲染；异常优先查话题与 TF，而不是怀疑视图工具。</p></div>
     <div class="kcard"><div class="kd">灵魂</div><div class="kt">Fixed Frame 是观测基准</div><p>一切数据变换到它才绘制；换帧=换视角，地图系看全局、车体系看感知。</p></div>

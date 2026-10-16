@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-07 · 服务通信：指纹验证 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#db2777;--theme-deep:#be185d;--theme-bg:#fce7f3;--theme-bd:#fbcfe8}
+/* ===== 生活对比框 ===== */
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+@media(max-width:720px){.cmp-grid{grid-template-columns:1fr}}
+.cmp-box{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--bg-soft)}
+.cmp-box.bad{border-color:#fecaca;background:#fff7f7}
+.cmp-box.good{border-color:#99f6e4;background:#f6fffd}
+.cmp-box h5{margin:0 0 8px;font-size:14px;color:var(--head);display:flex;align-items:center;gap:8px}
+.cmp-box ul{margin:0;padding-left:18px;font-size:13px;line-height:1.85;color:#475569}
+.cmp-box li b{color:var(--head)}
+/* ===== 图与图注 ===== */
+.fig-wrap{margin:20px 0;text-align:center}
+.fig-wrap figcaption{margin-top:9px;font-size:12.5px;color:var(--muted)}
+/* ===== 命令分步卡（与 EXP-05 同款）===== */
+.termbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:20px 0 10px}
+.termbar .tl{background:var(--head);color:#fff;border-radius:999px;padding:3px 13px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em}
+.termbar b{font-size:14.5px;color:var(--head)}
+.termbar .note{font-size:12.5px;color:var(--muted)}
+.cmdstep{background:var(--bg-soft);border:1px solid var(--border);border-left:3px solid var(--theme);border-radius:12px;padding:13px 17px;margin:11px 0}
+.cmdstep .cs-hd{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.cmdstep .cs-no{font-family:var(--font-mono);font-size:12px;font-weight:700;background:var(--theme);color:#fff;border-radius:999px;min-width:22px;height:22px;text-align:center;line-height:22px;padding:0 5px;flex:none}
+.cmdstep .cs-hd b{font-size:14.5px;color:var(--head)}
+.cmdstep .cs-where{margin-left:auto;font-family:var(--font-mono);font-size:11px;background:var(--theme-bg);color:var(--theme-deep);border:1px solid var(--theme-bd);border-radius:999px;padding:3px 11px;white-space:nowrap}
+.cmdstep .cs-why{font-size:13.5px;color:#475569;margin:7px 0 0;line-height:1.8}
+.cmdstep pre{margin:9px 0 0;font-size:13px;padding:12px 15px}
+.cmdstep table{margin:10px 0 0;font-size:13.5px}
+.cmdstep .cs-see{font-size:12.5px;color:#0f766e;margin:8px 0 0;line-height:1.75}
+.cmdstep .io{margin:10px 0 0;font-size:12.5px;color:#e2e8f0;background:#0b0f17;border:1px solid #1e293b;border-radius:10px;padding:13px 16px;line-height:1.85;font-family:var(--font-mono);white-space:pre-wrap;overflow-x:auto}
+.cmdstep .io .dim{color:#64748b}.cmdstep .io .g{color:#4ade80}.cmdstep .io .y{color:#fbbf24}.cmdstep .io .r{color:#fca5a5}
+/* ===== 服务实验台 ===== */
+.lab-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.lab-box{flex:1;min-width:230px;border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--bg-soft)}
+.lab-box h5{margin:0 0 8px;font-size:13.5px;color:var(--head)}
+.lab-box label{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#475569;margin:6px 0;gap:8px}
+.lab-box select{font-family:var(--font-mono);font-size:12.5px;padding:4px 8px;border:1px solid var(--border);border-radius:7px;background:#fff;color:#334155}
+.switch-row{display:flex;align-items:center;gap:8px;margin:10px 0 2px;font-size:13px;color:#475569;cursor:pointer}
+.switch-row input{width:16px;height:16px;accent-color:var(--theme)}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.btn{background:var(--theme)}
+.btn:hover{background:var(--theme-deep)}
+.tl-cells{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px}
+.tl-cells .c{width:32px;height:32px;border-radius:8px;background:#e2e8f0;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;color:#94a3b8;transition:.3s}
+.tl-cells .c.wait{background:#fef3c7;border-color:#fcd34d;color:#b45309}
+.tl-cells .c.act{background:var(--theme-bg);border-color:var(--theme-bd);color:var(--theme-deep);font-weight:700}
+.tl-cells .c.ok{background:#dcfce7;border-color:#86efac;color:#15803d}
+.tl-cells .c.bad{background:#fee2e2;border-color:#fecaca;color:#b91c1c}
+.lab-log{margin-top:12px;background:#0b0f17;color:#cbd5e1;border:1px solid #1e293b;border-radius:10px;padding:13px 16px;font-family:var(--font-mono);font-size:12.5px;line-height:1.85;white-space:pre-wrap;min-height:64px}
+.lab-log .g{color:#4ade80}.lab-log .r{color:#fca5a5}.lab-log .y{color:#fbbf24}.lab-log .d{color:#64748b}
+.lab-verdict{margin-top:10px;padding:11px 14px;border-radius:10px;font-size:13.5px;font-weight:700;text-align:center;line-height:1.7}
+.lab-verdict.ok{background:#f0fdfa;border:1px solid #99f6e4;color:#0f766e}
+.lab-verdict.bad{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
+.lab-verdict.warn{background:#fffbeb;border:1px solid #fde68a;color:#b45309}
+.task-tbl table{font-size:13px}
+/* ===== 指导书实操截图图廊（尺寸受控：照片卡片化、终端长图整行限高）===== */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#334155}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(219,39,119,.15);transform:translateY(-2px)}
+.fg img{width:100%;height:210px;object-fit:cover;display:block;border-radius:6px;background:#fff}
+.fg.wide{grid-column:1/-1}
+.fg.wide img{height:auto;max-height:220px;object-fit:contain;background:#0b0f17;padding:4px 0}
+.fg figcaption{font-size:.74rem;color:#64748b;line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+</style>
+</head>
+<body>

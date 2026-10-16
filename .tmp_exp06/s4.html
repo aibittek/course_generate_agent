@@ -1,0 +1,141 @@
+    <!-- 04 QoS -->
+    <section class="blk reveal" id="s4">
+      <h2><span class="sn violet">04</span>QoS：给话题签一份"传输合同"</h2>
+      <p class="lead">同样是发数据，激光雷达"丢几帧无所谓、延迟必须低"，控制指令却"一条都不能丢"。ROS2 把这个选择权交给了 QoS（Quality of Service）：<b>每个话题都附带一套传输策略</b>——发布端提供一套，订阅端要求一套，DDS 逐项比对，匹配成功才建立连接。</p>
+
+      <figure class="anim2d-block">
+        <svg class="anim2d" viewBox="0 0 680 310" xmlns="http://www.w3.org/2000/svg" role="img"
+             aria-label="QoS 三个维度的档位示意：Reliability、Durability、History">
+          <defs>
+            <linearGradient id="qg1" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#5eead4"/>
+            </linearGradient>
+            <linearGradient id="qg2" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#93c5fd"/>
+            </linearGradient>
+            <linearGradient id="qg3" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#bbf7d0"/><stop offset="1" stop-color="#c4b5fd"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="680" height="310" rx="12" fill="#f8fafc"/>
+          <text x="24" y="26" font-size="13" font-weight="700" fill="#0f172a">QoS 三个维度各有两档，像调音台上的推子：越往右越"可靠、越贵"</text>
+
+          <text x="24" y="72" font-size="12.5" font-weight="700" fill="#7c3aed">① Reliability 可靠性</text>
+          <rect x="24" y="82" width="290" height="16" rx="8" fill="url(#qg1)"/>
+          <circle cx="30" cy="90" r="9" fill="#fff" stroke="#d97706" stroke-width="2.5"/>
+          <circle cx="308" cy="90" r="9" fill="#fff" stroke="#0d9488" stroke-width="2.5"/>
+          <text x="24" y="118" font-size="11" fill="#b45309">BEST_EFFORT 尽力而为</text>
+          <text x="24" y="134" font-size="10" fill="#94a3b8">丢了就丢，延迟最低</text>
+          <text x="314" y="118" font-size="11" text-anchor="end" fill="#0f766e">RELIABLE 保证送达</text>
+          <text x="314" y="134" font-size="10" text-anchor="end" fill="#94a3b8">丢了会重传，延迟略高</text>
+          <text x="330" y="100" font-size="10.5" fill="#64748b">例：激光点云用左边，控制指令用右边；<tspan font-weight="700" fill="#0f766e">本实验 /gas_sensor 用 RELIABLE</tspan></text>
+
+          <text x="24" y="168" font-size="12.5" font-weight="700" fill="#7c3aed">② Durability 持久性</text>
+          <rect x="24" y="178" width="290" height="16" rx="8" fill="url(#qg2)"/>
+          <circle cx="30" cy="186" r="9" fill="#fff" stroke="#64748b" stroke-width="2.5"/>
+          <circle cx="308" cy="186" r="9" fill="#fff" stroke="#2563eb" stroke-width="2.5"/>
+          <text x="24" y="214" font-size="11" fill="#475569">VOLATILE 不补发</text>
+          <text x="24" y="230" font-size="10" fill="#94a3b8">订阅者上线前的消息不管</text>
+          <text x="314" y="214" font-size="11" text-anchor="end" fill="#1e40af">TRANSIENT_LOCAL 补发存量</text>
+          <text x="314" y="230" font-size="10" text-anchor="end" fill="#94a3b8">晚到的订阅者先收到"最后一条"</text>
+          <text x="330" y="196" font-size="10.5" fill="#64748b">例：地图、静态配置用右边——<tspan font-weight="700">本实验用 VOLATILE</tspan></text>
+
+          <text x="24" y="264" font-size="12.5" font-weight="700" fill="#7c3aed">③ History 历史 + Depth 深度</text>
+          <rect x="24" y="274" width="290" height="16" rx="8" fill="url(#qg3)"/>
+          <circle cx="30" cy="282" r="9" fill="#fff" stroke="#16a34a" stroke-width="2.5"/>
+          <circle cx="308" cy="282" r="9" fill="#fff" stroke="#7c3aed" stroke-width="2.5"/>
+          <text x="24" y="306" font-size="11" fill="#15803d">KEEP_LAST(N) 只留最近 N 条</text>
+          <text x="314" y="306" font-size="11" text-anchor="end" fill="#6d28d9">KEEP_ALL 全留</text>
+          <text x="330" y="292" font-size="10.5" fill="#64748b">N 越大越抗突发，也越占内存；<tspan font-weight="700" fill="#0f766e">本实验 depth=10</tspan></text>
+        </svg>
+        <figcaption>图 6-3｜QoS 三要素：每个话题都在这三个维度上各取一个档位，合起来就是它的"传输合同"</figcaption>
+      </figure>
+
+      <div class="kgrid">
+        <div class="kcard"><div class="kt">Reliability 可靠性</div><div class="kd"><b>RELIABLE</b>：丢包会重传，保证送达（本实验采用）。<br><b>BEST_EFFORT</b>：丢了不补，换取更低延迟——激光雷达点云、图像流常用。</div></div>
+        <div class="kcard"><div class="kt">Durability 持久性</div><div class="kd"><b>VOLATILE</b>：订阅者上线前的消息一律不管。<br><b>TRANSIENT_LOCAL</b>：为话题保留"最后一条"，晚到的订阅者一上线就补发。</div></div>
+        <div class="kcard"><div class="kt">History + Depth 历史深度</div><div class="kd"><b>KEEP_LAST(N)</b>：队列只留最近 N 条（本实验 N=10）。<br><b>KEEP_ALL</b>：一条不留地全排队——可能撑爆内存，慎用。</div></div>
+      </div>
+
+      <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 0">代码里怎么用：QoS 就写在创建那一行</h3>
+      <pre><span class="c"># 来源：ros_sensor/gas_sensor_node.py（L21-26）——发布端提供合同</span>
+<span class="g">from</span> rclpy.qos <span class="g">import</span> QoSProfile, ReliabilityPolicy, HistoryPolicy
+
+qos = QoSProfile(
+    history=HistoryPolicy.KEEP_LAST, depth=<span class="b">10</span>,        <span class="c"># 队列只留最近 10 条</span>
+    reliability=ReliabilityPolicy.RELIABLE,            <span class="c"># 保证送达</span>
+)
+self.pub = self.create_publisher(Float32, <span class="y">'/gas_sensor'</span>, qos)   <span class="c"># 合同随端点注册</span>
+
+<span class="c"># 订阅端要求合同（gas_monitor.py L19-26）——两端的这两个值必须能对上</span>
+self.sub = self.create_subscription(Float32, <span class="y">'/gas_sensor'</span>, self.callback, qos)</pre>
+      <table>
+        <thead><tr><th>不写会怎样</th><th>rclpy 中的缺省值</th><th>本实验显式写法</th></tr></thead>
+        <tbody>
+          <tr><td>Reliability</td><td><code>RELIABLE</code></td><td><code>RELIABLE</code>（与缺省一致，但建议显式写出，便于阅读）</td></tr>
+          <tr><td>Durability</td><td><code>VOLATILE</code></td><td>未显式设置，即 <code>VOLATILE</code></td></tr>
+          <tr><td>History / Depth</td><td><code>KEEP_LAST, depth=10</code></td><td><code>KEEP_LAST, depth=10</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 0">命令行里怎么用：不改代码也能调 QoS</h3>
+      <p>调试时最有用的是——<b>任何话题工具都可以自己指定 QoS</b>，用来验证"是不是 QoS 不匹配导致收不到消息"：</p>
+      <pre><span class="c"># ① 查看某个话题两端的 QoS 实况（排查问题的第一把钥匙）</span>
+ros2 topic info /gas_sensor --verbose
+
+<span class="c"># ② 用 BEST_EFFORT 去"听"一个话题（如果发布端也是 BEST_EFFORT 才听得到）</span>
+ros2 topic echo /gas_sensor --qos-reliability best_effort
+
+<span class="c"># ③ 手动发一条：指定持久性，并让它为晚到的订阅者保留</span>
+ros2 topic pub --rate <span class="b">1</span> --qos-durability transient_local /gas_sensor std_msgs/msg/Float32 <span class="y">"{data: 300.0}"</span>
+
+<span class="c"># ④ 统计频率时同样可以指定 QoS</span>
+ros2 topic hz /gas_sensor --qos-reliability best_effort</pre>
+      <div class="io" style="margin:12px 0 0;font-size:12.5px;color:#cbd5e1;background:#0f172a;border-radius:10px;padding:13px 16px;line-height:1.8;font-family:var(--font-mono);white-space:pre-wrap"><span class="dim">$ ros2 topic info /gas_sensor --verbose</span>
+Type: std_msgs/msg/Float32
+Publisher count: 1
+Subscription count: 1
+
+Node name: gas_sensor_node      <span class="w">← 发布端</span>
+Endpoint type: PUBLISHER
+QoS profile:
+  Reliability: RELIABLE
+  Durability: VOLATILE
+  History (Depth): KEEP_LAST (10)
+
+Node name: gas_monitor          <span class="w">← 订阅端</span>
+Endpoint type: SUBSCRIPTION
+QoS profile:
+  Reliability: RELIABLE
+  Durability: VOLATILE
+  History (Depth): KEEP_LAST (10)</div>
+      <p class="ix-caption" style="margin-top:8px">上面这份输出里，两端的 Reliability 都是 RELIABLE、Depth 都是 10 —— <b>能对上，才会连通</b>。改代码前先跑这一条，很多"收不到消息"当场破案。</p>
+
+      <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 0">按下场景选档位</h3>
+      <table>
+        <thead><tr><th>场景</th><th>Reliability</th><th>Durability</th><th>Depth</th><th>为什么</th></tr></thead>
+        <tbody>
+          <tr><td>MQ5 浓度（本实验）</td><td><code>RELIABLE</code></td><td><code>VOLATILE</code></td><td>10</td><td>1Hz 的关键安全数据，丢一条就漏一次报警</td></tr>
+          <tr><td>激光雷达点云 / 相机图像</td><td><code>BEST_EFFORT</code></td><td><code>VOLATILE</code></td><td>1～5</td><td>几十 Hz 且数据量大，宁可丢帧也别拖慢</td></tr>
+          <tr><td>地图 / 静态配置</td><td><code>RELIABLE</code></td><td><code>TRANSIENT_LOCAL</code></td><td>1</td><td>只发一次，晚启动的节点必须能拿到</td></tr>
+          <tr><td>速度指令 /cmd_vel</td><td><code>RELIABLE</code></td><td><code>VOLATILE</code></td><td>1</td><td>只要最新的一条，旧指令补发反而危险</td></tr>
+        </tbody>
+      </table>
+
+      <div class="tip amber">⚠️ <b>兼容规则（高频考点）</b>：订阅端要求的等级必须<b>不高于</b>发布端提供的等级，即"请求 ≤ 提供"。<br>
+      · 发布 <code class="inline">BEST_EFFORT</code> + 订阅 <code class="inline">RELIABLE</code> ⇒ <b>连不上</b>（订阅者要的可靠性，发布者给不了）<br>
+      · 发布 <code class="inline">RELIABLE</code> + 订阅 <code class="inline">BEST_EFFORT</code> ⇒ <b>能连</b>（订阅者自降要求，发布者照给）</div>
+
+      <div class="tip">🎛️ <b>下一步：亲手把合同"签坏"看看</b>。下面 05 节是一个 QoS 实验台——改一改两端档位，点一下"跑 10 条消息"，你会亲眼看到：丢包、被覆盖、晚到补发分别是什么样子。建议按这张任务单操作：
+      <div class="qos-task">
+        <table>
+          <thead><tr><th>#</th><th>把两端改成</th><th>你会观察到</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>发布 <code>BEST_EFFORT</code>，订阅 <code>RELIABLE</code></td><td>DDS 拒绝匹配，订阅端<b>一条都收不到</b></td></tr>
+            <tr><td>2</td><td>两端都 <code>RELIABLE</code>，发布 depth 改成 <code>KEEP_LAST(1)</code></td><td>慢消费者场景下，中间的消息被新消息<b>覆盖丢弃</b></td></tr>
+            <tr><td>3</td><td>勾选"订阅端晚到"：Durability 先 <code>VOLATILE</code> 再 <code>TRANSIENT_LOCAL</code></td><td>前者错过加入前的全部数据；后者会<b>补发最后一条</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+    </section>

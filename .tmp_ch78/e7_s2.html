@@ -1,0 +1,81 @@
+<section class="blk" id="s2">
+<h2><span class="no">02</span>核心原理：一次 RPC 在 ROS2 里怎么跑起来</h2>
+<p class="cs-why" style="font-size:14.5px;color:#475569;line-height:1.9">一个容易误会的地方先说破：<b>ROS2 的服务不是"客户端直接调用服务端的函数"</b>。把两个节点拆开看，中间隔着 DDS 和序列化——服务在底层其实是"两个方向的通道 + 一个配对约定"：请求沿一条通道去，应答沿另一条通道回，ROS2 靠请求里自带的<b>客户端标识 + 序号</b>把应答精确配回给发起者。下面这张图就是它内部的全貌（图 7-2）。</p>
+
+<div class="fig-wrap">
+<svg viewBox="0 0 680 360" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <defs>
+    <marker id="b71" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#db2777"/></marker>
+    <marker id="b72" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7c3aed"/></marker>
+  </defs>
+  <!-- 客户端节点 -->
+  <rect x="16" y="30" width="188" height="300" rx="14" fill="#fdf2f8" stroke="#db2777" stroke-width="1.6"/>
+  <text x="110" y="54" font-size="13.5" font-weight="700" fill="#9d174d" text-anchor="middle">客户端节点 fingerprint_client</text>
+  <rect x="34" y="72" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="110" y="91" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">① create_client</text>
+  <text x="110" y="108" font-size="10.5" fill="#64748b" text-anchor="middle">wait_for_service 确认在线</text>
+  <rect x="34" y="134" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="110" y="153" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">② call_async(Request)</text>
+  <text x="110" y="170" font-size="10.5" fill="#64748b" text-anchor="middle">立即返回 Future，不卡发送</text>
+  <rect x="34" y="196" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="110" y="215" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">③ spin_until_future_complete</text>
+  <text x="110" y="232" font-size="10.5" fill="#64748b" text-anchor="middle">驱动执行器，同步等到回包</text>
+  <rect x="34" y="258" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="110" y="277" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">④ future.result()</text>
+  <text x="110" y="294" font-size="10.5" fill="#64748b" text-anchor="middle">取出 Response，按 success 分支</text>
+  <text x="110" y="322" font-size="10.5" fill="#be185d" text-anchor="middle">请求自带 client_gid + 序号（配对凭证）</text>
+  <!-- DDS 中间 -->
+  <rect x="236" y="30" width="208" height="300" rx="14" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="6 4"/>
+  <text x="340" y="54" font-size="13.5" font-weight="700" fill="#334155" text-anchor="middle">DDS 全局数据空间</text>
+  <rect x="256" y="76" width="168" height="52" rx="9" fill="#fff" stroke="#db2777"/>
+  <text x="340" y="97" font-size="11.5" fill="#9d174d" text-anchor="middle" font-weight="bold">Request 通道（→）</text>
+  <text x="340" y="115" font-size="10" fill="#64748b" text-anchor="middle">序列化后的请求帧</text>
+  <rect x="256" y="232" width="168" height="52" rx="9" fill="#fff" stroke="#7c3aed"/>
+  <text x="340" y="253" font-size="11.5" fill="#6d28d9" text-anchor="middle" font-weight="bold">Response 通道（←）</text>
+  <text x="340" y="271" font-size="10" fill="#64748b" text-anchor="middle">带同一序号的应答帧</text>
+  <text x="340" y="170" font-size="10.5" fill="#94a3b8" text-anchor="middle">两个方向各走各的通道，</text>
+  <text x="340" y="188" font-size="10.5" fill="#94a3b8" text-anchor="middle">配对靠序号，不靠"记性"</text>
+  <!-- 服务端节点 -->
+  <rect x="476" y="30" width="188" height="300" rx="14" fill="#fdf2f8" stroke="#9d174d" stroke-width="1.6"/>
+  <text x="570" y="54" font-size="13.5" font-weight="700" fill="#9d174d" text-anchor="middle">服务端节点 fingerprint_server</text>
+  <rect x="494" y="76" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="570" y="95" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">⑤ create_service</text>
+  <text x="570" y="112" font-size="10.5" fill="#64748b" text-anchor="middle">名字+类型+回调 注册进计算图</text>
+  <rect x="494" y="150" width="152" height="60" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="570" y="170" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">⑥ 执行器派发回调</text>
+  <text x="570" y="188" font-size="10.5" fill="#64748b" text-anchor="middle">handle_request(request, response)</text>
+  <rect x="494" y="238" width="152" height="66" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="570" y="258" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">⑦ 填 response 并 return</text>
+  <text x="570" y="276" font-size="10.5" fill="#64748b" text-anchor="middle">采图 → 特征 → 比对</text>
+  <text x="570" y="293" font-size="10.5" fill="#64748b" text-anchor="middle">返回值即回传内容</text>
+  <!-- 箭头 -->
+  <line x1="190" y1="102" x2="252" y2="102" stroke="#db2777" stroke-width="2.6" marker-end="url(#b71)"/>
+  <line x1="428" y1="102" x2="490" y2="170" stroke="#db2777" stroke-width="2.6" marker-end="url(#b71)"/>
+  <line x1="490" y1="270" x2="428" y2="258" stroke="#7c3aed" stroke-width="2.6" marker-end="url(#b72)"/>
+  <line x1="252" y1="258" x2="190" y2="282" stroke="#7c3aed" stroke-width="2.6" marker-end="url(#b72)"/>
+</svg>
+<figcaption>图 7-2｜服务的内部结构：请求、应答各走一条通道，配对靠请求自带的序号凭证——四步在客户端、三步在服务端</figcaption>
+</div>
+
+<h3>四拍流程：把图 7-2 走一遍</h3>
+<div class="flow">
+  <div class="step"><div class="n">1</div><b>服务端注册</b>：<code>create_service(类型, '名字', 回调)</code>——向计算图宣告"我提供此服务"，然后等被调。</div>
+  <div class="arr"></div>
+  <div class="step"><div class="n">2</div><b>客户端就绪</b>：<code>create_client</code> + <code>wait_for_service</code> 循环——确认服务在线才敢发请求。</div>
+  <div class="arr"></div>
+  <div class="step"><div class="n">3</div><b>异步发送</b>：<code>call_async(Request)</code> 立即返回 Future——发送本身不阻塞（名字里的 async 名副其实）。</div>
+  <div class="arr"></div>
+  <div class="step"><div class="n">4</div><b>同步等待</b>：<code>spin_until_future_complete</code> 驱动执行器直到回包，<code>future.result()</code> 取应答。</div>
+</div>
+
+<div class="tip amber"><span class="lab">async 与"同步"矛盾吗</span>不矛盾。<b>call_async 只负责"发不卡"</b>——如果发送时就卡住，执行器被占死，回包来了也没人处理；<b>spin_until_future_complete 负责"等到"</b>。两者合起来，才是"异步发送、同步语义"的标准写法：从调用者的视角看，这一行执行完，答案就在手里。</div>
+
+<table>
+  <tr><th>话题 vs 服务</th><th>话题（EXP-06）</th><th>服务（本课）</th></tr>
+  <tr><td>调用语义</td><td>持续数据流，一对多</td><td>单次请求/响应，一对一</td></tr>
+  <tr><td>时间性</td><td>异步，发完即走</td><td>同步，答到才回</td></tr>
+  <tr><td>可取消</td><td>否</td><td>否（阻塞中只能等或超时）</td></tr>
+  <tr><td>中间反馈</td><td>无（值到了就是反馈）</td><td>无（这正是动作要补的短板，EXP-08）</td></tr>
+  <tr><td>典型场景</td><td>MQ5 浓度持续发布</td><td>指纹验证、继电器控制、单次状态查询</td></tr>
+</table>
+</section>

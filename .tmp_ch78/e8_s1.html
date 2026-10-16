@@ -1,0 +1,63 @@
+<section class="blk" id="s1">
+<h2><span class="no">01</span>为什么需要动作：等待不该是黑盒</h2>
+<p>想象你点了一份外卖。从下单到送达可能 20 分钟也可能 50 分钟——但你<b>一点也不焦虑</b>，因为 APP 给了你三样东西：<b>实时进度</b>（骑手到哪了）、<b>取消按钮</b>（临时有事可以退单）、<b>送达确认</b>（最终结果不会丢）。机器人世界里"等刷卡"就是同样的处境：发出"读卡"请求后等用户把卡贴上来——可能 1 秒，也可能 30 秒。</p>
+
+<div class="tip">🏠 <b>生活里所有"长时间等待"都长这样</b>：导航软件随时告诉你"还剩 3 公里"，堵车了你还可以改路线甚至放弃；下载文件有进度条，可以暂停取消；洗衣机有剩余时间显示，中途也能按暂停。共同点是——<b>任务耗时长且不确定，所以必须有进度、能放弃、有最终交代</b>。</div>
+
+<p>拿 07 课的服务来做"等刷卡"行不行？客户端会阻塞整整 30 秒：看不到任何进展（"到底在不在扫？"），<b>也无法中途放弃</b>——面试官三连：耗时不可知 + 需要过程反馈 + 要能取消，服务一样都给不了。</p>
+
+<div class="cmp-grid">
+  <div class="cmp-box bad">
+    <h5>📞 用服务"等刷卡"：像打了个被永久hold住的客服电话</h5>
+    <ul>
+      <li>客户端阻塞在 <code>spin_until_future_complete</code>：<b>黑盒</b>，进展全靠猜</li>
+      <li>想放弃？<b>没有取消入口</b>，只能 Ctrl+C 杀进程——底层读卡循环还在跑</li>
+      <li>超时了只有一个失败应答，<b>没有"过程性"信息</b>可复盘</li>
+      <li>若硬轮询发多次服务调用，每次都要重新开串口、重新初始化</li>
+    </ul>
+  </div>
+  <div class="cmp-box good">
+    <h5>📦 用动作"等刷卡"：像点了一份有进度条的外卖</h5>
+    <ul>
+      <li><b>Goal 立即返回</b>：客户端发完目标继续干别的，执行在服务端后台进行</li>
+      <li><b>Feedback 流</b>：SCANNING → CARD_FOUND → …，像看骑手位置一样看进度</li>
+      <li><b>Cancel 随时插队</b>：服务端在循环里查取消请求，优雅收场</li>
+      <li><b>Result 必达</b>：成功/超时/被取消，三种结局都有明确交代</li>
+    </ul>
+  </div>
+</div>
+
+<div class="fig-wrap">
+<svg viewBox="0 0 680 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <defs>
+    <marker id="a81" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#ea580c"/></marker>
+    <marker id="a82" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#d97706"/></marker>
+  </defs>
+  <text x="170" y="24" font-size="14" font-weight="700" fill="#be185d" text-anchor="middle">服务 = 打客服电话（等到底）</text>
+  <text x="510" y="24" font-size="14" font-weight="700" fill="#c2410c" text-anchor="middle">动作 = 点外卖（全程可见）</text>
+  <!-- 左：服务等待 -->
+  <rect x="40" y="44" width="260" height="150" rx="12" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5"/>
+  <text x="170" y="70" font-size="12.5" fill="#9d174d" text-anchor="middle" font-weight="bold">call → 阻塞中…（什么也看不到）</text>
+  <rect x="64" y="86" width="212" height="30" rx="7" fill="#1e293b"/>
+  <text x="170" y="106" fill="#64748b" font-size="11" text-anchor="middle">■ ■ ■ ■ ■ ■ ■ ■ 黑 ■ ■ ■ ■ ■ ■ ■</text>
+  <text x="170" y="140" font-size="11.5" fill="#64748b" text-anchor="middle">进度？没有</text>
+  <text x="170" y="160" font-size="11.5" fill="#64748b" text-anchor="middle">取消？没有入口</text>
+  <text x="170" y="180" font-size="11.5" fill="#64748b" text-anchor="middle">结局：成功 or 失败，二选一</text>
+  <!-- 右：动作等待 -->
+  <rect x="380" y="44" width="260" height="150" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="510" y="70" font-size="12.5" fill="#c2410c" text-anchor="middle" font-weight="bold">send_goal → 立即返回，随后…</text>
+  <line x1="404" y1="92" x2="616" y2="92" stroke="#fdba74" stroke-width="2.4" marker-end="url(#a81)"/>
+  <text x="510" y="112" fill="#c2410c" font-size="10.5" text-anchor="middle">Feedback ×N：SCANNING → CARD_FOUND → …</text>
+  <line x1="404" y1="118" x2="560" y2="118" stroke="#94a3b8" stroke-width="1.8" stroke-dasharray="4 3" marker-end="url(#a82)"/>
+  <text x="510" y="138" fill="#64748b" font-size="10.5" text-anchor="middle">Cancel 随时可插队</text>
+  <rect x="404" y="150" width="212" height="28" rx="7" fill="#16a34a"/>
+  <text x="510" y="169" fill="#fff" font-size="11" text-anchor="middle">Result：success=True（必有，恰一次）</text>
+  <text x="510" y="216" fill="#64748b" font-size="11.5" text-anchor="middle">进度可见 · 可放弃 · 结局有交代</text>
+  <text x="170" y="216" fill="#64748b" font-size="11.5" text-anchor="middle">一行等到底 · 不可放弃</text>
+  <text x="340" y="286" fill="#94a3b8" font-size="11" text-anchor="middle">短任务用服务的"确定感"，长任务用动作的"透明感"——三机制选型见 02 末尾对比表</text>
+</svg>
+<figcaption>图 8-1｜同样的"等待"，服务是黑盒电话，动作是带进度条和取消按钮的外卖订单</figcaption>
+</div>
+
+<div class="tip"><span class="lab">定义 Action</span>客户端发送 <b>Goal</b>（目标）后立即返回，服务端在后台执行并周期发布 <b>Feedback</b>（反馈），执行结束回传 <b>Result</b>（结果）；执行期间客户端可随时请求 <b>Cancel</b>（取消）。它底层压在 ROS2 的通信原语之上：一个 Action 端点其实封装了 <b>5 个隐藏端点</b>（3 个服务：发目标/取消/取结果 + 2 个话题：反馈流/状态流）——下一节拆开看。</div>
+</section>

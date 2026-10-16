@@ -1,0 +1,88 @@
+    <!-- 01 问题 -->
+    <section class="blk reveal" id="s1">
+      <h2><span class="sn">01</span>为什么需要话题：一份浓度数据，四个"想听的人"</h2>
+      <p class="lead">想象你在自己家做一个"燃气安全管家"：厨房装了 <b>MQ5 可燃气体传感器</b>，一旦浓度超标要立刻做四件事——手机弹通知、客厅声光报警器响、云端留一份记录、物业大屏同步显示。传感器每秒读一次数据，这四个"想听的人"都要拿到<b>同一份</b>数据。</p>
+
+      <div class="tip">🏠 <b>生活里到处都是这个结构</b>：小区广播站喊一句"三号楼停水"，不需要知道谁在家；电视台播新闻，不需要知道谁在看；微信群发公告，不需要知道谁读了。共同点是——<b>一个人说，很多人听，而说话的人完全不必知道听众有谁</b>。</div>
+
+      <p>那如果不用话题，直接让传感器程序"挨个通知"这四个人呢？这是最朴素的点对点直连，一上手就会撞到四堵墙：</p>
+      <div class="kgrid">
+        <div class="kcard"><div class="kt">① 得先认识每一个收件人</div><div class="kd">每个接收方都要写死 IP + 端口。手机换个 WiFi、云服务换个地址，程序就得改。</div></div>
+        <div class="kcard"><div class="kt">② 加一个人就要改一次代码</div><div class="kd">明天想再加一块"微信提醒"，传感器程序要重新改、重新编译、重新上线——加听众的成本落在说话人身上。</div></div>
+        <div class="kcard"><div class="kt">③ 慢的会把快的拖死</div><div class="kd">云端网络卡了 3 秒，传感器就得等它 3 秒。采样节奏被别人的网速绑架，这在安全监控里是致命的。</div></div>
+        <div class="kcard"><div class="kt">④ 掉线重连全自己扛</div><div class="kd">对方没开机？连接断了？排队重发还是丢弃？这些工程细节全部落到业务代码里。</div></div>
+      </div>
+
+      <figure class="anim2d-block">
+        <svg class="anim2d" viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" role="img"
+             aria-label="点对点直连与话题广播的对比示意图">
+          <defs>
+            <marker id="a6" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 z" fill="#94a3b8"/>
+            </marker>
+            <marker id="a6r" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 z" fill="#e11d48"/>
+            </marker>
+            <marker id="a6t" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 z" fill="#0d9488"/>
+            </marker>
+          </defs>
+          <rect x="0" y="0" width="680" height="340" rx="12" fill="#f8fafc"/>
+
+          <text x="30" y="30" font-size="13.5" font-weight="700" fill="#b91c1c">① 点对点直连：4 条专线</text>
+          <rect x="30" y="42" width="300" height="250" rx="10" fill="#fff7f7" stroke="#fecaca"/>
+          <rect x="42" y="128" width="104" height="62" rx="10" fill="#fff" stroke="#e11d48" stroke-width="1.8"/>
+          <text x="94" y="154" text-anchor="middle" font-size="12.5" font-weight="700" fill="#9f1239">gas_sensor</text>
+          <text x="94" y="172" text-anchor="middle" font-size="10.5" fill="#94a3b8">发布端</text>
+          <line x1="150" y1="159" x2="206" y2="72" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a6)"/>
+          <line x1="150" y1="159" x2="206" y2="127" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a6)"/>
+          <line x1="150" y1="159" x2="206" y2="182" stroke="#e11d48" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#a6r)"/>
+          <line x1="150" y1="159" x2="206" y2="237" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a6)"/>
+          <text x="152" y="205" font-size="10" fill="#e11d48">慢 → 等它</text>
+          <rect x="210" y="50" width="108" height="44" rx="8" fill="#fff" stroke="#e2e8f0"/>
+          <rect x="210" y="105" width="108" height="44" rx="8" fill="#fff" stroke="#e2e8f0"/>
+          <rect x="210" y="160" width="108" height="44" rx="8" fill="#fff" stroke="#fecaca"/>
+          <rect x="210" y="215" width="108" height="44" rx="8" fill="#fff" stroke="#e2e8f0"/>
+          <text x="264" y="70" text-anchor="middle" font-size="11" fill="#334155">手机通知</text>
+          <text x="264" y="85" text-anchor="middle" font-size="9.5" fill="#94a3b8">要 IP + 端口</text>
+          <text x="264" y="125" text-anchor="middle" font-size="11" fill="#334155">声光报警</text>
+          <text x="264" y="140" text-anchor="middle" font-size="9.5" fill="#94a3b8">要 IP + 端口</text>
+          <text x="264" y="180" text-anchor="middle" font-size="11" fill="#9f1239">云记录</text>
+          <text x="264" y="195" text-anchor="middle" font-size="9.5" fill="#f87171">网络卡、阻塞发布</text>
+          <text x="264" y="235" text-anchor="middle" font-size="11" fill="#334155">物业大屏</text>
+          <text x="264" y="250" text-anchor="middle" font-size="9.5" fill="#94a3b8">要 IP + 端口</text>
+          <text x="42" y="283" font-size="10.5" fill="#b91c1c">加一个听众 → 改一次发布端代码</text>
+
+          <text x="360" y="30" font-size="13.5" font-weight="700" fill="#0f766e">② 话题广播：1 条总线，听众自取</text>
+          <rect x="350" y="42" width="310" height="250" rx="10" fill="#f6fffd" stroke="#99f6e4"/>
+          <rect x="362" y="128" width="96" height="62" rx="10" fill="#fff" stroke="#0d9488" stroke-width="1.8"/>
+          <text x="410" y="154" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0f766e">gas_sensor</text>
+          <text x="410" y="172" text-anchor="middle" font-size="10.5" fill="#94a3b8">发布端</text>
+          <line x1="462" y1="159" x2="512" y2="159" stroke="#0d9488" stroke-width="2.4" marker-end="url(#a6t)"/>
+          <line x1="516" y1="70" x2="516" y2="250" stroke="#0d9488" stroke-width="4" opacity=".28"/>
+          <text x="523" y="286" font-size="10.5" font-weight="700" fill="#0f766e">/gas_sensor</text>
+          <line x1="516" y1="72" x2="556" y2="72" stroke="#0d9488" stroke-width="1.6" marker-end="url(#a6t)"/>
+          <line x1="516" y1="127" x2="556" y2="127" stroke="#0d9488" stroke-width="1.6" marker-end="url(#a6t)"/>
+          <line x1="516" y1="182" x2="556" y2="182" stroke="#0d9488" stroke-width="1.6" marker-end="url(#a6t)"/>
+          <line x1="516" y1="237" x2="556" y2="237" stroke="#0d9488" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#a6t)"/>
+          <rect x="560" y="50" width="94" height="44" rx="8" fill="#fff" stroke="#99f6e4"/>
+          <rect x="560" y="105" width="94" height="44" rx="8" fill="#fff" stroke="#99f6e4"/>
+          <rect x="560" y="160" width="94" height="44" rx="8" fill="#fff" stroke="#99f6e4"/>
+          <rect x="560" y="215" width="94" height="44" rx="8" fill="#fff" stroke="#e2e8f0" stroke-dasharray="4 3"/>
+          <text x="607" y="70" text-anchor="middle" font-size="11" fill="#334155">手机通知</text>
+          <text x="607" y="85" text-anchor="middle" font-size="9.5" fill="#94a3b8">只认话题名</text>
+          <text x="607" y="125" text-anchor="middle" font-size="11" fill="#334155">声光报警</text>
+          <text x="607" y="140" text-anchor="middle" font-size="9.5" fill="#94a3b8">只认话题名</text>
+          <text x="607" y="180" text-anchor="middle" font-size="11" fill="#334155">云记录</text>
+          <text x="607" y="195" text-anchor="middle" font-size="9.5" fill="#94a3b8">慢也不影响别人</text>
+          <text x="607" y="235" text-anchor="middle" font-size="11" fill="#64748b">临时加入 echo</text>
+          <text x="607" y="250" text-anchor="middle" font-size="9.5" fill="#94a3b8">上线就能收</text>
+          <text x="362" y="283" font-size="10.5" fill="#0f766e">发布端一行代码都不用改</text>
+        </svg>
+        <figcaption>图 6-1｜同一个"一对多"需求：左边是挨个通知，右边是把消息放到话题上让听众自取</figcaption>
+      </figure>
+
+      <p>话题通信把这四堵墙一次性拆掉：传感器只管把消息<b>放到 <code class="inline">/gas_sensor</code> 这个话题上</b>，谁想用谁就自己"竖起耳朵"订阅，随时加入、随时离开，发布者永远不需要知道现在有几个听众。</p>
+
+      <div class="tip tealb">💡 <b>话题通信的三个承诺</b>：① <b>一对多</b>——新订阅者随时插进来，发布端毫不知情；② <b>异步</b>——发布只管把消息放到话题上就走，订阅者处理得慢也不拖累发布者；③ <b>位置透明</b>——双方只需约定<b>话题名 + 消息类型</b>，谁都不需要知道对方的 IP、端口、进程号。</div>
+    </section>

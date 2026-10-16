@@ -4,8 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-13 · ROS2 分布式通讯 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css">
-<style>:root{--theme:#475569;--theme-deep:#334155;--theme-bg:#f1f5f9;--theme-bd:#cbd5e1}</style>
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<style>:root{--theme:#475569;--theme-deep:#334155;--theme-bg:#f1f5f9;--theme-bd:#cbd5e1}/* ===== 终端命令块 ===== */
+.termbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 10px}
+.termbar .tl{background:#0f172a;color:#fff;border-radius:999px;padding:3px 13px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em}
+.termbar b{font-size:14.5px;color:var(--text-primary)}
+.termbar .note{font-size:12.5px;color:var(--text-muted)}
+.cmdstep{--theme:var(--accent-blue);--theme-bg:#eff6ff;--theme-bd:#bfdbfe;--theme-deep:#1d4ed8;
+  background:var(--bg-soft);border:1px solid var(--border);border-left:3px solid var(--theme);border-radius:12px;padding:13px 17px;margin:11px 0}
+.cmdstep .cs-hd{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.cmdstep .cs-no{font-family:var(--font-mono);font-size:12px;font-weight:700;background:var(--theme);color:#fff;border-radius:999px;min-width:22px;height:22px;text-align:center;line-height:22px;padding:0 5px;flex:none}
+.cmdstep .cs-hd b{font-size:14.5px;color:var(--text-primary)}
+.cmdstep .cs-where{margin-left:auto;font-family:var(--font-mono);font-size:11px;background:var(--theme-bg);color:var(--theme-deep);border:1px solid var(--theme-bd);border-radius:999px;padding:3px 11px;white-space:nowrap}
+.cmdstep .cs-why{font-size:13.5px;color:#475569;margin:7px 0 0;line-height:1.8}
+.cmdstep pre{margin:9px 0 0;font-size:13px;padding:13px 16px}
+.cmdstep .cs-see{font-size:12.5px;color:#1d4ed8;margin:8px 0 0;line-height:1.75}
+.cmdstep .io{margin:9px 0 0;font-size:12.5px;color:#cbd5e1;background:#0f172a;border-radius:10px;padding:13px 16px;line-height:1.8;font-family:var(--font-mono);white-space:pre-wrap;overflow-x:auto}
+h3{scroll-margin-top:82px}
+.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
+</style>
 </head>
 <body>
 <div class="topbar">
@@ -22,9 +39,8 @@
   <a href="#s5">05 交互实验：双机组网诊断台</a>
   <a href="#s6">06 命令精讲：环境变量的三种给法</a>
   <a href="#s7">07 实操 A：单机三终端，10 分钟看到隔离效果</a>
-  <a href="#s8">08 实操 B：双机组网四步排查 + 发现服务器部署</a>
-  <a href="#s9">09 注意事项与验收</a>
-  <a href="#s10">10 本课总结</a>
+  <a href="#s8">08 注意事项与验收</a>
+  <a href="#s9">09 本课总结</a>
   <h4>CH3 · 底层机制与分布式</h4>
   <a href="../exp-11-time/index.html">EXP-11 时间与定时器</a>
   <a href="../exp-12-dds/index.html">EXP-12 DDS 通信剖析</a>
@@ -40,7 +56,8 @@
 
 <!-- 01 问题引入 -->
 <section class="blk" id="s1">
-  <h2><span class="no">01</span>问题引入：好好的机器人为什么会"串台"</h2>
+  <h2><span class="no">01</span>问题引入：好好的机器人为什么会"串台"<span class="fs">聚焦问题 · 激活旧知</span></h2>
+  <div class="tip"><span class="lab">先回忆</span>EXP-05 讲过节点靠"网络多播"互相发现、EXP-06 讲过话题不经过任何中心服务器——这些设计在单机上是优势，连上同一 WiFi 后就变成了隐患：<b>没有隔离圈，同网段所有人都听得见</b>。本章解决"怎么划圈"。</div>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>场景</b><p>同一教室三台 B2 实验车同时开机，全部使用 ROS2 默认配置</p></div>
     <div class="step"><div class="n">2</div><b>怪事</b><p>给 1 号车发 <code>ros2 topic pub /cmd_vel</code>，2 号车竟然也动了</p></div>
@@ -51,11 +68,34 @@
     <span class="lab">定义</span>
     <b>域（Domain）</b>是 ROS2 的逻辑通信隔离圈：只有 <code>ROS_DOMAIN_ID</code> 相同的节点才能互相发现和通信。ID 取值 0~232，不同域的节点即使插在同一根网线上也"互相看不见"。这是 DDS 层的机制，ROS1 需要换 Master 地址才能做到的事，ROS2 改一个环境变量就行。
   </div>
+
+  <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 8px">事故复盘：一次真实的"串台"</h3>
+  <p>某次实训课，三台 B2 实验车（编号 1/2/3）同时开机做无人驾驶循迹练习。约 10 分钟后，2 号车突然"抽风"——直行中猛地右转撞到护栏。重启后正常，但 20 分钟后 3 号车又出现同样症状。三台车的代码完全一样，都没改过。</p>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>14:02 · 三车开机</b><p>全部出厂默认配置，<code>echo $ROS_DOMAIN_ID</code> 都为空 → <b>都是域 0</b></p></div>
+    <div class="step"><div class="n">2</div><b>14:05 · 2 号车撞栏</b><p>日志显示收到了一条 <code>/cmd_vel</code>：<code>angular.z = -0.8</code>，但 2 号车自己<b>从没发过这个话题</b></p></div>
+    <div class="step"><div class="n">3</div><b>14:25 · 3 号车复现</b><p>同样的指令、同样的动作——三台车的 <code>/cmd_vel</code> 在同一个域里<b>混成了一条</b></p></div>
+    <div class="step"><div class="n">4</div><b>根因定位</b><p>助教在 1 号车上手动发了一段测试指令，2/3 号车同时响应——<b>串台坐实</b></p></div>
+  </div>
+  <div class="tip violet">
+    <span class="lab">四层放大效应</span>
+    为什么单机演示好好的、连上同一 WiFi 就出事？因为默认配置下三台车共享同一个通信域，且 <code>/cmd_vel</code> 这类话题名在三台车上<b>完全一样</b>——于是"1 号车的意图"被 2 号车忠实地执行了：
+    <br>① <b>无隔离圈</b>：同域 = 同一频道，谁都能听见；
+    <br>② <b>话题名撞车</b>：三车都叫 <code>/cmd_vel</code>，语义上无法区分"谁的命令"；
+    <br>③ <b>QoS 默认兼容</b>：都是 RELIABLE + KEEP_LAST(10)，发现阶段直接撮合成功，没有任何警告；
+    <br>④ <b>无声接管</b>：订阅端收到指令就执行，不会问"这条是谁发的"。
+    <br>—— 四层任何一层有防护，事故都不会发生。而最省事的一层，就是域名。
+  </div>
+  <div class="tip"><span class="lab">本课的三个问题</span>
+    ① 域号到底是什么、凭什么能"划圈"？（02 节原理）<br>
+    ② 划圈之后，两台设备怎么才能<b>看见彼此</b>？（02 节组网三前提：同段、同 ID、多播通）<br>
+    ③ 同一个 WiFi 下，"不被别人看见"和"能看见自己人"如何同时成立？（05/06/07 节实操）
+  </div>
 </section>
 
 <!-- 02 原理 -->
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：一个数字如何隔离整张网</h2>
+  <h2><span class="no">02</span>核心原理：一个数字如何隔离整张网<span class="fs">示证新知</span></h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">物理层根因</div><div class="kt">多播地址跟着 ID 走</div><p>Fast-DDS 根据域号计算出专属多播地址 <code>239.255.0.N</code> 和端口 <code>7400 + N×250</code>。发往不同域的发现报文在<b>网卡层就被分流</b>，根本不会送到对方协议栈——这就是隔离的第一道防线。</p></div>
     <div class="kcard"><div class="kd">发现流程</div><div class="kt">SPDP 宣告 → SEDP 交换</div><p>节点启动即向域内多播地址周期发送 SPDP 发现报文；收到回应后双方通过 SEDP 交换"我有哪些话题/服务/动作端点"，才建立点对点的正式传输链。</p></div>
@@ -78,7 +118,7 @@
 
 <!-- 03 动画 -->
 <section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：多播发现与域隔离的物理过程</h2>
+  <h2><span class="no">03</span>动画：多播发现与域隔离的物理过程<span class="fs">示证新知</span></h2>
   <div class="anim-box">
     <svg viewBox="0 0 760 330" width="100%">
       <defs>
@@ -121,11 +161,26 @@
     </svg>
   </div>
   <p class="anim-cap">动画：上半为同域两设备，SPDP 多播宣告命中同一地址 239.255.0.0:7400，随后 SEDP 交换端点信息建立正式链路；下半为异域两设备，ID 不同导致多播地址（.0 vs .5）和端口（7400 vs 7650）全不同，隔离发生在网卡分流层，无需任何应用层过滤。</p>
+
+  <div class="tip tealb"><span class="lab">EXP-12 实测对上号</span>
+    上一章的端口证据在这里继续用：<b>发现端口 = 7400 + 250 × 域号</b>。域 7 实测就是 9150/9161（EXP-12 实操 A-1 亲测），不是理论值——域号一变，端口<b>物理上</b>就换了，这是"网卡层分流"最硬的证据。
+  </div>
+  <table>
+    <tr><th>ROS_DOMAIN_ID</th><th>多播地址</th><th>发现端口</th><th>被谁用</th></tr>
+    <tr><td>0（默认）</td><td>239.255.0.0</td><td>7400 / 7411</td><td>出厂默认 → <b>串台的根源</b></td></tr>
+    <tr><td>1</td><td>239.255.0.1</td><td>7650 / 7661</td><td>多机车间第 1 组</td></tr>
+    <tr><td>5</td><td>239.255.0.5</td><td>8650 / 8661</td><td>本节演示用</td></tr>
+    <tr><td>7</td><td>239.255.0.7</td><td><b>9150 / 9161</b></td><td>EXP-12 实操实测值</td></tr>
+    <tr><td>42</td><td>239.255.0.42</td><td>17900 / 17911</td><td>实操 A 用（42 = 实验编号，好记）</td></tr>
+  </table>
+  <div class="tip amber"><span class="lab">算一遍就知道上限</span>
+    域号最大 232，对应端口 7400 + 250×232 = <b>65400</b>，已经贴着系统端口上限 65535。所以域号<b>不能乱挑大数字</b>——实验室给 20 个组分配域号，从 <code>1~20</code> 顺序发牌即可，既避开默认域 0，又留足余量。
+  </div>
 </section>
 
 <!-- 04 专题 -->
 <section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：两种发现模式与通信安全</h2>
+  <h2><span class="no">04</span>原理专题：两种发现模式与通信安全<span class="fs">示证新知</span></h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">模式一 · 默认</div><div class="kt">多播自主发现</div><p>开局域网、机器人数量少（&lt;50 节点）时的默认选择。零配置、即开即用，但依赖组播——部分企业网/云环境交换机禁用了组播，就全军覆没。</p></div>
     <div class="kcard"><div class="kd">模式二 · 进阶</div><div class="kt">ROS_DISCOVERY_SERVER 单播</div><p>指定一台"发现服务器"，所有节点改为向它单播注册。不受组播限制，适合 50~500 节点、跨子网、云端混合部署。代价是要先启动并维护 server 进程。</p></div>
@@ -148,7 +203,7 @@
 
 <!-- 05 交互 -->
 <section class="blk" id="s5">
-  <h2><span class="no">05</span>交互实验：双机组网诊断台</h2>
+  <h2><span class="no">05</span>交互实验：双机组网诊断台<span class="fs">应用新知</span></h2>
   <div class="ix-panel">
     <div class="ix-title">组排 Network Bench：判断两台设备能否互通，说不出原因就是没学透</div>
     <div class="ctl-row">
@@ -169,90 +224,148 @@
 
 <!-- 06 命令精讲 -->
 <section class="blk" id="s6">
-  <h2><span class="no">06</span>命令精讲：环境变量的三种给法</h2>
-  <pre><code><span class="c"># 给法一：当前终端会话生效（最常用，调试友好）</span>
-<span class="b">$</span> export ROS_DOMAIN_ID=<span class="y">5</span>
-<span class="b">$</span> ros2 run pkg node        <span class="g"># 该终端启动的节点都进域 5</span>
+  <h2><span class="no">06</span>命令精讲：域号的三种给法<span class="fs">应用新知</span></h2>
+  <p>三种给法对应三种使用场景——先在当前终端试（最常用），排查时用前缀式做 A/B 对照，确认无误再固化到机器人镜像里。</p>
 
-<span class="c"># 给法二：单条命令临时指定（不污染环境，多人共用一台机必备）</span>
-<span class="b">$</span> ROS_DOMAIN_ID=<span class="y">5</span> ros2 run pkg node
-<span class="b">$</span> echo $ROS_DOMAIN_ID      <span class="g"># 输出仍为空——环境没被改</span>
+  <div class="termbar"><span class="tl">终端</span><b>给法一 · 当前终端会话生效</b><span class="note">最常用 · 调试友好</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">1</span><b>export 后，本终端启动的节点都进域 5</b><span class="cs-where">终端 A · 发布方</span></div>
+    <p class="cs-why">影响范围是<b>当前 shell 及其启动的所有子进程</b>——新开的终端不受影响。用官方 demo 的 <code>talker</code> 做发布方：</p>
+    <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">5</span>
+<span class="g">echo</span> $ROS_DOMAIN_ID          <span class="c"># 5</span>
+<span class="g">ros2</span> run demo_nodes_cpp talker   <span class="c"># 本终端启动的节点都进域 5</span></pre>
+    <div class="io"><span class="dim">$ export ROS_DOMAIN_ID=5</span>
+<span class="dim">$ echo $ROS_DOMAIN_ID</span>
+<span class="ok">5</span>
+<span class="dim">$ ros2 run demo_nodes_cpp talker</span>
+<span class="ok">[INFO] [talker]: Publishing: 'Hello World: 1'</span>
+<span class="ok">[INFO] [talker]: Publishing: 'Hello World: 2'</span></div>
+    <p class="cs-why">再开一个终端 B，同样 <code>export ROS_DOMAIN_ID=5</code> 后跑 <code>listener</code>，就能收到：</p>
+    <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">5</span>
+<span class="g">ros2</span> run demo_nodes_cpp listener   <span class="c"># 同域才能收</span></pre>
+    <div class="io"><span class="dim">$ export ROS_DOMAIN_ID=5</span>
+<span class="dim">$ ros2 run demo_nodes_cpp listener</span>
+<span class="ok">[INFO] [listener]: I heard: [Hello World: 1]</span>
+<span class="ok">[INFO] [listener]: I heard: [Hello World: 2]</span></div>
+  </div>
 
-<span class="c"># 给法三：写进 bashrc 固化（机器人/工控机出厂配置）</span>
-<span class="b">$</span> echo <span class="y">'export ROS_DOMAIN_ID=5'</span> &gt;&gt; ~/.bashrc
-<span class="b">$</span> source ~/.bashrc          <span class="g"># 只影响新开终端；老终端不会变</span>
+  <div class="termbar"><span class="tl">终端</span><b>给法二 · 单条命令临时指定</b><span class="note">不污染环境</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">2</span><b>前缀式注入，命令返回后变量表毫发无损</b><span class="cs-where">终端</span></div>
+    <p class="cs-why">多人共用一台机器时必备——排查串台问题做 A/B 对照最干净。同一台机器上，让 <code>listener</code> 留在域 5，<code>talker</code> 用前缀式临时进域 6，立刻看不到数据：</p>
+    <pre><span class="g">ROS_DOMAIN_ID</span>=<span class="y">6</span> ros2 run demo_nodes_cpp talker
+<span class="g">echo</span> $ROS_DOMAIN_ID          <span class="c"># 输出仍为空——环境没被改</span></pre>
+    <div class="io"><span class="dim">$ ROS_DOMAIN_ID=6 ros2 run demo_nodes_cpp talker</span>
+<span class="dim">[INFO] [talker]: Publishing: 'Hello World: 1'</span>
+<span class="warn"># 域 5 的 listener 一条也收不到 —— 域号不同，物理上就是两个网络</span>
+<span class="dim">$ echo $ROS_DOMAIN_ID</span>
+<span class="warn">（空）—— 当前 shell 的变量表没被污染</span></div>
+  </div>
 
-<span class="c"># 发现服务器模式（组播被禁时的备选）</span>
-<span class="b">$</span> sudo apt install ros-humble-rmw-fastrtps-cpp
-<span class="b">$</span> fastdds discovery --server-id 0 --ip-address 127.0.0.1 --port 11811
-<span class="b">$</span> export ROS_DISCOVERY_SERVER=127.0.0.1:11811   <span class="g"># 每个节点终端都要</span>
-<span class="b">$</span> fastdds discovery -i 0    <span class="g"># 监控面板：列出 Participant / Endpoint</span></code></pre>
+  <div class="termbar"><span class="tl">终端</span><b>给法三 · 写进 bashrc 固化</b><span class="note">机器人出厂配置</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">3</span><b>写进镜像，开机自动生效</b><span class="cs-where">终端</span></div>
+    <p class="cs-why">工控机/机器人出厂配置的标准做法；注意 <b>source 只影响之后新开的终端</b>：</p>
+    <pre><span class="g">echo</span> <span class="y">'export ROS_DOMAIN_ID=5'</span> &gt;&gt; ~/.bashrc
+<span class="g">source</span> ~/.bashrc        <span class="c"># 只影响新开终端；老终端不会变</span></pre>
+    <div class="io"><span class="dim">$ cat ~/.bashrc | tail -1</span>
+export ROS_DOMAIN_ID=5
+<span class="warn"># 但当前终端 echo 仍是空 —— 必须再 source 或重开终端</span></div>
+    <p class="cs-see">✔ 三种给法的差别一句话记住：<b>export 管当前终端</b>、<b>前缀只管一条命令</b>、<b>bashrc 管开机以后的新终端</b>。</p>
+  </div>
+
   <div class="tip violet">
     <span class="lab">原理</span>
-    给法二（前缀式）为什么"不污染环境"？shell 的 <code>VAR=x cmd</code> 语法只在<code>cmd</code> 进程及其子进程的环境里注入该变量，命令返回后当前 shell 的变量表毫发无损。排查串台问题时用它做 A/B 对照，比反复 export/unset 干净得多。
+    给法二（前缀式）为什么"不污染环境"？shell 的 <code>VAR=x cmd</code> 语法只在 <code>cmd</code> 进程及其子进程的环境里注入该变量，命令返回后当前 shell 的变量表毫发无损。排查串台问题时用它做 A/B 对照，比反复 export/unset 干净得多。
   </div>
 </section>
 
 <!-- 07 实操A -->
 <section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 A：单机三终端，10 分钟看到隔离效果</h2>
+  <h2><span class="no">07</span>实操 A：单机三终端，10 分钟看到隔离效果<span class="fs">应用新知</span></h2>
   <p>不接第二台设备也能完整验证域机制——开三个终端即可。三个终端都先 <code>cd ~/ros2_ws</code> 并 <code>source install/setup.bash</code>。</p>
   <div class="flow">
-    <div class="step"><div class="n">1</div><b>终端1 · 域 42</b><p>export ROS_DOMAIN_ID=42，启动 talker_test 发布话题</p></div>
-    <div class="step"><div class="n">2</div><b>终端2 · 同域</b><p>export 同为 42，ros2 topic echo → <b>能收到</b>，证明同域互通</p></div>
+    <div class="step"><div class="n">1</div><b>终端1 · 域 42</b><p>export ROS_DOMAIN_ID=42，启动 talker 发布 /chatter</p></div>
+    <div class="step"><div class="n">2</div><b>终端2 · 同域</b><p>export 同为 42，启动 listener（或 topic echo）→ <b>能收到</b>，证明同域互通</p></div>
     <div class="step"><div class="n">3</div><b>终端3 · 异域</b><p>export ROS_DOMAIN_ID=99 后再 echo → <b>收不到</b>，publishers 列表为空</p></div>
-    <div class="step"><div class="n">4</div><b>复现串台</b><p>三终端全部 unset 恢复默认 0 → 终端3 立即能看到终端1 的话题</p></div>
+    <div class="step"><div class="n">4</div><b>复现串台</b><p>三终端全部 unset 恢复默认 0 → 终端3 的 listener 立即开始打印</p></div>
   </div>
-  <pre><code><span class="c"># 终端 1</span>
-<span class="b">$</span> export ROS_DOMAIN_ID=<span class="y">42</span>
-<span class="b">$</span> ros2 run py_nodes talker_test          <span class="g"># 或任意发布节点</span>
 
-<span class="c"># 终端 2（应通）</span>
-<span class="b">$</span> export ROS_DOMAIN_ID=<span class="y">42</span>
-<span class="b">$</span> ros2 topic list        <span class="g"># 能看到话题</span>
-<span class="b">$</span> ros2 topic echo /chatter
+  <div class="termbar"><span class="tl">终端 1</span><b>域 42 发布端</b><span class="note">保持运行</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">1</span><b>进域 42 并启动 talker</b><span class="cs-where">终端 1</span></div>
+    <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">42</span>
+<span class="g">ros2</span> run demo_nodes_cpp talker</pre>
+    <div class="io"><span class="dim">$ export ROS_DOMAIN_ID=42</span>
+<span class="dim">$ ros2 run demo_nodes_cpp talker</span>
+<span class="ok">[INFO] [talker]: Publishing: 'Hello World: 1'</span>
+<span class="ok">[INFO] [talker]: Publishing: 'Hello World: 2'</span></div>
+  </div>
 
-<span class="c"># 终端 3（应不通）</span>
-<span class="b">$</span> export ROS_DOMAIN_ID=<span class="y">99</span>
-<span class="b">$</span> ros2 topic list        <span class="g"># 只有 /parameter_events /rosout（本机默认）</span>
-<span class="b"># 切回 42 后立即看到 chatter → 隔离机制验证完成</span></code></pre>
+  <div class="termbar"><span class="tl">终端 2</span><b>同域验证（预期：能收到）</b><span class="note">新终端</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">2</span><b>同域 listener → 收到数据</b><span class="cs-where">终端 2</span></div>
+    <p class="cs-why">域号相同 = 多播地址端口相同 → SPDP 命中 → SEDP 撮合 → 数据到达：</p>
+    <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">42</span>
+<span class="g">ros2</span> topic list               <span class="c"># 能看到 /chatter</span>
+<span class="g">ros2</span> run demo_nodes_cpp listener</pre>
+    <div class="io"><span class="dim">$ export ROS_DOMAIN_ID=42</span>
+<span class="dim">$ ros2 topic list</span>
+/chatter
+/parameter_events
+/rosout
+<span class="dim">$ ros2 run demo_nodes_cpp listener</span>
+<span class="ok">[INFO] [listener]: I heard: [Hello World: 7]</span>
+<span class="ok">[INFO] [listener]: I heard: [Hello World: 8]</span>
+<span class="ok"># 同域互通成立 ✓（也可用 ros2 topic echo /chatter 看到同样的 data）</span></div>
+  </div>
+
+  <div class="termbar"><span class="tl">终端 3</span><b>异域验证（预期：收不到）</b><span class="note">新终端</span></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">3</span><b>换域 99 → 对端话题消失</b><span class="cs-where">终端 3</span></div>
+    <p class="cs-why">注意：列表<b>不是空的</b>——本机域内公共话题仍在，判断标准是有没有<b>对端节点的话题</b>：</p>
+    <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">99</span>
+<span class="g">ros2</span> topic list               <span class="c"># 只有本机公共话题</span>
+<span class="g">ros2</span> run demo_nodes_cpp listener   <span class="c"># 一直空，等不到数据</span></pre>
+    <div class="io"><span class="dim">$ export ROS_DOMAIN_ID=99</span>
+<span class="dim">$ ros2 topic list</span>
+/parameter_events
+/rosout
+<span class="warn"># 没有 /chatter —— 域 42 的话题在这个域不可见 ✓</span>
+<span class="dim">$ ros2 run demo_nodes_cpp listener</span>
+<span class="warn">（一直等待，没有任何 I heard 输出）</span></div>
+  </div>
+
+  <div class="termbar"><span class="tl">终端 3</span><b>复现串台：切回默认域 0</b></div>
+  <div class="cmdstep">
+    <div class="cs-hd"><span class="cs-no">4</span><b>三终端 unset → 串台现场重现</b><span class="cs-where">终端 3</span></div>
+    <p class="cs-why">这正是事故复盘里发生的事——只要回到同一个域，别人的话题立刻出现在你眼前：</p>
+    <pre><span class="g">unset</span> ROS_DOMAIN_ID
+<span class="g">ros2</span> topic list</pre>
+    <div class="io"><span class="dim">$ unset ROS_DOMAIN_ID   # 终端1 也执行</span>
+<span class="dim">$ ros2 topic list</span>
+/chatter          <span class="bad">← 对端话题又出现了（串台重现）</span>
+/parameter_events
+/rosout
+<span class="dim">$ ros2 run demo_nodes_cpp listener</span>
+<span class="bad">[INFO] [listener]: I heard: [Hello World: 13]  ← 立刻开始打印</span>
+<span class="warn"># 若这是别人的机器人，它的 /cmd_vel 就会被我订阅到 —— 事故就是这样发生的</span></div>
+    <p class="cs-see">✔ 四步走完，域隔离的机制你已亲手验证：同域互通、异域隔离、切域即时生效。</p>
+  </div>
+
   <div class="tip amber"><span class="lab">观察点</span>终端 3 里 <code>ros2 topic list</code> 并非"空"——本机域内公共话题（/parameter_events、/rosout）仍在。判断标准是<b>有没有对端节点的话题</b>，不是列表长度。</div>
 </section>
 
-<!-- 08 实操B -->
+<!-- 08 注意事项 -->
 <section class="blk" id="s8">
-  <h2><span class="no">08</span>实操 B：双机组网四步排查 + 发现服务器部署</h2>
-  <div class="flow">
-    <div class="step"><div class="n">1</div><b>查号</b><p>两台设备分别 <code>echo $ROS_DOMAIN_ID</code>，必须一致（决定性因素，先查它）</p></div>
-    <div class="step"><div class="n">2</div><b>查路</b><p><code>ping</code> 对端 IP；不通则查网段/虚拟机桥接模式——NAT 下多播必死</p></div>
-    <div class="step"><div class="n">3</div><b>查墙</b><p><code>sudo ufw status</code>，被拦则放行：ufw allow 7400:8399/udp（域 0-3 的多播端口段）</p></div>
-    <div class="step"><div class="n">4</div><b>终极验证</b><p>跨机 echo 对端话题；仍不通则换 CycloneDDS 排除 Fast-DDS 实现差异</p></div>
-  </div>
-  <pre><code><span class="c"># 单机模拟双机：两个终端同设 DOMAIN_ID=42 即可代表两台设备</span>
-<span class="c"># ——若域名/主机解析有问题，host 文件是隐藏坑 ——</span>
-<span class="b">$</span> ping $(hostname)              <span class="g"># 解析不了就把本机 IP 写进 /etc/hosts</span>
-
-<span class="c"># 组播被禁环境下的替代方案：单播发现服务器</span>
-<span class="b">$</span> fastdds discovery --server-id 0 --ip-address 127.0.0.1 --port 11811
-<span class="c"># 每个节点终端（跨机时写服务器真实 IP，不是 127.0.0.1）</span>
-<span class="b">$</span> export ROS_DISCOVERY_SERVER=<span class="y">127.0.0.1:11811</span>
-<span class="b">$</span> ros2 run pkg node
-<span class="c"># 健康检查：fastdds discovery -i 0 应列出所有 Participant 与 Endpoint</span></code></pre>
-  <div class="tip"><span class="lab">排查心法</span>
-  环境变量"改了没生效"最常见的坑是固化方式问题：source 过的 bashrc 只影响<b>之后新开的</b>终端，当前终端赶紧手动 unset/export；或者临时用 <code>env ROS_DOMAIN_ID=5 ros2 ...</code> 单条验证，确认无误再固化。
-  </div>
-</section>
-
-<!-- 09 注意事项 -->
-<section class="blk" id="s9">
-  <h2><span class="no">09</span>注意事项与验收</h2>
+  <h2><span class="no">08</span>注意事项与验收<span class="fs">融会贯通</span></h2>
   <ul class="check">
-    <li>验收 1：单机三终端——同域互通、异域隔离，切换即时可见</li>
-    <li>验收 2：能口述三前提（同网段 / 同 DOMAIN_ID / 多播畅通）并按序排查</li>
-    <li>验证 3：用 <code>env ROS_DOMAIN_ID=x cmd</code> 前缀式启动，能解释为何不污染环境</li>
-    <li>验收 4：能说出多播地址 239.255.0.N 与端口 7400+N×250 的对应关系</li>
+    <li>验收 1：单机三终端——<code>talker</code> 与 <code>listener</code> 实测<b>同域互通、异域隔离、切回默认域串台重现</b>，三步截图齐全</li>
+    <li>验收 2：能算出任意域号的发现端口（<code>7400 + 250×域号</code>），并说明域 232 为何贴着上限</li>
+    <li>验收 3：三种给法各跑一次，能说清导出范围差异（当前终端 / 单条命令 / 开机后新终端）</li>
+    <li>验收 4：能说出跨机组网三前提（同网段 → 同域号 → 多播畅通），并按序排查（ID → ping → multicast → 防火墙）</li>
     <li>验收 5：画得出 SPDP→SEDP 发现两阶段流程图</li>
-    <li>验收 6（选做）：演示 DISCOVERY_SERVER 起停前后节点发现行为的差异</li>
+    <li>验收 6：能对比多播发现与 DISCOVERY_SERVER 单播两种模式的适用场景与代价</li>
   </ul>
   <table>
     <tr><th>坑</th><th>症状</th><th>解法</th></tr>
@@ -265,14 +378,17 @@
   </table>
 </section>
 
-<!-- 10 总结 -->
-<section class="blk" id="s10">
-  <h2><span class="no">10</span>本课总结</h2>
+<!-- 09 总结 -->
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>本课总结<span class="fs">融会贯通</span></h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">概念</div><div class="kt">域 = DDS 层逻辑隔离圈</div><p>ROS_DOMAIN_ID 0~232，同号互通、异号隔离，对应专属多播地址与端口。</p></div>
-    <div class="kcard"><div class="kd">组网</div><div class="kt">只要三个前提</div><p>同网段、同域号、多播畅通。排查顺序：ID → ping → 防火墙 → 换 RMW。</p></div>
+    <div class="kcard"><div class="kd">组网</div><div class="kt">只要三个前提</div><p>同网段、同域号、多播畅通。排查顺序：ID → ping → multicast → 防火墙 → 换 RMW。</p></div>
     <div class="kcard"><div class="kd">进阶</div><div class="kt">两套发现 + 一层安全</div><p>多播发现适合单网段小系统；DISCOVERY_SERVER 跨网大规模；SROS2 产品化加密。</p></div>
     <div class="kcard"><div class="kd">工程化</div><div class="kt">隔离要落到镜像里</div><p>每台机器人出厂烧录独立域号，中央站多 ID 接入——这是多机车间的标准姿势。</p></div>
+  </div>
+  <div class="tip violet"><span class="lab">回扣事故复盘</span>
+    现在你能完整解释开课时那场"串台"了：三台车都是默认域 0、话题名都是 <code>/cmd_vel</code>、QoS 默认兼容、订阅端收到就执行——<b>改一个域号，四层里最关键的那一层就补上了</b>。工程上的落地动作只有一句：把 <code>export ROS_DOMAIN_ID=N</code> 写进每台车的 <code>~/.bashrc</code>，出厂即隔离。
   </div>
   <div class="tip violet">
     <span class="lab">思考题</span>

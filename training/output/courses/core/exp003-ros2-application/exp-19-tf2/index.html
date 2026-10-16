@@ -57,7 +57,8 @@ main a:hover{text-decoration:underline}
 strong{color:var(--head)}
 code{font-family:var(--font-mono);font-size:.9em;background:var(--bg-soft);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
 pre{font-family:var(--font-mono);font-size:13px;line-height:1.7;background:#0f172a;color:#e2e8f0;border-radius:12px;padding:16px 18px;overflow-x:auto;margin:12px 0}
-pre .c{color:#64748b}pre .g{color:#4ade80}pre .b{color:#60a5fa}pre .y{color:#fbbf24}
+pre code{background:transparent;border:none;border-radius:0;padding:0;font-size:inherit;color:inherit;font-family:inherit}
+pre .c{color:#94a3b8}pre .g{color:#4ade80}pre .b{color:#7dd3fc}pre .y{color:#fbbf24}
 code.inline{background:#fef3c7;border-color:#fde68a;color:#92400e;padding:1px 6px}
 
 /* flow */
@@ -109,7 +110,7 @@ tr:nth-child(even) td{background:#fcfdfe}
 .btn:hover{background:#f59e0b}
 .btn.ghost{background:transparent;color:#fbbf24;border:1px solid #92400e}
 .btn:disabled{opacity:.4;cursor:not-allowed}
-.io{background:#0b0f17;border:1px solid #1e293b;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.9;white-space:pre-wrap;min-height:60px}
+.io{background:#0b0f17;border:1px solid #1e293b;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.9;white-space:pre-wrap;min-height:60px;color:#e8eef7;font-family:var(--font-mono)}
 .io .ok{color:#4ade80}.io .warn{color:#fbbf24}.io .bad{color:#f87171}.io .dim{color:#64748b}
 
 /* quaternion visual */
@@ -144,6 +145,7 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
 #lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
 #lightbox.on{display:flex}
 #lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:2px 11px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -198,7 +200,8 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
 
 <!-- ===== 01 ===== -->
 <section class="blk" id="s1">
-  <h2><span class="no">01</span> 引例：这束激光该画在哪</h2>
+  <h2><span class="no">01</span> 引例：这束激光该画在哪<span class="fs">聚焦问题 · 激活旧知</span></h2>
+  <div class="tip"><span class="lab">先回忆</span>EXP-15 rviz2 里的 Fixed Frame 下拉框、EXP-06 消息 header 里的 <code>frame_id</code> 字段——它们背后都指向同一个问题：<b>不同坐标系里的数据怎么对齐</b>。本章的 TF2 就是这个问题的系统性答案，也是后面 URDF 与导航的地基。</div>
   <div class="flow">
     <div class="step"><span class="n">1</span><strong>场景</strong>：小车顶部装了一台 2D 激光雷达，正前方 30cm 处有一个障碍物——这是<strong>相对雷达自己</strong>的说法（活在 <code>laser_frame</code>）。</div>
     <div class="arr"></div>
@@ -213,7 +216,7 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
 
 <!-- ===== 02 ===== -->
 <section class="blk" id="s2">
-  <h2><span class="no">02</span> 原理：TF2 树为什么长成一棵树</h2>
+  <h2><span class="no">02</span> 原理：TF2 树为什么长成一棵树<span class="fs">示证新知</span></h2>
 
   <h3>2.1 树状结构：只记"直接父子"，路径唯一</h3>
   <p>TF2 把所有坐标系组织成一棵<strong>有根树（严格说是 DAG 的树形约束）</strong>：每个坐标系最多一个父坐标系。机器人上的典型结构：</p>
@@ -249,7 +252,7 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
 
 <!-- ===== 03 ANIM ===== -->
 <section class="blk" id="s3">
-  <h2><span class="no">03</span> 动画：一次 TF 查询的全过程</h2>
+  <h2><span class="no">03</span> 动画：一次 TF 查询的全过程<span class="fs">示证新知</span></h2>
   <p>下面动画演示：<strong>激光点 (0.3, 0) m 位于 laser_frame</strong>，如何沿树两级跳，换算到 map 系。粒子代表"坐标数据在树上的合成流向"。</p>
 
   <div class="anim-box">
@@ -326,7 +329,7 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
 
 <!-- ===== 04 四元数 ===== -->
 <section class="blk" id="s4">
-  <h2><span class="no">04</span> 原理专题：旋转为什么要用四元数</h2>
+  <h2><span class="no">04</span> 原理专题：旋转为什么要用四元数<span class="fs">示证新知</span></h2>
 
   <h3>4.1 欧拉角的三宗罪</h3>
   <table>
@@ -353,7 +356,7 @@ w = cos(yaw / 2)<span class="c">   # x = y = 0</span>
 
 <!-- ===== 05 INTERACTIVE ===== -->
 <section class="blk" id="s5">
-  <h2><span class="no">05</span> 交互实验台：四元数换算 + TF 链查询</h2>
+  <h2><span class="no">05</span> 交互实验台：四元数换算 + TF 链查询<span class="fs">应用新知</span></h2>
   <p>上面两块原理，直接上手玩：①拖动偏航角，观察四元数分量与朝向实时变化；②自选两端坐标系，看 TF2 如何拼出查询路径。</p>
 
   <div class="ix-panel">
@@ -422,7 +425,7 @@ w = cos(yaw / 2)<span class="c">   # x = y = 0</span>
 
 <!-- ===== 06 代码精讲 ===== -->
 <section class="blk" id="s6">
-  <h2><span class="no">06</span> 代码精讲：发布者与查询者</h2>
+  <h2><span class="no">06</span> 代码精讲：发布者与查询者<span class="fs">应用新知</span></h2>
 
   <h3>6.1 发布静态变换（实操 1 要写的）</h3>
 <pre><span class="b">import</span> rclpy
@@ -467,7 +470,7 @@ yaw = <span class="y">2.0</span> * math.atan2(qz, qw)   <span class="c"># 第 4 
 
 <!-- ===== 07 实操1 ===== -->
 <section class="blk" id="s7">
-  <h2><span class="no">07</span> 实操 1 · 创建 tf2_demo 包并发布静态变换</h2>
+  <h2><span class="no">07</span> 实操 1 · 创建 tf2_demo 包并发布静态变换<span class="fs">应用新知</span></h2>
   <div class="flow">
     <div class="step"><span class="n">1</span>进入工作空间并创建包（依赖 <code>tf2_ros</code> 负责发布/监听，<code>tf2_tools</code> 提供 view_frames 等调试工具）：<pre>cd ~/ros2_ws/src
 ros2 pkg create tf2_demo \
@@ -492,7 +495,7 @@ ros2 run tf2_demo static_tf_pub</pre></div>
 
 <!-- ===== 08 实操2 ===== -->
 <section class="blk" id="s8">
-  <h2><span class="no">08</span> 实操 2 · 三种手段验证 TF 树</h2>
+  <h2><span class="no">08</span> 实操 2 · 三种手段验证 TF 树<span class="fs">融会贯通</span></h2>
   <div class="flow">
     <div class="step"><span class="n">1</span><strong>命令行直查</strong>——对应第 3 节动画的一次 lookup：<pre>ros2 run tf2_ros tf2_echo base_link laser_frame
 <span class="c"># 输出 Translation: [0.1, 0.0, 0.2]  Rotation: [0,0,0] (x,y,z,w)</span>
@@ -512,7 +515,7 @@ ros2 run tf2_demo static_tf_pub</pre></div>
 
 <!-- ===== 09 ===== -->
 <section class="blk" id="s9">
-  <h2><span class="no">09</span> 注意事项与验收</h2>
+  <h2><span class="no">09</span> 注意事项与验收<span class="fs">融会贯通</span></h2>
   <h3>⚠️ 注意事项</h3>
   <table>
     <tr><th style="width:170px">类别</th><th>说明</th></tr>
@@ -536,7 +539,7 @@ ros2 run tf2_demo static_tf_pub</pre></div>
 
 <!-- ===== 10 ===== -->
 <section class="blk" id="s10">
-  <h2><span class="no">10</span> 实验总结与思考</h2>
+  <h2><span class="no">10</span> 实验总结与思考<span class="fs">融会贯通</span></h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">成果</div><div class="kt">发布并验证了一条静态 TF 边</div><p>tf2_demo 包 + StaticTransformBroadcaster，三级验证手段（echo / view_frames / RViz）全通过。</p></div>
     <div class="kcard"><div class="kd">原理</div><div class="kt">树 + 连乘 + 缓冲</div><p>TF2 = 有根树（无环保证查询终止）+ 边的连乘合成 + 带时间戳的 Buffer 缓冲插值。</p></div>
@@ -676,5 +679,55 @@ function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;va
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
 </script>
 
+<script>
+/* ↓ 命令/代码块一键复制：给页面里所有 <pre> 加一个复制按钮 */
+(function(){
+  if(window.__preCopyReady) return; window.__preCopyReady=1;
+  var CSS='.pre-wrap{position:relative}'
+    +'.copy-btn{position:absolute;top:8px;right:8px;z-index:3;background:rgba(30,41,59,.92);color:#94a3b8;border:1px solid #334155;border-radius:7px;padding:3px 10px;font-size:11.5px;font-family:inherit;line-height:1.6;cursor:pointer;opacity:.5;transition:opacity .18s,background .18s,color .18s;user-select:none;-webkit-user-select:none}'
+    +'.pre-wrap:hover .copy-btn{opacity:1}'
+    +'.copy-btn:hover{background:#334155;color:#e2e8f0}'
+    +'.copy-btn.done{background:#065f46;border-color:#10b981;color:#d1fae5;opacity:1}';
+  function flash(btn,txt,ok){
+    btn.textContent=txt;
+    if(ok) btn.classList.add('done');
+    setTimeout(function(){ btn.textContent='复制'; btn.classList.remove('done'); },1600);
+  }
+  function fallback(text,btn){
+    var ta=document.createElement('textarea');
+    ta.value=text; ta.setAttribute('readonly','');
+    ta.style.cssText='position:fixed;top:0;left:-9999px';
+    document.body.appendChild(ta); ta.select();
+    try{ ta.setSelectionRange(0,ta.value.length); }catch(e){}
+    try{ document.execCommand('copy'); flash(btn,'已复制 ✓',1); }
+    catch(e){ flash(btn,'复制失败',0); }
+    document.body.removeChild(ta);
+  }
+  function doCopy(pre,btn){
+    var text=pre.textContent.replace(/\u00a0/g,' ').replace(/^\n+/,'').replace(/\s+$/,'');
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ flash(btn,'已复制 ✓',1); },
+        function(){ fallback(text,btn); });
+    } else { fallback(text,btn); }
+  }
+  function setup(){
+    var st=document.createElement('style'); st.textContent=CSS; document.head.appendChild(st);
+    var list=document.querySelectorAll('pre');
+    for(var i=0;i<list.length;i++){
+      var pre=list[i];
+      if(pre.parentNode && pre.parentNode.className==='pre-wrap') continue;
+      var wrap=document.createElement('div'); wrap.className='pre-wrap';
+      pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+      var btn=document.createElement('button');
+      btn.type='button'; btn.className='copy-btn'; btn.textContent='复制';
+      btn.title='复制这段命令';
+      (function(p,b){ btn.addEventListener('click',function(e){ e.preventDefault(); doCopy(p,b); }); })(pre,btn);
+      wrap.appendChild(btn);
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',setup);
+  else setup();
+})();
+</script>
 </body>
 </html>

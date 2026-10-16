@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-20 · URDF 与 Xacro 机器人建模 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
 <style>:root{--theme:#a16207;--theme-deep:#854d0e;--theme-bg:#fefce8;--theme-bd:#fde68a}
 /* 指导书实操截图图廊 */
 .figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px}
@@ -17,6 +17,7 @@
 #lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
 #lightbox.on{display:flex}
 #lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -50,7 +51,8 @@
 </div>
 
 <section class="blk" id="s1">
-  <h2><span class="no">01</span>问题引入：屏幕里的小车，是谁画的</h2>
+  <h2><span class="no">01</span>问题引入：屏幕里的小车，是谁画的<span class="fs">聚焦问题 · 激活旧知</span></h2>
+  <div class="tip"><span class="lab">先回忆</span>EXP-19 的 TF 树（谁是谁的 child、原点在哪）——URDF 就是那棵树的<b>源头文件</b>：你用 link 和 joint 描述机器人，<code>robot_state_publisher</code> 把它变成 TF 变换和三维模型，rviz2 里那台小车就是从这里"画"出来的。</div>
   <div class="flow">
     <div class="step"><span class="n">1</span>echo /scan 只看到一堆浮点数——数据有了，"车"在哪？</div>
     <div class="step"><span class="n">2</span>rviz2 勾选 RobotModel 后，一台蓝底盘、黑驱动轮、白万向轮的小车瞬间出现</div>
@@ -61,7 +63,7 @@
 </section>
 
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：link 三重属性 × joint 六类型</h2>
+  <h2><span class="no">02</span>核心原理：link 三重属性 × joint 六类型<span class="fs">示证新知</span></h2>
   <table>
     <tr><th>link 属性</th><th>作用</th><th>取值/几何体</th><th>何时必须</th></tr>
     <tr><td><code>&lt;visual&gt;</code></td><td>渲染外观（给 Rviz2 看）</td><td>box / cylinder / sphere / mesh（数万三角形也行）</td><td>只想可视化时——<b>可单独存在</b></td></tr>
@@ -82,7 +84,7 @@
 </section>
 
 <section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：两个发布者如何合力把车"画"出来</h2>
+  <h2><span class="no">03</span>动画：两个发布者如何合力把车"画"出来<span class="fs">示证新知</span></h2>
   <div class="anim-box">
     <svg viewBox="0 0 760 320" width="100%" style="max-height:320px">
       <defs>
@@ -140,7 +142,7 @@
 </section>
 
 <section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：惯性矩阵——从魔法数字到物理公式</h2>
+  <h2><span class="no">04</span>原理专题：惯性矩阵——从魔法数字到物理公式<span class="fs">示证新知</span></h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">长方体 · 底盘</div><div class="kt">Ixx=m/12·(y²+z²)　Iyy=m/12·(x²+z²)　Izz=m/12·(x²+y²)</div><p>例：底盘 0.40×0.25×0.08 m、质量 3.0 kg → ixx=0.017、iyy=0.042、izz=0.053。沿某轴的惯量 = 质量对该轴分布的"转动惰性"，垂直于该轴的边长平方贡献最大。</p></div>
     <div class="kcard"><div class="kd">圆柱体 · 车轮</div><div class="kt">Ixx=Iyy=m/12·(3r²+h²)　Izz=m/2·r²</div><p>轮轴沿 Y：绕轴（Y）转动惯量小、绕直径大时看 h 贡献。r=0.05、L=0.03、m=0.2 代入即可，杜绝拍脑袋的 0.01。</p></div>
@@ -151,7 +153,7 @@
 </section>
 
 <section class="blk" id="s5">
-  <h2><span class="no">05</span>交互演练：URDF Doctor 症状诊断</h2>
+  <h2><span class="no">05</span>交互演练：URDF Doctor 症状诊断<span class="fs">应用新知</span></h2>
   <div class="ix-panel">
     <div class="ix-title">URDF Doctor — 看到症状，定位 XML 病灶</div>
     <div class="ctl-row">
@@ -175,7 +177,7 @@
 </section>
 
 <section class="blk" id="s6">
-  <h2><span class="no">06</span>命令精讲：检验工具三件套</h2>
+  <h2><span class="no">06</span>命令精讲：检验工具三件套<span class="fs">应用新知</span></h2>
   <pre><span class="c"># ① 语法+结构验证（输出根 link 与子链接数）</span>
 $ check_urdf diff_drive_robot.urdf
 robot name is: diff_drive_robot
@@ -198,7 +200,7 @@ $ head -80 diff_drive_robot_expanded.urdf
 </section>
 
 <section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 A：手写完整差分车 URDF（设计性任务）</h2>
+  <h2><span class="no">07</span>实操 A：手写完整差分车 URDF（设计性任务）<span class="fs">应用新知</span></h2>
   <div class="flow">
     <div class="step"><span class="n">1</span>建工作空间与目录：<code>ros2 pkg create urdf_demo --build-type ament_cmake</code> 后建 urdf/ 子目录</div>
     <div class="step"><span class="n">2</span>写 4 种材质 + 底盘 link（box 0.40×0.25×0.08，mass 3.0，惯性 0.017/0.042/0.053）</div>
@@ -250,7 +252,7 @@ $ ros2 launch urdf_demo display.launch.py
 </section>
 
 <section class="blk" id="s8">
-  <h2><span class="no">08</span>实操 B：Xacro 参数化重构（复用压缩到 80 行）</h2>
+  <h2><span class="no">08</span>实操 B：Xacro 参数化重构（复用压缩到 80 行）<span class="fs">融会贯通</span></h2>
   <div class="flow">
     <div class="step"><span class="n">1</span>property 收编魔法尺寸：chassis_length/width/height、wheel_radius/length、wheel_mass……</div>
     <div class="step"><span class="n">2</span>推导量用表达式：wheel_y_offset=${chassis_width/2 - 0.02}、wheel_z_offset=${-chassis_height/2 + wheel_radius}——改车宽轮距自动跟</div>
@@ -321,7 +323,7 @@ $ ros2 launch urdf_demo display.launch.py
 </section>
 
 <section class="blk" id="s9">
-  <h2><span class="no">09</span>注意事项与避坑清单</h2>
+  <h2><span class="no">09</span>注意事项与避坑清单<span class="fs">融会贯通</span></h2>
   <div class="check">
     <ul>
       <li><b>origin 求值顺序</b>：先 rpy 旋转、再 xyz 平移——顺序颠倒视觉全变；开 TF Display 查坐标轴方向。</li>
@@ -344,7 +346,7 @@ $ ros2 launch urdf_demo display.launch.py
 </section>
 
 <section class="blk" id="s10">
-  <h2><span class="no">10</span>本课总结与思考</h2>
+  <h2><span class="no">10</span>本课总结与思考<span class="fs">融会贯通</span></h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">概念</div><div class="kt">URDF = 数字孪生的唯一入口</div><p>XML 描述几何结构、运动学约束与动力学参数，Rviz2/Gazebo/TF2/运动规划共享同一模型源。</p></div>
     <div class="kcard"><div class="kd">结构</div><div class="kt">link 三属性 × joint 六类型</div><p>visual/collision/inertial 按用途分离，各场景只声明所需；fixed/revolute/continuous/prismatic 按自由度选型，两种 origin 语义严格区分。</p></div>

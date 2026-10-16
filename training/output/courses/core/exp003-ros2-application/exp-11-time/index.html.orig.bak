@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-11 · 时间 API — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>:root{--theme:#ca8a04;--theme-deep:#a16207;--theme-bg:#fef9c3;--theme-bd:#fde68a}
+/* 指导书实操截图图廊 */
+.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px}
+.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#334155;display:flex;gap:.4rem;align-items:center}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
+.fg{margin:0;background:#fff;border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
+.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
+.fg img{width:100%;display:block;border-radius:6px;background:#fff}
+.fg figcaption{font-size:.74rem;color:#64748b;line-height:1.55;padding-top:.45rem}
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="../../../index.html" style="text-decoration:none;color:inherit" title="返回课程首页">🧠 具身智能课程 · <i>教程首页</i></a>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-11</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 问题引入：时间不对齐，数据全白采</a>
+  <a href="#s2">02 核心原理：双时钟架构与 Time 类型</a>
+  <a href="#s3">03 动画：use_sim_time 如何切换时钟源</a>
+  <a href="#s4">04 专题：create_timer 的真实行为与 stamp 规范</a>
+  <a href="#s5">05 交互：时钟模式分析器</a>
+  <a href="#s6">06 时间 API 命令精讲</a>
+  <a href="#s7">07 实操 A：带时间戳的采样发布节点</a>
+  <a href="#s8">08 实操 B：延迟测量与 /clock 体验</a>
+  <a href="#s9">09 注意事项与验收清单</a>
+  <a href="#s10">10 本课总结与思考题</a>
+  <h4>CH3 · 底层机制与分布式</h4>
+  <a href="../exp-11-time/index.html">EXP-11 时间 API</a>
+  <a href="../exp-12-dds/index.html">EXP-12 DDS 剖析</a>
+  <a href="../exp-13-distributed/index.html">EXP-13 分布式通讯</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-11 · 第 3 章 · 验证性 · 2 学时</span>
+  <h1>时间 API 与双时钟体系</h1>
+  <p class="desc">IMU 200Hz、相机 30Hz，时间戳差一点数据就对不上。本课讲清 ROS2 为什么自建时间抽象层、系统时钟与 /clock 仿真时钟如何透明切换，以及 create_timer 与 Header.stamp 的正确姿势。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 Clock · Timer · stamp</span></div>
+</div>
+
+<section class="blk" id="s1">
+<h2><span class="no">01</span>问题引入：时间不对齐，数据全白采</h2>
+<div class="flow">
+  <div class="step"><div class="n">1</div>IMU 每秒 200 条、相机每秒 30 帧——融合前必须按<b>时间戳</b>配对，配错了姿态就算飞。</div>
+  <div class="step"><div class="n">2</div>直接用 Python 的 <code>time.time()</code>？仿真里"1 秒"可能只要真实 0.1 秒，录包回放时两条消息的时间戳也根本对不上。</div>
+  <div class="step"><div class="n">3</div>多机部署时，两台电脑系统时钟不同步，延迟甚至算出<b>负值</b>。</div>
+  <div class="step"><div class="n">4</div>ROS2 的答案：<b>自建时间抽象层</b>——Clock 类统一出口，底层自动在系统时钟与 /clock 仿真时钟间切换，上层代码一行不改。</div>
+</div>
+<div class="tip"><span class="lab">时间 = 一等公民</span>机器人系统里时间有两类来源（真实墙上时 / 仿真逻辑时），Clock 把差异吸收在底层：<code>get_clock().now()</code> 永远返回"当前正确的时间"。</div>
+</section>
+
+<section class="blk" id="s2">
+<h2><span class="no">02</span>核心原理：双时钟架构与 Time 类型</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">系统时钟</div><div class="kt">Wall Clock · 默认</div><p>use_sim_time=false（默认）：Clock 读操作系统时间，与真实世界同步——跑在真机 B2 实验箱时的唯一正确选择。</p></div>
+  <div class="kcard"><div class="kd">仿真时钟</div><div class="kt">/clock 话题驱动</div><p>use_sim_time=true：Clock 订阅 <code>rosgraph_msgs/msg/Clock</code>；Gazebo 推进一步发一次——仿真的"1 秒"可对应真实的 0.1s 或 10s。</p></div>
+  <div class="kcard"><div class="kd">消息类型</div><div class="kt">builtin_interfaces/Time</div><p>sec（int32，Unix 纪元秒）+ nanosec（uint32，0~999999999）——嵌在 Header.stamp 里跨机传输的序列化形式。</p></div>
+  <div class="kcard"><div class="kd">API 类型</div><div class="kt">rclpy.time.Time</div><p>Python 侧可运算可比较：<code>to_msg()</code> 转消息、<code>Time.from_msg()</code> 转回、±Duration 加减。</p></div>
+</div>
+<table>
+  <tr><th>来源</th><th>哪里拿到</th><th>适合场景</th></tr>
+  <tr><td><code>time.time()</code></td><td>Python 标准库</td><td>与 ROS 无关的纯本地计时（日志文件名等）——机器人数据流里<b>不要用</b></td></tr>
+  <tr><td><code>get_clock().now()</code></td><td>节点 Clock（自动选源）</td><td>一切需要盖时间戳、算延迟、配合仿真回放的场合</td></tr>
+  <tr><td><code>msg.header.stamp</code></td><td>消息体内的采集时刻</td><td>跨节点对齐、rosbag 回放、端到端延迟测量</td></tr>
+</table>
+<div class="tip amber"><span class="lab">切换对上层透明</span>use_sim_time 由参数驱动，Clock 内部换数据源——你的代码始终只写 <code>get_clock().now()</code>，仿真/真机零改动切换，这就是抽象层的意义。</div>
+</section>
+
+<section class="blk" id="s3">
+<h2><span class="no">03</span>动画：use_sim_time 如何切换时钟源</h2>
+<div class="anim-box">
+<svg viewBox="0 0 760 235" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <g>
+    <rect x="300" y="34" width="160" height="64" rx="10" fill="#1e293b" stroke="#ca8a04" stroke-width="2"/>
+    <text x="380" y="60" fill="#fff" font-size="14" text-anchor="middle" font-weight="bold">节点 Clock 类</text>
+    <text x="380" y="82" fill="#fde68a" font-size="11" text-anchor="middle">get_clock().now()</text>
+    <rect x="40" y="140" width="180" height="66" rx="10" fill="#1e293b" stroke="#22c55e" stroke-width="2"/>
+    <text x="130" y="166" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">系统时钟</text>
+    <text x="130" y="187" fill="#86efac" font-size="10.5" text-anchor="middle">use_sim_time=false（默认）</text>
+    <text x="130" y="202" fill="#64748b" font-size="10" text-anchor="middle">真机 / 日常开发</text>
+    <rect x="540" y="140" width="190" height="66" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+    <text x="635" y="164" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">/clock 话题</text>
+    <text x="635" y="184" fill="#7dd3fc" font-size="10.5" text-anchor="middle">use_sim_time=true</text>
+    <text x="635" y="200" fill="#64748b" font-size="10" text-anchor="middle">Gazebo 推进一步 → 发一次</text>
+    <rect x="272" y="146" width="216" height="54" rx="8" fill="#3f1d1d" stroke="#b91c1c" stroke-dasharray="5 4"/>
+    <text x="380" y="168" fill="#fca5a5" font-size="11.5" text-anchor="middle">true 但 /clock 无发布者？</text>
+    <text x="380" y="188" fill="#fca5a5" font-size="11.5" text-anchor="middle">节点阻塞等待 —— 永久停摆</text>
+  </g>
+  <path d="M130 140 Q130 70 300 66" stroke="#334155" stroke-width="3" fill="none"/>
+  <path d="M460 66 Q630 70 635 140" stroke="#334155" stroke-width="3" fill="none"/>
+  <path d="M380 98 V146" stroke="#b91c1c" stroke-width="1.8" stroke-dasharray="4 4"/>
+  <circle r="6" fill="#4ade80" cx="130" cy="105"><animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite"/><animate attributeName="cx" values="160;290" dur="2s" repeatCount="indefinite"/><animate attributeName="cy" values="105;66" dur="2s" repeatCount="indefinite"/></circle>
+  <circle r="6" fill="#38bdf8" cx="630" cy="105"><animate attributeName="opacity" values="0;1;1;0" dur="2s" begin="1s" repeatCount="indefinite"/><animate attributeName="cx" values="630;470" dur="2s" begin="1s" repeatCount="indefinite"/><animate attributeName="cy" values="105;66" dur="2s" begin="1s" repeatCount="indefinite"/></circle>
+  <text x="380" y="26" fill="#94a3b8" font-size="12" text-anchor="middle">参数决定数据源，now() 的调用方式永远不变</text>
+</svg>
+</div>
+<p class="anim-cap">绿色路径 = 系统时钟（默认），蓝色路径 = 订阅 /clock 的仿真时钟；红色虚线提示最大的坑：true 开着却没有仿真器，节点会一直等。</p>
+</section>
+
+<section class="blk" id="s4">
+<h2><span class="no">04</span>专题：create_timer 的真实行为与 stamp 规范</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">定时器原理</div><div class="kt">挂在 spin 事件循环上的周期源</div><p>create_timer(period, cb) 注册触发源；spin 每轮检查到点就把回调加入执行队列——<b>没有 spin 就永远不触发</b>，取代 ROS1 的 while+Rate.sleep()。</p></div>
+  <div class="kcard"><div class="kd">名义周期</div><div class="kt">回调耗时可以拖垮频率</div><p>周期是"最小名义间隔"：回调执行 0.3s 而周期 0.2s → 实际频率被压到约 2.2Hz 而不是 5Hz。I/O 密集任务要异步化。</p></div>
+  <div class="kcard"><div class="kd">多定时器</div><div class="kt">同节点内串行执行</div><p>demo 节点同时挂 1s 采样定时器 + 5s 摘要定时器，各自独立计时，但回调在同一事件循环里排队——一个堵全堵。</p></div>
+  <div class="kcard"><div class="kd">stamp 规范</div><div class="kt">盖"采集时刻"不是"发布时刻"</div><p>在读传感器的那行代码处取 now()；等处理完再盖戳，等于把处理延迟算进了传输延迟——排查延迟问题时会误导自己。</p></div>
+</table>
+<div class="tip"><span class="lab">端到端延迟</span>delay = 订阅端收到时刻 − stamp 记录的采集时刻，减去 stamp 才是"通信+排队"的真延迟。局域网有线通常 &lt; 1ms；多机出现<b>负值</b>说明两台电脑系统时钟没对齐——先 NTP 再查代码。</div>
+</section>
+
+<section class="blk" id="s5">
+<h2><span class="no">05</span>交互：时钟模式分析器</h2>
+<div class="ix-panel">
+  <div class="ix-title">Clock Scope · 同一段代码在不同时间环境下会发生什么</div>
+  <div class="ctl-row">
+    <label class="ctl">运行场景
+      <select id="sc" onchange="checkClock()">
+        <option value="sys">真机默认：use_sim_time=false</option>
+        <option value="simOk">仿真：true + Gazebo 正常发 /clock</option>
+        <option value="simNone">真机误开：true 但无人发 /clock</option>
+        <option value="simHalf">仿真 0.5 倍速：真实 2 秒才发 1 仿真秒</option>
+        <option value="back">rosbag 回放：--loop + 发布 /clock</option>
+      </select>
+    </label>
+  </div>
+  <div class="io" id="ckIo">// 选择场景，输出 now() 行为、定时器频率与风险判定…</div>
+</div>
+</section>
+
+<section class="blk" id="s6">
+<h2><span class="no">06</span>时间 API 命令精讲</h2>
+<pre><span class="c"># 取当前 ROS 时间并与消息格式互转</span>
+now = node.get_clock().now()
+print(now.nanoseconds)                <span class="g"># 总纳秒数（Unix 纪元起）</span>
+msg_time = now.to_msg()               <span class="g"># sec + nanosec，可直接赋给 Header.stamp</span>
+
+<span class="c"># 时间运算：间隔、比较、差值</span>
+from rclpy.time import Duration
+future = now + Duration(seconds=5.0)   <span class="g"># 5 秒后的时间点</span>
+diff = now - past                      <span class="g"># Duration：.nanoseconds / 1e9 得秒</span>
+print(now &gt; past)                      <span class="g"># True —— Time 支持直接比较</span>
+
+<span class="c"># 两个定时器并存（demo 节点的标准形态）</span>
+self._t1 = self.create_timer(1.0, self.sample_cb)   <span class="y"># 1Hz 采样</span>
+self._t2 = self.create_timer(5.0, self.summary_cb)  <span class="y"># 5s 摘要，互不干扰</span></pre>
+<div class="tip tealb"><span class="lab">两个 Time 别搞混</span><code>rclpy.time.Time</code>（API 对象，可加减）与 <code>builtin_interfaces/msg/Time</code>（传输结构，字段 sec/nanosec）——过界必须 to_msg() / Time.from_msg() 转一道，直接赋值字段会类型报错。</div>
+</section>
+
+<section class="blk" id="s7">
+<h2><span class="no">07</span>实操 A：带时间戳的采样发布节点</h2>
+<pre><span class="c"># 落盘讲义 time_demo_node.py：1Hz 采样 + Header.stamp + 5s 摘要</span>
+python3 time_demo_node.py             <span class="c"># 终端A</span>
+<span class="g"># [INFO] 时间演示节点已启动 · use_sim_time=False</span>
+
+<span class="c"># 终端B：看消息里的 stamp 字段</span>
+ros2 topic echo /sensor_data
+<span class="g"># header:</span>
+<span class="g">#   stamp: {sec: 1731500000, nanosec: 512345678}   ← 接近当前 Unix 时间</span>
+<span class="g">#   frame_id: sensor_frame</span>
+
+<span class="c"># 验证采样节拍</span>
+ros2 topic hz /sensor_data
+<span class="g"># average rate: ~1.000   ← 定时器活着</span></pre>
+</section>
+
+<section class="blk" id="s8">
+<h2><span class="no">08</span>实操 B：延迟测量与 /clock 体验</h2>
+<pre><span class="c"># 端到端延迟（stamp → 收到的时刻差，单位 ms）</span>
+ros2 topic delay /sensor_data
+<span class="g"># 0.3 ms   ← 局域网正常水平；出现负值 = 时钟不同步</span>
+
+<span class="c"># 体验仿真时钟：先以 sim 模式启动（会卡住等 /clock）</span>
+python3 time_demo_node.py --ros-args -p use_sim_time:=true
+
+<span class="c"># 另开终端手动扮演"仿真器"，每秒推进 1 秒</span>
+ros2 topic pub /clock rosgraph_msgs/msg/Clock <span class="s">"{clock: {sec: 100, nanosec: 0}}"</span> --rate 1
+<span class="g"># 节点瞬间"活"过来，stamp 从 sec=100 开始递增 —— 时间轴被接管</span>
+
+<span class="c"># 0.5 倍速版本：--rate 0.5，观察 stamp 推进变慢、1Hz 定时器越发越慢</span></pre>
+<div class="tip amber"><span class="lab">回放一致性</span>rosbag play 加 <code>--clock</code> 也会发布 /clock——配合全系统 use_sim_time:=true，离线复现时所有节点共享录制时的时间轴，时间戳天然对齐。</div>
+
+<div class="figs-guide"><h4>📸 指导书实操与现象截图（2 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184101472.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184140393.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）</figcaption></figure></div></div>
+</section>
+
+<section class="blk" id="s9">
+<h2><span class="no">09</span>注意事项与验收清单</h2>
+<div class="check">
+  <ul>
+    <li>默画双时钟架构：use_sim_time 是源开关，get_clock().now() 是统一出口</li>
+    <li>讲清 Time（API）与 builtin_interfaces/Time（消息）的互转关系</li>
+    <li>实测 topic hz ≈ 1.000、topic delay 正常量级，理解负值的含义</li>
+    <li>亲手体验一次：true 开着没 /clock 的阻塞，以及手动 pub 的"复活"</li>
+    <li>说出 stamp 应该盖在采集时刻的哪一行代码</li>
+    <li>解释回调超时为什么会拖低实际频率（名义周期 ≠ 实际频率）</li>
+  </ul>
+</div>
+<table>
+  <tr><th>坑</th><th>症状</th><th>解法</th></tr>
+  <tr><td>忘调 spin</td><td>定时器永远不触发</td><td>节点创建后必须 rclpy.spin(node) 启动事件循环</td></tr>
+  <tr><td>init 顺序错</td><td>get_clock().now() 报 Clock not initialized</td><td>先 rclpy.init() 再建节点，之后才能取钟</td></tr>
+  <tr><td>真机误开 use_sim_time</td><td>节点卡死没有任何输出</td><td>无 /clock 发布者即永久等待——真机保持 false</td></tr>
+  <tr><td>delay 出现负值</td><td>跨机测量越测越离谱</td><td>两机 NTP 对时；单机则查 stamp 是不是盖晚了</td></tr>
+  <tr><td>回调里做重 I/O</td><td>频率标称 5Hz 实测 2Hz 不稳</td><td>重活移出回调（异步/多线程），回调保持轻量</td></tr>
+  <tr><td>运行中切换 use_sim_time</td><td>改了没反应</td><td>时钟模式须在初始化时确定——重启节点才能切</td></tr>
+</table>
+</section>
+
+<section class="blk" id="s10">
+<h2><span class="no">10</span>本课总结与思考题</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">抽象</div><div class="kt">双时钟一个出口</div><p>Clock 吸收系统时钟与 /clock 的差异，上层代码仿真真机零改动。</p></div>
+  <div class="kcard"><div class="kd">类型</div><div class="kt">API Time ⇄ 消息 Time</div><p>to_msg()/from_msg() 互转；sec+nanosec 结构贯穿所有 Header。</p></div>
+  <div class="kcard"><div class="kd">节拍</div><div class="kt">create_timer 挂 spin</div><p>名义周期受回调耗时拖累；多定时器同循环串行。</p></div>
+  <div class="kcard"><div class="kd">规范</div><div class="kt">stamp 盖采集时刻</div><p>delay/hz 诊断通信质量；负延迟先怀疑时钟未对齐。</p></div>
+</div>
+<div class="tip violet"><span class="lab">思考题</span>
+① IMU 200Hz 与相机 30Hz 时间戳不对齐（硬件延迟导致），设计一个基于 Header.stamp 的对齐算法：如何为每帧图像选出"最接近"的 IMU 读数？误差界是多少？<br>
+② Gazebo 以 0.5 倍速运行时，create_timer(1.0, cb) 的实际触发频率是多少？这对 PID 控制算法（依赖固定 dt）会引发什么问题，怎么解决？<br>
+③ 定时器改频率必须 destroy 再 create——EXP-10 的参数回调正是这么做的。请把两课的知识串起来：写一条从 "ros2 param set 采样率" 到 "timer 按新周期触发" 的完整调用链。</div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-10-parameter/index.html"><span class="lb">← 上一个实验</span>EXP-10 参数服务</a>
+  <a class="next" href="../exp-12-dds/index.html"><span class="lb">下一个实验 →</span>EXP-12 DDS 通信中间件</a>
+</nav>
+<footer><span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-11 时间 API</span><span>2 学时 · 验证性 · 基于 ros_practice 实验讲义改编</span></footer>
+</main>
+</div>
+<script>
+var CK={
+  sys:'<span class="dim">// use_sim_time = false，Clock 走系统时钟…</span>\n<span class="ok">✓ 正常</span> now() = 操作系统墙上时间\n<span class="y">create_timer(1.0) → 实际约 1 次/秒（受回调耗时微扰）</span>\n<span class="dim">stamp 与真实世界对齐，ros2 topic delay 正常；真机/日常开发的标准形态。</span>',
+  simOk:'<span class="dim">// use_sim_time = true，Gazebo 每步推进发 /clock…</span>\n<span class="ok">✓ 正常</span> now() = 仿真时间轴，与 Gazebo 内部时间一致\n<span class="y">仿真 1 秒 = 真实 1 秒（1x 时）→ 定时器 1Hz</span>\n<span class="dim">全系统所有 true 节点共享同一时间轴 → 多传感器数据天然同步，bag 回放同理。</span>',
+  simNone:'<span class="dim">// use_sim_time = true，但 /clock 无人发布…</span>\n<span class="bad">✗ 卡死</span> Clock 陷入等待 /clock 的循环\n<span class="y">现象：节点进程活着但零输出，ros2 topic list 里也看不到 /clock</span>\n<span class="dim">危害：真机上误开此参数 = 节点整体停摆。排查命令：ros2 topic echo /clock（空即元凶）。</span>',
+  simHalf:'<span class="dim">// 仿真 0.5 倍速：真实 2 秒才推进 1 仿真秒…</span>\n<span class="warn">⚠ 变慢但一致</span> now() 按仿真时间走，一切 true 节点同步变慢\n<span class="y">create_timer(1.0) → 真实世界约 0.5 次/秒（仿真时间里仍精确 1 秒 1 次）</span>\n<span class="dim">控制启示：用 now() 差值算 dt 的算法不受影响；用真实秒表算 dt 的算法会把步长放大一倍。</span>',
+  back:'<span class="dim">// ros2 play bag_01 --clock + 全系统 use_sim_time:=true…</span>\n<span class="ok">✓ 时间轴回卷</span> now() = 录制时的历史时间\n<span class="y">stamp 严格复现录制时刻 → 传感器间对齐关系与现场一致</span>\n<span class="dim">离线调试的黄金组合：--loop 循环回放时所有节点跟着反复穿越，复现率 100%。</span>'
+};
+function checkClock(){document.getElementById('ckIo').innerHTML=CK[document.getElementById('sc').value];}
+checkClock();
+</script>
+<script src="../shared/tutorial.js" defer></script>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script>
+function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
+</script>
+
+</body>
+</html>

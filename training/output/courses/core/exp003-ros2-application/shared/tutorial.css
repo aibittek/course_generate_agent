@@ -54,8 +54,9 @@ main a:hover{text-decoration:underline}
 .blk li{margin-bottom:6px}
 strong{color:var(--head)}
 code{font-family:var(--font-mono);font-size:.9em;background:var(--bg-soft);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
-pre{font-family:var(--font-mono);font-size:13px;line-height:1.7;background:#0f172a;color:#e2e8f0;border-radius:12px;padding:16px 18px;overflow-x:auto;margin:12px 0}
-pre .c{color:#64748b}pre .g{color:#4ade80}pre .b{color:#60a5fa}pre .y{color:#fbbf24}
+pre{font-family:var(--font-mono);font-size:13.5px;line-height:1.8;background:#0f172a;color:#e8eef7;border-radius:12px;padding:16px 20px;overflow-x:auto;margin:12px 0;font-weight:450;-webkit-font-smoothing:antialiased}
+pre code{background:transparent;border:none;border-radius:0;padding:0;font-size:inherit;color:inherit;font-family:inherit}
+pre .c{color:#93a9c4}pre .g{color:#6ee7a8}pre .b{color:#93c5fd}pre .y{color:#fcd34d}
 code.inline{background:#fef3c7;border-color:#fde68a;color:#92400e;padding:1px 6px}
 
 /* flow */
@@ -107,8 +108,10 @@ tr:nth-child(even) td{background:#fcfdfe}
 .btn:hover{background:#f59e0b}
 .btn.ghost{background:transparent;color:#fbbf24;border:1px solid #92400e}
 .btn:disabled{opacity:.4;cursor:not-allowed}
-.io{background:#0b0f17;border:1px solid #1e293b;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.9;white-space:pre-wrap;min-height:56px}
-.io .ok{color:#4ade80}.io .warn{color:#fbbf24}.io .bad{color:#f87171}.io .dim{color:#64748b}
+.io{background:#0b0f17;border:1px solid #243244;border-radius:10px;padding:15px 18px;font-family:var(--font-mono);font-size:13.5px;line-height:1.85;white-space:pre-wrap;min-height:56px;color:#e8eef7;font-weight:450;-webkit-font-smoothing:antialiased}
+.io .ok{color:#5eead4}.io .warn{color:#fcd34d}.io .bad{color:#fca5a5}.io .dim{color:#9fb0c9}
+.io .c{color:#93a9c4}.io .g{color:#6ee7a8}.io .y{color:#fcd34d}.io .w{color:#fca5a5}.io .b{color:#93c5fd}
+.io .err{color:#fca5a5}
 
 /* levels */
 .levels{list-style:none;padding-left:0;margin:12px 0;counter-reset:lv}

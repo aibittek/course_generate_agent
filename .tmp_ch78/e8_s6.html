@@ -1,0 +1,99 @@
+<section class="blk" id="s6">
+<h2><span class="no">06</span>先看现象：一步步跑通 RFID 读卡</h2>
+<p>先不读代码——按命令卡把"自检 → 服务端 → 客户端 → CLI 观察反馈流"四个现象亲手跑出来，特别是三种结局（成功 / 超时 / 取消）都要亲眼看到一遍。<b>看到现象再回头看 07 的代码</b>。</p>
+
+<div class="termbar"><span class="tl">终端 0</span><b>编译 + 脱机自检驱动</b><span class="note">把硬件故障和 ROS 逻辑故障分开排查</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">1</span><b>编译两个包并加载环境</b><span class="cs-where">终端 0</span></div>
+  <p class="cs-why">接口包（<code>ros_sensor_interfaces</code>，.action 定义在里面）与节点包（<code>ros_sensor</code>）都要编。</p>
+  <pre>cd ~/ros2_ws
+source /opt/ros/humble/setup.bash
+colcon build --symlink-install --packages-select ros_sensor ros_sensor_interfaces
+source install/setup.bash</pre>
+  <p class="cs-see">✔ 编译后忘了 source，<code>ros2 run</code> 就找不到包——每次新开终端都要 source。</p>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">2</span><b>脱离 ROS 自检 MFRC522</b><span class="cs-where">终端 0</span></div>
+  <p class="cs-why">SPI 接线、GPIO、供电问题都会在这一步暴露，不会污染 ROS 层的判断。</p>
+  <pre>cd src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
+sudo python3 rc522_reader.py --test</pre>
+  <div class="io"><span class="dim">$ sudo python3 rc522_reader.py --test</span>
+RC522 RFID Reader on RK3588
+  SPI      : /dev/spidev1.0
+  CS GPIO  : 114
+  RST GPIO : 116
+  Speed    : 500000 Hz
+--------------------------------------
+  VersionReg(0x37) = <span class="g">0xB2</span>
+  TmodeReg write 0x8D -&gt; read 0x8D
+  <span class="g">PASS</span>
+初始化完成</div>
+  <p class="cs-see">✔ VersionReg 读出 <b>0x00 或 0xFF</b> = 芯片没应答：查 CS=114 / RST=116 接线、3.3V 供电、<code>python-periphery</code> 是否安装。</p>
+</div>
+<div class="figs-guide"><h4>📸 自检环节截图</h4><div class="figgrid">
+<figure class="fg wide" onclick="lbShow(this)"><img src="../assets/image-20260821183615295.png" alt="rc522_reader.py --test 自检输出：VersionReg=0xB2 PASS" loading="lazy"><figcaption>自检通过的样子：VersionReg(0x37)=0xB2、回读一致、PASS</figcaption></figure>
+<figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821183649865.png" alt="实验箱上的 RFID 模块与 MFRC522 芯片" loading="lazy"><figcaption>实验箱上的 RFID 模块（MFRC522 芯片位置）——刷卡时把卡轻贴天线区域</figcaption></figure>
+</div></div>
+
+<div class="termbar"><span class="tl">终端 A</span><b>启动动作服务端</b><span class="note">保持运行，别停</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">3</span><b>起 ActionServer</b><span class="cs-where">终端 A</span></div>
+  <pre>cd ~/ros2_ws
+source install/setup.bash
+ros2 run ros_sensor rfid_action_server</pre>
+  <div class="io"><span class="g">[INFO] RFID Action 服务端已启动 (action: /rfid_scan)</span>
+<span class="dim"># 服务端进入待命：等待 /rfid_scan 上的 Goal</span></div>
+</div>
+
+<div class="termbar"><span class="tl">终端 B</span><b>客户端发 Goal，边看反馈边刷卡</b><span class="note">30 秒窗口</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">4</span><b>发起读卡目标</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">参数 <code>30</code> 是 Goal 里的 <code>timeout_sec</code>。启动后<b>把 MIFARE 白卡贴上天线</b>，盯住反馈流的变化。</p>
+  <pre>cd ~/ros2_ws
+source install/setup.bash
+ros2 run ros_sensor rfid_action_client 30</pre>
+  <div class="io"><span class="g">[INFO] Goal 已接受</span>
+<span class="dim">Feedback: SCANNING</span>
+<span class="dim">Feedback: SCANNING</span>
+<span class="y">Feedback: CARD_FOUND</span>
+<span class="y">Feedback: READING_UID</span>
+<span class="y">Feedback: VERIFYING</span>
+<span class="g">结果: success=True uid=7E1A3B02 type=MIFARE Classic msg=读卡成功</span></div>
+  <p class="cs-see">✔ 反馈流从 SCANNING 一路推进到 VERIFYING——这就是 04 节图 8-3 状态机的实况。服务端终端同时会打印收到的 Goal 与读卡结果。</p>
+</div>
+<div class="figs-guide"><h4>📸 服务端读卡成功截图</h4><div class="figgrid">
+<figure class="fg wide" onclick="lbShow(this)"><img src="../assets/image-20260821183719195.png" alt="rfid_action_server 终端：收到 Goal、开始读卡、读卡成功" loading="lazy"><figcaption>服务端终端：收到 Goal（timeout_sec=30）→ 开始读卡 → 读卡成功 uid=B4D20307</figcaption></figure>
+</div></div>
+
+<div class="termbar"><span class="tl">终端 C</span><b>CLI 观察反馈流与三种结局</b><span class="note">终端 A 保持运行，一次只发一个 Goal</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">5</span><b>自省：列出动作与类型</b><span class="cs-where">终端 C</span></div>
+  <pre>ros2 action list
+ros2 action info /rfid_scan</pre>
+  <div class="io"><span class="g">/rfid_scan</span>
+<span class="dim">Action: ros_sensor_interfaces/action/RfidScan</span>
+<span class="dim">Action clients: 0</span>
+<span class="dim">Action servers: 1</span></div>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">6</span><b>不写一行客户端，直接发 Goal 并看反馈</b><span class="cs-where">终端 C</span></div>
+  <p class="cs-why"><code>--feedback</code> 是动作与服务<b>最直观的分界线</b>：服务 call 出来只有最终一行，动作能看到整条状态流。</p>
+  <pre>ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 30}" --feedback</pre>
+  <div class="io"><span class="dim">$ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 30}" --feedback</span>
+<span class="dim">Goal accepted with ID: …</span>
+<span class="dim">Feedback: SCANNING</span>
+<span class="dim">Feedback: SCANNING</span>
+<span class="g">Result: success=True uid=7E1A3B02 type=MIFARE Classic msg=读卡成功</span></div>
+  <p class="cs-see">✔ Goal 的 YAML 字段名必须与 .action 完全一致——是 <code>timeout_sec</code> 不是 timeout，写错直接解析失败（08 节任务 5 专门让你踩这个坑）。</p>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">7</span><b>复现另外两种结局</b><span class="cs-where">终端 C</span></div>
+  <p class="cs-why">超时与取消也要亲眼各看一遍——三种结局合起来才是完整的动作语义。</p>
+  <pre><span class="c"># 结局 2 · 超时 abort：故意不放卡，等 timeout_sec 秒</span>
+ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 10}" --feedback
+<span class="g"># → SCANNING 持续滚动 10s → Result: success=False msg=读卡超时</span>
+
+<span class="c"># 结局 3 · 取消 canceled：上一条跑起来后按 Ctrl+C（CLI 会发 cancel）</span>
+<span class="g"># → Feedback 中断 → Result: success=False msg=已取消</span></pre>
+</div>
+</section>
