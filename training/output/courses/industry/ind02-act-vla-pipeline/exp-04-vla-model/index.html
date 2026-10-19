@@ -20,6 +20,19 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
 .blk{min-width:0;overflow-x:hidden}
 pre{max-width:100%;min-width:0;overflow-x:auto}
 .content{overflow-x:hidden;min-width:0}
+/* ── 五星学习法 · 课程分段 ── */
+.fivestar-note{font-size:13px;color:#5b6b78;margin-top:12px}
+.fs-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+.fs-cell{border:1px solid var(--theme-bd);border-radius:12px;padding:10px 8px;text-align:center;background:var(--theme-bg)}
+.fs-cell .st{font-size:12.5px;font-weight:800;color:var(--theme-deep)}
+.fs-cell .tm{font-family:var(--font-mono,monospace);font-size:11px;color:#0f766e;margin-top:3px;font-weight:700}
+.fs-cell .ds{font-size:11.5px;color:#5b6b78;margin-top:4px;line-height:1.5}
+.seg{display:inline-block;font-size:11px;font-weight:700;font-family:var(--font-mono,monospace);background:var(--theme-bg);color:var(--theme-deep);border:1px solid var(--theme-bd);border-radius:99px;padding:2px 10px;margin-left:8px;vertical-align:middle;white-space:nowrap}
+.tl{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;background:#fff}
+.tl th,.tl td{border:1px solid #e2ece9;padding:7px 10px;text-align:left;vertical-align:top}
+.tl th{background:var(--theme-bg);color:var(--theme-deep);font-size:12.5px;white-space:nowrap}
+.tl .m{font-family:var(--font-mono,monospace);color:var(--theme-deep);font-weight:700;white-space:nowrap}
+@media(max-width:900px){.fs-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -31,17 +44,18 @@ pre{max-width:100%;min-width:0;overflow-x:auto}
 
 <div class="wrap">
   <aside class="side">
-    <h4>实验目录</h4>
-    <a class="now" href="#s1">§1 实验目标</a>
-    <a href="#s2">§2 核心原理</a>
-    <a href="#s3">§3 环境与材料</a>
-    <a href="#s4">§4 实操步骤</a>
-    <a href="#s5">§5 关键命令</a>
-    <a href="#s6">§6 动画演示</a>
-    <a href="#s7">§7 互动练习</a>
-    <a href="#s8">§8 常见问题</a>
-    <a href="#s9">§9 拓展阅读</a>
-    <a href="#s10">§10 思考题</a>
+    <h4>实验目录 · 五星学习法</h4>
+    <a href="#s0">00 课程节奏 · 8 段微课</a>
+    <a class="now" href="#s1">§1 实验目标 ①聚焦问题</a>
+    <a href="#s2">§2 核心原理 ①聚焦 ②激活</a>
+    <a href="#s3">§3 环境与材料 ③示证新知</a>
+    <a href="#s4">§4 实操步骤 ④应用新知</a>
+    <a href="#s5">§5 关键命令 ④应用新知</a>
+    <a href="#s6">§6 动画演示 ③示证新知</a>
+    <a href="#s7">§7 互动练习 ④应用新知</a>
+    <a href="#s8">§8 常见问题 ⑤融会贯通</a>
+    <a href="#s9">§9 拓展阅读 ⑤融会贯通</a>
+    <a href="#s10">§10 思考题 ⑤融会贯通</a>
     <h4 style="margin-top:18px">本课其他实验</h4>
     <a href="../exp-01-teleop-recording/index.html">EXP-01 遥操作与数据采集</a>
     <a href="../exp-02-act-training/index.html">EXP-02 ACT 模型训练</a>
@@ -56,8 +70,33 @@ pre{max-width:100%;min-width:0;overflow-x:auto}
       <div class="meta"><span class="tag">8 学时</span><span class="tag">难度 ★★★</span><span class="tag hl">对比 · 拓展</span><span class="tag">对应指导文档第 13 章</span></div>
     </div>
 
+    <!-- 00 -->
+    <section class="blk" id="s0">
+      <h2><span class="no">00</span>课程节奏：五星学习法 · 8 段微课（每段 ≤ 15 min）</h2>
+      <p>本实验按<b>五星学习法</b>组织：先用一个真实故障<b>聚焦问题</b>，再<b>激活旧知</b>（ACT 专职小模型 + NLP 的 token 化），接着<b>示证新知</b>（VLA 的语言 token → VLM 底座 → 动作专家三段结构），然后动手<b>应用新知</b>完成安装、rename_map、微调与推理，最后借 ACT vs VLA 对比<b>融会贯通</b>。全程切成 <b>8 段微课、每段不超过 15 分钟</b>，段间停顿 1~2 分钟消化；纯讲授合计约 100 分钟，其余课时用于动手实操与个别辅导。</p>
+      <div class="fs-grid">
+        <div class="fs-cell"><div class="st">① 聚焦问题</div><div class="tm">课段 1 · 12 min</div><div class="ds">"换任务得重训 ACT/VLA 显存爆/rename_map 报错"故障</div></div>
+        <div class="fs-cell"><div class="st">② 激活旧知</div><div class="tm">课段 2 · 8 min</div><div class="ds">ACT 无语言 52M · tokenizer 切词查表变向量</div></div>
+        <div class="fs-cell"><div class="st">③ 示证新知</div><div class="tm">课段 3~4 · 27 min</div><div class="ds">VLA 三段结构 + ACT vs VLA 两路对比动画</div></div>
+        <div class="fs-cell"><div class="st">④ 应用新知</div><div class="tm">课段 5~7 · 40 min</div><div class="ds">安装 → rename_map → 微调 → 推理 + 特性辨析</div></div>
+        <div class="fs-cell"><div class="st">⑤ 融会贯通</div><div class="tm">课段 8 · 13 min</div><div class="ds">配置红线 · 四维对比 · 思考题</div></div>
+      </div>
+      <table class="tl">
+        <tr><th>课段</th><th>五星阶段</th><th>时长</th><th>对应章节</th><th>本段任务</th></tr>
+        <tr><td class="m">课段 1</td><td>聚焦问题</td><td class="m">12 min</td><td>§01 + §02 前半</td><td>抛出"换任务得重训 ACT/VLA 显存爆/rename_map 报错"故障，明确本课目标</td></tr>
+        <tr><td class="m">课段 2</td><td>激活旧知</td><td class="m">8 min</td><td>§02 后半</td><td>用 ACT 无语言 52M 与 NLP token 化两条旧知解释 VLA 原理</td></tr>
+        <tr><td class="m">课段 3</td><td>示证新知</td><td class="m">15 min</td><td>§03</td><td>对照依赖、镜像、数据、对比模板认识 VLA 物料与配置红线</td></tr>
+        <tr><td class="m">课段 4</td><td>示证新知</td><td class="m">12 min</td><td>§06（回看 §02 流程）</td><td>看懂"ACT 无语言直连 vs VLA 先 token 化再跨模态"两路差异</td></tr>
+        <tr><td class="m">课段 5</td><td>应用新知</td><td class="m">15 min</td><td>§04 Step1~3 + §5 命令①②③</td><td>安装 SmolVLA 依赖、配 rename_map、启动训练（边讲边演）</td></tr>
+        <tr><td class="m">课段 6</td><td>应用新知</td><td class="m">15 min</td><td>§04 Step4~6 + §5 命令④</td><td>读参数账本 100M/450M、盯 loss 双降、改指令文本推理</td></tr>
+        <tr><td class="m">课段 7</td><td>应用新知</td><td class="m">10 min</td><td>§07</td><td>ACT vs VLA 特性辨析自测，四题锁定路线差异</td></tr>
+        <tr><td class="m">课段 8</td><td>融会贯通</td><td class="m">13 min</td><td>§08~§10</td><td>配置红线收口，四维对比与思考题拔高迁移</td></tr>
+      </table>
+      <p class="fivestar-note">讲课提示：课段 1/2 以讲授 + 提问为主；课段 3~4 用对比表 + 动画；课段 5~6 边讲边演命令与日志；课段 7 学员独立完成；课段 8 答疑拔高。段间停顿 1~2 分钟。</p>
+    </section>
+
     <section class="blk" id="s1">
-      <h2><span class="no">01</span>实验目标</h2>
+      <h2><span class="no">01</span>实验目标<span class="seg">课段 1 · 聚焦问题 · 12 min</span></h2>
       <div class="kgrid">
         <div class="kcard"><div class="kd">目标 A</div><p>安装 SmolVLA 扩展依赖（<code>pip install -e ".[smolvla]"</code> + 锁定 <code>transformers==4.54.1</code>），配置 <code>HF_ENDPOINT</code> 镜像拉取预训练底座。</p></div>
         <div class="kcard"><div class="kd">目标 B</div><p>用 <code>--policy.path=lerobot/smolvla_base</code> 在同一数据集上微调 VLA，理解 <code>rename_map</code> 为什么必须改写摄像头键名，读懂 100M/450M 参数日志。</p></div>
@@ -68,18 +107,20 @@ pre{max-width:100%;min-width:0;overflow-x:auto}
     </section>
 
     <section class="blk" id="s2">
-      <h2><span class="no">02</span>核心原理：语言如何变成"动作指令"</h2>
+      <h2><span class="no">02</span>核心原理：语言如何变成"动作指令"<span class="seg">课段 1 收尾 + 课段 2 · 激活旧知 · 8 min</span></h2>
+      <div class="tip amber"><span class="lab">❓ 聚焦问题（课段 1）</span>用 ACT 跑了一个抓方块的任务，现在<b>想换个任务"掀盖子"</b>——按 ACT 的路子得重新采数、重训一个模型。而 VLA 号称"改一句话就能换任务"，可一跑起来 <code>batch_size=16</code> 直接 <code>CUDA out of memory</code>，还报 <code>Missing observation.images.camera2</code>。问题出在哪？带着这三个故障听完全课，到课段 6 你会亲手让一句话切换任务。</div>
       <p><b>通俗类比</b>：ACT 像一个只学会一道菜的学徒——你指指红方块和盘子，他就上手干，全程不说话；VLA 像一位看得懂菜谱的大厨——你说"把红方块放进盘子"或"把盖子掀开"，他先读懂话、再看灶台、然后动手。<b>那句话怎么进入模型？</b></p>
       <p><b>① 语言指令 token 化</b>——文本先被 tokenizer 切成 token 序列（本例 <code>tokenizer_max_length=48</code>，最多 48 个 token，装得下一句完整任务）。每个 token 查词表变成数字向量——就像把汉字转成电报码，模型才能算。指导文件里的 <code>dataset.single_task="Put red cube into plate"</code> 正是这条被 token 化的指令。</p>
       <p><b>② 视觉-语言底座（VLM）</b>——SmolVLA 站在 <code>HuggingFaceTB/SmolVLM2-500M-Video-Instruct</code>（450M 总参数）肩上：图像走视觉编码器（训练时 <code>freeze_vision_encoder=True</code> 冻结，省显存），文本与图像特征在 16 层 VLM 层里做跨模态注意力——"指令里的 red cube 对应画面里那块红色"就是在这层对上的（日志 <code>Reducing the number of VLM layers to 16</code>）。</p>
       <p><b>③ 动作专家（expert）</b>——VLM 输出的融合特征交给动作专家解码出 50 步动作块（<code>chunk_size=50</code>；<code>train_expert_only=True</code> 表示只微调专家与接口层，<code>num_learnable_params=99880992 (100M)</code>，其余 3.5 亿参数冻结）。损失仍是重建 + KL 的回归范式，只是"看和想"的部分换成了大模型。</p>
       <p><b>ACT vs VLA 一览</b>：ACT——无语言、52M 专职小模型、数据要多但专精、一步到位快；VLA——语言驱动、100M 可学/450M 底座、预训练常识可迁移、一条指令切换任务，但更吃显存（batch 16 OOM 就减半）、建议至少 10000 步（示例日志仅测 1000 步）。<b>自回归 vs 并行</b>：VLM 的语言理解部分本质是自回归建模（token 逐个生成的思维链），而动作输出仍走并行块——VLA 是"慢想 + 快动"的组合。</p>
+      <div class="tip teal"><span class="lab">↺ 激活旧知（课段 2）</span>回忆两条旧知：① EXP-02 的 ACT 是<b>无语言</b>、52M 专职小模型，靠"图像+状态"直连动作；② NLP 里 <b>tokenizer</b> 把文本切成 token、查词表变成数字向量——大模型才能"算"一句话。VLA 就是把②这条旧知接到①上：语言先 token 化、再与视觉特征跨模态对齐，最后由动作专家出手。</div>
       <div class="tip violet"><span class="lab">VLA 安装</span>安装 VLA 扩展依赖（第 13 章）：在 lerobot 环境中执行 <code>pip install -e ".[smollvla]"</code>，安装 SmolVLM2 底座与分词器组件，完成后即可用 <code>--policy.type=smolvla</code> 启动训练。</div>
       <div class="tip violet"><span class="lab">一句话总结</span>ACT 是"肌肉记忆"，VLA 是"看得菜谱的肌肉记忆"。语言给了模型一个可插拔的任务入口。</div>
     </section>
 
     <section class="blk" id="s3">
-      <h2><span class="no">03</span>环境与材料</h2>
+      <h2><span class="no">03</span>环境与材料<span class="seg">课段 3 · 示证新知 · 15 min</span></h2>
       <ul class="check">
         <li><span class="ok">✓</span>LeRobot 源码目录（<code>pip install -e ".[smolvla]"</code>）+ <code>transformers==4.54.1</code> 锁版</li>
         <li><span class="ok">✓</span>网络可达 HF 镜像：<code>export HF_ENDPOINT=https://hf-mirror.com</code>（下载 SmolVLM2 底座约数百 MB～1GB）</li>
@@ -101,7 +142,7 @@ pre{max-width:100%;min-width:0;overflow-x:auto}
     </section>
 
     <section class="blk" id="s4">
-      <h2><span class="no">04</span>实操步骤</h2>
+      <h2><span class="no">04</span>实操步骤<span class="seg">课段 5~6 · 应用新知 · 2×15 min</span></h2>
       <div class="flow">
         <div class="step"><div class="n">Step 1</div>安装（§5 第一条）：smolvla 扩展 + transformers 锁版 + HF 镜像环境变量。<div class="arr"></div></div>
         <div class="step"><div class="n">Step 2</div>核对数据摄像头键名：VLA 期望 <code>observation.images.camera1/2/3</code>，原数据为 <code>right/side/left</code>——用 <code>rename_map</code> 重定向（§5 第二条）。<div class="arr"></div></div>
@@ -124,7 +165,7 @@ pre{max-width:100%;min-width:0;overflow-x:auto}
     </section>
 
     <section class="blk" id="s5">
-      <h2><span class="no">05</span>关键命令</h2>
+      <h2><span class="no">05</span>关键命令<span class="seg">随课段 5 / 6 对照使用</span></h2>
       <pre><span class="c"># ── 1) 安装 SmolVLA 依赖（第 13 章原文）</span>
 pip install -e ".[smolvla]" -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install "transformers==4.54.1" -i https://pypi.tuna.tsinghua.edu.cn/simple
@@ -149,7 +190,7 @@ End of training</pre>
     </section>
 
     <section class="blk" id="s6">
-      <h2><span class="no">06</span>动画演示：触发 → 推理 → 执行的两路对比（ACT 无语言 vs VLA 语言指令）</h2>
+      <h2><span class="no">06</span>动画演示：触发 → 推理 → 执行的两路对比（ACT 无语言 vs VLA 语言指令）<span class="seg">课段 4 · 示证新知 · 12 min</span></h2>
       <div class="anim-box">
         <svg viewBox="0 0 780 330" width="100%">
           <defs>
@@ -217,7 +258,7 @@ End of training</pre>
     </section>
 
     <section class="blk" id="s7">
-      <h2><span class="no">07</span>互动练习：ACT vs VLA 特性辨析</h2>
+      <h2><span class="no">07</span>互动练习：ACT vs VLA 特性辨析<span class="seg">课段 7 · 应用新知 · 10 min</span></h2>
       <div class="ix-panel">
         <div class="ix-title">下面每条描述属于哪条路线？选完立即判分</div>
         <div class="q" id="q1" data-a="b" style="margin-bottom:12px">
@@ -258,7 +299,7 @@ End of training</pre>
     </section>
 
     <section class="blk" id="s8">
-      <h2><span class="no">08</span>常见问题</h2>
+      <h2><span class="no">08</span>常见问题<span class="seg">课段 8 · 融会贯通 · 13 min</span></h2>
       <ul class="check">
         <li><span class="ok">✓</span><b>显存不足（OOM）</b>：VLA 比 ACT 吃显存，<code>batch_size</code> 16 → 8 → 4；确认 freeze_vision_encoder 与 train_expert_only 仍为 True（全量微调 450M 极易爆）。</li>
         <li><span class="ok">✓</span><b>底座下载失败</b>：先 <code>export HF_ENDPOINT=https://hf-mirror.com</code>；transformers 版本漂移就重装 <code>transformers==4.54.1</code>。</li>
@@ -278,13 +319,13 @@ End of training</pre>
     </section>
 
     <section class="blk" id="s9">
-      <h2><span class="no">09</span>拓展阅读</h2>
+      <h2><span class="no">09</span>拓展阅读<span class="seg">课段 8 · 融会贯通</span></h2>
       <div class="tip violet"><span class="lab">深入</span>① LeRobot 中 SmolVLA 配置项 <code>vlm_model_name</code>、<code>tokenizer_max_length=48</code>、<code>num_vlm_layers</code> 是调成本/性能的三根杠杆；② 官方 <code>lerobot/smolvla_base</code> 底座经过多机器人数据预训练——"常识"来自哪里一目了然；③ 进一步对比三大范式：ACT（分块回归）、Diffusion Policy（迭代去噪出块）、VLA（预训练 VLM + 动作头），从生成视角理解"怎么把场景变成动作"；④ 关注 MoT（Mixture-of-Transformers）类结构与 CoT 推理在机器人策略中的最新进展。</div>
       <div class="tip violet"><span class="lab">延伸</span>⑤ 把 ACT 与 VLA 的启动日志各截一张，参数量、图像尺寸（480×640 vs 256×256）、chunk（100 vs 50）三项差异便一目了然，直接构成对比报告的图表素材；⑥ 尝试把 single_task 改写成同义句（"put the red block on the plate"）再推理，观察语义扰动下的行为稳定性——这是语言鲁棒性的最小实验。</div>
     </section>
 
     <section class="blk" id="s10">
-      <h2><span class="no">10</span>思考题</h2>
+      <h2><span class="no">10</span>思考题<span class="seg">课段 8 · 融会贯通</span></h2>
       <div class="tip violet"><span class="lab">思考 1</span>同一批 50 组双臂数据，ACT 和 VLA 谁更可能学会？如果把数据扩到 1000 组并加 5 种不同指令的混合任务，结论会反转吗？从"预训练知识 vs 从零学习"的角度论证。</div>
       <div class="tip violet"><span class="lab">思考 2</span>tokenizer_max_length=48 意味着指令最多约 48 个 token。若产品要支持"把左边第二个红方块放到盘子边缘"这类超长指令，除了改大这个参数，还需要在数据采集（EXP-01 的 single_task 写法）上做什么配合？</div>
     </section>

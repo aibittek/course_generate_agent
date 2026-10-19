@@ -1,0 +1,221 @@
+聆动机器人数据转换
+1. 数据转换脚本解析
+1.1 整体架构
+┌──────────────────────────────────────────────┐
+│  main()  ← 程序入口（argparse 解析命令行参数）                                     │
+│    ↓                                                                                                                │
+│  LeRobotV3Converter.__init__()  ← 初始化转换器                                      │
+│    ↓                                                                                                                │
+│  converter.convert()  ← 核心流程（4 个阶段）                                            │
+│    ├── [阶段1] 读取所有 episode 数据                                                        │
+│    │     ├── get_episode_dirs()    — 获取要转换的目录列表                       │
+│    │     └── read_episode_data()   — 读取 CSV 并修复                             │
+│    ├── [阶段2] 创建合并的 Parquet 数值文件                                            │
+│    ├── [阶段3] 合并视频（concat + copy）                                               │
+│    │     └── merge_videos()        — FFmpeg 流复制拼接                          │
+│    └── [阶段4] 生成元数据                                                                        │
+│          ├── create_info_json()     — meta/info.json                                    │
+│          ├── create_tasks_parquet() — meta/tasks.parquet                       │
+│          ├── create_stats_json()    — meta/stats.json                                 │
+│          └── create_episodes_metadata() — per-episode 元数据              │
+└─────────────────────────────────────────────┘
+1.2 类和方法逐层分析
+1.2.1 init() — 初始化（L32-L63）
+
+[表格]
+  pythonclass LeRobotV3Converter:    def __init__(self, input_dir, output_dir, episode_ids=None, fps=30, skip_episodes=None, task_name=None):
+存储的核心配置：
+input_dir / output_dir：输入输出目录（自动转 Path 对象）
+fps = 30：视频帧率
+chunks_size = 1000：每个 chunk 目录最多容纳的文件数（LeRobot v3.0 的分片约定）
+episode_ids：指定要转换的 episode ID 列表（如 [180, 181, ..., 209]）
+skip_episodes：要跳过的 episode ID 列表（处理采集失败的 episode）
+joint_names：16 个关节的名称（左臂 8 + 右臂 8）
+camera_mapping：摄像头映射 cam_head→side、cam_left→left、cam_right→right
+task_name：VLA 任务描述文本
+1.2.2 get_episode_dirs() — 获取 Episode 目录（L65-L93）
+两种模式：
+
+[表格]
+  模式 A：指定 episode_ids（通过 --start/--end）  └─ 遍历 [start..end]，检查每个 ID 是否存在目录、是否在 skip 列表模式 B：自动扫描（不传 episode_ids）  └─ 遍历 input_dir 下所有纯数字目录名，排序后过滤 skip 列表
+返回 list[Path]，每个元素是一个 episode 目录的绝对路径。
+1.2.3 read_episode_data() — 读取 CSV 数据（L95-L124）
+代码流程如下：
+
+[表格]
+  Plain Text robot_data.csv（33列表头 + 34列数据行）    │    ▼ 显式定义34个列名：   ['timestamp', l_a_0..7, r_a_0..7, l_s_0..7, r_s_0..7, '_trailing']    │    ▼ pd.read_csv(header=None, names=col_names, skiprows=1, index_col=False)    │  ▲ 跳过原始表头      ▲ 防止timestamp被当index    │  ▲ 用34列名吸收末尾多余逗号 → 哑列 _trailing    ▼ df.drop(columns=['_trailing'])  ← 丢弃哑列    │    ├─ action = df[l_a_0..7 + r_a_0..7].values  →  [N, 16] float32    └─ state  = df[l_s_0..7 + r_s_0..7].values  →  [N, 16] float32                ↑        np.nan_to_num(_, nan=0.0)  ← r_s_7 列硬件无反馈，用0填充
+返回值：(action, state, frame_count) 三元组。
+1.2.4convert() — 主流程（L183-L370）
+1.2.4.1 [阶段 1] 读取所有数据（L219-L234）
+
+[表格]
+  pythonall_actions = []     # 存放每个episode的 action 数组all_states = []      # 存放每个episode的 state 数组episode_lengths = [] # 存放每个episode的帧数for episode_dir in tqdm(...):    action, state, length = self.read_episode_data(episode_dir)    all_actions.append(action)    all_states.append(state)    episode_lengths.append(length)# 沿axis=0拼接 → 一个大数组actions = np.concatenate(all_actions, axis=0)  # [总帧数, 16]states  = np.concatenate(all_states, axis=0)   # [总帧数, 16]total_frames = len(actions)
+数据流：
+
+[表格]
+  Episode 180: [N₀, 16]  ─┐Episode 181: [N₁, 16]  ─┤Episode 182: [N₂, 16]  ─┤  → np.concatenate → [ΣNᵢ, 16]...                      ┤Episode 209: [N₂₉, 16] ─┘
+1.2.4.2 [阶段 2] 创建 Parquet 数据文件（L238-L268）
+为每一帧构建 7 个元数据列：
+
+[表格]
+  Python# 逐episode构建for ep_idx, length in enumerate(episode_lengths):    for frame_idx in range(length):        frame_indices.append(frame_idx)     # 帧内索引        episode_indices.append(ep_idx)       # episode编号        timestamps.append(frame_idx / 30)    # 时间戳(秒)        task_indices.append(0)               # 任务(全0)indices = list(range(total_frames))          # 全局帧索引
+PyArrow 建表：
+点击图片可查看完整电子表格
+关键细节：pa.list_(pa.float32(), 16) —— 每个单元格是一个定长 16 的 float32 列表，LeRobot 要求这种嵌套数组结构。
+写入路径：data/chunk-000/file-000.parquet
+1.2.4.3 [阶段 3] 合并视频（L272-L287）
+
+[表格]
+  pythonfor cam_name, lerobot_name in self.camera_mapping.items():    # 1. 收集所有episode的同摄像头视频路径    video_files = []    for episode_dir in episode_dirs:        video = episode_dir / cam_name / f"{cam_name}.mp4"if video.exists():            video_files.append(str(video))    # 2. 调用 merge_videos() 用 FFmpeg 流复制拼接    output_video = output_dir / "videos" / f"observation.images.{lerobot_name}" / "chunk-000" / "file-000.mp4"self.merge_videos(video_files, output_video)
+摄像头映射：
+
+[表格]
+  Plain Textcam_head/cam_head.mp4  →  observation.images.side/chunk-000/file-000.mp4cam_left/cam_left.mp4  →  observation.images.left/chunk-000/file-000.mp4cam_right/cam_right.mp4 → observation.images.right/chunk-000/file-000.mp4
+1.2.4.4 [阶段 4] 生成元数据（L291-L368）
+1.2.4.4.1 create_info_json() — 生成 meta/info.json
+核心是 features 字段，定义了数据集的所有特征格式，供 LeRobot 框架在加载时解析：
+
+[表格]
+  JSON{"codebase_version": "v3.0","total_episodes": 30,"total_frames": 12345,"fps": 30,"splits": {"train": "0:30"},"features": {"action":                          {"dtype": "float32", "shape": [16], "names": ["left_joint_0.pos", ...]},"observation.state":               {"dtype": "float32", "shape": [16], "names": ["left_joint_0.pos", ...]},"observation.images.side":         {"dtype": "video",   "shape": [720, 1280, 3], "info": {...}},"observation.images.left":         {"dtype": "video",   "shape": [720, 1280, 3], "info": {...}},"observation.images.right":        {"dtype": "video",   "shape": [720, 1280, 3], "info": {...}},"timestamp":                       {"dtype": "float32", "shape": [1]},"frame_index":                     {"dtype": "int64",   "shape": [1]},"episode_index":                   {"dtype": "int64",   "shape": [1]},"index":                           {"dtype": "int64",   "shape": [1]},"task_index":                      {"dtype": "int64",   "shape": [1]}}}
+1.2.4.4.2 create_tasks_parquet() — 生成 meta/tasks.parquet
+用任务名称作为 pandas index（行标签），task_index 作为列：
+
+[表格]
+  pythontasks_df = pd.DataFrame({'task_index': [0]}, index=["place fruits in the box"])
+写入后，LeRobot 框架可以通过 index 按任务名检索。
+1.2.4.4.3 create_stats_json() — 生成 meta/stats.json
+
+[表格]
+  Pythonimg_stub = {    "min":  [[[0.0]], [[0.0]], [[0.0]]],    # 3个通道，每通道 [H=1, W=1]"max":  [[[1.0]], [[1.0]], [[1.0]]],    "mean": [[[0.5]], [[0.5]], [[0.5]]],    "std":  [[[0.5]], [[0.5]], [[0.5]]],    "count": [total_frames],}
+设计意图：训练时使用 use_imagenet_stats=True，图像归一化值会被 ImageNet 的默认值覆盖，所以这里只放占位值，避免 KeyError。
+1.2.4.4.4 create_episodes_metadata() — 生成 meta/episodes/chunk-000/file-000.parquet
+每个 episode 一行，列非常多（~80 列），分类如下：
+点击图片可查看完整电子表格
+视频定位原理：每个 episode 在合并后的视频中通过 from_timestamp ~ to_timestamp 的区间定位：
+text
+
+[表格]
+  合并后的视频文件（30fps）：┌─── Episode 0 ──┬─── Episode 1 ──┬─── Episode 2 ──┬─── ... ──┐0s             N₀/30s        (N₀+N₁)/30s             (ΣN)/30s↑from_ts[0]    ↑to_ts[0]      ↑from_ts[1]             ↑total
+图像统计采样：_image_stats_from_video() 用 FFmpeg 以 fps=1 从每个 episode 的原始视频中采样最多 10 帧，读取 PNG 管道数据，用 PIL 解码后计算每个通道（R/G/B）的 10 个统计量。
+1.2.5 merge_videos() — 核心差异点（L140-L168)
+
+[表格]
+  Pythoncmd = [    'ffmpeg', '-y', '-loglevel', 'error',    '-f', 'concat', '-safe', '0', '-i', concat_file,    '-c', 'copy',         # ← ★ 与 fixed.py 的唯一区别    output_file]
+工作流程：
+创建一个临时 .txt 文件，写入所有视频路径（每行 file '路径'）
+调用 FFmpeg concat demuxer 读取该文件
+-c copy 指示 FFmpeg 不重编码，直接拷贝原始码流包
+1.3 程序执行入口 main()（L601-L620）
+
+[表格]
+  Pythondef main():    parser = argparse.ArgumentParser(...)    parser.add_argument('--input', default='.../lindenbot')    parser.add_argument('--output', default='.../lindenbot_180_209')    parser.add_argument('--start', type=int, default=180)    parser.add_argument('--end', type=int, default=209)    parser.add_argument('--skip', type=str, default='')    parser.add_argument('--task', type=str, default=None)    args = parser.parse_args()    episode_ids = list(range(args.start, args.end + 1))     # [180, 181, ..., 209]# 解析 skip 逗号分隔字符串 → [163, 172, 202]    skip_episodes = [int(x) for x in args.skip.split(',') if x.strip()]    converter = LeRobotV3Converter(        input_dir=args.input,        output_dir=args.output,        episode_ids=episode_ids,        skip_episodes=skip_episodes,        task_name=args.task    )    converter.convert()
+1.4 完整的执行时序图
+
+[表格]
+  时间轴 →│├─ main()│   ├─ 解析 --start=180 --end=209 --skip=202 --task="..."│   ├─ 创建 LeRobotV3Converter 实例│   └─ 调用 converter.convert()│├─ convert()│   ├─ get_episode_dirs() → 返回29个目录（跳过了202）│   ││   ├─ [阶段1] 读取所有数据│   │   ├─ read_episode_data("./180/robot_data.csv")│   │   │     → 34列修复 → action[4320,16], state[4320,16], length=4320│   │   ├─ read_episode_data("./181/robot_data.csv")│   │   │     → action[4110,16], state[4110,16], length=4110│   │   ├─ ... (共29次)│   │   └─ np.concatenate → actions[120000,16], states[120000,16]│   ││   ├─ [阶段2] 创建 Parquet│   │   ├─ 构建7列元数据（120000行）│   │   └─ pq.write_table → data/chunk-000/file-000.parquet (约30MB)│   ││   ├─ [阶段3] 合并视频│   │   ├─ cam_head → merge_videos(29个视频) → observation.images.side/...mp4│   │   ├─ cam_left → merge_videos(29个视频) → observation.images.left/...mp4│   │   └─ cam_right → merge_videos(29个视频) → observation.images.right/...mp4│   ││   └─ [阶段4] 生成元数据│       ├─ create_info_json()            → meta/info.json│       ├─ create_tasks_parquet()        → meta/tasks.parquet│       ├─ create_stats_json()           → meta/stats.json│       └─ create_episodes_metadata()    → meta/episodes/chunk-000/file-000.parquet│             ├─ 对每个episode：_vector_stats(action)│             ├─ 对每个episode：_vector_stats(state)│             ├─ 对每个episode：_image_stats_from_video(3路摄像头)│             │     └─ FFmpeg采样10帧 → PIL读取 → per-channel统计│             └─ 对每个episode：_scalar_stats(timestamp/frame_index/...)│└─ 输出最终统计（episodes数、总帧数、文件大小）
+2. 转换脚本的使用
+2.1 前置条件（环境准备）
+2.1.1 安装 Python 依赖
+
+[表格]
+  Bashpip install pandas pyarrow numpy tqdm Pillow
+各包用途：
+点击图片可查看完整电子表格
+2.1.2 安装 FFmpeg
+视频合并依赖 FFmpeg 的 concat demuxer。验证是否已安装：
+
+[表格]
+  Bashffmpeg -version
+如果未安装：
+Windows：从 ffmpeg.org 下载，解压后把 bin 目录添加到系统 PATH
+Linux：sudo apt install ffmpeg（Ubuntu/Debian）或 sudo yum install ffmpeg（CentOS）
+macOS：brew install ffmpeg
+2.2 输入数据目录结构要求
+脚本期望输入目录结构如下：
+
+[表格]
+  <输入目录>/├── 180/                       ← 数字命名的 episode 文件夹│   ├── robot_data.csv         ← 30fps 的机器人关节数据│   ├── cam_head/│   │   └── cam_head.mp4       ← 头部摄像头视频│   ├── cam_left/│   │   └── cam_left.mp4       ← 左侧摄像头视频│   └── cam_right/│       └── cam_right.mp4      ← 右侧摄像头视频├── 181/                       ← 下一个 episode│   ├── robot_data.csv│   ├── cam_head/│   │   └── cam_head.mp4│   ├── cam_left/│   │   └── cam_left.mp4│   └── cam_right/│       └── cam_right.mp4├── 182/└── ...
+关键约束：
+目录名必须是纯数字（episode ID）
+每个目录下必须有 robot_data.csv
+视频可缺失，缺失的摄像头会被静默跳过
+原始 robot_data.csv 格式必须是：33 列表头 + 34 列数据行（末尾多一个逗号）
+2.3 命令行详解
+2.3.1 完整参数表
+点击图片可查看完整电子表格
+3.2 典型使用场景
+场景 1：转换指定范围（最常用）
+
+[表格]
+  Bashpython convert_lerobot_v3_fixed_simple.py \    --input /data/lindenbot_raw \    --output /data/lindenbot_180_209 \    --start 180 \    --end 209
+场景 2：跳过采集失败的 episode
+
+[表格]
+  Bashpython convert_lerobot_v3_fixed_simple.py \    --input /data/lindenbot_raw \    --output /data/lindenbot_180_209 \    --start 180 \    --end 209 \    --skip 163,172,202
+场景 3：自定义任务名称
+
+[表格]
+  Bashpython convert_lerobot_v3_fixed_simple.py \    --input /data/lindenbot_raw \    --output /data/lindenbot_parts_categorization \    --start 200 \    --end 250 \    --task "Parts Categorization"
+
+[表格]
+  任务名称会写入 meta/tasks.parquet 和每个 episode 的元数据中，VLA 训练时会作为语言指令。
+场景 4：Windows 环境（你的当前环境）
+
+[表格]
+  Bashpython d:\项目资料\聆动机械臂\lindenbot_file\code\convert_lerobot_v3_fixed_simple.py ^    --input d:\项目资料\聆动机械臂\raw_data\lindenbot ^    --output d:\项目资料\聆动机械臂\lerobot_dataset\lindenbot_180_209 ^    --start 180 ^    --end 209 ^    --skip 202 ^    --task "place fruits in the box"
+
+[表格]
+  Windows 上用 ^ 换行，或去掉 ^ 写在一行。
+场景 5：只转换单个 episode
+
+[表格]
+  Bashpython convert_lerobot_v3_fixed_simple.py \    --input /data/lindenbot_raw \    --output /data/lindenbot_single \    --start 185 \    --end 185
+2.4 输出目录结构详解
+运行成功后，输出目录如下：
+
+[表格]
+  Plain Text<输出目录>/│├── data/│   └── chunk-000/│       └── file-000.parquet          ← ★ 核心数据文件│                                        所有episode的action/state/│                                        timestamp/index等合并为一张表│                                        大小 ≈ 帧数 × 16 × 4字节 × 2 + 元数据│├── videos/│   ├── observation.images.side/│   │   └── chunk-000/│   │       └── file-000.mp4          ← 头部摄像头视频（所有episode合并）│   ├── observation.images.left/│   │   └── chunk-000/│   │       └── file-000.mp4          ← 左侧摄像头视频（所有episode合并）│   └── observation.images.right/│       └── chunk-000/│           └── file-000.mp4          ← 右侧摄像头视频（所有episode合并）│├── meta/│   ├── info.json                     ← ★ 数据集定义（特征名称、形状、类型）│   ├── tasks.parquet                 ← 任务描述（任务名→task_index映射）│   ├── stats.json                    ← 全局统计（用于训练时归一化）│   └── episodes/│       └── chunk-000/│           └── file-000.parquet      ← 每个episode的详细信息│                                        包含视频时间戳定位、各特征统计
+2.4.1 如何验证输出是否正确
+验证 1：检查文件完整性
+
+[表格]
+  Bash# 检查所有必需的文件和目录是否存在ls -R <输出目录># 应包含：#   data/chunk-000/file-000.parquet#   videos/observation.images.side/chunk-000/file-000.mp4#   videos/observation.images.left/chunk-000/file-000.mp4#   videos/observation.images.right/chunk-000/file-000.mp4#   meta/info.json#   meta/tasks.parquet#   meta/stats.json#   meta/episodes/chunk-000/file-000.parquet
+验证 2：用 Python 读取验证
+
+[表格]
+  Pythonpythonimport pandas as pdimport pyarrow.parquet as pq# 读取数值数据table = pq.read_table("输出目录/data/chunk-000/file-000.parquet")df = table.to_pandas()print(f"总帧数: {len(df)}")print(f"列: {list(df.columns)}")print(f"action 形状: {df['action'].iloc[0]}")       # 应看到 16 个 floatprint(f"state 形状: {df['observation.state'].iloc[0]}")  # 应看到 16 个 floatprint(f"episode 范围: {df['episode_index'].min()} ~ {df['episode_index'].max()}")# 检查视频时长import subprocessresult = subprocess.run([    'ffprobe', '-v', 'error', '-show_entries',    'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1',    "输出目录/videos/observation.images.side/chunk-000/file-000.mp4"], capture_output=True, text=True)print(f"视频时长: {result.stdout.strip()} 秒")
+验证 3：检查 info.json 特征定义
+
+[表格]
+  Pythonpythonimport jsonwith open("输出目录/meta/info.json") as f:    info = json.load(f)print(f"episodes: {info['total_episodes']}")print(f"帧数: {info['total_frames']}")print(f"特征列表: {list(info['features'].keys())}")
+2.5 运行日志解读
+正常运行的日志输出示例：
+
+[表格]
+  Plain Text================================================================================LeRobot v3.0 数据转换（完整正确版）================================================================================要转换的episodes: 29Episode IDs: 180 - 209[阶段 1/4] 读取所有episode数据...读取数据: 100%|████████████| 29/29 [00:02<00:00, 11.23it/s]总帧数: 120450[阶段 2/4] 创建合并的Parquet文件...✅ 数据已写入: data/chunk-000/file-000.parquet[阶段 3/4] 合并视频文件...处理摄像头: cam_head -> side  合并 29 个视频...  ✅ 已保存: videos/observation.images.side/chunk-000/file-000.mp4处理摄像头: cam_left -> left  合并 29 个视频...  ✅ 已保存: videos/observation.images.left/chunk-000/file-000.mp4处理摄像头: cam_right -> right  合并 29 个视频...  ✅ 已保存: videos/observation.images.right/chunk-000/file-000.mp4[阶段 4/4] 生成元数据...  计算每个episode的图像统计（从视频采样）...  episodes: 100%|████████████| 29/29 [00:15<00:00,  1.93it/s]  ✅ info.json  ✅ tasks.parquet  ✅ stats.json (含图像占位 stats)  ✅ episodes元数据 (29 episodes, 76 列)================================================================================转换完成！================================================================================输出目录: /data/lindenbot_180_209Episodes: 29总帧数: 120450数据大小: 57.23 MB视频大小: 2845.67 MB总大小: 2902.90 MB
+2.6 常见问题（Troubleshooting）
+问题 1：ModuleNotFoundError: No module named 'pyarrow'
+
+[表格]
+  原因：缺少 pyarrow 包解决：pip install pyarrow
+问题 2：视频合并失败
+
+[表格]
+  视频合并失败: [concat @ ...] Stream packet data not seen, referred to as non-keyframe                                                      ↓原因：使用 -c copy 时，FFmpeg 要求所有输入视频的编码参数完全一致      （编码器、分辨率、帧率、像素格式、GOP 结构等）解决方案：  1. 先检查各episode视频编码是否一致：     ffprobe -v quiet -print_format json -show_streams episode_180/cam_head/cam_head.mp4     ffprobe -v quiet -print_format json -show_streams episode_181/cam_head/cam_head.mp4     # 对比 codec_name, width, height, pix_fmt, r_frame_rate 等字段  2. 如果不一致，改用 fixed.py（会重编码）：     python convert_lerobot_v3_fixed.py --input ... --output ...  3. 或用 fixed_simple.py 但先统一编码：     手动用 ffmpeg 将所有视频转为统一规格再运行
+问题 3：CSV 读取报错 ParserError: Expected 33 fields
+
+[表格]
+  原因：脚本预期 CSV 是 34 列格式（33列表头+34列数据行），      但实际 CSV 格式可能不同解决方案：  先预览 CSV 格式：  head -5 <输入目录>/180/robot_data.csv    查看列数：  awk -F',' '{print NF}' <输入目录>/180/robot_data.csv | head -5    如果输入 CSV 格式与脚本预期不一致，需要修改 read_episode_data() 中的 col_names
+问题 4：找不到 episode 目录
+
+[表格]
+    ⚠ episode 163 不存在或不是目录，跳过原因：--start 到 --end 范围内的某些 ID 没有对应的目录解决：这是正常行为，不需要处理。或者用 --skip 显式跳过已知的不存在 ID
+问题 5：转换后 LeRobot 框架训练报错
+
+[表格]
+  KeyError: 'observation.images.side'原因：stats.json 中缺少图像特征的统计字段解决方案：确认脚本已正确生成 stats.json（这是修复内容之一）。查看 stats.json 是否包含 observation.images.{side,left,right}：  python -c "import json; d=json.load(open('输出目录/meta/stats.json')); print(list(d.keys()))"  应输出：['action', 'observation.state', 'observation.images.side',            'observation.images.left', 'observation.images.right']
+2.7 性能参考（经验值）
+点击图片可查看完整电子表格
+
+[表格]
+  耗时主要在阶段 3（视频合并）。simple 版用 -c copy 几乎不消耗 CPU；fixed 版用 libx264 重编码会消耗大量 CPU。

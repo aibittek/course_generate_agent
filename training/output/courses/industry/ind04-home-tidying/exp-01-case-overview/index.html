@@ -18,6 +18,19 @@
   video.demo{display:block;width:100%;max-width:520px;margin:14px auto 4px;border:1px solid var(--theme-bd);border-radius:14px;background:#000;aspect-ratio:9/16;object-fit:contain}
   .vid-note{text-align:center;font-size:12.5px;color:#0369a1;margin-bottom:6px}
   .tag.hl{background:var(--theme-bg);border-color:var(--theme-bd);color:var(--theme-deep)}
+  /* ── 五星学习法 · 课程分段 ── */
+  .fivestar-note{font-size:13px;color:#5b6b78;margin-top:12px}
+  .fs-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+  .fs-cell{border:1px solid var(--theme-bd);border-radius:12px;padding:10px 8px;text-align:center;background:var(--theme-bg)}
+  .fs-cell .st{font-size:12.5px;font-weight:800;color:var(--theme-deep)}
+  .fs-cell .tm{font-family:var(--font-mono,monospace);font-size:11px;color:#0f766e;margin-top:3px;font-weight:700}
+  .fs-cell .ds{font-size:11.5px;color:#5b6b78;margin-top:4px;line-height:1.5}
+  .seg{display:inline-block;font-size:11px;font-weight:700;font-family:var(--font-mono,monospace);background:var(--theme-bg);color:var(--theme-deep);border:1px solid var(--theme-bd);border-radius:99px;padding:2px 10px;margin-left:8px;vertical-align:middle;white-space:nowrap}
+  .tl{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;background:#fff}
+  .tl th,.tl td{border:1px solid #e2ece9;padding:7px 10px;text-align:left;vertical-align:top}
+  .tl th{background:var(--theme-bg);color:var(--theme-deep);font-size:12.5px;white-space:nowrap}
+  .tl .m{font-family:var(--font-mono,monospace);color:var(--theme-deep);font-weight:700;white-space:nowrap}
+  @media(max-width:900px){.fs-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -30,17 +43,18 @@
 
 <div class="wrap">
   <aside class="side">
-    <h4>本页目录</h4>
-    <a href="#s1">01 学习目标</a>
-    <a href="#s2">02 原理</a>
-    <a href="#s3">03 硬件与材料</a>
-    <a href="#s4">04 操作步骤</a>
-    <a href="#s5">05 关键命令</a>
-    <a href="#s6">06 动画</a>
-    <a href="#s7">07 互动</a>
-    <a href="#s8">08 常见问题</a>
-    <a href="#s9">09 拓展</a>
-    <a href="#s10">10 思考题</a>
+    <h4>本页目录 · 五星学习法</h4>
+    <a href="#s0">00 课程节奏 · 8 段微课</a>
+    <a href="#s1" class="now">01 学习目标 ①聚焦问题</a>
+    <a href="#s2">02 原理 ①聚焦 ②激活</a>
+    <a href="#s3">03 硬件与材料 ③示证新知</a>
+    <a href="#s4">04 操作步骤 ④应用新知</a>
+    <a href="#s5">05 关键命令 ④应用新知</a>
+    <a href="#s6">06 动画 ③示证新知</a>
+    <a href="#s7">07 互动 ④应用新知</a>
+    <a href="#s8">08 常见问题 ⑤融会贯通</a>
+    <a href="#s9">09 拓展 ⑤融会贯通</a>
+    <a href="#s10">10 思考题 ⑤融会贯通</a>
     <h4>兄弟实验</h4>
     <a href="../exp-02-teleop-collection/index.html">EXP-02 遥操作采集</a>
     <a href="../exp-03-data-training/index.html">EXP-03 转换与训练</a>
@@ -55,9 +69,34 @@
       <div class="meta"><span class="tag hl">演示驱动</span><span class="tag">LDT01-STD</span><span class="tag">ACT 行为克隆</span></div>
     </div>
 
+    <!-- 00 -->
+    <section class="blk" id="s0">
+      <h2><span class="no">00</span>课程节奏：五星学习法 · 8 段微课（每段 ≤ 15 min）</h2>
+      <p>本实验按<b>五星学习法</b>组织：先看成果演示视频<b>聚焦问题</b>，再用「教孩子收玩具」<b>激活旧知</b>，接着<b>示证新知</b>（硬件三大件 + 感知决策执行闭环动画），然后动手<b>应用新知</b>梳理四段流水线与节拍估算，最后借常见问题与拓展<b>融会贯通</b>。全程切成 <b>8 段微课、每段不超过 15 分钟</b>，段间停顿 1~2 分钟消化；纯讲授合计约 100 分钟，其余课时用于动手实操与个别辅导。</p>
+      <div class="fs-grid">
+        <div class="fs-cell"><div class="st">① 聚焦问题</div><div class="tm">课段 1 · 12 min</div><div class="ds">看演示视频提出"机器人怎么自主收纳"</div></div>
+        <div class="fs-cell"><div class="st">② 激活旧知</div><div class="tm">课段 2 · 8 min</div><div class="ds">教孩子收玩具 · 感知决策执行三角色</div></div>
+        <div class="fs-cell"><div class="st">③ 示证新知</div><div class="tm">课段 3~4 · 27 min</div><div class="ds">硬件三大件 + 闭环与时序动画</div></div>
+        <div class="fs-cell"><div class="st">④ 应用新知</div><div class="tm">课段 5~7 · 40 min</div><div class="ds">四段流水线 + 命令预览 + 节拍估算</div></div>
+        <div class="fs-cell"><div class="st">⑤ 融会贯通</div><div class="tm">课段 8 · 13 min</div><div class="ds">常见问题 · 拓展阅读 · 思考题</div></div>
+      </div>
+      <table class="tl">
+        <tr><th>课段</th><th>五星阶段</th><th>时长</th><th>对应章节</th><th>本段任务</th></tr>
+        <tr><td class="m">课段 1</td><td>聚焦问题</td><td class="m">12 min</td><td>§01 + §02 前半</td><td>看演示视频，提出"机器人怎么自主开盖入罐"的核心问题</td></tr>
+        <tr><td class="m">课段 2</td><td>激活旧知</td><td class="m">8 min</td><td>§02 后半</td><td>用"教孩子收玩具"旧知衔接感知-决策-执行闭环</td></tr>
+        <tr><td class="m">课段 3</td><td>示证新知</td><td class="m">15 min</td><td>§03</td><td>认识 LDT01 一体机、主从双臂、三路相机与场景物料</td></tr>
+        <tr><td class="m">课段 4</td><td>示证新知</td><td class="m">12 min</td><td>§06</td><td>看感知-决策-执行闭环与开盖取物时序动画</td></tr>
+        <tr><td class="m">课段 5</td><td>应用新知</td><td class="m">15 min</td><td>§04 + §05 前半</td><td>梳理四段流水线操作步骤与三条关键命令预览</td></tr>
+        <tr><td class="m">课段 6</td><td>应用新知</td><td class="m">15 min</td><td>§05 后半</td><td>对照转换/训练/推理命令理解各段输入输出</td></tr>
+        <tr><td class="m">课段 7</td><td>应用新知</td><td class="m">10 min</td><td>§07</td><td>用收纳节拍估算器算采集时长，理解有效轮次</td></tr>
+        <tr><td class="m">课段 8</td><td>融会贯通</td><td class="m">13 min</td><td>§08~§10</td><td>常见问题收口，拓展阅读与思考题拔高迁移</td></tr>
+      </table>
+      <p class="fivestar-note">讲课提示：课段 1/2 以讲授 + 提问为主；课段 3~4 用实物 + 动画；课段 5~6 边看视频边动手；课段 7 学员独立完成；课段 8 答疑拔高。段间停顿 1~2 分钟。</p>
+    </section>
+
     <!-- 01 学习目标（含成果演示视频） -->
     <section class="blk" id="s1">
-      <h2><span class="no">01</span>学习目标 · 先看成果</h2>
+      <h2><span class="no">01</span>学习目标 · 先看成果<span class="seg">课段 1 · 聚焦问题 · 12 min</span></h2>
       <ul class="check">
         <li>理解家庭收纳任务：左手打开不锈钢罐盖 → 右手拿芒果放入罐中 → 左手盖回盖子的三步闭环。</li>
         <li>记住四段流水线：数据采集 → 数据转换 → 模型训练 → 真机推理，各段输入输出清晰。</li>
@@ -76,7 +115,8 @@
 
     <!-- 02 原理 -->
     <section class="blk" id="s2">
-      <h2><span class="no">02</span>原理：任务定义与感知—决策—执行</h2>
+      <h2><span class="no">02</span>原理：任务定义与感知—决策—执行<span class="seg">课段 1 收尾 + 课段 2 · 激活旧知 · 8 min</span></h2>
+      <div class="tip amber"><span class="lab">❓ 聚焦问题（课段 1）</span>机器人看完视频能自主开盖入罐，但它没学过力学——它是怎么"看一眼就知道下一步怎么动"的？带着这个问题听完原理，到课段 4 你会看懂感知-决策-执行闭环。</div>
       <p>收纳任务像教孩子收玩具：<b>「先开盖，再把水果放进去，最后盖好盖子」</b>。机器人并不懂「芒果」是什么，它只是把「三路相机看到的画面 + 当前关节状态」翻译成「下一步关节动作」。这中间有三个角色：<b>感知</b>（相机看现场）、<b>决策</b>(ACT 策略选出动作)、<b>执行</b>(双臂与夹爪动起来)，三者首尾相接形成闭环，跑完一轮就是一次收纳。</p>
       <div class="kgrid">
         <div class="kcard"><div class="kd">任务准则</div><div class="kt">开 - 拿 - 放 - 盖：左手管罐盖、右手管水果，时序固定不乱套。</div></div>
@@ -84,6 +124,7 @@
         <div class="kcard"><div class="kd">学习目标</div><div class="kt">ACT 策略学会「画面 + 关节状态 → 下一段动作」，部署回真机复现闭环。</div></div>
         <div class="kcard"><div class="kd">成败关键</div><div class="kt">芒果/罐子按默认布局摆放、桌面环境与采集时一致，坏示范当场剔除。</div></div>
       </div>
+      <div class="tip teal"><span class="lab">↺ 激活旧知（课段 2）</span>回忆教孩子收玩具的三步：先开盖、再放进去、最后盖好——你示范时孩子同时看着你的手和玩具。机器人学的也是"画面+动作"配对，这就是行为克隆的本质。</div>
       <div class="tip amber"><b>场景三大安全要求：</b>① 抓取范围内不站人（双臂 5kg 负载，夹手指尖能捏断笔）；② 保护桌面，金属罐/芒果落下可能砸坏；③ 遥操作时保持急停按钮在手边。</div>
       <div class="tip amber"><b>家庭收纳任务拆解：</b><b>开 → 拿 → 放 → 盖</b> 四步闭环——左手管罐盖（开/盖）、右手管水果（拿/放），时序固定不乱套。默认布局：不锈钢罐居中、芒果放在罐右侧，采集/复现都按此摆放。</div>
       <div class="tip amber"><b>生活化类比：</b>行为克隆像「跟着大厨学颠勺」——你只看他的手怎么动、锅在哪，不背力学公式；他示范里若混入翻锅失误，你也会学失误——所以<b>坏数据必须剔除，数据质量 &gt; 数据数量</b>。</div>
@@ -91,7 +132,7 @@
 
     <!-- 03 硬件与材料 -->
     <section class="blk" id="s3">
-      <h2><span class="no">03</span>硬件与材料</h2>
+      <h2><span class="no">03</span>硬件与材料<span class="seg">课段 3 · 示证新知 · 15 min</span></h2>
       <div class="kgrid">
         <div class="kcard"><div class="kd">LDT01-STD 一体机</div><div class="kt">i5-13400F / RTX 4060 Ti 16GB / 64GB RAM / 2TB SSD，Ubuntu 22.04 + ROS2，采训推一体。</div></div>
         <div class="kcard"><div class="kd">主从同构双臂</div><div class="kt">从动臂（跟随）7 轴谐波关节 DC48V、负载 5kg；主动臂（遥操作端）7 轴总线舵机；二指夹爪 0–90mm。</div></div>
@@ -113,7 +154,7 @@
 
     <!-- 04 操作步骤 -->
     <section class="blk" id="s4">
-      <h2><span class="no">04</span>操作步骤：从开机到四段流水线</h2>
+      <h2><span class="no">04</span>操作步骤：从开机到四段流水线<span class="seg">课段 5~6 · 应用新知 · 2×15 min</span></h2>
       <div class="flow">
         <div class="step"><b class="n">S1</b>数据采集<br><small>开机布景 → 新建任务 → 遥操作示范，三路视频 + 关节角同步入库</small></div>
         <div class="arr">→</div>
@@ -137,7 +178,7 @@
 
     <!-- 05 关键命令 -->
     <section class="blk" id="s5">
-      <h2><span class="no">05</span>关键命令（预览，后续实验展开）</h2>
+      <h2><span class="no">05</span>关键命令（预览，后续实验展开）<span class="seg">随课段 5 / 6 对照使用</span></h2>
       <p class="dim">以下命令摘自《聆动机器人案例-家庭场景》与 LeRobot 0.4.1 入口，本实验先混个脸熟：</p>
       <pre><span class="c"># ① 数据转换：save_data 编号目录 → LeRobot v3.0 数据集</span>
 python convert_lerobot_v3_fixed_simple.py \
@@ -165,7 +206,7 @@ ros2 service call /model_ifrun std_srvs/srv/SetBool <span class="y">"{data: fals
 
     <!-- 06 动画 -->
     <section class="blk" id="s6">
-      <h2><span class="no">06</span>动画：感知—决策—执行闭环与开盖取物时序</h2>
+      <h2><span class="no">06</span>动画：感知—决策—执行闭环与开盖取物时序<span class="seg">课段 4 · 示证新知 · 12 min</span></h2>
       <div class="anim-box">
         <svg viewBox="0 0 720 260" width="100%" role="img" aria-label="感知决策执行闭环与开盖取物时序动画">
           <defs>
@@ -214,7 +255,7 @@ ros2 service call /model_ifrun std_srvs/srv/SetBool <span class="y">"{data: fals
 
     <!-- 07 互动 -->
     <section class="blk" id="s7">
-      <h2><span class="no">07</span>互动：收纳节拍估算器</h2>
+      <h2><span class="no">07</span>互动：收纳节拍估算器<span class="seg">课段 7 · 应用新知 · 10 min</span></h2>
       <div class="ix-panel">
         <div class="ix-title">拖动滑杆估算一轮「开盖-取物-入罐-盖盖」耗时与总采集时长</div>
         <div class="ctl-row">
@@ -238,7 +279,7 @@ ros2 service call /model_ifrun std_srvs/srv/SetBool <span class="y">"{data: fals
 
     <!-- 08 常见问题 -->
     <section class="blk" id="s8">
-      <h2><span class="no">08</span>常见问题</h2>
+      <h2><span class="no">08</span>常见问题<span class="seg">课段 8 · 融会贯通 · 13 min</span></h2>
       <div class="kgrid">
         <div class="kcard"><div class="kd">Q 演示视频能正常播放吗？</div><div class="kt">源片为竖版 720×1280 mp4，Chrome/Edge（Win）自带解码一般可直接播；若黑屏请换 Edge 或本地播放器打开同目录 mp4。</div></div>
         <div class="kcard"><div class="kd">Q 上位机打不开？</div><div class="kt">先确认一体机开机自检完成（夹爪张开收回）、进度条 100%，浏览器访问 localhost:8699；默认密码 1。</div></div>
@@ -249,7 +290,7 @@ ros2 service call /model_ifrun std_srvs/srv/SetBool <span class="y">"{data: fals
 
     <!-- 09 拓展 -->
     <section class="blk" id="s9">
-      <h2><span class="no">09</span>拓展阅读</h2>
+      <h2><span class="no">09</span>拓展阅读<span class="seg">课段 8 · 融会贯通</span></h2>
       <ul class="check">
         <li>《聆动机器人案例-家庭场景》：安全要求、场景测量建议、复现效果评估与成功判据原文。</li>
         <li>《00-聆动机器人硬件参数介绍》：相机/主从臂/夹爪完整参数表（EXP-01 第 03 章已摘核心行）。</li>
@@ -261,7 +302,7 @@ ros2 service call /model_ifrun std_srvs/srv/SetBool <span class="y">"{data: fals
 
     <!-- 10 思考题 -->
     <section class="blk" id="s10">
-      <h2><span class="no">10</span>思考题 · 自测</h2>
+      <h2><span class="no">10</span>思考题 · 自测<span class="seg">课段 8 · 融会贯通</span></h2>
       <div class="kgrid">
         <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">看完演示视频，能默画出四段流水线并说出每段的输入/输出产物。</div></div>
         <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">用「感知—决策—执行」复述开盖入罐闭环，并解释为什么每帧都要重新感知。</div></div>
