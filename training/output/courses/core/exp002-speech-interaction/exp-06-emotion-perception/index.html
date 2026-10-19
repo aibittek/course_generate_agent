@@ -81,6 +81,11 @@
         </tbody>
       </table>
       <div class="tip amber"><span class="lab">💡 本节要点</span>情绪 ≠ 关键词命中。情绪分布在<b>两个通道</b>：文本说"内容情感"，语音说"当下状态"。两条通道都到齐，才能接近人类的"听话听音"。</div>
+      <p>这套"多通道并行、汇入统一大脑"的思路在多模态模型里已经落地——下图是视觉语言模型（VLM）的两条输入路线：纯文字直接进语言模型，图片则先经预处理与视觉编码器提取特征，再与文本一起汇入语言模型生成回答。本实验把同样的架构换成"文本 + 语音韵律"双通道：</p>
+      <div class="anim-box">
+        <img src="assets/vlm-flow-diagram.png" alt="VLM 流程图解：纯文字路线与上传图片路线汇入语言模型" style="display:block;margin:0 auto;max-width:100%;height:auto;border-radius:8px">
+        <div class="anim-cap">图 1-1：多模态输入的两条路线 —— 路线① 纯文字 prompt 直接进入语言模型（rkllm · NPU）；路线② 上传图片先经预处理（补边到 448²）与视觉编码器（rknn · NPU）提取 196×2048 图像特征，再与文本汇合生成回答。与本实验同理：多一条通道，就多一份"言外之意"的证据。</div>
+      </div>
     </section>
 
     <section class="blk" id="s2">

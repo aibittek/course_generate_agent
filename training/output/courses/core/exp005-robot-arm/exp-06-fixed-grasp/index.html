@@ -12,20 +12,13 @@
 <body>
 
 <div class="topbar">
-  <a class="logo" href="../index.html">🤖 机械臂教程</a>
-  <span class="sep"></span>
-  <nav class="links">
-    <a href="../index.html">课程目录</a>
-    <a href="../../../index.html#core">核心课程</a>
-    <a href="../../../index.html">总首页</a>
-  </nav>
+  <a class="logo" href="../../../index.html" style="text-decoration:none;color:inherit" title="返回课程首页">🤖 具身智能课程 · <i>教程首页</i></a>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">机械臂应用与开发</a> / EXP-06</div>
 </div>
-
-<p class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">机械臂应用与开发</a> / EXP-06</p>
 
 <div class="wrap">
 <aside class="side">
-  <div class="stitle">本页目录</div>
+  <h4>本页目录</h4>
   <nav>
     <a class="now" href="#s1">01 · 问题引入</a>
     <a href="#s2">02 · 原理通俗讲解</a>
@@ -38,13 +31,13 @@
     <a href="#s9">09 · 重点与易错点</a>
     <a href="#s10">10 · 总结与思考</a>
   </nav>
-  <div class="stitle">本课程实验</div>
+  <h4>本课程实验</h4>
   <nav>
     <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
     <a href="../exp-02-serial-pwm/index.html">EXP-02 串口协议与 PWM</a>
-    <a href="../exp-03-action-replay/index.html">EXP-03 架构与动作回放</a>
-    <a href="../exp-04-kinematics/index.html">EXP-04 正/逆运动学基础</a>
-    <a href="../exp-05-ik-solver/index.html">EXP-05 逆运动学解算</a>
+    <a href="../exp-05-action-replay/index.html">EXP-05 架构与动作回放</a>
+    <a href="../exp-03-kinematics/index.html">EXP-03 正运动学基础</a>
+    <a href="../exp-04-ik-solver/index.html">EXP-04 逆运动学基础与 IK 解算</a>
     <a href="../exp-06-fixed-grasp/index.html">EXP-06 逆运动学固定抓取</a>
     <a href="../exp-07-visual-grasp/index.html">EXP-07 视觉动态抓取</a>
   </nav>
@@ -90,7 +83,7 @@
 <tr><td>gripper_depth</td><td>0.0<br><span style="font-size:.72em;color:#94a3b8">yaml 实配 −0.033</span></td><td>从检测表面再往下探：默认 <b>0.0 = tcp 停在检测到的表面点</b>；正值 0.01~0.03 按物深夹；<code>arm_params.yaml</code> 实配 <b>−0.033</b>（负值=抬高，指尖跨住物侧）。太大穿桌</td></tr>
 <tr><td>pre_grasp_height</td><td>0.03</td><td>预抓高度（默认 0.03m）：接近与退出都走它——撞桌就加大；<b>抬升实际也由它决定</b></td></tr>
 <tr><td>lift_height</td><td>0.05<br><span style="font-size:.72em;color:#b91c1c">源码未使用</span></td><td>抬升高度：<b>声明了但从未参与计算</b>——<b>改它没有任何效果</b>；真实抬升 = 退回 z+pre_grasp_height → post_grasp_pose</td></tr>
-<tr><td>grasp_pitch</td><td>π（180°）</td><td>末端俯仰（自竖直量起，同 EXP-05 纪律）：0°=朝上 · 90°=水平 · <b>180°=夹爪垂直朝下</b>（桌面抓取恒 180°，即四元数 {0,1,0,0}）</td></tr>
+<tr><td>grasp_pitch</td><td>π（180°）</td><td>末端俯仰（自竖直量起，同 EXP-04 纪律）：0°=朝上 · 90°=水平 · <b>180°=夹爪垂直朝下</b>（桌面抓取恒 180°，即四元数 {0,1,0,0}）</td></tr>
 </table>
 <p><b>四位姿四元数速查</b>（orientation 字段）：目标垂直向下用 <code>{x:0, y:1, z:0, w:0}</code>（pitch=180°）；示例放置点 (0.059, 0.074, 0.219) 用 <code>{x:0, y:0.9826, z:0, w:0.1856}</code>。</p>
 <p><b>状态机遥测</b>：<code>/arm/grasp_state</code> 话题字段 current_state(string)、target_pose、progress(0-100)；状态值 IDLE、APPROACH、DESCEND、GRASP、LIFT、HOLD、PLACE_DESCEND、RELEASE。</p>
@@ -116,7 +109,7 @@
 <tr><th>项</th><th>要求</th></tr>
 <tr><td>主入口</td><td><code>arm/car1_arm_controller/car1_arm_controller/arm_controller.py</code></td></tr>
 <tr><td>接口</td><td>话题 <code>/arm_controller/set_pick_target</code> (PoseStamped)、<code>/arm_controller/target_pose</code>（即时移动）；服务 <code>/arm_controller/pick</code>、<code>/arm_controller/place</code>（std_srvs/Trigger）</td></tr>
-<tr><td>前置实验</td><td>EXP-05（IK 库与偏移补偿已标定）、EXP-02（串口正常、work 零位可信）</td></tr>
+<tr><td>前置实验</td><td>EXP-04（IK 库与偏移补偿已标定）、EXP-02（串口正常、work 零位可信）</td></tr>
 <tr><td>标定工具</td><td>pwm_to_fk_demo.py（离线 FK）、http://&lt;IP&gt;:8000/viewer 仿真器、servo_limits.yaml 软限位</td></tr>
 <tr><td>场地</td><td>目标物（30mm 级立方块）、刻度尺——物体实际位置必须与发布坐标对齐</td></tr>
 </table>
@@ -292,11 +285,11 @@ ros2 service call /arm_controller/pick std_srvs/srv/Trigger "{}"
 <span class="y"># 纪律：每换一个方位先用 target_pose 预检可达（09 节预检纪律），确认无 PWM 贴近 500/2500 再 pick</span>
 <span class="y"># 对照观察：STAGE 1 底座转向与 EXP-01 里你用话题转过的 ±45° 对得上号吗？/arm/grasp_state 看迁移</span></pre>
 <div class="tip violet"><b>思考题 1：</b>为什么讲义坚持"先 set_pick_target 记账、再 pick 执行"的两步走？如果把记账和执行合并成一步（发完坐标立即动），调试体验和安全性分别会发生什么退化？</div>
-<div class="tip violet"><b>思考题 2：</b>按 EXP-05 的 pitch 纪律（0°朝上 · 90°水平 · <b>180°夹爪垂直朝下</b>）分析：为什么桌面抓取必须恒 180°？若把 grasp_pitch 误设成 0，接触点会跑到哪、会先撞什么？结合四元数 {0,1,0,0} 说明"grasp_pitch 与 orientation 是同一件事的两种记法"。</div>
+<div class="tip violet"><b>思考题 2：</b>按 EXP-04 的 pitch 纪律（0°朝上 · 90°水平 · <b>180°夹爪垂直朝下</b>）分析：为什么桌面抓取必须恒 180°？若把 grasp_pitch 误设成 0，接触点会跑到哪、会先撞什么？结合四元数 {0,1,0,0} 说明"grasp_pitch 与 orientation 是同一件事的两种记法"。</div>
 </section>
 
 <nav class="expnav">
-  <a href="../exp-05-ik-solver/index.html"><span class="lb">← 上一个实验</span>EXP-05 逆运动学解算</a>
+  <a href="../exp-04-ik-solver/index.html"><span class="lb">← 上一个实验</span>EXP-04 逆运动学基础与 IK 解算</a>
   <a class="next" href="../exp-07-visual-grasp/index.html"><span class="lb">下一个实验 →</span>EXP-07 视觉动态抓取</a>
 </nav>
 <footer>

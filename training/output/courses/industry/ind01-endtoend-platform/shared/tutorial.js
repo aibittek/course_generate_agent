@@ -15,7 +15,7 @@
   document.querySelectorAll('.blk').forEach(el=>io.observe(el));
 })();
 
-/* ↓ 命令/代码块一键复制：给页面里所有 <pre> 加一个复制按钮 */
+/* 命令/代码块一键复制：给页面里所有 <pre> 加一个复制按钮 */
 (function(){
   if(window.__preCopyReady) return; window.__preCopyReady=1;
   var CSS='.pre-wrap{position:relative}'
@@ -62,4 +62,33 @@
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',setup);
   else setup();
+})();
+
+/* 图片点击放大（lightbox） */
+(function(){
+  var lb=document.createElement('div');
+  lb.className='lightbox';
+  lb.innerHTML='<span class="lb-close">&times;</span><img alt=""><div class="lb-title"></div>';
+  document.body.appendChild(lb);
+  var lbImg=lb.querySelector('img'), lbTitle=lb.querySelector('.lb-title');
+  function zoom(e){
+    var t=e.currentTarget;
+    lbImg.src=t.currentSrc||t.src;
+    var cap=t.closest('figure')?t.closest('figure').querySelector('figcaption'):null;
+    lbTitle.textContent=cap?cap.textContent:'';
+    lb.classList.add('open');
+  }
+  function closeLb(){ lb.classList.remove('open'); }
+  function bind(){
+    document.querySelectorAll('.img-block img,.img-grid img').forEach(function(im){
+      if(im.__lb) return;
+      im.__lb=true; im.style.cursor='zoom-in'; im.addEventListener('click',zoom);
+    });
+  }
+  bind();
+  document.addEventListener('DOMContentLoaded',bind);
+  window.addEventListener('load',bind);
+  setInterval(bind,600);
+  lb.addEventListener('click',closeLb);
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeLb(); });
 })();

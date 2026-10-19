@@ -150,8 +150,8 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
         <tr><td class="k2">硬件平台</td><td>具身智能实验箱 B2 / 机器人小车 C1（两平台均搭载六轴机械臂，URDF 名义 5 自由度链 + 夹爪），桌面级抓取场景，双载台通用</td><td>EXP-01</td></tr>
         <tr><td class="k2">串口链路</td><td>1 Mbps（1000000 baud）pyserial 直连下位机，0xAA55 双字节帧头 + CRC8 校验</td><td>EXP-02</td></tr>
         <tr><td class="k2">PWM 舵机</td><td>脉宽 500~2500 μs，中位 CENTER_PWM=1500，弧度换算 PWM_TO_RAD=0.002356</td><td>EXP-02</td></tr>
-        <tr><td class="k2">运动学指标</td><td>验收线 Avg &lt; 0.5 mm、Max &lt; 1.5 mm；实测现状：test_fk_ik.py 3/4 点位 FAIL、误差 18~23 mm（疑为 IK/FK 几何模型不一致），并非全部达标</td><td>EXP-04 / EXP-05</td></tr>
-        <tr><td class="k2">偏移证伪</td><td>旧版口径 "J2 +4.0°、J3 +2.3° 实测机械偏移" 已证伪——源码中无 system_offset_analysis 与偏移配置，无法复现；误差一律以实测归因为准</td><td>EXP-05</td></tr>
+        <tr><td class="k2">运动学指标</td><td>验收线 Avg &lt; 0.5 mm、Max &lt; 1.5 mm；实测现状：test_fk_ik.py 3/4 点位 FAIL、误差 18~23 mm（疑为 IK/FK 几何模型不一致），并非全部达标</td><td>EXP-03 / EXP-04</td></tr>
+        <tr><td class="k2">偏移证伪</td><td>旧版口径 "J2 +4.0°、J3 +2.3° 实测机械偏移" 已证伪——源码中无 system_offset_analysis 与偏移配置，无法复现；误差一律以实测归因为准</td><td>EXP-04</td></tr>
         <tr><td class="k2">抓取参数</td><td>节点默认 gripper_depth 0.0 / pre_grasp_height 0.03 / grasp_pitch 180°（夹爪朝下）；lift_height 0.05 已声明但源码未使用，按实验实测调优</td><td>EXP-06</td></tr>
         <tr><td class="k2">视觉定位</td><td>HSV 颜色分割 + 深度反投影（fx=fy=614，cx=320，cy=240）+ TF 坐标链变换</td><td>EXP-07</td></tr>
         <tr><td class="k2">软件栈</td><td>ROS2 Humble · MoveIt2 · Gazebo · pyserial · URDF/TF · server_cors Web 仿真器（8000 端口）</td><td>贯穿全课</td></tr>
@@ -177,7 +177,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   </div>
   <div class="kgrid reveal">
     <div class="kcard"><h4><span class="dot" style="background:#dc2626"></span>先比喻，后公式</h4><p>每个实验的"原理通俗讲解"先用生活类比（手臂、暗号脉宽、反推姿势）建立直觉，再看 DH 表与 CRC8 —— 按顺序读，公式不再是天书。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>软硬两条路线对照</h4><p>EXP-01 是纯仿真路线，EXP-02 是裸机串口路线，EXP-03 回到 ROS2 架构路线 —— 同一条机械臂三种打开方式，对照着学最快。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>软硬两条路线对照</h4><p>EXP-01 是纯仿真路线，EXP-02 是裸机串口路线，EXP-05 回到 ROS2 架构路线 —— 同一条机械臂三种打开方式，对照着学最快。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>动画与互动台先玩一遍</h4><p>帧格式、连杆几何、抓取流程都有 SVG 动画；PWM↔弧度、FK 正解、HSV 调参都有互动台 —— 先玩懂参数，再上实机少翻车。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>安全红线贯穿始终</h4><p>PWM 必须落在 500~2500μs、目标须逐步逼近、抓取前先预演 —— 实机代价是堵转打齿，把第 09 节的坑表背下来再动手。</p></div>
   </div>
@@ -221,15 +221,15 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <span class="kv" style="display:block;margin:.35rem 0 0">绕开 ROS2 直连下位机，亲手组 0xAA55 + CRC8 帧，把角度变成舵机能听懂的脉宽。</span>
     </li>
     <li>
-      <b>STEP 3 · EXP-04 正/逆运动学基础（4 学时）</b>
+      <b>STEP 3 · EXP-03 正运动学基础（4 学时）</b>
       <span class="kv" style="display:block;margin:.35rem 0 0">建立"关节角 ↔ 末端坐标"的几何直觉，DH 表、FK 变换链与解析/数值两路 IK 对比。</span>
     </li>
     <li>
-      <b>STEP 4 · EXP-05 逆运动学解算（4 学时）</b>
+      <b>STEP 4 · EXP-04 逆运动学基础与 IK 解算（4 学时）</b>
       <span class="kv" style="display:block;margin:.35rem 0 0">跑 test_fk_ik 闭环验证解算器，按实测口径归因误差（当前 3/4 点位 FAIL、18~23 mm，疑为 IK/FK 模型不一致），--direct 实机逼近。</span>
     </li>
     <li>
-      <b>STEP 5 · EXP-03 ROS2 架构与动作回放（4 学时）</b>
+      <b>STEP 5 · EXP-05 ROS2 架构与动作回放（4 学时）</b>
       <span class="kv" style="display:block;margin:.35rem 0 0">勘察 bringup 节点拓扑，让 action_player 把 pick_and_place.yaml 里的动作原样演一遍。</span>
     </li>
     <li>
@@ -276,7 +276,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
           <td>高中 · 三角</td>
           <td>sin / cos、<b>atan2</b>、asin、勾股与相似三角形</td>
           <td>解析法 IK 的地基；d=0.085m 肩部偏置用 asin 补偿；三角形闭合求指尖</td>
-          <td><a href="exp-05-ik-solver/index.html#s2">EXP-05 · 原理</a> · <a href="exp-04-kinematics/index.html#s2">EXP-04 · FK 链</a></td>
+          <td><a href="exp-04-ik-solver/index.html#s2">EXP-04 · 原理</a> · <a href="exp-03-kinematics/index.html#s2">EXP-03 · FK 链</a></td>
         </tr>
         <tr>
           <td>高中 · 线性映射</td>
@@ -286,15 +286,15 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
         </tr>
         <tr>
           <td>大一 · 线性代数 ⭐</td>
-          <td>4×4 <b>齐次变换矩阵连乘</b>、DH 参数、旋转矩阵 / 欧拉角 / 四元数、矩阵求逆</td>
+          <td>4×4 <b>齐次变换矩阵连乘</b>（平移 + 旋转）、旋转矩阵 / 欧拉角 / 四元数、矩阵求逆</td>
           <td>FK = 变换链连乘；TF 坐标树；DLS 公式里的 Jᵀ(JJᵀ+λ²I)⁻¹</td>
-          <td><a href="exp-04-kinematics/index.html#s2">EXP-04 · 原理</a> · <a href="exp-04-kinematics/index.html#s3">知识点表 DH</a></td>
+          <td><a href="exp-03-kinematics/index.html#s2">EXP-03 · 原理</a> · <a href="exp-03-kinematics/index.html#s3">几何常量表</a></td>
         </tr>
         <tr>
           <td>大二 · 微分 ⭐</td>
           <td><b>雅可比矩阵 J</b>、行列式 det(J)、速度换算 ẋ = J·q̇</td>
           <td>"汇率表"：关节转多快 → 指尖走多快；det(J)→0 即奇异位</td>
-          <td><a href="exp-04-kinematics/index.html#jacdemo">EXP-04 · 雅可比演示（可拖）</a></td>
+          <td><a href="exp-04-ik-solver/index.html#jacdemo">EXP-04 · 雅可比演示（可拖）</a></td>
         </tr>
         <tr>
           <td>进阶 · 数值优化 ⭐</td>
@@ -318,12 +318,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
           <td>统计 · 误差口径</td>
           <td>均值 / 百分位 P95、阈值与归一化、HSV 两段阈值</td>
           <td>一切验收线（Avg&lt;0.5mm、Max&lt;1.5mm、掉点≤3%）的读法；颜色分割调参</td>
-          <td><a href="exp-05-ik-solver/index.html#s7">EXP-05 · 误差判定与归因台</a></td>
+          <td><a href="exp-04-ik-solver/index.html#s7">EXP-04 · 误差判定与归因台</a></td>
         </tr>
       </tbody>
     </table>
   </div>
-  <div class="kv reveal" style="margin-top:.6rem"><b>用法</b> · 从上往下即学习顺序：前两行高中数学就够开工；卡在第 3 行不用慌，EXP-04 的动画与互动台会把线代"演"给你看；后三行是选修深度，动手前再回头补。</div>
+  <div class="kv reveal" style="margin-top:.6rem"><b>用法</b> · 从上往下即学习顺序：前两行高中数学就够开工；卡在第 3 行不用慌，EXP-03 的动画与互动台会把线代"演"给你看；后三行是选修深度，动手前再回头补。</div>
 
   <div class="sec-head reveal">
     <div class="k">FAQ</div>
@@ -332,7 +332,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   <div class="kgrid reveal">
     <div class="kcard">
       <h4><span class="dot" style="background:#d97706"></span>没有真机能学完吗？</h4>
-      <p>能。EXP-01/04/05 全程可用 Gazebo 与 Web 仿真器完成闭环验证；EXP-02/03/06/07 的命令与协议推导可在无硬件条件下通读演练，上机步骤以真机验收为准。</p>
+      <p>能。EXP-01/03/04 全程可用 Gazebo 与 Web 仿真器完成闭环验证；EXP-02/05/06/07 的命令与协议推导可在无硬件条件下通读演练，上机步骤以真机验收为准。</p>
     </div>
     <div class="kcard">
       <h4><span class="dot" style="background:#7c3aed"></span>为什么先仿真、后裸机？</h4>
@@ -355,7 +355,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
 
     <article class="card reveal">
       <div class="top"><span class="code">EXP-01</span><span class="tag">⭐ · 4 学时</span></div>
-      <h3>URDF 模型与仿真控制</h3>
+      <h3>机械臂URDF模型与仿真控制</h3>
       <p>5 自由度机械臂的 link/joint 建模与 7 坐标系 TF 链，RViz2 可视化、MoveIt2 规划、Gazebo 物理仿真到 grasp_demo 抓取演示一条龙。</p>
       <div class="kv"><b>关键点</b> · display / demo / Gazebo 三级验证 · joint_state_publisher_gui 拖动关节 · TF 链 base → link → gripper</div>
       <div class="meta"><span class="tag">URDF</span><span class="tag">TF</span><span class="tag">MoveIt2</span><span class="tag">Gazebo</span></div>
@@ -372,16 +372,16 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
 
     <article class="card reveal">
       <div class="top"><span class="code">EXP-02</span><span class="tag">⭐⭐ · 4 学时</span></div>
-      <h3>串口底层协议与 PWM 控制</h3>
+      <h3>机械臂关节控制原理与应用</h3>
       <p>剥开 ROS2 的外壳直达硬件：1Mbps 串口裸机通信、0xAA55 帧头 + CRC8 校验、PWM 500~2500μs 舵机控制与动作序列录制导出。</p>
       <div class="kv"><b>关键参数</b> · 1000000 baud · CENTER_PWM=1500 · PWM_TO_RAD=0.002356 · 0xAA55 + CRC8 · interactive_mode</div>
       <div class="meta"><span class="tag">pyserial</span><span class="tag">CRC8</span><span class="tag">PWM 舵机</span><span class="tag">interactive_mode</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s1">① 问题引入：ROS2 节点之下是什么在响</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s6">② 动画讲解：帧格式与脉宽对比动画</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s7">③ 互动讲解：PWM ↔ 关节角换算器</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s8">④ 实操步骤：test_servo_direct 实战</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s10">验证</a></li>
+        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s1">① 问题引入：关节是怎么动起来的</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s2">② 舵机原理：一整套伺服系统</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s2">3D 互动</a></li>
+        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s3">③ 舵机控制协议（接口 ↔ 3D 联动）</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s3">互动</a></li>
+        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s5">④ 实操：全景 + 打开/交互/录制三步</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s6">实操</a></li>
+        <li><a class="ttl" href="exp-02-serial-pwm/index.html#s10">⑤ 验收与总结</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-serial-pwm/index.html#s10">验证</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -396,33 +396,33 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   <div class="grid">
 
     <article class="card reveal">
-      <div class="top"><span class="code">EXP-04</span><span class="tag">⭐⭐ · 4 学时</span></div>
-      <h3>正/逆运动学基础</h3>
-      <p>DH 参数与连杆长度（L2=0.180m）、FK 逐段变换链、三段式解析 IK 与 DLS 数值法对比、Web 仿真器与 demo_fk_ik.py 实测。</p>
-      <div class="kv"><b>关键参数</b> · 基座 d=0.085 · r_max=0.4 m · L1=0.105 / L2=0.180 · DLS 阻尼 λ=0.1 · localhost:8000/viewer</div>
-      <div class="meta"><span class="tag">DH 参数</span><span class="tag">正运动学 FK</span><span class="tag">逆运动学 IK</span><span class="tag">Web 仿真</span></div>
+      <div class="top"><span class="code">EXP-03</span><span class="tag">⭐⭐ · 4 学时</span></div>
+      <h3>正运动学基础</h3>
+      <p>正运动学 FK：从底座一节节"转一下、伸一段"，用 config.py 笛卡尔几何常量算指尖坐标（关节角 → 坐标，一对一定论），Web 仿真器拖关节滑块实测对账。</p>
+      <div class="kv"><b>关键参数</b> · 关节轴 1×绕Z + 3×绕Y + 1×绕Z · L1/L2≈0.126 m · L_TCP≈0.151 m · localhost:8000/viewer</div>
+      <div class="meta"><span class="tag">笛卡尔几何</span><span class="tag">正运动学 FK</span><span class="tag">关节轴分布</span><span class="tag">Web 仿真</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-04-kinematics/index.html#s1">① 问题引入：想把物放到哪，手臂该怎么弯</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-kinematics/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-04-kinematics/index.html#s6">② 动画讲解：关节角叠加求末端坐标</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-kinematics/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-04-kinematics/index.html#s7">③ 互动讲解：FK 正解试算台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-kinematics/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-04-kinematics/index.html#s8">④ 实操步骤：仿真器 + demo_fk_ik.py</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-kinematics/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-04-kinematics/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-kinematics/index.html#s10">验证</a></li>
+        <li><a class="ttl" href="exp-03-kinematics/index.html#s1">① 问题引入：想把物放到哪，手臂该怎么弯</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-kinematics/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-03-kinematics/index.html#s6">② 动画讲解：关节角叠加求末端坐标</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-kinematics/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-03-kinematics/index.html#s7">③ 互动讲解：FK 正解试算台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-kinematics/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-03-kinematics/index.html#s8">④ 实操步骤：仿真器 + demo_fk_ik.py</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-kinematics/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-03-kinematics/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-kinematics/index.html#s10">验证</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
 
     <article class="card reveal">
-      <div class="top"><span class="code">EXP-05</span><span class="tag">⭐⭐⭐ · 4 学时</span></div>
-      <h3>逆运动学解算</h3>
-      <p>IK 库（solve_analytical_ik / fk_solve）API 与 FK/IK 闭环验证（test_fk_ik.py，实测 3/4 点位 FAIL、误差 18~23 mm 待归因；pitch 三档成功率 99/72/61.5%），配 --direct 实机与"理论链 vs 实机链"归因。</p>
+      <div class="top"><span class="code">EXP-04</span><span class="tag">⭐⭐⭐ · 4 学时</span></div>
+      <h3>逆运动学基础与 IK 解算</h3>
+      <p>先补 IK 原理（解析法三段式、DLS 数值法、雅可比与奇异位），再用 IK 库 API（solve_analytical_ik / fk_solve）做 FK/IK 闭环验证——实测 3/4 点位 FAIL、误差 18~23mm 待归因，配 --direct 实机与"理论链 vs 实机链"归因。</p>
       <div class="kv"><b>关键接口</b> · solve_analytical_ik(target, pitch) → IKSolution(q1~q5+branch+error) · fk_solve → 4×4 齐次矩阵 · 验收线 Avg&lt;0.5 / Max&lt;1.5 mm（当前 3/4 FAIL，以实测为准）</div>
       <div class="meta"><span class="tag">IKSolution API</span><span class="tag">闭环验证</span><span class="tag">误差归因</span><span class="tag">DLS</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-05-ik-solver/index.html#s1">① 问题引入：求解成功 ≠ 解准确（静默偏差）</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-05-ik-solver/index.html#s6">② 动画讲解：多解切换与静默偏差三连击</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-05-ik-solver/index.html#s7">③ 互动讲解：误差判定与归因台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-05-ik-solver/index.html#s8">④ 实操步骤：interactive_ik_test --direct</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-05-ik-solver/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-ik-solver/index.html#s10">验证</a></li>
+        <li><a class="ttl" href="exp-04-ik-solver/index.html#s1">① 问题引入：求解成功 ≠ 解准确（静默偏差）</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-04-ik-solver/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-04-ik-solver/index.html#s6">② 动画讲解：多解切换与静默偏差三连击</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-04-ik-solver/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-04-ik-solver/index.html#s7">③ 互动讲解：误差判定与归因台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-04-ik-solver/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-04-ik-solver/index.html#s8">④ 实操步骤：interactive_ik_test --direct</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-04-ik-solver/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-04-ik-solver/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-04-ik-solver/index.html#s10">验证</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -437,17 +437,17 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   <div class="grid">
 
     <article class="card reveal">
-      <div class="top"><span class="code">EXP-03</span><span class="tag">⭐⭐ · 4 学时</span></div>
+      <div class="top"><span class="code">EXP-05</span><span class="tag">⭐⭐ · 4 学时</span></div>
       <h3>ROS2 架构与动作回放</h3>
       <p>bringup 7~8 节点拓扑勘察、joint_command 弧度指令、action_player 节点回放 pick_and_place.yaml、play/next/stop 三服务与 servo_calib 零位校准。</p>
       <div class="kv"><b>关键点</b> · ros2 node/topic 勘察拓扑 · TF 链自检 · joint_command 弧度 vs PWM 两套单位 · Trajectory YAML 逐行回放</div>
       <div class="meta"><span class="tag">节点拓扑</span><span class="tag">action_player</span><span class="tag">Trigger 服务</span><span class="tag">软件 offset</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-03-action-replay/index.html#s1">① 问题引入：录好的动作如何原样动起来</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-action-replay/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-03-action-replay/index.html#s6">② 动画讲解：回放管线数据流</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-action-replay/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-03-action-replay/index.html#s7">③ 互动讲解：弧度 ↔ PWM 双向换算台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-action-replay/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-03-action-replay/index.html#s8">④ 实操步骤：bringup → action_player 回放</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-action-replay/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-03-action-replay/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-action-replay/index.html#s10">验证</a></li>
+        <li><a class="ttl" href="exp-05-action-replay/index.html#s1">① 问题引入：录好的动作如何原样动起来</a><span class="stars">⭐⭐</span><a class="dur" href="exp-05-action-replay/index.html#s1">4 学时 · 开始</a></li>
+        <li><a class="ttl" href="exp-05-action-replay/index.html#s6">② 动画讲解：回放管线数据流</a><span class="stars">⭐⭐</span><a class="dur" href="exp-05-action-replay/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-05-action-replay/index.html#s7">③ 互动讲解：弧度 ↔ PWM 双向换算台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-05-action-replay/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-05-action-replay/index.html#s8">④ 实操步骤：bringup → action_player 回放</a><span class="stars">⭐⭐</span><a class="dur" href="exp-05-action-replay/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-05-action-replay/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-05-action-replay/index.html#s10">验证</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -533,7 +533,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <div class="top"><span class="code">VLA·C</span><span class="tag">下一步路径</span></div>
       <h3>从这门课出发的三级台阶</h3>
       <p><b>① 数据意识（本周就能做）</b>：用现有真机链路采集"物块位姿 → 动作"演示数据——你已会的 rosbag/仿真器就是采集器。<b>② 仿真里跑通语言→抓取</b>：Hugging Face <b>LeRobot</b>（ACT/Diffusion Policy 等开源实现）或 <b>OpenVLA</b> 推理，在 MuJoCo/Gazebo 里感受端到端策略的强弱点。<b>③ 补学习基础</b>：强化学习入门（Gym 经典控制）+ BERT/VLM 结构科普，再回头看 π0 / GR00T 级别的工作。</p>
-      <div class="kv"><b>衔接锚点</b> · M5 六阶段抓取（principles 3D 实验台）= 你要教给模型的"动作语言" · EXP-04/05 运动学 = 策略输出后的执行层</div>
+      <div class="kv"><b>衔接锚点</b> · M5 六阶段抓取（principles 3D 实验台）= 你要教给模型的"动作语言" · EXP-03/04 运动学 = 策略输出后的执行层</div>
       <div class="meta"><span class="tag">LeRobot</span><span class="tag">OpenVLA</span><span class="tag">ACT / π0</span><span class="tag">RL 入门</span></div>
       <div class="hint"><span>🌐 本页离线可用，外部项目名仅作学习路标——联网后搜 “huggingface lerobot” “openvla” 即达官方仓库</span></div>
     </article>

@@ -40,9 +40,9 @@ ol.todo{list-style:decimal;padding-left:1.6rem}
   <h4>本课程实验</h4>
   <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
   <a href="../exp-02-serial-pwm/index.html">EXP-02 串口底层协议与 PWM 控制</a>
-  <a href="../exp-03-action-replay/index.html">EXP-03 ROS2 架构与动作回放</a>
-  <a href="../exp-04-kinematics/index.html">EXP-04 正/逆运动学基础</a>
-  <a href="../exp-05-ik-solver/index.html">EXP-05 逆运动学解算</a>
+  <a href="../exp-05-action-replay/index.html">EXP-05 ROS2 架构与动作回放</a>
+  <a href="../exp-03-kinematics/index.html">EXP-03 正运动学基础</a>
+  <a href="../exp-04-ik-solver/index.html">EXP-04 逆运动学基础与 IK 解算</a>
   <a href="../exp-06-fixed-grasp/index.html">EXP-06 逆运动学固定抓取</a>
   <a href="../exp-07-visual-grasp/index.html">EXP-07 视觉动态抓取</a>
 </aside>
@@ -100,7 +100,7 @@ ol.todo{list-style:decimal;padding-left:1.6rem}
     <div class="kcard"><div class="kd">右窗 · RViz2</div><div class="kt">rviz2 = 订阅者 · 收到就重画</div><p>Displays 里勾着 <b>Grid / RobotModel / TF</b>：它<b>订阅</b>话题数据，左窗每发布一次新关节角，右窗模型就跟着更新一次——这条"发布 → 订阅"的单向链正是 05 要拆的话题链路。</p></div>
     <div class="kcard"><div class="kd">三个重点坐标系</div><div class="kt">base · camera · tcp</div><p>在右窗 TF 标签里逐个勾选一遍：<b>base_link</b>（车体之根）、<b>camera_link</b>（腕上相机）、<b>tcp_link</b>（指尖参考）——把它们和"为什么 · 3"对上号。</p></div>
   </div>
-  <div class="tip"><span class="lab">💡 为后续实验铺垫</span>EXP-02 要发的 PWM 对应的就是这些 joint 的角度；EXP-04/05 算 FK/IK 的目标点就是 tcp_link。这一屏玩熟，后面每个实验的"坐标系对话"都不再抽象。</div>
+  <div class="tip"><span class="lab">💡 为后续实验铺垫</span>EXP-02 要发的 PWM 对应的就是这些 joint 的角度；EXP-03/05 算 FK/IK 的目标点就是 tcp_link。这一屏玩熟，后面每个实验的"坐标系对话"都不再抽象。</div>
   <p>窗口里的事摸出问题了？左窗<strong>发布</strong>、右窗<strong>订阅</strong>，先把三个词讲清，链路才看得懂 → <a href="#s3" style="color:var(--theme-deep,#b91c1c);font-weight:700">03 关节 · 限位 · 角色</a></p>
 </section>
 
@@ -150,7 +150,7 @@ ol.todo{list-style:decimal;padding-left:1.6rem}
     <div class="kcard"><div class="kd">角色 · 坐标系</div><div class="kt">树上五个岗位</div><p><b>base_link</b>=根/世界原点 · <b>link1~5</b>=逐段骨骼 · <b>tcp_link</b>=指尖参考点（IK 落点、验收点）· <b>camera_link</b>=相机光心（EXP-07 视觉起点）· TF 树：base_link→link1→…→tcp_link，父子单向永不打环；截图右侧还有 wheel_/load_ 等挂点，展开 TF 面板自行对照。</p></div>
     <div class="kcard"><div class="kd">角色 · 三个节点</div><div class="kt">发布 → 订阅，一条单向链</div><p><b>joint_state_publisher_gui</b> 把关节角<strong>发布</strong>到 /joint_states → <b>robot_state_publisher</b> <strong>订阅</strong>它、算出坐标变换再<strong>发布</strong>到 /tf → <b>rviz2</b> <strong>订阅</strong>/tf 渲染模型——三者正是 display.launch 弹出的全部家当（05 节解剖）。往后所有"让机械臂动起来"的题，都是在替换这条链的<strong>发布端</strong>：少碰 GUI，自己发消息。</p></div>
   </div>
-  <div class="tip amber"><span class="lab">⚠️ 与实机的一处呼应</span>仿真里 arm_joint2/3 的零位是理想值，实机装配总会歪几度。EXP-03 的零位校准补的就是这个差：servo_calib GUI 逐关节拖滑块找到真机的机械中位，把当前 PWM 与 1500 的差值写进 <code>servo_offsets.yaml</code>，驱动节点启动时读这份文件、给发往舵机的指令补上偏差（<code>base_driver_node.py</code>）。数字身体与钢铁身体之间，永远隔着一次校准。</div>
+  <div class="tip amber"><span class="lab">⚠️ 与实机的一处呼应</span>仿真里 arm_joint2/3 的零位是理想值，实机装配总会歪几度。EXP-05 的零位校准补的就是这个差：servo_calib GUI 逐关节拖滑块找到真机的机械中位，把当前 PWM 与 1500 的差值写进 <code>servo_offsets.yaml</code>，驱动节点启动时读这份文件、给发往舵机的指令补上偏差（<code>base_driver_node.py</code>）。数字身体与钢铁身体之间，永远隔着一次校准。</div>
   <p>三个词立好了，钻进说明书对原文 → <a href="#s8" style="color:var(--theme-deep,#b91c1c);font-weight:700">04 深读一：URDF 简化说明</a></p>
 </section>
 
@@ -305,8 +305,6 @@ ol.todo{list-style:decimal;padding-left:1.6rem}
 <span class="c">#    多出来的名字有来路，不算异常：</span>
 <span class="c">#    · transform_listener_impl_xxxx 是 rviz2 的 TF 监听器自动注册的框架节点</span>
 <span class="c">#      （后缀十六进制每次启动都变，不是谁手写的）</span>
-<span class="c">#    · param_sensor 等其它名字是同一张 ROS 图里的旁观者（如单独跑过的</span>
-<span class="c">#      ros2 run ros_sensor param_sensor），与本链路无关</span>
 <span class="g">ros2</span> node list
 
 <span class="c"># 2) 话题清单：确认出现 /joint_states 与 /tf（/tf_static）</span>

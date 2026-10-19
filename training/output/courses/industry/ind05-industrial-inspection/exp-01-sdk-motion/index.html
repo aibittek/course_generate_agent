@@ -17,6 +17,19 @@
   figure.shot figcaption{padding:10px 14px;font-size:13px;color:#065f46;background:var(--theme-bg);border-top:1px solid var(--theme-bd)}
   .vid-note{text-align:center;font-size:12.5px;color:#047857;margin-bottom:6px}
   .tag.hl{background:var(--theme-bg);border-color:var(--theme-bd);color:var(--theme-deep)}
+/* ── 五星学习法 · 课程分段 ── */
+.fivestar-note{font-size:13px;color:#5b6b78;margin-top:12px}
+.fs-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+.fs-cell{border:1px solid var(--theme-bd);border-radius:12px;padding:10px 8px;text-align:center;background:var(--theme-bg)}
+.fs-cell .st{font-size:12.5px;font-weight:800;color:var(--theme-deep)}
+.fs-cell .tm{font-family:var(--font-mono,monospace);font-size:11px;color:#0f766e;margin-top:3px;font-weight:700}
+.fs-cell .ds{font-size:11.5px;color:#5b6b78;margin-top:4px;line-height:1.5}
+.seg{display:inline-block;font-size:11px;font-weight:700;font-family:var(--font-mono,monospace);background:var(--theme-bg);color:var(--theme-deep);border:1px solid var(--theme-bd);border-radius:99px;padding:2px 10px;margin-left:8px;vertical-align:middle;white-space:nowrap}
+.tl{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;background:#fff}
+.tl th,.tl td{border:1px solid #e2ece9;padding:7px 10px;text-align:left;vertical-align:top}
+.tl th{background:var(--theme-bg);color:var(--theme-deep);font-size:12.5px;white-space:nowrap}
+.tl .m{font-family:var(--font-mono,monospace);color:var(--theme-deep);font-weight:700;white-space:nowrap}
+@media(max-width:900px){.fs-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -29,17 +42,18 @@
 
 <div class="wrap">
   <aside class="side">
-    <h4>本页目录</h4>
-    <a href="#s1">01 学习目标</a>
-    <a href="#s2">02 原理</a>
-    <a href="#s3">03 硬件与材料</a>
-    <a href="#s4">04 操作步骤</a>
-    <a href="#s5">05 关键命令</a>
-    <a href="#s6">06 动画</a>
-    <a href="#s7">07 互动</a>
-    <a href="#s8">08 常见问题</a>
-    <a href="#s9">09 拓展</a>
-    <a href="#s10">10 思考题</a>
+    <h4>本页目录 · 五星学习法</h4>
+    <a href="#s0">00 课程节奏 · 8 段微课</a>
+    <a href="#s1" class="now">01 学习目标 ①聚焦问题</a>
+    <a href="#s2">02 原理 ①聚焦 ②激活</a>
+    <a href="#s3">03 硬件与材料 ③示证新知</a>
+    <a href="#s4">04 操作步骤 ④应用新知</a>
+    <a href="#s5">05 关键命令 ④应用新知</a>
+    <a href="#s6">06 动画 ③示证新知</a>
+    <a href="#s7">07 互动 ④应用新知</a>
+    <a href="#s8">08 常见问题 ⑤融会贯通</a>
+    <a href="#s9">09 拓展 ⑤融会贯通</a>
+    <a href="#s10">10 思考题 ⑤融会贯通</a>
     <h4>兄弟实验</h4>
     <a href="../exp-02-lidar-slam/index.html">EXP-02 3D 激光建图</a>
     <a href="../exp-03-amcl-nav2/index.html">EXP-03 定位与多点导航</a>
@@ -54,9 +68,34 @@
       <div class="meta"><span class="tag hl">实践/理论</span><span class="tag">unitree_sdk2py</span><span class="tag">unitree_ros2</span><span class="tag">低速起步</span></div>
     </div>
 
+    <!-- 00 -->
+    <section class="blk" id="s0">
+      <h2><span class="no">00</span>课程节奏：五星学习法 · 8 段微课（每段 ≤ 15 min）</h2>
+      <p>本实验按<b>五星学习法</b>组织：先用一个真实故障<b>聚焦问题</b>，再<b>激活旧知</b>（Linux 网络 + ROS2 DDS），接着<b>示证新知</b>（Go2 硬件三大件 + 步态/指令链路动画），然后动手<b>应用新知</b>完成配网装 SDK 到遥控运动，最后借排障与拓展<b>融会贯通</b>。全程切成 <b>8 段微课、每段不超过 15 分钟</b>，段间停顿 1~2 分钟消化；纯讲授合计约 100 分钟，其余课时用于动手实操与个别辅导。</p>
+      <div class="fs-grid">
+        <div class="fs-cell"><div class="st">① 聚焦问题</div><div class="tm">课段 1 · 12 min</div><div class="ds">"指令发了狗不动"故障现场，带着问题开课</div></div>
+        <div class="fs-cell"><div class="st">② 激活旧知</div><div class="tm">课段 2 · 8 min</div><div class="ds">静态 IP · DDS 发现 · ROS2 话题发布订阅</div></div>
+        <div class="fs-cell"><div class="st">③ 示证新知</div><div class="tm">课段 3~4 · 27 min</div><div class="ds">Go2 硬件清单 + 步态相位/指令链路动画</div></div>
+        <div class="fs-cell"><div class="st">④ 应用新知</div><div class="tm">课段 5~7 · 40 min</div><div class="ds">配网→装 SDK/ROS2→读状态→遥控运动</div></div>
+        <div class="fs-cell"><div class="st">⑤ 融会贯通</div><div class="tm">课段 8 · 13 min</div><div class="ds">排障口诀 · 拓展阅读 · 思考题</div></div>
+      </div>
+      <table class="tl">
+        <tr><th>课段</th><th>五星阶段</th><th>时长</th><th>对应章节</th><th>本段任务</th></tr>
+        <tr><td class="m">课段 1</td><td>聚焦问题</td><td class="m">12 min</td><td>§01 + §02 前半</td><td>抛出现场故障"指令发了狗不动"，明确本课要解决的目标</td></tr>
+        <tr><td class="m">课段 2</td><td>激活旧知</td><td class="m">8 min</td><td>§02 后半</td><td>用静态 IP、DDS 发现、话题模型三条旧知解释故障成因</td></tr>
+        <tr><td class="m">课段 3</td><td>示证新知</td><td class="m">15 min</td><td>§03</td><td>对照实物认识 Go2 激光雷达/深度相机/足端力传感及场地要求</td></tr>
+        <tr><td class="m">课段 4</td><td>示证新知</td><td class="m">12 min</td><td>§06</td><td>看懂 trot 步态相位与"脚本→sport_request→运动服务"指令链路</td></tr>
+        <tr><td class="m">课段 5</td><td>应用新知</td><td class="m">15 min</td><td>§04 S1~S3 + §05 ①②</td><td>完成配网、装 SDK、装 ROS2 驱动（边讲边演）</td></tr>
+        <tr><td class="m">课段 6</td><td>应用新知</td><td class="m">15 min</td><td>§04 S4~S5 + §05 ③④⑤</td><td>读状态 + 站立/趴下/速度遥控低速起步——课段 1 的故障就此根除</td></tr>
+        <tr><td class="m">课段 7</td><td>应用新知</td><td class="m">10 min</td><td>§07</td><td>步态相位步进器自测，全通方可进入下一实验</td></tr>
+        <tr><td class="m">课段 8</td><td>融会贯通</td><td class="m">13 min</td><td>§08~§10</td><td>排障口诀收口，挑战题与思考题拔高迁移</td></tr>
+      </table>
+      <p class="fivestar-note">讲课提示：课段 1/2 以讲授 + 提问为主；课段 3~6 边讲边演（实物 / 动画 / 命令行）；课段 7 学员独立完成；课段 8 答疑拔高。段与段之间停顿 1~2 分钟，确认学员跟上再进下一段。</p>
+    </section>
+
     <!-- 01 学习目标 -->
     <section class="blk" id="s1">
-      <h2><span class="no">01</span>学习目标</h2>
+      <h2><span class="no">01</span>学习目标<span class="seg">课段 1 · 聚焦问题 · 12 min</span></h2>
       <ul class="check">
         <li>说出 Go2 Edu 关键硬件：3D 激光雷达、深度相机、高清相机、足端力传感、Jetson Orin 40 TOPS 机载算力。</li>
         <li>讲清三类巡检任务：表计读数、异常检测、自主巡逻回充，以及四足运动在其中承担的角色。</li>
@@ -69,7 +108,8 @@
 
     <!-- 02 原理：融合理论1 -->
     <section class="blk" id="s2">
-      <h2><span class="no">02</span>原理：四足运动与巡检概述（理论 1 融合）</h2>
+      <h2><span class="no">02</span>原理：四足运动与巡检概述（理论 1 融合）<span class="seg">课段 1 收尾 + 课段 2 · 激活旧知 · 8 min</span></h2>
+      <div class="tip amber"><span class="lab">❓ 聚焦问题（课段 1）</span>学员现场最常遇到的怪事：<b>SDK 脚本跑完，狗纹丝不动</b>；<code>ros2 topic list</code> 是空的，机器狗仿佛"失联"。问题出在哪？带着这个故障听完全课——到课段 6 你会亲手让它动起来。</div>
       <p><b>把机器狗想像成一位厂区巡检员：</b>四条腿是它的「交通工具」，身上的雷达和相机是「眼睛」，脑子是机载的 Jetson Orin。它要干的活就三样——<b>抄表</b>（对着表计拍一张，后面用 YOLO 认数字）、<b>看异常</b>（跑冒滴漏、烟火、异物）、<b>自己巡逻自己充电</b>（定时出门，见桩就回）。这三样任务的共同前提：<b>狗得先听指挥、走得起、停得稳</b>——这就是本实验要打通的运动控制层。</p>
       <h3>Go2 Edu 硬件清单与分工</h3>
       <table>
@@ -90,6 +130,7 @@
         <div class="kcard"><div class="kd">姿态指令</div><div class="kt">BalanceAttitude()：调整机身 roll/pitch/yaw，过坎抬身用得上。</div></div>
         <div class="kcard"><div class="kd">状态回读</div><div class="kt">read_highstate / /sportmodestead：发完指令必须回读，确认狗真的动了。</div></div>
       </div>
+      <div class="tip teal"><span class="lab">↺ 激活旧知（课段 2）</span>回忆三条旧知：① <b>静态 IP</b>（ifconfig 给网卡设 192.168.123.x）；② <b>DDS 发现机制</b>（ROS2 节点同网段才能互相发现）；③ <b>话题发布/订阅</b>（/sportmodestate 广播状态、/api/sport/request 收指令）。三条合起来，正好解释课段 1 那个故障。</div>
       <figure class="shot">
         <img src="./images/fig-net-config.png" alt="Unitree 官方文档：网卡手动配置 IPv4 192.168.123.99" loading="lazy">
         <figcaption>图 1-1｜Unitree 官方配置（来自 unitree_ros2 仓库 README）：连接机器狗的网卡手动指定 IPv4 地址 192.168.123.99、掩码 255.255.255.0，这是对话的第一步。</figcaption>
@@ -103,7 +144,7 @@
 
     <!-- 03 硬件与材料 -->
     <section class="blk" id="s3">
-      <h2><span class="no">03</span>硬件与材料</h2>
+      <h2><span class="no">03</span>硬件与材料<span class="seg">课段 3 · 示证新知 · 15 min</span></h2>
       <div class="kgrid">
         <div class="kcard"><div class="kd">Go2 Edu 整机</div><div class="kt">3D 激光雷达 + 深度相机 + 高清相机 + 足端力传感 + Jetson Orin 40 TOPS，电量 &gt;50% 再实训。</div></div>
         <div class="kcard"><div class="kd">遥控器</div><div class="kt">原装无线遥控，随时接管；/wirelesscontroller 话题可读摇杆与键值（lx/ly/rx/ry、keys）。</div></div>
@@ -123,7 +164,7 @@
 
     <!-- 04 操作步骤 -->
     <section class="blk" id="s4">
-      <h2><span class="no">04</span>操作步骤</h2>
+      <h2><span class="no">04</span>操作步骤<span class="seg">课段 5~6 · 应用新知 · 2×15 min</span></h2>
       <div class="flow">
         <div class="step"><b class="n">S1</b>配网通狗<br><small>网卡静态 IP → ping 通 → 确认网卡名</small></div>
         <div class="arr">→</div>
@@ -159,7 +200,7 @@
 
     <!-- 05 关键命令 -->
     <section class="blk" id="s5">
-      <h2><span class="no">05</span>关键命令</h2>
+      <h2><span class="no">05</span>关键命令<span class="seg">随课段 5 / 6 对照使用</span></h2>
       <p class="dim">以下命令均摘自 unitree_sdk2py 与 unitree_ros2 官方 README，网卡名按实机替换。</p>
       <pre><span class="c"># ① 安装 Python SDK（依赖 cyclonedds==0.10.2 / numpy / opencv-python）</span>
 git clone https://github.com/unitreerobotics/unitree_sdk2py.git
@@ -194,7 +235,7 @@ cd ~/unitree_ros2/example && colcon build
 
     <!-- 06 动画 -->
     <section class="blk" id="s6">
-      <h2><span class="no">06</span>动画：步态相位与指令链路</h2>
+      <h2><span class="no">06</span>动画：步态相位与指令链路<span class="seg">课段 4 · 示证新知 · 12 min</span></h2>
       <div class="anim-box">
         <svg viewBox="0 0 720 250" width="100%" role="img" aria-label="四足对角小跑步态相位与支撑多边形动画">
           <defs>
@@ -273,7 +314,7 @@ cd ~/unitree_ros2/example && colcon build
 
     <!-- 07 互动 -->
     <section class="blk" id="s7">
-      <h2><span class="no">07</span>互动：步态相位步进器</h2>
+      <h2><span class="no">07</span>互动：步态相位步进器<span class="seg">课段 7 · 应用新知 · 10 min</span></h2>
       <div class="ix-panel">
         <div class="ix-title">手动步进 trot 步态四相位，观察支撑足与重心安全判据</div>
         <div class="ctl-row">
@@ -291,7 +332,7 @@ cd ~/unitree_ros2/example && colcon build
 
     <!-- 08 常见问题 -->
     <section class="blk" id="s8">
-      <h2><span class="no">08</span>常见问题</h2>
+      <h2><span class="no">08</span>常见问题<span class="seg">课段 8 · 融会贯通 · 13 min</span></h2>
       <div class="kgrid">
         <div class="kcard"><div class="kd">Q pip 报 Could not locate cyclonedds？</div><div class="kt">cyclonedds==0.10.2 没装好：按 README 本地编译 cyclonedds，再 export CYCLONEDDS_HOME 指到 install 目录重装。</div></div>
         <div class="kcard"><div class="kd">Q ros2 topic list 是空的？</div><div class="kt">三查：网段是否 192.168.123.x、setup.sh 里网卡名是否写对、RMW_IMPLEMENTATION 是否 rmw_cyclonedds_cpp 且已 source。</div></div>
@@ -306,7 +347,7 @@ cd ~/unitree_ros2/example && colcon build
 
     <!-- 09 拓展 -->
     <section class="blk" id="s9">
-      <h2><span class="no">09</span>拓展阅读</h2>
+      <h2><span class="no">09</span>拓展阅读<span class="seg">课段 8 · 融会贯通</span></h2>
       <ul class="check">
         <li><b>unitree_rl_gym</b>（BSD-3）： Isaac Gym 里 <code>train.py --task=go2_*</code> 训练步态策略——机器狗的「天生会走」其实是学出来的，与运动服务的「写死规则」对照着看。</li>
         <li><b>unitree_ros / robots/go2_description</b>：官方 URDF 模型可进 RViz 看结构，但 Gazebo 仿真<b>只支持底层关节、不支持完整行走</b>——这是要讲清的局限，别指望仿真里遛狗。</li>
@@ -318,7 +359,7 @@ cd ~/unitree_ros2/example && colcon build
 
     <!-- 10 思考题 -->
     <section class="blk" id="s10">
-      <h2><span class="no">10</span>思考题 · 自测</h2>
+      <h2><span class="no">10</span>思考题 · 自测<span class="seg">课段 8 · 融会贯通</span></h2>
       <div class="kgrid">
         <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">站立→低速前进转向→趴下全链路走通，/sportmodestate 数据滚动并留痕。</div></div>
         <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">用「驾校教练」类比讲清运动服务与底层关节的分工，以及为什么指令要配状态回读。</div></div>

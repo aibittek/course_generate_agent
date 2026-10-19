@@ -1,0 +1,69 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "test_servo_direct.py 实操全景",
+    "locale": "zh-CN",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    { "id": "main", "label": "主线程 main()" },
+    { "id": "wire", "label": "串口线 · 一条线双向复用" },
+    { "id": "recv", "label": "后台接收线程（daemon）" },
+    { "id": "func", "label": "interactive_mode 功能区" }
+  ],
+  "phases": [
+    { "id": "boot", "label": "启动：开串口 + 拉起线程", "fromCol": 0, "toCol": 1 },
+    { "id": "io", "label": "通信：发帧去 · 收帧回", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "out", "label": "成果：录制导出", "fromCol": 4, "toCol": 4 }
+  ],
+  "groups": [
+    { "id": "recvthread", "label": "后台一直在跑（你不用管它）", "lane": "recv", "fromCol": 2, "toCol": 3, "variant": "emphasis" }
+  ],
+  "mainPath": ["open", "start", "menu", "wire", "parse", "states", "save", "yaml"],
+  "nodes": [
+    { "id": "open", "lane": "main", "col": 0, "type": "external", "label": "打开 /dev/stm32", "sublabel": "1Mbps · timeout=1", "tag": "入口", "width": 132 },
+    { "id": "start", "lane": "main", "col": 1, "type": "backend", "label": "拉起接收线程", "sublabel": "SerialReader.start()", "width": 142 },
+    { "id": "menu", "lane": "main", "col": 2, "type": "frontend", "label": "interactive_mode 菜单", "sublabel": "你敲命令的地方", "tag": "提示符 >", "width": 148 },
+    { "id": "wire", "lane": "wire", "col": 2, "type": "messagebus", "label": "串口线收发", "sublabel": "1Mbps · 半双工双向复用", "width": 142 },
+    { "id": "parse", "lane": "recv", "col": 2, "type": "backend", "label": "逐字节拆帧", "sublabel": "找 AA55 → CRC8 校验；应答入队", "width": 158 },
+    { "id": "states", "lane": "recv", "col": 3, "type": "database", "label": "0x08 状态缓存", "sublabel": "最新覆盖 · save 的数据源", "width": 150 },
+    { "id": "save", "lane": "func", "col": 3, "type": "frontend", "label": "save 存姿态", "sublabel": "命名入内存列表", "width": 130 },
+    { "id": "yaml", "lane": "func", "col": 4, "type": "cloud", "label": "yaml 导出", "sublabel": "→ colcon build → EXP-03", "tag": "出口", "width": 152 }
+  ],
+  "edges": [
+    { "from": "open", "to": "start", "label": "打开成功", "role": "main" },
+    { "from": "start", "to": "menu", "label": "等待输入", "role": "main" },
+    { "from": "menu", "to": "wire", "label": "s / g / work 组帧下行", "role": "main" },
+    { "from": "wire", "to": "parse", "label": "0x08 状态与应答回程", "role": "main" },
+    { "from": "parse", "to": "states", "label": "func=0x08 → 覆盖缓存", "role": "main" },
+    { "from": "states", "to": "save", "label": "按 save 时读缓存", "role": "main" },
+    { "from": "save", "to": "yaml", "label": "yaml 命令导出", "role": "main" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "两张皮：发与收分开",
+      "items": [
+        "你敲的每个命令都走「组帧 → 串口线」一条下行路",
+        "接收线程独立跑，0x08 状态帧和应答帧分流，互不阻塞"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "save 为什么有数据",
+      "items": [
+        "你没发过读指令，但下位机一直在广播 0x08",
+        "线程收帧 → 最新覆盖进缓存 → save 只是取快照"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "出口只有一条",
+      "items": [
+        "save 的动作只活在内存列表，退出即丢",
+        "yaml 导出 + colcon build 才交到 EXP-03 手上"
+      ]
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP-03 ROS2 架构与动作回放 — 机器人机械臂应用与开发</title>
+<title>EXP-05 ROS2 架构与动作回放 — 机器人机械臂应用与开发</title>
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{--theme:#dc2626;--theme-deep:#b91c1c;--theme-bg:#fee2e2;--theme-bd:#fecaca}
@@ -13,7 +13,7 @@
 
 <div class="topbar">
   <a class="logo" href="../../../index.html" style="text-decoration:none;color:inherit" title="返回课程首页">🤖 具身智能课程 · <i>教程首页</i></a>
-  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">机械臂应用与开发</a> / EXP-03</div>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">机械臂应用与开发</a> / EXP-05</div>
 </div>
 
 <div class="wrap">
@@ -32,16 +32,16 @@
   <h4>本课程实验</h4>
   <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
   <a href="../exp-02-serial-pwm/index.html">EXP-02 串口底层协议与 PWM 控制</a>
-  <a href="../exp-03-action-replay/index.html">EXP-03 ROS2 架构与动作回放</a>
-  <a href="../exp-04-kinematics/index.html">EXP-04 正/逆运动学基础</a>
-  <a href="../exp-05-ik-solver/index.html">EXP-05 逆运动学解算</a>
+  <a href="../exp-05-action-replay/index.html">EXP-05 ROS2 架构与动作回放</a>
+  <a href="../exp-03-kinematics/index.html">EXP-03 正运动学基础</a>
+  <a href="../exp-04-ik-solver/index.html">EXP-04 逆运动学基础与 IK 解算</a>
   <a href="../exp-06-fixed-grasp/index.html">EXP-06 逆运动学固定抓取</a>
   <a href="../exp-07-visual-grasp/index.html">EXP-07 视觉动态抓取</a>
 </aside>
 <main class="content">
 
 <div class="exp-head">
-  <span class="code">EXP-03 · 第 3 章 · 综合性 · 4 学时</span>
+  <span class="code">EXP-05 · 第 3 章 · 综合性 · 4 学时</span>
   <h1>ROS2 架构与动作回放</h1>
   <p class="desc">换回 <b>ROS2 路线</b>：bringup 拉起 7~8 个节点组成观察网络，<code>action_player</code> 节点按 <b>pick_and_place.yaml</b> 总谱把 EXP-02 录的动作原样回放，play / next / stop 三个 Trigger 服务当遥控器，servo_calib GUI 消除装配偏差。</p>
   <div class="meta">
@@ -192,7 +192,7 @@
         <input type="number" id="ofs" value="4" step="0.5"></label>
       <button class="btn ghost" onclick="applyOfs()">叠加零位偏移</button>
     </div>
-    <div class="io" id="calIo"><span class="dim">// 预置 EXP-03 工作位 joint3 = 1.65 rad（PWM 2200 → 700×0.002356）</span>
+    <div class="io" id="calIo"><span class="dim">// 预置 EXP-05 工作位 joint3 = 1.65 rad（PWM 2200 → 700×0.002356）</span>
 <span class="ok">1.65 rad ÷ 0.002356 + 1500 = 2200 μs ✔ 落在 [500,2500] 安全窗</span></div>
   </div>
   <div class="tip tealb"><span class="lab">🔍 为什么先算再发</span>把弧度心算成 μs 再发 joint_command，是老手的<b>上机前预演习惯</b>：算出 3000μs 这种越界值，就该去查 YAML 或 IK，而不是让它上总线撞限位。</div>
@@ -265,11 +265,11 @@
 
 <nav class="expnav">
   <a href="../exp-02-serial-pwm/index.html"><span class="lb">← 上一个实验</span>EXP-02 串口底层协议与 PWM 控制</a>
-  <a class="next" href="../exp-04-kinematics/index.html"><span class="lb">下一个实验 →</span>EXP-04 正/逆运动学基础</a>
+  <a class="next" href="../exp-03-kinematics/index.html"><span class="lb">下一个实验 →</span>EXP-03 正运动学基础</a>
 </nav>
 
 <footer>
-  <span>CORE-05 · 机器人机械臂应用与开发 · EXP-03 ROS2 架构与动作回放</span>
+  <span>CORE-05 · 机器人机械臂应用与开发 · EXP-05 ROS2 架构与动作回放</span>
   <span>4 学时 · 综合性 · 基于 arm_practice 实验讲义改编</span>
 </footer>
 
@@ -291,7 +291,7 @@ function applyOfs(){
   if(isNaN(r)||isNaN(d)){io.innerHTML='<span class="bad">✗ 弧度与偏移都必须为数字</span>';return;}
   var rad2=r-d*Math.PI/180,p=Math.round(rad2/PT2+CW2);
   var ok=(p&gt;=500&&p&lt;=2500);
-  io.innerHTML='<span class="dim">// 补偿方向（EXP-05 实测）：发给关节的角 = 期望角 − 机械偏移角</span>\n'+
+  io.innerHTML='<span class="dim">// 补偿方向（EXP-04 实测）：发给关节的角 = 期望角 − 机械偏移角</span>\n'+
    '<span class="warn">期望 '+r.toFixed(4)+' rad，检出机械偏移 +'+d+'°（'+(d*Math.PI/180).toFixed(4)+' rad）</span>\n'+
    (ok?'<span class="ok">补偿后发送 '+(p)+' μs ✔ 换算无越界</span>'
       :'<span class="bad">补偿后 PWM='+p+'μs 越界！先核对偏移量是否录反了</span>');}

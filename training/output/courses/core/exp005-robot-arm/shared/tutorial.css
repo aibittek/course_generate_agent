@@ -57,6 +57,8 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--bg-soft);borde
 pre{font-family:var(--font-mono);font-size:13px;line-height:1.7;background:#0f172a;color:#e2e8f0;border-radius:12px;padding:16px 18px;overflow-x:auto;margin:12px 0}
 pre .c{color:#64748b}pre .g{color:#4ade80}pre .b{color:#60a5fa}pre .y{color:#fbbf24}
 code.inline{background:#fef3c7;border-color:#fde68a;color:#92400e;padding:1px 6px}
+/* 行内 code 的浅灰底包进深色 pre 会糊成一片 —— 这里还原成纯文字 */
+pre code{background:none;border:0;border-radius:0;padding:0;color:inherit}
 
 /* flow */
 .flow{display:flex;flex-direction:column;gap:0;margin:14px 0}

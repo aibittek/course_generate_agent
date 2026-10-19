@@ -1,0 +1,67 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "关节是怎么动起来的——从拖动 GUI 到舵机转动",
+    "locale": "zh-CN",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    { "id": "known", "label": "已知 · EXP-01 仿真链" },
+    { "id": "chapter", "label": "本章 · 裸机真机链（拆黑盒）" },
+    { "id": "hw", "label": "硬件 · 执行与反馈" }
+  ],
+  "phases": [
+    { "id": "sim", "label": "上一节已会：模型跟着滑块动", "fromCol": 0, "toCol": 1 },
+    { "id": "bare", "label": "本章拆解：真机靠什么动", "fromCol": 2, "toCol": 4, "variant": "emphasis" },
+    { "id": "exec", "label": "舵机执行", "fromCol": 5, "toCol": 5 }
+  ],
+  "groups": [
+    { "id": "blackbox", "label": "本章要拆开的黑盒", "lane": "chapter", "fromCol": 2, "toCol": 4, "variant": "emphasis" }
+  ],
+  "mainPath": ["gui", "jstate", "gap", "py", "frame", "servo", "joint"],
+  "nodes": [
+    { "id": "gui", "lane": "known", "col": 0, "type": "frontend", "label": "拖动 GUI 关节滑块", "sublabel": "RViz2 · 上一节已会", "tag": "EXP-01", "width": 150 },
+    { "id": "jstate", "lane": "known", "col": 1, "type": "messagebus", "label": "/joint_states 话题", "sublabel": "关节角目标 · rad", "tag": "仿真到此为止", "width": 150 },
+    { "id": "gap", "lane": "chapter", "col": 2, "type": "backend", "label": "真机靠什么动？", "sublabel": "仿真里看不见的一段", "tag": "本章入口", "width": 145 },
+    { "id": "py", "lane": "chapter", "col": 3, "type": "backend", "label": "test_servo_direct.py", "sublabel": "打开 /dev/stm32 · 组帧", "tag": "裸机 Python", "width": 168 },
+    { "id": "frame", "lane": "chapter", "col": 4, "type": "messagebus", "label": "0xAA55 … CRC8 帧", "sublabel": "data 装目标脉宽 1000~2000μs", "tag": "协议", "width": 155 },
+    { "id": "servo", "lane": "hw", "col": 4, "type": "backend", "label": "舵机内部闭环", "sublabel": "解码→驱动→减速→编码器", "tag": "脉宽=目标", "width": 150 },
+    { "id": "joint", "lane": "hw", "col": 5, "type": "backend", "label": "关节转动到位", "sublabel": "肉眼可见的结果", "tag": "完成", "width": 140 }
+  ],
+  "edges": [
+    { "from": "gui", "to": "jstate", "label": "发布目标角", "role": "main" },
+    { "from": "jstate", "to": "gap", "label": "仿真到真机的断层", "role": "main" },
+    { "from": "gap", "to": "py", "label": "本章从这里接上", "role": "main" },
+    { "from": "py", "to": "frame", "label": "按协议组帧", "role": "main" },
+    { "from": "frame", "to": "servo", "label": "串口线 1Mbps · 8N1 字节到达", "role": "main" },
+    { "from": "servo", "to": "joint", "label": "闭环到位", "role": "main" },
+    { "from": "servo", "to": "py", "label": "0x08 状态帧读回", "role": "return", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "上一节到哪为止",
+      "items": [
+        "拖动滑块、/joint_states、模型跟着动——仿真链在渲染处收尾",
+        "模型会动不等于真机会动，中间缺一条真实执行链"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "本章拆的就是这条链",
+      "items": [
+        "Python 打开串口、按 0xAA55+CRC8 协议组帧、把目标脉宽写上线",
+        "线的另一头，舵机用内部闭环把脉宽变成真实转角"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "闭环与反馈",
+      "items": [
+        "指令去程装脉宽，回程是 0x08 状态帧——串口一条线双向复用",
+        "读回的真实角度，就是 save 录制动作的数据来源"
+      ]
+    }
+  ]
+}

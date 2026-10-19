@@ -20,6 +20,19 @@ figcaption{font-size:12.5px;color:var(--mute,#64748b);margin-top:6px}
 .blk{min-width:0;overflow-x:hidden}
 pre{max-width:100%;min-width:0;overflow-x:auto}
 .content{overflow-x:hidden;min-width:0}
+/* ── 五星学习法 · 课程分段 ── */
+.fivestar-note{font-size:13px;color:#5b6b78;margin-top:12px}
+.fs-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+.fs-cell{border:1px solid var(--theme-bd);border-radius:12px;padding:10px 8px;text-align:center;background:var(--theme-bg)}
+.fs-cell .st{font-size:12.5px;font-weight:800;color:var(--theme-deep)}
+.fs-cell .tm{font-family:var(--font-mono,monospace);font-size:11px;color:#0f766e;margin-top:3px;font-weight:700}
+.fs-cell .ds{font-size:11.5px;color:#5b6b78;margin-top:4px;line-height:1.5}
+.seg{display:inline-block;font-size:11px;font-weight:700;font-family:var(--font-mono,monospace);background:var(--theme-bg);color:var(--theme-deep);border:1px solid var(--theme-bd);border-radius:99px;padding:2px 10px;margin-left:8px;vertical-align:middle;white-space:nowrap}
+.tl{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;background:#fff}
+.tl th,.tl td{border:1px solid #e2ece9;padding:7px 10px;text-align:left;vertical-align:top}
+.tl th{background:var(--theme-bg);color:var(--theme-deep);font-size:12.5px;white-space:nowrap}
+.tl .m{font-family:var(--font-mono,monospace);color:var(--theme-deep);font-weight:700;white-space:nowrap}
+@media(max-width:900px){.fs-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -31,17 +44,18 @@ pre{max-width:100%;min-width:0;overflow-x:auto}
 
 <div class="wrap">
   <aside class="side">
-    <h4>实验目录</h4>
-    <a class="now" href="#s1">§1 实验目标</a>
-    <a href="#s2">§2 核心原理</a>
-    <a href="#s3">§3 环境与材料</a>
-    <a href="#s4">§4 实操步骤</a>
-    <a href="#s5">§5 关键命令</a>
-    <a href="#s6">§6 动画演示</a>
-    <a href="#s7">§7 互动练习</a>
-    <a href="#s8">§8 常见问题</a>
-    <a href="#s9">§9 拓展阅读</a>
-    <a href="#s10">§10 思考题</a>
+    <h4>实验目录 · 五星学习法</h4>
+    <a href="#s0">00 课程节奏 · 8 段微课</a>
+    <a class="now" href="#s1">§1 实验目标 ①聚焦问题</a>
+    <a href="#s2">§2 核心原理 ①聚焦 ②激活</a>
+    <a href="#s3">§3 环境与材料 ③示证新知</a>
+    <a href="#s4">§4 实操步骤 ④应用新知</a>
+    <a href="#s5">§5 关键命令 ④应用新知</a>
+    <a href="#s6">§6 动画演示 ③示证新知</a>
+    <a href="#s7">§7 互动练习 ④应用新知</a>
+    <a href="#s8">§8 常见问题 ⑤融会贯通</a>
+    <a href="#s9">§9 拓展阅读 ⑤融会贯通</a>
+    <a href="#s10">§10 思考题 ⑤融会贯通</a>
     <h4 style="margin-top:18px">本课其他实验</h4>
     <a href="../exp-01-teleop-recording/index.html">EXP-01 遥操作与数据采集</a>
     <a href="../exp-02-act-training/index.html">EXP-02 ACT 模型训练</a>
@@ -56,8 +70,33 @@ pre{max-width:100%;min-width:0;overflow-x:auto}
       <div class="meta"><span class="tag">8 学时</span><span class="tag">难度 ★★☆</span><span class="tag hl">进阶实验</span><span class="tag">对应指导文档 11 / 12 章</span></div>
     </div>
 
+    <!-- 00 -->
+    <section class="blk" id="s0">
+      <h2><span class="no">00</span>课程节奏：五星学习法 · 8 段微课（每段 ≤ 15 min）</h2>
+      <p>本实验按<b>五星学习法</b>组织：先用一个真实故障<b>聚焦问题</b>，再<b>激活旧知</b>（EXP-01 采集命令 + EXP-02 训练检查点），接着<b>示证新知</b>（云训练 ↔ 真机推理闭环），然后动手<b>应用新知</b>完成租实例→部署→上传→推理→关机，最后借排障与安全清单<b>融会贯通</b>。全程切成 <b>8 段微课、每段不超过 15 分钟</b>，段间停顿 1~2 分钟消化；纯讲授合计约 100 分钟，其余课时用于动手实操与个别辅导。</p>
+      <div class="fs-grid">
+        <div class="fs-cell"><div class="st">① 聚焦问题</div><div class="tm">课段 1 · 12 min</div><div class="ds">"本地训不动/忘关机被扣费/推理机器人不动"故障</div></div>
+        <div class="fs-cell"><div class="st">② 激活旧知</div><div class="tm">课段 2 · 8 min</div><div class="ds">EXP-01 record+teleop · EXP-02 检查点目录</div></div>
+        <div class="fs-cell"><div class="st">③ 示证新知</div><div class="tm">课段 3~4 · 27 min</div><div class="ds">云端↔真机四段链路 + 推理契约动画</div></div>
+        <div class="fs-cell"><div class="st">④ 应用新知</div><div class="tm">课段 5~7 · 40 min</div><div class="ds">租实例→部署→推理→关机 + 费用估算</div></div>
+        <div class="fs-cell"><div class="st">⑤ 融会贯通</div><div class="tm">课段 8 · 13 min</div><div class="ds">安全清单 · 排障 · 思考题</div></div>
+      </div>
+      <table class="tl">
+        <tr><th>课段</th><th>五星阶段</th><th>时长</th><th>对应章节</th><th>本段任务</th></tr>
+        <tr><td class="m">课段 1</td><td>聚焦问题</td><td class="m">12 min</td><td>§01 + §02 前半</td><td>抛出"本地训不动/忘关机扣费/推理机器人不动"故障，明确本课目标</td></tr>
+        <tr><td class="m">课段 2</td><td>激活旧知</td><td class="m">8 min</td><td>§02 后半</td><td>用 EXP-01 采集命令与 EXP-02 检查点两条旧知解释推理原理</td></tr>
+        <tr><td class="m">课段 3</td><td>示证新知</td><td class="m">15 min</td><td>§03</td><td>对照云侧、本地、数据、模型四类物料认识部署清单</td></tr>
+        <tr><td class="m">课段 4</td><td>示证新知</td><td class="m">12 min</td><td>§06（回看 §02 流程）</td><td>看懂"上传→云训→下载→推理→回看"四段链路</td></tr>
+        <tr><td class="m">课段 5</td><td>应用新知</td><td class="m">15 min</td><td>§04 Step1~3 + §5 命令①</td><td>租 L40S 实例、JupyterLab 部署、上传 zip 数据（边讲边演）</td></tr>
+        <tr><td class="m">课段 6</td><td>应用新知</td><td class="m">15 min</td><td>§04 Step4~6 + §5 命令②③</td><td>云端训练 / 取回检查点、真机推理、收工关机释放实例</td></tr>
+        <tr><td class="m">课段 7</td><td>应用新知</td><td class="m">10 min</td><td>§07</td><td>显存与云租费估算器自测，算清"训多久、花多少"</td></tr>
+        <tr><td class="m">课段 8</td><td>融会贯通</td><td class="m">13 min</td><td>§08~§10</td><td>安全清单收口，排障与思考题拔高迁移</td></tr>
+      </table>
+      <p class="fivestar-note">讲课提示：课段 1/2 以讲授 + 提问为主；课段 3~4 用清单 + 动画；课段 5~6 边讲边演控制台与命令；课段 7 学员独立完成；课段 8 答疑拔高。段间停顿 1~2 分钟。</p>
+    </section>
+
     <section class="blk" id="s1">
-      <h2><span class="no">01</span>实验目标</h2>
+      <h2><span class="no">01</span>实验目标<span class="seg">课段 1 · 聚焦问题 · 12 min</span></h2>
       <div class="kgrid">
         <div class="kcard"><div class="kd">目标 A</div><p>在 gpufree.cn 租用 L40S 实例，选用 LeRobot 镜像，通过 JupyterLab 终端完成 <code>cd /data/lerobot/</code> + <code>pip install -e .</code> 部署。</p></div>
         <div class="kcard"><div class="kd">目标 B</div><p>把 EXP-02 打包的 zip 数据集上传云端并在 L40S 上完成训练（或直接取回本地已训好的检查点）。</p></div>
@@ -65,21 +104,82 @@ pre{max-width:100%;min-width:0;overflow-x:auto}
         <div class="kcard"><div class="kd">验收</div><p>推理日志出现 <code>Loading weights from local directory</code>、<code>teleop: None</code>、<code>'policy': {…}</code> 输入输出特征声明，且能观察到自动抓取动作；费用方面做到用完即关机。</p></div>
         <div class="kcard"><div class="kd">方法论</div><p>把"传数据 → 训 → 取模型 → 推 → 评 → 关机"固化成检查单（checklist），是云上作业不烧钱、不出错的工程纪律。</p></div>
       </div>
+      <p style="margin:18px 0 0;font-size:13px;color:#5b6b78">▍云服务器全流程截图（摘自第 11 章，按操作先后排列）</p>
+      <div class="img-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:10px">
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-01.png" alt="点击控制台，再点击租用实例" loading="lazy" decoding="async">
+          <figcaption>① 进入控制台 · 点「租用实例」</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-02.png" alt="选择 L40S 并点选择镜像" loading="lazy" decoding="async">
+          <figcaption>② 显卡选 L40S · 点「选择镜像」</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-03.png" alt="点击选择镜像按钮" loading="lazy" decoding="async">
+          <figcaption>③ 点击「选择镜像」弹层入口</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-04.png" alt="搜索 lerobot 镜像并选择" loading="lazy" decoding="async">
+          <figcaption>④ 搜索 lerobot · 选中该镜像</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-05.png" alt="创建云服务器" loading="lazy" decoding="async">
+          <figcaption>⑤ 点击「立即创建」云服务器</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-06.png" alt="创建完成后点击控制台 JupyterLab" loading="lazy" decoding="async">
+          <figcaption>⑥ 创建完成后进入 JupyterLab</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-07.png" alt="进入后点击终端" loading="lazy" decoding="async">
+          <figcaption>⑦ JupyterLab 内入口进入终端</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-08.png" alt="打开命令行终端" loading="lazy" decoding="async">
+          <figcaption>⑧ 打开命令行终端</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-09.png" alt="执行 cd /data/lerobot 与 pip install -e . 安装训练环境" loading="lazy" decoding="async">
+          <figcaption>⑨ 安装训练环境（pip install -e .）</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-10.png" alt="安装完成后上传数据" loading="lazy" decoding="async">
+          <figcaption>⑩ 安装完成 · 上传数据</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-11.png" alt="选择本地采集的数据打包上传" loading="lazy" decoding="async">
+          <figcaption>⑪ 选择本地打包的 zip 上传</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-12.png" alt="训练服务器关机操作" loading="lazy" decoding="async">
+          <figcaption>⑫ 不用时关机防计费</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-13.png" alt="点击更多，再点击释放实例" loading="lazy" decoding="async">
+          <figcaption>⑬ 更多 → 释放实例</figcaption>
+        </figure>
+        <figure class="img-block" style="margin:0">
+          <img src="./images/cloud/cloud-14.png" alt="弹出界面复制 ID 前五位确认释放实例" loading="lazy" decoding="async">
+          <figcaption>⑭ 复制 ID 前五位确认释放</figcaption>
+        </figure>
+      </div>
     </section>
 
     <section class="blk" id="s2">
-      <h2><span class="no">02</span>核心原理：云训练 ↔ 真机推理的闭环</h2>
+      <h2><span class="no">02</span>核心原理：云训练 ↔ 真机推理的闭环<span class="seg">课段 1 收尾 + 课段 2 · 激活旧知 · 8 min</span></h2>
+      <div class="tip amber"><span class="lab">❓ 聚焦问题（课段 1）</span>学员上云最常踩的三个坑：<b>本地 GPU 跑一夜还没训完 5000 步</b>，<b>云实例忘关机被扣了一整晚费用</b>，或者<b>推理命令跑完机器人一动不动</b>——明明检查点下载回来了，从臂却像没收到指令。问题出在哪？带着这三个故障听完全课，到课段 6 你会亲手让机器人自主抓起红方块。</div>
       <p><b>通俗类比</b>：这就像"厨师在中央厨房练手艺（云端 GPU），学成后回到家里做饭（本地机械臂）"。训练吃算力（几小时到几天的矩阵乘法），推理吃实时性（60 Hz 内必须吐出动作）。两者天然分离，所以工程上分工：云上练模型、本地跑部署。</p>
       <p><b>训练侧</b>：LeRobot 镜像把 CUDA、PyTorch、LeRobot 依赖预装好，一条 <code>pip install -e .</code> 即完成源码安装。数据靠 zip 上传，训练产出的 <code>checkpoints/last/pretrained_model</code> 是一个自包含目录（config + 权重 + 处理器），下载回本地即可用。</p>
       <p><b>推理侧</b>：推理复用了采集命令 <code>lerobot-record</code>，但<b>去掉了 --teleop</b>，改为加 <code>--policy.path=/…/checkpoints/last/pretrained_model</code>。此时每个控制周期的数据流变成：三摄像头图像 + 6 维状态 → 喂给策略 → 得到 100 步动作块 → 取前 n 步下发给关节 → 下一周期再推理。日志里 <code>'policy': {input_features: observation.images.left/side (3,480,640), observation.state (6,), output_features action (6,)}</code> 就是这份"策略契约"。<code>episode_time_s=60</code> 让机器人有一分钟自主发挥。</p>
       <p><b>为什么 repo_id 加 eval_ 前缀</b>：推理也要开启 recorder 记录表现（方便回看与评估），但这些数据不是训练原料，用 <code>eval_</code> 命名和训练集彻底分开，避免后来者把"机器人的尝试"误当成"人类示范"混进训练。</p>
+      <div class="tip teal"><span class="lab">↺ 激活旧知（课段 2）</span>回忆前两个实验两条旧知：① EXP-01 采集用 <code>lerobot-record --teleop …</code>，动作来源是<b>人掰主臂</b>；② EXP-02 训练产出 <code>checkpoints/last/pretrained_model</code> 自包含目录（config + 权重 + processor）。推理就是把 <code>--teleop</code> 换成 <code>--policy.path</code>——动作来源从"人"变成"模型"，命令几乎没变。</div>
       <div class="tip violet"><span class="lab">云端部署</span>JupyterLab 新终端执行 <code>cd /data/lerobot/</code> + <code>pip install -e .</code>，安装完成后终端无报错返回提示符，即可进入训练流程（第 11 章）。</div>
       <div class="tip violet"><span class="lab">推理契约</span>推理启动日志打印 <code>'policy': {input_features: observation.images.left/side (3,480,640), observation.state (6,), output_features action (6,)}</code>——这正是策略的输入输出契约：三路图像 + 6 维状态进、6 维动作出（第 12 章）。</div>
       <div class="tip violet"><span class="lab">对照记忆</span>采集 = record + teleop；推理 = record + policy.path。<b>同一个命令，换掉"谁来给动作"。</b></div>
     </section>
 
     <section class="blk" id="s3">
-      <h2><span class="no">03</span>环境与材料</h2>
+      <h2><span class="no">03</span>环境与材料<span class="seg">课段 3 · 示证新知 · 15 min</span></h2>
       <ul class="check">
         <li><span class="ok">✓</span>云侧：gpufree.cn 账号（个人付费），L40S 实例 + LeRobot 镜像，JupyterLab 访问</li>
         <li><span class="ok">✓</span>本地：LZ-XL01 双臂平台、<code>lerobot</code> conda 环境、串口/摄像头 udev 就绪</li>
@@ -102,7 +202,7 @@ pre{max-width:100%;min-width:0;overflow-x:auto}
     </section>
 
     <section class="blk" id="s4">
-      <h2><span class="no">04</span>实操步骤</h2>
+      <h2><span class="no">04</span>实操步骤<span class="seg">课段 5~6 · 应用新知 · 2×15 min</span></h2>
       <div class="flow">
         <div class="step"><div class="n">Step 1</div>打开 gpufree.cn → 控制台 → 租用实例 → 选 L40S → 搜镜像"lerobot" → 立即创建，等待启动。<div class="arr"></div></div>
         <div class="step"><div class="n">Step 2</div>控制台 → JupyterLab → 新终端，执行 <code>cd /data/lerobot/</code> 与 <code>pip install -e .</code> 完成安装。<div class="arr"></div></div>
@@ -122,7 +222,7 @@ pre{max-width:100%;min-width:0;overflow-x:auto}
     </section>
 
     <section class="blk" id="s5">
-      <h2><span class="no">05</span>关键命令</h2>
+      <h2><span class="no">05</span>关键命令<span class="seg">随课段 5 / 6 对照使用</span></h2>
       <pre><span class="c"># ── 云实例部署（第 11 章）</span>
 cd /data/lerobot/
 pip install -e .
@@ -143,7 +243,7 @@ lerobot-record --robot.type=so101_follower --robot.port=/dev/arm_slave_left --ro
     </section>
 
     <section class="blk" id="s6">
-      <h2><span class="no">06</span>动画演示：云服务器 ↔ 真机推理链路</h2>
+      <h2><span class="no">06</span>动画演示：云服务器 ↔ 真机推理链路<span class="seg">课段 4 · 示证新知 · 12 min</span></h2>
       <div class="anim-box">
         <svg viewBox="0 0 780 270" width="100%">
           <defs>
@@ -194,7 +294,7 @@ lerobot-record --robot.type=so101_follower --robot.port=/dev/arm_slave_left --ro
     </section>
 
     <section class="blk" id="s7">
-      <h2><span class="no">07</span>互动练习：显存与云租费估算器</h2>
+      <h2><span class="no">07</span>互动练习：显存与云租费估算器<span class="seg">课段 7 · 应用新知 · 10 min</span></h2>
       <div class="ix-panel">
         <div class="ix-title">按模型规模估算显存与一次训练的云费用</div>
         <div class="ctl-row">
@@ -238,7 +338,7 @@ lerobot-record --robot.type=so101_follower --robot.port=/dev/arm_slave_left --ro
     </section>
 
     <section class="blk" id="s8">
-      <h2><span class="no">08</span>常见问题</h2>
+      <h2><span class="no">08</span>常见问题<span class="seg">课段 8 · 融会贯通 · 13 min</span></h2>
       <ul class="check">
         <li><span class="ok">✓</span><b>推理时显存不足</b>：确认图片分辨率参数与训练一致（(3,480,640)），关掉 --display_data 的高负载预览，减小 batch 类参数。</li>
         <li><span class="ok">✓</span><b>找不到 policy.path</b>：路径必须精确到 <code>checkpoints/last/pretrained_model</code> 目录本身（不是 checkpoints），内含 config 与权重。</li>
@@ -259,13 +359,13 @@ lerobot-record --robot.type=so101_follower --robot.port=/dev/arm_slave_left --ro
     </section>
 
     <section class="blk" id="s9">
-      <h2><span class="no">09</span>拓展阅读</h2>
+      <h2><span class="no">09</span>拓展阅读<span class="seg">课段 8 · 融会贯通</span></h2>
       <div class="tip violet"><span class="lab">深入</span>① LeRobot 官方 <code>command/6_inference.sh</code> 把推理命令参数化（模型名、任务名一键切换），量产部署时照抄其组织方式；② 检查点目录里的 <code>config.json</code> 记录了训练全部超参——换机部署时它是"自解释说明书"；③ 进一步可研究 ONNX / TensorRT 导出与 Isaac Lab 仿真回放，把真机验证前置到仿真；④ 多机位部署时思考：推理 60 Hz 下每一步都要过模型吗？还是块内复用（chunk 机制本身就是为此设计）。</div>
       <div class="tip violet"><span class="lab">延伸</span>⑤ 把实例规格、镜像版本、开机关机时间做成一页值班记录，多人共用云账号时能对账；⑥ eval_ 数据集回放多次成功率，是比"看一次演示"更硬的验收证据；⑦ 检查点体积不大（ACT 52M 约 200MB 上下），走网盘/对象存储分发给多台推理机即可复现同款行为。</div>
     </section>
 
     <section class="blk" id="s10">
-      <h2><span class="no">10</span>思考题</h2>
+      <h2><span class="no">10</span>思考题<span class="seg">课段 8 · 融会贯通</span></h2>
       <div class="tip violet"><span class="lab">思考 1</span>如果把带 <code>--teleop</code> 的采集命令和带 <code>--policy.path</code> 的推理命令接反（比如推理时忘了删 teleop），系统行为会有什么差别？从"动作来源"的角度解释。</div>
       <div class="tip violet"><span class="lab">思考 2</span>真机推理时摄像头被手挡了一下，图像变模糊。结合 ACT 的输入特征（480×640 图像 + 6 维状态）想一动：模型输出会如何劣化？用什么便宜手段（数据增强 / 多视角冗余）能降低这种脆弱性？</div>
     </section>

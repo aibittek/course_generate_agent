@@ -1,0 +1,86 @@
+<!--
+  ============================================================================
+  shared/_page-template.html  —— 实验页骨架模板（复制这份开工，别从零写）
+
+  用法：
+    1. 复制本文件到 exp-XX-xxx/index.html
+    2. 替换所有 {{占位符}}
+    3. 只在 <style> 的"本页专属"区加样式，禁止覆盖公共顶栏/侧栏/卡片
+    4. 验收：和 exp-02 并排打开，顶栏、侧栏、卡片、表格、提示条必须一模一样
+
+  对应规范见 shared/README.md
+  ============================================================================
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{EXP编号}} {{实验标题}} — 机器人机械臂应用与开发</title>
+
+<!-- ① 公共样式：唯一来源，必须在所有自定义样式之前 -->
+<link rel="stylesheet" href="../shared/tutorial.css">
+<style>
+/* ② 主题色：每章一个色调，只改这 4 个变量，别直接改组件颜色 */
+:root{--theme:{{#dc2626}};--theme-deep:{{#b91c1c}};--theme-bg:{{#fee2e2}};--theme-bd:{{#fecaca}}}
+
+/* ③ 本页专属组件（命名以本页前缀开头，如 .fk-xxx / .pwm-xxx），
+      禁止在这里写 .topbar / .side / .crumb / .blk / .tip / table 的覆盖 */
+</style>
+</head>
+<body>
+
+<!-- ④ 顶栏：与 exp-02 逐字一致，只改最后的 EXP 编号 -->
+<div class="topbar">
+  <a class="logo" href="../../../index.html" style="text-decoration:none;color:inherit" title="返回课程首页">🤖 具身智能课程 · <i>教程首页</i></a>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">机械臂应用与开发</a> / {{EXP编号}}</div>
+</div>
+
+<div class="wrap">
+<!-- ⑤ 侧栏：标题一律用 <h4>（公共样式里就是这个选择器），不要自造 .stitle -->
+<aside class="side">
+  <h4>本页目录</h4>
+  <a href="#s1" class="now">01 {{第一节标题}}</a>
+  <a href="#s2">02 {{第二节标题}}</a>
+
+  <h4>本课程实验</h4>
+  <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
+  <a href="../exp-02-serial-pwm/index.html">EXP-02 串口协议与 PWM</a>
+  <a href="../exp-03-kinematics/index.html">EXP-03 正运动学</a>
+</aside>
+
+<!-- ⑥ 正文：每个二级章节一个 <section class="blk" id="sN"> -->
+<main class="content">
+
+<div class="exp-head">
+  <span class="code">EXP-{{EXP编号}} · {{章节}} · {{课时}}</span>
+  <h1>{{实验标题}}</h1>
+  <p class="desc">{{一句话说明本节解决什么问题}}</p>
+  <div class="meta">
+    <span class="tag hl">{{难度}}</span>
+    <span class="tag">{{课时}}</span>
+  </div>
+</div>
+
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>{{第一节标题}}</h2>
+  <p>正文……</p>
+</section>
+
+<!-- ⑦ 页尾导航：两栏，左"上一节"右"下一节" -->
+<nav class="expnav">
+  <a href="{{上一页路径}}"><span class="lb">上一节</span>{{上一节标题}}</a>
+  <a class="next" href="{{下一页路径}}"><span class="lb">下一节</span>{{下一节标题}}</a>
+</nav>
+
+<footer>
+  <span>具身智能课程 · 机械臂应用与开发</span>
+  <span>{{EXP编号}}</span>
+</footer>
+</main>
+</div>
+
+<!-- ⑧ 公共脚本：滚动高亮 + 代码复制，放最后 -->
+<script src="../shared/tutorial.js" defer></script>
+</body>
+</html>
