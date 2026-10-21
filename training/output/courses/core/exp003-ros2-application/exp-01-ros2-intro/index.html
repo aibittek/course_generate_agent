@@ -42,13 +42,14 @@
 
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#s1" class="now">01 问题引入：机器人软件为什么需要中间件</a>
+  <a href="#s1" class="now">01 问题引入：机器人软件为什么需要这个 ROS"中间件"</a>
   <a href="#s2">02 核心原理：ROS2 的三大设计支柱</a>
   <a href="#s4">03 RMW 抽象层与 Humble 发行版</a>
   <a href="#s7">04 实操 1 · ROS2 的 Hello World：talker</a>
   <a href="#s8">05 实操 2 · 零配置互联：listener 与系统监控</a>
-  <a href="#s9">06 注意事项与验收清单</a>
-  <a href="#s10">07 实验总结与思考题</a>
+  <a href="#s9a">06 源码一撇：发布订阅关键代码逻辑</a>
+  <a href="#s9">07 注意事项与验收清单</a>
+  <a href="#s10">08 实验总结与思考题</a>
   <h4>CH1 · ROS2 基础</h4>
   <a href="../exp-01-ros2-intro/index.html">EXP-01 ROS2 简介</a>
   <a href="../exp-02-cli-tools/index.html">EXP-02 命令工具</a>
@@ -61,7 +62,7 @@
 <div class="exp-head">
   <span class="code">EXP-01 · 第 1 章 · 验证性 · 2 学时</span>
   <h1>ROS2 简介：机器人软件的操作系统</h1>
-  <p class="desc">ROS 是什么？为什么机器人需要"中间件"？本实验从<b>机器人软件的协作之痛</b>出发，讲清 ROS2 的三大设计支柱，拆解 <b>ROS1 中心化 Master</b> 与 <b>ROS2 去中心化 DDS</b> 的架构发展变化，再通过 talker / listener 跑通第一个 ROS2 的 HelloWorld 程序。</p>
+  <p class="desc">ROS（Robot Operating System，机器人操作系统）是什么？为什么机器人需要这个 ROS"中间件"？本实验从<b>机器人软件的协作之痛</b>出发，讲清 ROS2 的三大设计支柱，拆解 <b>ROS1 中心化 Master</b> 与 <b>ROS2 去中心化 DDS</b> 的架构发展变化，再通过 talker / listener 跑通第一个 ROS2 的 HelloWorld 程序。</p>
   <div class="meta">
     <span class="tag hl">难度 ⭐ · 2 学时</span>
     <span class="tag">ROS2 Humble</span><span class="tag">DDS 中间件</span>
@@ -71,7 +72,7 @@
 
 <!-- 01 -->
 <section class="blk" id="s1">
-  <h2><span class="no">01</span>问题引入：机器人软件为什么需要中间件</h2>
+  <h2><span class="no">01</span>问题引入：机器人软件为什么需要这个 ROS"中间件"</h2>
   <p>把机器人比作一个人：<b>摄像头是眼睛、麦克风是耳朵、决策程序是大脑、机械臂和底盘是手脚</b>——那"中间件"就是这套<b>神经系统</b>，把不同器官的信号翻译成统一语言。</p>
 
   <div class="mw" id="mw01">
@@ -427,9 +428,82 @@
   <div class="tip"><span class="lab">💡 弹性验证（试一下）</span>① 先启动 listener 再启动 talker——照样通（发现无顺序）；② Ctrl+C 杀掉 talker 重启——listener 自动恢复接收。<b>把 Master 概念从脑子里删掉，这就是 DDS。</b></div>
 </section>
 
-<!-- 06 -->
+<!-- 06 源码速览 -->
+<section class="blk" id="s9a">
+  <h2><span class="no">06</span>源码一撇：发布订阅关键代码逻辑</h2>
+  <p>刚才跑通的那两个节点，代码其实只有几十行。下面是你刚执行的 <code>demo_nodes_cpp</code> 官方示例的真实源码（已精简掉版权头和组件注册宏），重点看<b>发布</b>与<b>订阅</b>这两条主线各自靠哪几行动作完成。</p>
+
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">共 4 件事</div><div class="kt">任何 ROS2 节点都一样</div><p>① 继承 Node → ② 起个名字 → ③ 建发布/订阅 → ④ 有消息就回调。</p></div>
+    <div class="kcard"><div class="kd">关键差异</div><div class="kt">只有 3 行不同</div><p>talker 是 create_publisher + 定时器发；listener 是 create_subscription + 收到就打印。</p></div>
+  </div>
+
+  <h3 style="margin:24px 0 8px;font-size:16px">📤 talker.cpp —— 每秒说一句话</h3>
+  <pre><span class="c">#include "rclcpp/rclcpp.hpp"          // ROS2 C++ 客户端库
+#include "std_msgs/msg/string.hpp"      // 消息类型：字符串</span>
+
+<span class="g">class</span> Talker : <span class="g">public</span> rclcpp::Node   <span class="c">// ① 任何节点都继承 Node</span>
+{
+<span class="g">public</span>:
+  Talker() : Node(<span class="t">"talker"</span>)              <span class="c">// ② 节点名就叫 talker</span>
+  {
+    <span class="c">// ③ 建一个发布者：往 "chatter" 这个话题上发 String</span>
+    pub_ = create_publisher&lt;std_msgs::msg::String&gt;(<span class="t">"chatter"</span>, 10);
+
+    <span class="c">// ④ 每秒触发一次，发一条编号递增的消息</span>
+    timer_ = create_wall_timer(1s, [<span class="g">this</span>]() {
+      <span class="g">auto</span> msg = std_msgs::msg::String();
+      msg.data = <span class="t">"Hello World: "</span> + std::to_string(count_++);
+      RCLCPP_INFO(get_logger(), <span class="t">"Publishing: '%s'"</span>, msg.data.c_str());
+      pub_-&gt;publish(msg);            <span class="c">// ← 发布动作：把消息推上 chatter</span>
+    });
+  }
+<span class="g">private</span>:
+  <span class="g">size_t</span> count_ = 1;
+  rclcpp::Publisher&lt;std_msgs::msg::String&gt;::SharedPtr pub_;
+  rclcpp::TimerBase::SharedPtr timer_;
+};</pre>
+
+  <h3 style="margin:24px 0 8px;font-size:16px">📥 listener.cpp —— 收到什么就打印什么</h3>
+  <pre><span class="c">#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/string.hpp"</span>
+
+<span class="g">class</span> Listener : <span class="g">public</span> rclcpp::Node   <span class="c">// ① 同样继承 Node</span>
+{
+<span class="g">public</span>:
+  Listener() : Node(<span class="t">"listener"</span>)            <span class="c">// ② 节点名叫 listener</span>
+  {
+    <span class="c">// ③ 建一个订阅者：盯住同一个 "chatter" 话题</span>
+    sub_ = create_subscription&lt;std_msgs::msg::String&gt;(
+      <span class="t">"chatter"</span>, 10,
+      [<span class="g">this</span>](std_msgs::msg::String::ConstSharedPtr msg) {   <span class="c">// ④ 回调</span>
+        RCLCPP_INFO(get_logger(), <span class="t">"I heard: [%s]"</span>, msg-&gt;data.c_str());
+      });                          <span class="c">// ← 回调：每收到一条就执行一次</span>
+  }
+<span class="g">private</span>:
+  rclcpp::Subscription&lt;std_msgs::msg::String&gt;::SharedPtr sub_;
+};</pre>
+
+  <div class="tip tealb"><span class="lab">🔍 把两份代码叠在一起看，会发现什么</span>两个类<b>结构完全一样</b>：继承 Node、给节点起名、连到 <code>chatter</code>。唯一的差别是：talker 用 <code>create_publisher</code> 主动往外发，listener 用 <code>create_subscription</code> 被动等消息。<b>它们从头到尾没有互相"认识"过</b>——没有任何一行代码写着"我要连 listener"。这就是这一节最想让你看到的事：<b>连接是 DDS 在背后自动配对的，不是代码写的。</b></div>
+
+  <table>
+    <thead><tr><th>对比项</th><th>talker</th><th>listener</th></tr></thead>
+    <tbody>
+      <tr><td>节点名</td><td><code>"talker"</code></td><td><code>"listener"</code></td></tr>
+      <tr><td>关键 API</td><td><code>create_publisher</code></td><td><code>create_subscription</code></td></tr>
+      <tr><td>话题名</td><td colspan="2"><code>"chatter"</code> ← 两边必须写成一样，否则接不上</td></tr>
+      <tr><td>消息类型</td><td colspan="2"><code>std_msgs::msg::String</code> ← 类型也必须一致</td></tr>
+      <tr><td>何时动作</td><td>定时器每秒触发一次</td><td>收到消息时被回调</td></tr>
+      <tr><td>主动/被动</td><td>主动发送</td><td>被动等待</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tip"><span class="lab">💡 不用会写，先看得懂</span>本实验不要求你会写 C++。你只需要能从代码里认出<b>四个东西</b>：节点名、话题名、消息类型、是发还是收。后面学 Python 写节点时，会发现换成 <code>rclpy</code> 之后结构一模一样，只是语法不同——<b>话题、类型、发布、订阅这四个概念是跨语言的</b>。</div>
+</section>
+
+<!-- 07 -->
 <section class="blk" id="s9">
-  <h2><span class="no">06</span>注意事项与验收清单</h2>
+  <h2><span class="no">07</span>注意事项与验收清单</h2>
   <ul class="check">
     <li><b>每个新终端</b>都执行过 <code>source /opt/ros/humble/setup.bash</code>，<code>echo $ROS_DISTRO</code> 输出 <span class="ok">humble</span></li>
     <li>talker 输出 <span class="ok">Publishing: 'Hello World: N'</span>，序列号持续递增</li>
@@ -449,17 +523,17 @@
   </table>
 </section>
 
-<!-- 07 -->
+<!-- 08 -->
 <section class="blk" id="s10">
-  <h2><span class="no">07</span>实验总结与思考题</h2>
+  <h2><span class="no">08</span>实验总结与思考题</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">跑通 talker / listener 双节点</div><p>用 node / topic 四件套俯瞰系统，完成第一次 ROS2 Hello World。</p></div>
     <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">三大支柱 + 架构发展变化</div><p>去中心化、语言无关、工具生态；六维理解 ROS1 → ROS2 的必然性。</p></div>
     <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">环境验证与自省命令</div><p>source 三板斧、ros2 run、node/topic list · info · echo · hz。</p></div>
     <div class="kcard"><div class="kd">❓ 排障思路</div><div class="kt">command not found 家族</div><p>先查 source → 再查 apt 安装 → 再查 DOMAIN_ID 与多播。</p></div>
   </div>
-  <div class="tip violet"><span class="lab">📝 思考题 1</span>订阅端默认拿不到"自己上线之前"发布的消息。若想让<b>晚启动的订阅者补收历史消息</b>，应调 QoS 的哪个要素？把你的答案带到 EXP-06 话题通讯去验证。</div>
-  <div class="tip violet"><span class="lab">📝 思考题 2</span>假如要"匿名"观察一个正在运行的机器人系统（不改任何代码），本实验的哪些命令已经足够？这样做有什么安全隐患？（提示：第 05 节终端 C；与 DDS-Security / SROS2 相关）</div>
+  <div class="tip violet"><span class="lab">📝 思考题 1</span>能否同时支持<b>多个 listener</b>？如果可以，两个 listener 接收到的数据会不会互相影响？如果同时开<b>多个 talker</b>，又是否会产生冲突呢？请动手分别在两个终端各起一个 listener、再起第二个 talker 验证你的判断。</div>
+  <div class="tip violet"><span class="lab">📝 思考题 2</span>在同一个局域网下，一台设备运行 <code>ros2 run turtlesim turtlesim_node</code>，另一台设备执行 <code>ros2 run turtlesim turtle_teleop_key</code>，能控制这只海龟吗？<b>如果不希望对方能够控制</b>，应该怎么解决这个问题？</div>
 </section>
 
 <nav class="expnav">

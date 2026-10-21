@@ -48,9 +48,8 @@ a{text-decoration:none;color:inherit}
 .card>p{font-size:.86rem;color:var(--text-secondary);margin-bottom:.7rem}
 .card .meta{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem}
 .tag{font-size:.7rem;background:var(--bg-muted);color:var(--text-secondary);padding:.14rem .55rem;border-radius:999px;border:1px solid var(--border)}
-.explist{list-style:none;max-height:1400px;overflow:hidden;margin-bottom:.7rem}
+.explist{list-style:none;overflow:hidden;margin-bottom:.7rem}
 .explist li{display:flex;align-items:center;gap:.5rem;font-size:.82rem;padding:.42rem 0;border-top:1px dashed var(--border);color:var(--text-secondary)}
-.explist .no{font-family:var(--font-mono);font-size:.7rem;color:var(--text-muted);min-width:2.1em}
 .explist .stars{color:var(--accent-amber);font-size:.7rem;letter-spacing:1px}
 .explist a.ttl{flex:1;min-width:0;color:var(--text-secondary);border-radius:4px;transition:color .2s}
 .explist a.ttl:hover{color:var(--accent-teal);text-decoration:underline}
@@ -66,6 +65,10 @@ a{text-decoration:none;color:inherit}
 .kcard h4{font-size:.95rem;margin-bottom:.45rem;display:flex;align-items:center;gap:.5rem}
 .kcard p{font-size:.84rem;color:var(--text-secondary)}
 .dot{width:.5rem;height:.5rem;border-radius:50%;display:inline-block}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.8rem}
+.stepc{background:var(--bg-surface);border:1px solid var(--border);border-radius:14px;padding:.9rem 1rem;font-size:.84rem;color:var(--text-secondary)}
+.stepc b{display:block;color:var(--text-primary);font-size:.9rem;margin-bottom:.3rem}
+.stepc .n{display:inline-flex;width:1.4rem;height:1.4rem;border-radius:50%;background:#ede9fe;color:#6d28d9;font-family:var(--font-mono);font-size:.72rem;align-items:center;justify-content:center;margin-right:.4rem}
 footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-top:3rem}
 .foot-in{max-width:1200px;margin:0 auto;padding:1.4rem 1.5rem;display:flex;justify-content:space-between;align-items:center;font-size:.82rem;color:var(--text-secondary);flex-wrap:wrap;gap:.5rem}
 .reveal{opacity:0;transform:translateY(22px);transition:opacity .55s ease,transform .55s ease}
@@ -85,12 +88,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
 <section class="hero">
   <div class="eyebrow">CATEGORY 1 · 核心课程 / CORE-03</div>
   <h1>机器人 <span class="grad">自然语言交互应用</span></h1>
-  <p>6 个递进实验，从讯飞六麦阵列的串口帧与唤醒词起步，贯通声学模型 ASR、声码器 TTS 的"听"与"说"，再把 拾音 → 唤醒 → 识别 → 理解 → 回复 → 合成 六步管线串成端到端语音对话，最终以大模型语义理解与多模态语音情绪感知赋予机器人"听懂弦外之音"的能力 —— 每个实验均配原理讲解、动画演示与交互沙盒。</p>
+  <p>让机器人听懂你说话、开口回答你，还能听出你的心情。6 个实验按"先听、再说、最后对话"的顺序排好，每个实验先用动画和互动台把原理看明白，再上真机跑通三到四步操作。</p>
   <div class="bades">
     <span class="bade">📚 6 个实验</span>
     <span class="bade">⏱️ 32 学时</span>
-    <span class="bade">🤖 六麦阵列 + 工控主机</span>
-    <span class="bade">🎯 前置：ROS2 基础</span>
+    <span class="bade">🎬 6 个动画 + 6 个互动实验台</span>
+    <span class="bade">🎯 零基础可上手</span>
   </div>
 </section>
 
@@ -104,133 +107,144 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   </div>
 
   <div class="sec-head reveal">
+    <div class="k">BEFORE YOU START</div>
+    <h2>开始之前，先看这四句</h2>
+    <p>这一页说明怎么用这套教程，初学者最容易卡住的地方都在这里。</p>
+  </div>
+  <div class="kgrid reveal">
+    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>不需要先学深度学习</h4><p>本课程不推导公式、不训练模型。你只需要知道"这一环在干什么、参数调大调小会怎样"，剩下的交给已经装好的工具。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>每个实验都是同一个结构</h4><p>十个固定小节：先讲问题 → 打比方讲原理 → 看动画 → 玩互动台 → 上机实操 → 看易错点。照着往下走就行，不用跳。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#d97706"></span>先看动画，再动手</h4><p>声音、波束、状态机这些过程肉眼看不见。先在动画和互动台里把参数拨一遍，建立直觉，真机上就只是"验证你想的对不对"。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>跑不通就翻第 09 节</h4><p>每个实验的"重点与易错点"列了三个最常见的坑（没声音、一直不回应、识别乱码）。先对照它排查，八成能自己解决。</p></div>
+  </div>
+
+  <div class="sec-head reveal">
     <div class="k">CHAPTER 1</div>
-    <h2>第 1 章 · 听与说：语音输入输出基础（EXP-01 ~ EXP-03）</h2>
-    <p>先把"耳朵"和"嘴巴"分别做扎实：串口帧里读懂六麦阵列的定位与唤醒，声学模型里跑通实时转写，声码器里把文字合成为自然人声。</p>
+    <h2>第 1 章 · 听与说：语音的入口和出口（EXP-01 ~ EXP-03）</h2>
+    <p>先把"耳朵"和"嘴巴"分开练熟：怎么被叫醒、怎么把声音变成文字、怎么把文字变成人声。</p>
   </div>
   <div class="grid">
 
     <article class="card reveal">
       <div class="top"><span class="code">EXP-01</span><span class="tag">⭐ · 4 学时</span></div>
-      <h3>六麦阵列串口唤醒</h3>
-      <p>讯飞 XFM 六麦环形阵列的 AIUI 串口协议全解析：帧头、校验、TDOA 波束定向与 ivw 唤醒事件，3 秒防抖 + wakeup_lock 抗误触，Tkinter 可视化调试。</p>
-      <div class="meta"><span class="tag">六麦阵列</span><span class="tag">AIUI 串口协议</span><span class="tag">TDOA 波束</span><span class="tag">pyserial</span></div>
+      <h3>六麦阵列唤醒</h3>
+      <p>机器人怎么知道你在叫它：六个麦克风一起听出声音从哪个方向来，再用"小飞小飞"当门铃把你叫醒，还要防止一句话叫醒两次。</p>
+      <div class="meta"><span class="tag">唤醒词</span><span class="tag">听声辨位</span><span class="tag">防误触</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-01-mic-array-wakeup/index.html#s1">① 问题引入：机器人怎么知道"你在叫它"</a><span class="stars">⭐</span><a class="dur" href="exp-01-mic-array-wakeup/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-01-mic-array-wakeup/index.html#s6">② 动画讲解：声波 → 波束成形 → 唤醒事件</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-mic-array-wakeup/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-01-mic-array-wakeup/index.html#s7">③ 互动讲解：唤醒词模拟与防抖实验台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-mic-array-wakeup/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-01-mic-array-wakeup/index.html#s8">④ 实操步骤：读通 XFM 阵列帧数据</a><span class="stars">⭐</span><a class="dur" href="exp-01-mic-array-wakeup/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-01-mic-array-wakeup/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐</span><a class="dur" href="exp-01-mic-array-wakeup/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-01-mic-array-wakeup/index.html#s6">① 动画：声波进来，六只耳朵怎么找出方向</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-mic-array-wakeup/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-01-mic-array-wakeup/index.html#s7">② 互动：连喊两次，看防抖怎么挡掉第二次</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-mic-array-wakeup/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-01-mic-array-wakeup/index.html#s8">③ 实操：跑起阵列小工具，看波束指向</a><span class="stars">⭐</span><a class="dur" href="exp-01-mic-array-wakeup/index.html#s8">实操</a></li>
       </ul>
-      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+      <div class="hint"><span>👆 点标题直达该小节</span></div>
     </article>
 
     <article class="card reveal">
       <div class="top"><span class="code">EXP-02</span><span class="tag">⭐⭐ · 4 学时</span></div>
       <h3>声学模型 ASR 语音识别</h3>
-      <p>sherpa-onnx + Zipformer-Transducer 流式识别：100ms 分块入网、RKNN NPU 加速、endpoint 三条判停规则，热词表与 beam search 调参压低字错率 WER。</p>
-      <div class="meta"><span class="tag">sherpa-onnx</span><span class="tag">声学模型</span><span class="tag">热词</span><span class="tag">WER</span></div>
+      <p>把你说的声音变成屏幕上的一行字：边说边出字、说完了怎么自动断句、专有名词老是听错怎么办。</p>
+      <div class="meta"><span class="tag">边说边转写</span><span class="tag">热词</span><span class="tag">自动断句</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-02-asr/index.html#s1">① 问题引入：从"声音"到"文字"隔着多远</a><span class="stars">⭐</span><a class="dur" href="exp-02-asr/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-02-asr/index.html#s6">② 动画讲解：音频流 → 分块 → 声学模型 → 解码</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-asr/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-02-asr/index.html#s7">③ 互动讲解：热词与解码参数实验台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-asr/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-02-asr/index.html#s8">④ 实操步骤：跑通 sherpa-onnx 实时识别链</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-asr/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-02-asr/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-asr/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-02-asr/index.html#s6">① 动画：一段录音怎么一步步变成文字</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-asr/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-02-asr/index.html#s7">② 互动：加几个热词，看错字被纠正</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-asr/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-02-asr/index.html#s8">③ 实操：对着麦克风说一句，看屏幕出字</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-asr/index.html#s8">实操</a></li>
       </ul>
-      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+      <div class="hint"><span>👆 点标题直达该小节</span></div>
     </article>
 
     <article class="card reveal">
       <div class="top"><span class="code">EXP-03</span><span class="tag">⭐⭐ · 4 学时</span></div>
       <h3>TTS 语音合成</h3>
-      <p>Matcha-TTS 声学模型 + Vocos 声码器两级工厂：文本正则化、梅尔谱预测、波形重建，语速 / 音量 / 发音人三组旋钮与 RTF 实时率调优。</p>
-      <div class="meta"><span class="tag">Matcha-TTS</span><span class="tag">Vocos 声码器</span><span class="tag">梅尔谱</span><span class="tag">RTF</span></div>
+      <p>让机器人开口说话：屏幕上的一行字怎么变成自然的人声，语速快慢、声音大小、说话人怎么调。</p>
+      <div class="meta"><span class="tag">文字变人声</span><span class="tag">语速与音量</span><span class="tag">发音人</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-03-tts/index.html#s1">① 问题引入：只会"听"不会"说"的机器人</a><span class="stars">⭐</span><a class="dur" href="exp-03-tts/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-03-tts/index.html#s6">② 动画讲解：文本 → 音素 → 梅尔谱 → 波形</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-tts/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-03-tts/index.html#s7">③ 互动讲解：语速 · 音量 · 发音人调节台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-tts/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-03-tts/index.html#s8">④ 实操步骤：合成第一句机器人语音</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-tts/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-03-tts/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-tts/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-03-tts/index.html#s6">① 动画：文字到声音中间经过哪三步</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-tts/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-03-tts/index.html#s7">② 互动：拖三个滑块，听声音怎么变</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-tts/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-03-tts/index.html#s8">③ 实操：合成你的第一句机器人语音</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-tts/index.html#s8">实操</a></li>
       </ul>
-      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+      <div class="hint"><span>👆 点标题直达该小节</span></div>
     </article>
 
   </div>
 
   <div class="sec-head reveal">
     <div class="k">CHAPTER 2</div>
-    <h2>第 2 章 · 对话与感知：端到端集成与智能层（EXP-04 ~ EXP-06）</h2>
-    <p>把三个单模块串成会话：状态机调度听想说、Function Calling 让大模型"说了就做"，再给回答加上情绪维度的察言观色。</p>
+    <h2>第 2 章 · 对话与感知：把三件事串起来（EXP-04 ~ EXP-06）</h2>
+    <p>"会听"和"会说"拼在一起还不是对话。这一章解决三个问题：什么时候该听、说出来的话要真的去做、回答前先看看你的心情。</p>
   </div>
   <div class="grid">
 
     <article class="card reveal">
       <div class="top"><span class="code">EXP-04</span><span class="tag">⭐⭐ · 8 学时</span></div>
       <h3>端到端语音对话</h3>
-      <p>voice_interaction.py 三态状态机（IDLE / LISTENING / SPEAKING）：硬件唤醒 + 双轮 drain 清残句、大模型流式输出按标点分句喂 TTS、interrupt_event 实现随时打断。</p>
-      <div class="meta"><span class="tag">状态机</span><span class="tag">流式对话</span><span class="tag">打断 barge-in</span><span class="tag">RKLLM</span></div>
+      <p>把听、想、说串成一通完整对话：平时只听唤醒词，叫醒后认真听你说，回答时闭嘴别听自己，还能中途被你别打断。</p>
+      <div class="meta"><span class="tag">三种状态轮转</span><span class="tag">边想边说</span><span class="tag">随时打断</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-04-voice-dialog/index.html#s1">① 问题引入：把"听、想、说"串成一句话有多难</a><span class="stars">⭐</span><a class="dur" href="exp-04-voice-dialog/index.html#s1">8 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-04-voice-dialog/index.html#s6">② 动画讲解：唤醒 → 识别 → 思考 → 朗读 状态流转</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-voice-dialog/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-04-voice-dialog/index.html#s7">③ 互动讲解：对话状态机步进台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-voice-dialog/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-04-voice-dialog/index.html#s8">④ 实操步骤：全链路通话四步走</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-voice-dialog/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-04-voice-dialog/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-voice-dialog/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-04-voice-dialog/index.html#s6">① 动画：一问一答里，机器人内部换了哪些状态</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-voice-dialog/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-04-voice-dialog/index.html#s7">② 互动：一步步走完"叫醒 → 提问 → 回答 → 打断"</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-voice-dialog/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-04-voice-dialog/index.html#s8">③ 实操：和机器人完成第一次真正的对话</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-voice-dialog/index.html#s8">实操</a></li>
       </ul>
-      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+      <div class="hint"><span>👆 点标题直达该小节</span></div>
     </article>
 
     <article class="card reveal">
       <div class="top"><span class="code">EXP-05</span><span class="tag">⭐⭐⭐ · 8 学时</span></div>
       <h3>大模型语义理解</h3>
-      <p>意图识别、槽位提取与结构化 JSON 输出：本地 RKLLM 部署 Qwen 大模型，Function Calling 用 JSON Schema 描述工具，让"打开车灯"从一句话变成一次真实调用。</p>
-      <div class="meta"><span class="tag">意图识别</span><span class="tag">槽位提取</span><span class="tag">Function Calling</span><span class="tag">RKLLM</span></div>
+      <p>听懂你想要什么：一句话里分出"要办什么事"和"关键信息是什么"，再让大模型把话说成机器能执行的一条指令。</p>
+      <div class="meta"><span class="tag">意图</span><span class="tag">关键信息</span><span class="tag">说了就做</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-05-llm-understanding/index.html#s1">① 问题引入：同一句话，执行还是闲聊</a><span class="stars">⭐⭐</span><a class="dur" href="exp-05-llm-understanding/index.html#s1">8 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-05-llm-understanding/index.html#s6">② 动画讲解：一句话 → 意图 + 槽位 → JSON 行动</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-llm-understanding/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-05-llm-understanding/index.html#s7">③ 互动讲解：意图分类与采样参数实验台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-llm-understanding/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-05-llm-understanding/index.html#s8">④ 实操步骤：起服务 → 调接口 → 函数落地</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-llm-understanding/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-05-llm-understanding/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-llm-understanding/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-05-llm-understanding/index.html#s6">① 动画：一句话怎么变成一次真实的动作</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-llm-understanding/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-05-llm-understanding/index.html#s7">② 互动：给它十句话，看它怎么分类</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-llm-understanding/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-05-llm-understanding/index.html#s8">③ 实操：说"打开车灯"，让指令真正跑起来</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-llm-understanding/index.html#s8">实操</a></li>
       </ul>
-      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+      <div class="hint"><span>👆 点标题直达该小节</span></div>
     </article>
 
     <article class="card reveal">
       <div class="top"><span class="code">EXP-06</span><span class="tag">⭐⭐⭐ · 4 学时</span></div>
       <h3>多模态语音情绪感知</h3>
-      <p>文本与语音双通道情绪识别：情感词典打分、F0 / 能量 / 语速三组韵律特征，双模态融合策略输出情绪标签，为客服与情感助手场景给出回应语气建议。</p>
-      <div class="meta"><span class="tag">文本情绪</span><span class="tag">韵律特征</span><span class="tag">双模态融合</span><span class="tag">情感助手</span></div>
+      <p>听出你此刻的心情：文字看"说了什么"，声音听"怎么说的"，两路判断合起来定案——同一句"我没事"不再理解错。</p>
+      <div class="meta"><span class="tag">文字看内容</span><span class="tag">声音听语气</span><span class="tag">两路合并</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-06-emotion-perception/index.html#s1">① 问题引入：同样一句"没事"，语气不同意思相反</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-emotion-perception/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-06-emotion-perception/index.html#s6">② 动画讲解：双通道特征 → 情绪维度坐标</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-emotion-perception/index.html#s6">动画</a></li>
-        <li><a class="ttl" href="exp-06-emotion-perception/index.html#s7">③ 互动讲解：双模态融合权重实验台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-emotion-perception/index.html#s7">交互</a></li>
-        <li><a class="ttl" href="exp-06-emotion-perception/index.html#s8">④ 实操步骤：文本 + 韵律三特征识别管线</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-emotion-perception/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-06-emotion-perception/index.html#s10">⑤ 总结与思考</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-emotion-perception/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-06-emotion-perception/index.html#s6">① 动画：文字和声音两条线怎么汇到一个结论</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-emotion-perception/index.html#s6">动画</a></li>
+        <li><a class="ttl" href="exp-06-emotion-perception/index.html#s7">② 互动：调一调权重，看结论当场翻转</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-emotion-perception/index.html#s7">交互</a></li>
+        <li><a class="ttl" href="exp-06-emotion-perception/index.html#s8">③ 实操：给自己录的语音判一次情绪</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-emotion-perception/index.html#s8">实操</a></li>
       </ul>
-      <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
+      <div class="hint"><span>👆 点标题直达该小节</span></div>
     </article>
 
   </div>
 
   <div class="sec-head reveal">
+    <div class="k">HOW EACH PAGE WORKS</div>
+    <h2>每个实验页怎么用</h2>
+    <p>六个实验页结构完全一样，按顺序走一遍就是一堂课。</p>
+  </div>
+  <div class="steps reveal">
+    <div class="stepc"><b><span class="n">01-05</span>先搞懂要解决什么</b>问题引入、打比方讲原理、关联知识点、实验目标、环境准备。</div>
+    <div class="stepc"><b><span class="n">06</span>看动画</b>把看不见的过程画出来，一遍循环大约 4 秒，看不懂就多看两遍。</div>
+    <div class="stepc"><b><span class="n">07</span>玩互动台</b>点按钮、拖滑块，看输出怎么变。错了也不会有事，随便试。</div>
+    <div class="stepc"><b><span class="n">08-10</span>上机与复盘</b>三到四步实操、三个常见坑、两道思考题。</div>
+  </div>
+
+  <div class="sec-head reveal">
     <div class="k">TECH STACK</div>
-    <h2>技术栈与硬件平台</h2>
-    <p>全课程围绕 讯飞六麦阵列 + 工控主机（RK3576 / RKLLM）展开，实验数据全部来自实物采集。</p>
+    <h2>用到的工具与硬件</h2>
+    <p>不需要提前学会，用到哪一环讲哪一环。整套实验跑在实验箱和六麦阵列上。</p>
   </div>
   <div class="pills reveal">
     <span class="pill"><i style="background:#7c3aed"></i>讯飞六麦阵列</span>
-    <span class="pill"><i style="background:#6d28d9"></i>AIUI 串口协议</span>
-    <span class="pill"><i style="background:#2563eb"></i>pyserial</span>
-    <span class="pill"><i style="background:#0d9488"></i>sherpa-onnx ASR</span>
-    <span class="pill"><i style="background:#059669"></i>Zipformer 声学模型</span>
-    <span class="pill"><i style="background:#d97706"></i>Matcha-TTS</span>
-    <span class="pill"><i style="background:#b45309"></i>Vocos 声码器</span>
-    <span class="pill"><i style="background:#e11d48"></i>端到端语音对话</span>
-    <span class="pill"><i style="background:#4f46e5"></i>RKLLM · Qwen</span>
-    <span class="pill"><i style="background:#be185d"></i>LLM 语义理解</span>
-    <span class="pill"><i style="background:#0891b2"></i>Function Calling</span>
-    <span class="pill"><i style="background:#9333ea"></i>情绪感知</span>
-    <span class="pill"><i style="background:#334155"></i>VAD · 流式分句</span>
-    <span class="pill"><i style="background:#0f766e"></i>工控主机 RK3576</span>
+    <span class="pill"><i style="background:#6d28d9"></i>唤醒词检测</span>
+    <span class="pill"><i style="background:#2563eb"></i>声音转文字</span>
+    <span class="pill"><i style="background:#0d9488"></i>文字转语音</span>
+    <span class="pill"><i style="background:#059669"></i>边说边识别</span>
+    <span class="pill"><i style="background:#d97706"></i>热词表</span>
+    <span class="pill"><i style="background:#b45309"></i>语速与发音人</span>
+    <span class="pill"><i style="background:#e11d48"></i>对话状态机</span>
+    <span class="pill"><i style="background:#4f46e5"></i>本地大模型</span>
+    <span class="pill"><i style="background:#be185d"></i>意图与关键信息</span>
+    <span class="pill"><i style="background:#0891b2"></i>函数调用</span>
+    <span class="pill"><i style="background:#9333ea"></i>情绪判断</span>
+    <span class="pill"><i style="background:#334155"></i>实验箱 B2</span>
   </div>
 
   <div class="sec-head reveal">
@@ -238,17 +252,17 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <h2>学习路径建议</h2>
   </div>
   <div class="kgrid reveal">
-    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>先分后总</h4><p>EXP-01~03 是三条独立的"单模块"线：阵列只管听声辨位，ASR 只管转写，TTS 只管合成。逐个跑通后再进入第 2 章，全链路排障时才能迅速定位是哪一环出了问题。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>协议细节别跳过</h4><p>串口帧头 0xA5、校验和、小端字节序……这些"枯燥"的字节正是排查"唤醒没反应"的第一现场；ASR 的 endpoint 与热词规则同理，参数不对，体验全毁。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#d97706"></span>善用交互动画</h4><p>波束成形、解码搜索、状态流转、情绪坐标这些看不见的过程，先在交互沙盒里把参数调一遍，建立直觉，再到工控主机上验证。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>从对话到理解</h4><p>EXP-04 让机器人"开口说话"，EXP-05 让它"听懂并动手"，EXP-06 让它"察觉你的情绪"——三层能力叠加，才是完整的自然语言交互应用。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>别跳着做</h4><p>EXP-01~03 是三块独立的积木，EXP-04 把它们拼在一起，EXP-05、06 再往上加。前面那块没跑通，后面一定卡住，而且很难查。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>参数别怕调错</h4><p>热词、语速、权重这些参数，调坏了最多是结果难看，不会烧硬件。多试几组，比只跑一遍标准答案收获大。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#d97706"></span>每一步都看"预期输出"</h4><p>实操步骤里写了正常应该看到什么。对不上就先停，去第 09 节找对应现象，别硬往下走。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>最后串一遍完整流程</h4><p>六个实验做完，从"小飞小飞"开始，到机器人用合适的语气回答你，整条链跑一遍——这才是这门课的结业标准。</p></div>
   </div>
 
 </div>
 
 <footer>
   <div class="foot-in">
-    <span>🎓 具身智能课程 · CORE-03 · 机器人自然语言交互应用（CORE-03 · 32 学时 · 6 实验）</span>
+    <span>🎓 具身智能课程 · CORE-03 · 机器人自然语言交互应用（32 学时 · 6 实验）</span>
     <span><a href="../../index.html">总首页</a> · 基于 speech_practice 实验讲义改编，含原理讲解与互动演示</span>
   </div>
 </footer>

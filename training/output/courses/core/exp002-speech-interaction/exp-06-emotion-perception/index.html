@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP-06 多模态语音情绪感知 · CORE-03 教程</title>
+<title>EXP-06 · 多模态语音情绪感知 — 机器人自然语言交互应用</title>
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{
@@ -17,7 +17,7 @@
 <body>
 
 <header class="topbar">
-  <a class="logo" href="../index.html">📘 CORE-03</a>
+  <a class="logo" href="../../../index.html" style="text-decoration:none;color:inherit" title="返回课程首页">🧠 具身智能课程 · <i>教程首页</i></a>
   <nav class="crumb">
     <a href="../../../index.html#core">核心课程</a> / <a href="../index.html">自然语言交互应用</a> / EXP-06
   </nav>
@@ -27,19 +27,19 @@
 
   <aside class="side">
     <h4>本页目录</h4>
-    <a href="#s1" class="now">01 问题引入：同样一句"没事"</a>
-    <a href="#s2">02 原理通俗讲解：两个侦探断案</a>
+    <a href="#s1" class="now">01 问题引入：同样一句"没事"，意思可以完全相反</a>
+    <a href="#s2">02 原理通俗讲解：两个侦探一起断案</a>
     <a href="#s3">03 关联知识点</a>
     <a href="#s4">04 实验目标</a>
     <a href="#s5">05 实验环境与准备</a>
-    <a href="#s6">06 动画讲解：文字与声音两条线</a>
-    <a href="#s7">07 互动讲解：调权重看结论翻转</a>
+    <a href="#s6">06 动画讲解：文字与声音的两条线</a>
+    <a href="#s7">07 互动讲解：调一调权重，看结论怎么翻</a>
     <a href="#s8">08 实操步骤</a>
     <a href="#s9">09 重点与易错点</a>
     <a href="#s10">10 总结与思考</a>
 
     <h4>CORE-03 · 自然语言交互</h4>
-    <a href="../exp-01-mic-array-wakeup/index.html">EXP-01 六麦阵列串口唤醒</a>
+    <a href="../exp-01-mic-array-wakeup/index.html">EXP-01 六麦阵列唤醒</a>
     <a href="../exp-02-asr/index.html">EXP-02 声学模型 ASR 语音识别</a>
     <a href="../exp-03-tts/index.html">EXP-03 TTS 语音合成</a>
     <a href="../exp-04-voice-dialog/index.html">EXP-04 端到端语音对话</a>
@@ -51,13 +51,13 @@
 
     <div class="exp-head">
       <span class="code">EXP-06 · 第 2 章 · 综合性 · 4 学时</span>
-      <h1>多模态语音情绪感知</h1>
+      <h1>多模态语音情绪感知：听出你的心情</h1>
       <p class="desc">前面的实验让机器人听清了字、也听懂了意思；这一课补上最后一件事——听出你此刻是什么心情。用文字和声音两条线索，各自判断、再合起来定案。</p>
       <div class="meta">
+        <span class="tag hl">难度 ⭐⭐⭐ · 4 学时</span>
         <span class="tag">文字看说了什么</span>
         <span class="tag">声音听怎么说的</span>
         <span class="tag">两路合并判断</span>
-        <span class="tag hl">情感助手 · 智能客服</span>
       </div>
     </div>
 
@@ -152,15 +152,17 @@
           <tr><td>硬件</td><td>具身智能实验箱 B2（RK3576）+ 讯飞六麦阵列</td></tr>
           <tr><td>复用模块</td><td>EXP-01~02 的录音与识别、EXP-05 的对话服务、EXP-03 的语音合成</td></tr>
           <tr><td>文本通道</td><td>一张情绪词表，纯 Python 即可，不需要模型</td></tr>
-          <tr><td>语音通道</td><td>16kHz 单声道录音，每句 2~4 秒</td></tr>
+          <tr><td>语音通道</td><td>16kHz / 16 位 / 单声道录音，每句 2~4 秒</td></tr>
+          <tr><td>现成工具</td><td><code>audio_analyzer.py</code>（量音量、查爆音）、<code>asr_test.py --audio-file</code>（数出字数算语速）</td></tr>
           <tr><td>素材</td><td><code>samples/</code> 目录：自己录平静 / 生气 / 难过 / 开心各 3 条</td></tr>
         </tbody>
       </table>
-      <pre class="language-bash"><span class="c"># 0) 先确认前几站是通的</span>
+      <pre><span class="c"># 0) 先确认前几站是通的（在 car1_speech/tools 下）</span>
 <span class="g">python3 asr_test.py --mic-array</span>       <span class="y"># 能出文字，文本通道才有原料</span>
 <span class="g">python3 llm_test.py --prompt "你好"</span>   <span class="y"># 对话服务在线，情绪结论才有人接</span>
 
-<span class="c"># 1) 先录一条基准样本（正常语气），后面所有音量都跟它比</span>
+<span class="c"># 1) 先录一条基准样本（正常语气），后面所有数值都跟它比</span>
+<span class="g">mkdir -p samples</span>
 <span class="g">arecord -D plughw:4,0 -r 16000 -f S16_LE -c 1 -d 3 samples/baseline.wav</span></pre>
       <div class="tip"><span class="lab">✅ 准备检查</span>一次实验里，所有样本都用<b>同一个录音音量</b>、麦克风离嘴<b>差不多 30 厘米</b>。音量特征比的不是"有多响"，而是"比平时响多少"，录音条件一变，结论就全乱。</div>
     </section>
@@ -262,31 +264,78 @@
         <div class="step"><span class="n">4</span><div>给出一条回应语气建议</div></div>
       </div>
 
+      <h3>步骤 0：先备好课堂脚本</h3>
+      <p>这个实验的逻辑很短——文字查表、声音量三个数、两边加权，一共不到 50 行。把下面这段存成 <code>car1_speech/tools/emotion_demo.py</code>，后面三步都用它。</p>
+      <pre><span class="c">#!/usr/bin/env python3</span>
+<span class="c">"""EXP-06 课堂脚本：文字查表 / 语音三特征 / 两路融合"""</span>
+<span class="b">import</span> argparse, math, wave
+<span class="b">import</span> numpy <span class="b">as</span> np
+
+WORDS = {<span class="y">"太棒了"</span>: 2.0, <span class="y">"谢谢"</span>: 1.0, <span class="y">"开心"</span>: 1.5, <span class="y">"好的"</span>: 0.5,
+         <span class="y">"随便"</span>: -1.0, <span class="y">"烦死"</span>: -2.0, <span class="y">"别再"</span>: -1.5, <span class="y">"算了"</span>: -1.0}
+
+<span class="b">def</span> text_score(text):                       <span class="c"># 文字：查表累加，范围 −2 ~ +2</span>
+    s = sum(v <span class="b">for</span> k, v <span class="b">in</span> WORDS.items() <span class="b">if</span> k <span class="b">in</span> text)
+    <span class="b">return</span> max(-2.0, min(2.0, s))
+
+<span class="b">def</span> load(path):
+    <span class="b">with</span> wave.open(path, <span class="y">"rb"</span>) <span class="b">as</span> w:
+        <span class="b">return</span> np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16) / 32768.0
+
+<span class="b">def</span> voice_score(wav, base, text=<span class="y">""</span>):
+    a, b = load(wav), load(base)
+    rms  = 20 * math.log10(np.sqrt(np.mean(a ** 2)) + 1e-9)      <span class="c"># 音量</span>
+    rms0 = 20 * math.log10(np.sqrt(np.mean(b ** 2)) + 1e-9)
+    zcr  = np.mean(np.abs(np.diff(np.sign(a))))                  <span class="c"># 音高代理：越尖越大</span>
+    zcr0 = np.mean(np.abs(np.diff(np.sign(b))))
+    loud, pitch = rms - rms0, zcr / (zcr0 + 1e-9)
+    rate = len(text) / (len(a) / 16000) <span class="b">if</span> text <span class="b">else</span> 0     <span class="c"># 语速：字/秒</span>
+    s = (1 <span class="b">if</span> loud > 3 <span class="b">else</span> -1 <span class="b">if</span> loud < -3 <span class="b">else</span> 0)
+    s += (1 <span class="b">if</span> pitch > 1.15 <span class="b">else</span> -1 <span class="b">if</span> pitch < 0.85 <span class="b">else</span> 0)
+    s += (1 <span class="b">if</span> rate > 5 <span class="b">else</span> -1 <span class="b">if</span> 0 <span class="b">&lt;</span> rate <span class="b">&lt;</span> 3 <span class="b">else</span> 0)
+    <span class="b">return</span> s * 0.7, loud, pitch, rate
+
+<span class="b">if</span> __name__ == <span class="y">"__main__"</span>:
+    p = argparse.ArgumentParser(); p.add_argument(<span class="y">"cmd"</span>)
+    p.add_argument(<span class="y">"--text"</span>, default=<span class="y">""</span>); p.add_argument(<span class="y">"--wav"</span>)
+    p.add_argument(<span class="y">"--base"</span>); p.add_argument(<span class="y">"--w"</span>, type=float, default=0.5)
+    a = p.parse_args()
+    <span class="b">if</span> a.cmd == <span class="y">"text"</span>:
+        t = text_score(a.text); <span class="b">print</span>(<span class="y">f"文字分 {t:+.1f} → "</span>, <span class="y">"积极"</span> <span class="b">if</span> t > 0.5 <span class="b">else</span> <span class="y">"消极"</span> <span class="b">if</span> t < -0.5 <span class="b">else</span> <span class="y">"中性"</span>)
+    <span class="b">elif</span> a.cmd == <span class="y">"voice"</span>:
+        v, loud, pitch, rate = voice_score(a.wav, a.base, a.text)
+        <span class="b">print</span>(<span class="y">f"音量 {loud:+.1f}dB  音高 {pitch:.2f}×  语速 {rate:.1f}字/秒 → 语音分 {v:+.1f}"</span>)
+    <span class="b">else</span>:
+        t = text_score(a.text); v, loud, pitch, rate = voice_score(a.wav, a.base, a.text)
+        f = a.w * t + (1 - a.w) * v
+        <span class="b">print</span>(<span class="y">f"文字 {t:+.1f} × {a.w:.1f} + 语音 {v:+.1f} × {1-a.w:.1f} = {f:+.2f}"</span>)
+        <span class="b">print</span>(<span class="y">"结论："</span>, <span class="y">"开心"</span> <span class="b">if</span> f > 0.7 <span class="b">else</span> <span class="y">"消极/难过"</span> <span class="b">if</span> f < -0.7 <span class="b">else</span> <span class="y">"中性（把握不高）"</span>)</pre>
+
       <h3>步骤 1：文字情绪——换几种说法看看</h3>
-      <p>本实验提供一个课堂骨架脚本 <code>emotion_demo.py</code>，三个子命令分别对应文字、声音、融合。</p>
-      <pre class="language-bash"><span class="g">python3 emotion_demo.py text --text "太棒了，谢谢你"</span>
+      <pre><span class="g">python3 emotion_demo.py text --text "太棒了，谢谢你"</span>
 <span class="g">python3 emotion_demo.py text --text "随便吧，都行"</span>
 <span class="g">python3 emotion_demo.py text --text "烦死了，别再打了"</span></pre>
-      <p><b>预期输出：</b>每句话打印一个标签和一个把握度，例如"太棒了"→ 开心（把握 0.8）、"随便吧"→ 消极（把握 0.6）、"烦死了"→ 愤怒（把握 0.9）。换三到四句不同情绪的话，观察哪种话容易判错。</p>
+      <p><b>预期输出：</b>依次打印 <code>文字分 +2.0 → 积极</code>、<code>文字分 -1.0 → 消极</code>、<code>文字分 -2.0 → 消极</code>。换三到四句不同情绪的话，观察哪种话容易判错——只要句子里没有词表里的词（比如"我没事"），就一律判"中性"。</p>
 
-      <h3>步骤 2：语音情绪——量出音高、音量、语速</h3>
-      <pre class="language-bash"><span class="c"># 录一条难过样本（离麦 30cm，正常音量说完整一句）</span>
+      <h3>步骤 2：语音情绪——量出音量、音高、语速</h3>
+      <pre><span class="c"># 录一条难过样本（离麦 30cm，正常音量说完整一句）</span>
 <span class="g">arecord -D plughw:4,0 -r 16000 -f S16_LE -c 1 -d 3 samples/sad_01.wav</span>
-<span class="g">python3 emotion_demo.py voice --wav samples/sad_01.wav --base samples/baseline.wav</span></pre>
-      <p><b>预期输出：</b>打印三项数值与一句判断，例如 <code>音高 165Hz（比平时低）、音量 0.08（偏小）、语速 3.2 字/秒（偏慢）→ 难过</code>。换成自己录的生气样本，三项应当同时反向：更高、更响、更快。</p>
+<span class="g">python3 emotion_demo.py voice --wav samples/sad_01.wav --base samples/baseline.wav --text "我没事"</span></pre>
+      <p><b>预期输出：</b>打印三项数值与一个语音分，例如 <code>音量 −4.2dB  音高 0.79×  语速 2.6字/秒 → 语音分 −2.1</code>。换成生气样本，三项应同时反向：更响（大于 +3dB）、更尖（大于 1.15×）、更快（大于 5 字/秒）。</p>
+      <div class="tip"><span class="lab">💡 为什么音高用"过零率"</span>严格算音高要先找基频，代码会翻好几倍。这里用"声音波形穿过零点的频率"当替身：声音越尖，过零越密，数值越大。绝对值不用管，只比它和基准样本的倍数。</div>
 
       <h3>步骤 3：融合——调权重，找翻转点</h3>
-      <pre class="language-bash"><span class="g">python3 emotion_demo.py fuse --text "我没事" --wav samples/sad_01.wav --w 0.8</span>
-<span class="g">python3 emotion_demo.py fuse --text "我没事" --wav samples/sad_01.wav --w 0.5</span>
-<span class="g">python3 emotion_demo.py fuse --text "我没事" --wav samples/sad_01.wav --w 0.2</span></pre>
-      <p><b>预期输出：</b>w=0.8 时更信文字，判"中性"；w=0.5 时两路各占一半，仍判"中性"但分数已经被拉低；w=0.2 时更信声音，结论翻转为"悲伤"。记下结论从哪一档开始翻转，这就是这台机器人的"信任分界线"。</p>
+      <pre><span class="g">python3 emotion_demo.py fuse --text "我没事" --wav samples/sad_01.wav --base samples/baseline.wav --w 0.8</span>
+<span class="g">python3 emotion_demo.py fuse --text "我没事" --wav samples/sad_01.wav --base samples/baseline.wav --w 0.5</span>
+<span class="g">python3 emotion_demo.py fuse --text "我没事" --wav samples/sad_01.wav --base samples/baseline.wav --w 0.2</span></pre>
+      <p><b>预期输出：</b>文字分 0.0（词表里没有"没事"），语音分约 −2.1。w=0.8 时融合分 −0.42，结论"中性（把握不高）"；w=0.5 时 −1.05，翻成"消极/难过"；w=0.2 时 −1.68，更确定是难过。翻转点大约在 w≈0.67——文字分不到 0.7 时，只要语音足够消极，权重一降就翻。这就是这台机器人的"信任分界线"。</p>
 
       <h3>步骤 4：把结论变成一句回应语气</h3>
       <p>情绪标签的最终用途，是让回复的语气跟着变——写进对话上下文即可：</p>
-      <pre class="language-python"><span class="c"># 放在人设之后、用户问题之前，作为一句叮嘱</span>
+      <pre><span class="c"># 放在人设之后、用户问题之前，作为一句叮嘱</span>
 <span class="g">system</span> = <span class="b">"你是客服助手。用户当前情绪：难过（把握中等）。</span>
 <span class="b">          请先安抚一句，再处理问题；语气放慢放软，不要推销。"</span></pre>
-      <pre class="language-bash"><span class="c"># 再让语音合成把语气也放慢</span>
+      <pre><span class="c"># 再让语音合成把语气也放慢（tts_test.py 在 car1_speech/tools 下）</span>
 <span class="g">python3 tts_test.py --text "别急，我马上帮您处理。" --speed 0.9</span></pre>
       <p><b>预期输出：</b>同一句用户问题，加上这段叮嘱前后各跑一次，能明显听出/看出语气差别：加之前是标准客服腔，加之后先安抚再办事。</p>
 
@@ -320,8 +369,8 @@
     </section>
 
     <nav class="expnav">
-      <a href="../exp-05-llm-understanding/index.html">← EXP-05 大模型语义理解</a>
-      <a href="../index.html" class="next">返回课程总览 · CORE-03 →</a>
+      <a href="../exp-05-llm-understanding/index.html"><span class="lb">← 上一个</span>EXP-05 大模型语义理解</a>
+      <a href="../index.html" class="next"><span class="lb">全部完成 →</span>返回课程总览 · CORE-03</a>
     </nav>
 
     <footer>

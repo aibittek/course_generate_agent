@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP-05 大模型语义理解 · CORE-03 教程</title>
+<title>EXP-05 · 大模型语义理解 — 机器人自然语言交互应用</title>
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{
@@ -18,7 +18,7 @@ pre code{background:none;border:none;border-radius:0;padding:0;font-size:1em;col
 <body>
 
 <header class="topbar">
-  <a class="logo" href="../index.html">📘 CORE-03</a>
+  <a class="logo" href="../../../index.html" style="text-decoration:none;color:inherit" title="返回课程首页">🧠 具身智能课程 · <i>教程首页</i></a>
   <nav class="crumb">
     <a href="../../../index.html#core">核心课程</a> / <a href="../index.html">自然语言交互应用</a> / EXP-05
   </nav>
@@ -28,19 +28,19 @@ pre code{background:none;border:none;border-radius:0;padding:0;font-size:1em;col
 
   <aside class="side">
     <h4>本页目录</h4>
-    <a href="#s1" class="now">01 问题引入：执行还是闲聊</a>
-    <a href="#s2">02 原理通俗讲解：秘书接电话</a>
+    <a href="#s1" class="now">01 问题引入：同一句话，执行还是闲聊</a>
+    <a href="#s2">02 原理通俗讲解：秘书接电话的四件事</a>
     <a href="#s3">03 关联知识点</a>
     <a href="#s4">04 实验目标</a>
     <a href="#s5">05 实验环境与准备</a>
-    <a href="#s6">06 动画讲解：一句话变成一次调用</a>
+    <a href="#s6">06 动画讲解：一句话如何变成一次真实调用</a>
     <a href="#s7">07 互动讲解：意图分类实验台</a>
     <a href="#s8">08 实操步骤</a>
     <a href="#s9">09 重点与易错点</a>
     <a href="#s10">10 总结与思考</a>
 
     <h4>CORE-03 · 自然语言交互</h4>
-    <a href="../exp-01-mic-array-wakeup/index.html">EXP-01 六麦阵列串口唤醒</a>
+    <a href="../exp-01-mic-array-wakeup/index.html">EXP-01 六麦阵列唤醒</a>
     <a href="../exp-02-asr/index.html">EXP-02 声学模型 ASR 语音识别</a>
     <a href="../exp-03-tts/index.html">EXP-03 TTS 语音合成</a>
     <a href="../exp-04-voice-dialog/index.html">EXP-04 端到端语音对话</a>
@@ -52,13 +52,14 @@ pre code{background:none;border:none;border-radius:0;padding:0;font-size:1em;col
 
     <div class="exp-head">
       <span class="code">EXP-05 · 第 2 章 · 综合性 · 8 学时</span>
-      <h1>大模型语义理解</h1>
+      <h1>大模型语义理解：听懂你想干什么</h1>
       <p class="desc">上一节的机器人靠关键词"对暗号"，换个说法就听不懂。这一节让大模型当一次"秘书"：先听懂你要办什么事，再记下关键信息，最后照着办事清单真的去执行——而不只是嘴上答应一句"好的"。</p>
       <div class="meta">
+        <span class="tag hl">难度 ⭐⭐⭐ · 8 学时</span>
         <span class="tag">意图识别</span>
         <span class="tag">槽位提取</span>
         <span class="tag">Function Calling</span>
-        <span class="tag hl">本地大模型 · 断网可用</span>
+        <span class="tag">本地大模型 · 断网可用</span>
       </div>
     </div>
 
@@ -275,8 +276,8 @@ pre code{background:none;border:none;border-radius:0;padding:0;font-size:1em;col
 <span class="c"># 指令：模型应该开始"想办法动手"</span>
 <span class="g">python3 llm_test.py --prompt "现在几点了？"</span>
 <span class="y"># AI  > 抱歉，我无法获取当前时间。（没有工具，只能说不知道）</span></code></pre>
-      <div class="tip amber"><span class="lab">⚠️ 关键对比</span>第二句模型"答不上来"不是它笨，而是<b>手里没工具</b>。它只能凭记忆说话，而时间这种实时信息，记忆里根本没有。这就是下一步要给它"办事清单"的原因。</div>
       <p>另外记住一个旋钮：<b>temperature</b>（温度）。它只有一个规律——<b>越低越稳、越高越活泼</b>。要它老实出 JSON 就调低到 0.1，要它陪你闲聊写诗才调高。其余采样参数（top_p、repeat_penalty 等）保持默认即可。</p>
+      <div class="tip amber"><span class="lab">⚠️ 关键对比</span>第二句模型"答不上来"不是它笨，而是<b>手里没工具</b>。它只能凭记忆说话，而时间这种实时信息，记忆里根本没有。这就是下一步要给它"办事清单"的原因。</div>
 
       <h3>步骤 3：带上工具清单再试</h3>
       <p>加 <code>--mode tools</code>，模型就会看到四张牌：查时间、查系统信息、计算、查电量。再问同样的问题：</p>
@@ -353,8 +354,8 @@ pre code{background:none;border:none;border-radius:0;padding:0;font-size:1em;col
     </section>
 
     <nav class="expnav">
-      <a href="../exp-04-voice-dialog/index.html">← EXP-04 端到端语音对话</a>
-      <a href="../exp-06-emotion-perception/index.html">EXP-06 多模态语音情绪感知 →</a>
+      <a href="../exp-04-voice-dialog/index.html"><span class="lb">← 上一个</span>EXP-04 端到端语音对话</a>
+      <a href="../exp-06-emotion-perception/index.html" class="next"><span class="lb">下一个实验 →</span>EXP-06 多模态语音情绪感知</a>
     </nav>
 
     <footer>
