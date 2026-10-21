@@ -46,7 +46,7 @@
 5. 遮挡测试：用手遮挡目标数秒后移开，观察 ID 是否恢复
 
 ```bash
-# 进入实验07
+# 进入实验7
 cd ~/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking
 
 # 可选
@@ -135,7 +135,7 @@ flowchart LR
 **知识点讲解**：
 
 **检测层复用（1.1.1）**
-- **原理**：与实验1/6 同款解码模式：`models/yolov8n.rknn` 是 COCO 80 类检测模型（9 输出 = 3 层 × [box, cls, cls_sum]）。解码链路：DFL 解码（16 bins softmax 期望）→ grid+stride 还原 xyxy → **cls_sum×cls 过滤**（与分割模型同款类别得分加权）→ 逐类 NMS。输出 `Detection`（框 + 类别 + 分数），送入 tracker 的数据关联。
+- **原理**：与实验4/6 同款解码模式：`models/yolov8n.rknn` 是 COCO 80 类检测模型（9 输出 = 3 层 × [box, cls, cls_sum]）。解码链路：DFL 解码（16 bins softmax 期望）→ grid+stride 还原 xyxy → **cls_sum×cls 过滤**（与分割模型同款类别得分加权）→ 逐类 NMS。输出 `Detection`（框 + 类别 + 分数），送入 tracker 的数据关联。
 - **源码对应**：`src/detect.py`（decode：DFL / grid xyxy / cls_sum×cls / NMS）；`models/yolov8n.rknn`
 
 **知识储备补充**：

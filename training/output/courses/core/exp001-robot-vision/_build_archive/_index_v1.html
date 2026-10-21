@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器人视觉入门 · 12 个实验从零到会</title>
+<link rel="stylesheet" href="shared/tutorial.css">
+<link rel="stylesheet" href="shared/beginner.css">
+<style>
+:root{--theme:#0d9488;--theme-deep:#0f766e;--theme-bg:#ccfbf1;--theme-bd:#99f6e4}
+
+/* ── 首页专属 ── */
+.hero2{
+  background:linear-gradient(140deg,#062e2b 0%,#0f766e 45%,#0891b2 100%);
+  color:#fff;padding:3.2rem 1.5rem 3rem;text-align:center;
+}
+.hero2 .eb{font-size:.76rem;letter-spacing:.3em;opacity:.7;margin-bottom:.9rem;font-family:'Cascadia Code',monospace}
+.hero2 h1{font-size:clamp(1.75rem,4.2vw,2.7rem);font-weight:900;line-height:1.25;margin-bottom:1rem}
+.hero2 h1 em{font-style:normal;background:linear-gradient(90deg,#5eead4,#a5f3fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero2 p.sub{max-width:720px;margin:0 auto 1.5rem;font-size:1rem;opacity:.88;line-height:1.85}
+.hero2 .badges{display:flex;gap:.55rem;justify-content:center;flex-wrap:wrap}
+.hero2 .badges span{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.26);border-radius:999px;padding:.3rem .9rem;font-size:.84rem}
+
+.ww{max-width:1180px;margin:0 auto;padding:2.6rem 1.5rem}
+
+/* 数字条 */
+.nums{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2.6rem}
+.nums div{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1rem;text-align:center}
+.nums b{display:block;font-size:1.5rem;color:var(--theme);font-weight:800}
+.nums span{font-size:.8rem;color:#64748b}
+
+/* 章节标题 */
+.h2s{margin:2.6rem 0 1.2rem;text-align:center}
+.h2s .k{font-size:.72rem;letter-spacing:.26em;color:var(--theme);font-weight:700;font-family:'Cascadia Code',monospace}
+.h2s h2{font-size:1.42rem;font-weight:800;margin-top:.3rem;color:#0f172a}
+.h2s p{color:#64748b;font-size:.9rem;margin-top:.35rem;max-width:700px;margin-left:auto;margin-right:auto;line-height:1.7}
+
+/* 4 步学习法 */
+.four{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem}
+.four .fc{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;position:relative}
+.four .fc .n2{
+  font-family:'Cascadia Code',monospace;font-size:1.6rem;font-weight:800;
+  color:#cbd5e1;line-height:1;margin-bottom:.5rem
+}
+.four .fc b{display:block;font-size:.98rem;color:#0f172a;margin-bottom:.3rem}
+.four .fc p{font-size:.83rem;color:#64748b;line-height:1.7;margin:0}
+.four .fc::after{content:'';position:absolute;right:1.1rem;top:1.1rem;width:6px;height:6px;border-radius:50%;background:var(--theme);opacity:.5}
+
+/* 概念网 */
+.concepts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.9rem}
+.concept{background:#fff;border:1px solid var(--border);border-left:4px solid var(--theme);border-radius:12px;padding:.95rem 1.1rem}
+.concept b{display:block;font-size:.95rem;color:#0f172a;margin-bottom:.25rem}
+.concept span{font-size:.83rem;color:#64748b;line-height:1.7}
+.concept em{font-style:normal;font-family:'Cascadia Code',monospace;font-size:.74rem;color:var(--theme);display:block;margin-top:.4rem}
+
+/* 两栏对照 */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.two .col{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.3rem}
+.two .col h4{font-size:.92rem;margin-bottom:.7rem;display:flex;align-items:center;gap:.45rem}
+.two .col ul{list-style:none;padding:0;margin:0}
+.two .col li{font-size:.84rem;color:#475569;padding:.4rem 0 .4rem 1.3rem;position:relative;border-bottom:1px dashed var(--border);line-height:1.6}
+.two .col li:last-child{border-bottom:none}
+.two .col li::before{content:'·';position:absolute;left:.35rem;color:var(--theme);font-weight:800;font-size:1.1rem}
+.two .col.a{border-top:3px solid #0d9488}
+.two .col.b{border-top:3px solid #7c3aed}
+
+/* 实验卡 */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1rem}
+.card2{
+  background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.2rem 1.3rem;
+  display:flex;flex-direction:column;transition:.22s;position:relative;overflow:hidden;
+}
+.card2::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,#0d9488)}
+.card2:hover{box-shadow:0 10px 28px rgba(13,148,136,.14);transform:translateY(-3px)}
+.card2 .ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:.55rem}
+.card2 .no2{font-family:'Cascadia Code',monospace;font-size:.74rem;font-weight:800;color:#fff;background:var(--c,#0d9488);border-radius:6px;padding:2px 9px}
+.card2 .lv{font-size:.74rem;color:#94a3b8}
+.card2 h3{font-size:1.03rem;font-weight:800;color:#0f172a;margin-bottom:.4rem;line-height:1.4}
+.card2 .desc2{font-size:.85rem;color:#64748b;line-height:1.7;margin-bottom:.7rem}
+.card2 .ok{list-style:none;padding:0;margin:0 0 .8rem}
+.card2 .ok li{font-size:.82rem;color:#475569;padding:.3rem 0 .3rem 1.25rem;position:relative;line-height:1.55}
+.card2 .ok li::before{content:'✓';position:absolute;left:0;color:var(--c,#0d9488);font-weight:800;font-size:.85rem}
+.card2 .tags{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.75rem}
+.card2 .tags span{font-size:.7rem;background:#f1f5f9;border:1px solid var(--border);border-radius:999px;padding:1px 9px;color:#64748b}
+.card2 .go{margin-top:auto;display:flex;justify-content:space-between;align-items:center;font-size:.83rem;color:var(--c,#0d9488);font-weight:700;padding-top:.55rem;border-top:1px dashed var(--border)}
+.card2 .go em{font-style:normal;font-size:.75rem;color:#94a3b8;font-weight:400}
+
+/* 环境表 */
+table.env2{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;font-size:.85rem}
+table.env2 th,table.env2 td{padding:.62rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+table.env2 th{background:#f1f5f9;font-weight:700;font-size:.78rem;letter-spacing:.05em;color:#475569}
+table.env2 tr:last-child td{border-bottom:none}
+table.env2 td:first-child{font-weight:700;white-space:nowrap;color:#0f172a;width:22%}
+table.env2 code{font-family:'Cascadia Code',monospace;font-size:.78rem;background:#f1f5f9;padding:1px 6px;border-radius:5px;color:#0f766e}
+
+/* 故障速查 */
+.faults{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.9rem}
+.fault{background:#fff;border:1px solid var(--border);border-radius:12px;padding:.95rem 1.1rem}
+.fault b{display:block;font-size:.9rem;color:#991b1b;margin-bottom:.35rem}
+.fault span{font-size:.82rem;color:#475569;line-height:1.7}
+.fault em{font-style:normal;color:#0f766e;font-weight:600}
+
+/* 提示条 */
+.note{background:#f0fdfa;border:1px solid #99f6e4;border-radius:14px;padding:1rem 1.3rem;font-size:.86rem;line-height:1.8;color:#0f766e;display:flex;gap:.7rem;margin-top:1.6rem}
+.note b{color:#0d9488}
+
+@media(max-width:900px){.four{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
+@media(max-width:640px){.nums{grid-template-columns:repeat(2,1fr)}.four{grid-template-columns:1fr}}
+
+footer{border-top:1px solid var(--border);background:#fff;margin-top:3rem}
+.fin{max-width:1180px;margin:0 auto;padding:1.4rem 1.5rem;display:flex;justify-content:space-between;align-items:center;font-size:.82rem;color:#64748b;flex-wrap:wrap;gap:.5rem}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="logo" href="../../index.html" style="text-decoration:none;color:inherit" title="返回总首页">🎓 具身智能课程 · <i>机器人视觉入门</i></a>
+  <div class="crumb"><a href="../../index.html">← 返回总首页</a></div>
+</header>
+
+<section class="hero2">
+  <div class="eb">ROBOT VISION · FOR BEGINNERS</div>
+  <h1>机器人视觉入门<br><em>12 个实验，从"跑起来"到"讲得清"</em></h1>
+  <p class="sub">不用先学会深度学习，也不用懂 NPU。<b>每个实验都给你三条命令、一张原理图、一份踩坑清单</b> —— 先跑出效果，再回头理解原理。全部在真实硬件上验证过。</p>
+  <div class="badges">
+    <span>12 个实验</span><span>48 学时</span><span>实验箱 B2 · RK3576</span><span>前置：Python 基础</span>
+  </div>
+</section>
+
+<div class="ww">
+
+  <div class="nums">
+    <div><b>12</b><span>递进实验</span></div>
+    <div><b>3</b><span>条命令跑通一个</span></div>
+    <div><b>13~50</b><span>板端实测 FPS</span></div>
+    <div><b>8</b><span>核心概念</span></div>
+  </div>
+
+  <!-- 怎么用这门课 -->
+  <div class="h2s">
+    <div class="k">HOW TO USE</div>
+    <h2>每个实验都是同一个节奏</h2>
+    <p>不用一次读完。每个页面都是这四步，走完一个实验就是走完四步。</p>
+  </div>
+  <div class="four">
+    <div class="fc"><div class="n2">01</div><b>先看问题</b><p>这个实验解决什么真实问题？为什么不能用更简单的办法解决？</p></div>
+    <div class="fc"><div class="n2">02</div><b>三分钟懂原理</b><p>一张图 + 一个生活比喻。不推公式，只讲清"每一步在干什么"。</p></div>
+    <div class="fc"><div class="n2">03</div><b>三条命令跑通</b><p>从简单到复杂：先单图、再实时、最后改参数。每条都有预期输出。</p></div>
+    <div class="fc"><div class="n2">04</div><b>改一个参数</b><p>亲手拖滑块或改配置，看结果怎么变。这一步才是真的学会了。</p></div>
+  </div>
+
+  <div class="note">
+    <span>💡</span>
+    <span><b>零基础建议：从 EXP-01 顺序做到 EXP-12。</b>篇章之间是有依赖的 —— 02 依赖 01 的检测基础，11 依赖 10 的骨骼点，12 又依赖 10 和 11 的全部思路。只想补某一块技能，也可以只做那一篇，但每篇内请从第一个实验开始。</span>
+  </div>
+
+  <!-- 核心概念 -->
+  <div class="h2s">
+    <div class="k">CORE CONCEPTS</div>
+    <h2>8 个概念，撑起全部 12 个实验</h2>
+    <p>这些词会在每个实验里反复出现。先混个脸熟，遇到时再回来查。</p>
+  </div>
+  <div class="concepts">
+    <div class="concept">
+      <b>输入契约</b>
+      <span>模型只接受特定格式的输入：有的要 uint8（0-255），有的要 float32（0-1）。送错了就是"检测全废"的第一大原因。</span>
+      <em>EXP-02 / 09 / 10 / 12</em>
+    </div>
+    <div class="concept">
+      <b>letterbox</b>
+      <span>等比缩放 + 补边，把任意尺寸的图塞进 640×640 又不让物体变形。用完必须按原比例"缩回去"。</span>
+      <em>EXP-01 / 02 / 06 / 10</em>
+    </div>
+    <div class="concept">
+      <b>置信度与阈值</b>
+      <span>模型说"我有多确定"。阈值决定"多确定才算数"。调高偏准，调低偏全 —— 永远是取舍。</span>
+      <em>几乎每个实验</em>
+    </div>
+    <div class="concept">
+      <b>NMS 去重</b>
+      <span>模型会给同一个东西画一堆框。NMS 按分数排序，把重叠太多的删掉，只留最好的那个。</span>
+      <em>EXP-01 / 02 / 06 / 07</em>
+    </div>
+    <div class="concept">
+      <b>蒙版 mask</b>
+      <span>一张黑白图，白色表示"保留这个像素"。颜色识别、语义分割都靠它工作。</span>
+      <em>EXP-03 / 06</em>
+    </div>
+    <div class="concept">
+      <b>关键点 landmark</b>
+      <span>图像上固定语义位置的点。编号是预先定义死的，比如"第 133 号点是左眼内角"。</span>
+      <em>EXP-09 / 10 / 12</em>
+    </div>
+    <div class="concept">
+      <b>两段式级联</b>
+      <span>先用便宜的模型把范围缩小，再用贵的模型处理小区域。又快又准。</span>
+      <em>EXP-09 / 12</em>
+    </div>
+    <div class="concept">
+      <b>cmd_vel 控制</b>
+      <span>控制机器人只要两个数：linear.x（前进速度）、angular.z（转向速度）。左转是正数。</span>
+      <em>EXP-11 / 12</em>
+    </div>
+  </div>
+
+  <!-- 两条路线 -->
+  <div class="h2s">
+    <div class="k">TWO ROADS</div>
+    <h2>12 个实验，其实是两条技术路线</h2>
+    <p>搞清楚这个分野，你才知道遇到一个问题该选哪条路。</p>
+  </div>
+  <div class="two">
+    <div class="col a">
+      <h4><span style="width:.55rem;height:.55rem;border-radius:50%;background:#0d9488;display:inline-block"></span>传统视觉（CPU，OpenCV）</h4>
+      <ul>
+        <li><b>不用训练</b>，写几条规则就能跑</li>
+        <li><b>极快</b>：EXP-03 实测 50 FPS</li>
+        <li><b>完全可解释</b>：为什么选中这个色块，你能一步步说清</li>
+        <li>缺点：换个光照、换个背景就得重调参数</li>
+        <li>对应实验：<b>03 颜色 / 04 二维码 / 05 轮廓</b></li>
+      </ul>
+    </div>
+    <div class="col b">
+      <h4><span style="width:.55rem;height:.55rem;border-radius:50%;background:#7c3aed;display:inline-block"></span>深度学习（NPU，RKNN）</h4>
+      <ul>
+        <li><b>要数据要训练</b>，但能处理复杂场景</li>
+        <li><b>较慢</b>：13~18 FPS（但能实时）</li>
+        <li><b>黑盒</b>：为什么判成"划痕"，很难逐条解释</li>
+        <li>优点：换个场景照样能用，对光照鲁棒</li>
+        <li>对应实验：<b>01 检测 / 02 分类 / 06 分割 / 07 跟踪 / 09~12 关键点</b></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note">
+    <span>⚖️</span>
+    <span><b>这门课最想教你的判断力：</b>能用传统视觉解决的，就别上深度学习。屏幕上一个红球的坐标，EXP-03 一行阈值就够了，跑 50 FPS 还能解释清楚。反过来，要区分"这是划痕还是裂纹"，那就非深度学习不可。<b>选对路线，比调好参数更重要。</b></span>
+  </div>
+
+  <!-- 12 个实验 -->
+  <div class="h2s">
+    <div class="k">CHAPTER 1 · 检测与分类</div>
+    <h2>第 1 篇 · 让机器"看出框里是什么"</h2>
+    <p>从最典型的检测任务起步，然后进阶到传统视觉的两个经典技能。</p>
+  </div>
+  <div class="cards">
+
+    <article class="card2" style="--c:#0d9488">
+      <div class="ch"><span class="no2">EXP-01</span><span class="lv">⭐⭐ · 4 学时 · 入门首选</span></div>
+      <h3>工业表面缺陷检测</h3>
+      <p class="desc2">钢板上的裂纹、夹杂、划痕，让 AI 替你圈出来。整门课的第一课，跑通它就明白了所有 AI 视觉实验的套路。</p>
+      <ul class="ok">
+        <li>理解"缩进去 → 算一遍 → 挑最像的 → 缩回来"四步</li>
+        <li>三条命令跑出 13 FPS 实时检测</li>
+        <li>拖阈值滑块，亲手感受漏检和误检的拉扯</li>
+      </ul>
+      <div class="tags"><span>YOLOv8</span><span>RKNN int8</span><span>NMS</span></div>
+      <a class="go" href="exp-01-industrial-defect/index.html">开始实验 <em>13 FPS</em></a>
+    </article>
+
+    <article class="card2" style="--c:#2563eb">
+      <div class="ch"><span class="no2">EXP-02</span><span class="lv">⭐⭐ · 4 学时</span></div>
+      <h3>垃圾分类：20 类变 4 桶</h3>
+      <p class="desc2">模型认出"矿泉水瓶"，映射表翻译成"可回收物"。学会一件工程上最重要的事：哪些交给模型，哪些交给代码。</p>
+      <ul class="ok">
+        <li>看懂检测头 75 通道 = 3 锚 × 25 数</li>
+        <li>用一张映射表把细类归到四大类</li>
+        <li>线程数 1 → 3，帧率翻倍的实证</li>
+      </ul>
+      <div class="tags"><span>YOLOv5 头</span><span>锚框解码</span><span>推理池</span></div>
+      <a class="go" href="exp-02-garbage-classification/index.html">开始实验 <em>多核并行</em></a>
+    </article>
+
+    <article class="card2" style="--c:#d97706">
+      <div class="ch"><span class="no2">EXP-03</span><span class="lv">⭐ · 4 学时 · 最简单</span></div>
+      <h3>颜色识别（HSV 阈值）</h3>
+      <p class="desc2">一行 AI 代码都没有。把颜色换算成角度，落在范围内就留下。跑完你就知道为什么很多任务根本不用深度学习。</p>
+      <ul class="ok">
+        <li>搞懂为什么 HSV 比 RGB 好用来"认颜色"</li>
+        <li>理解 H 为什么最大是 179 不是 360</li>
+        <li>用滑块现场调阈值，掩膜实时跟着变</li>
+      </ul>
+      <div class="tags"><span>HSV</span><span>inRange</span><span>形态学</span></div>
+      <a class="go" href="exp-03-lab-color-recognition/index.html">开始实验 <em>50 FPS</em></a>
+    </article>
+
+    <article class="card2" style="--c:#7c3aed">
+      <div class="ch"><span class="no2">EXP-04</span><span class="lv">⭐ · 4 学时</span></div>
+      <h3>二维码：生成 + 识别</h3>
+      <p class="desc2">自己造一张码，再让相机把它读回来。唯一一个"一写一读"闭环的实验。</p>
+      <ul class="ok">
+        <li>看懂三个"回"字角标的作用</li>
+        <li>理解纠错等级：抗造和密度怎么取舍</li>
+        <li>亲手做一次遮挡实验，看它还能不能读出来</li>
+      </ul>
+      <div class="tags"><span>qrcode 库</span><span>QRCodeDetector</span><span>纠错码</span></div>
+      <a class="go" href="exp-04-qrcode/index.html">开始实验 <em>一写一读</em></a>
+    </article>
+
+  </div>
+
+  <div class="h2s">
+    <div class="k">CHAPTER 2 · 图像理解</div>
+    <h2>第 2 篇 · 从"框出物体"到"理解整幅图"</h2>
+    <p>把像素变成结构化的坐标，再精确到每一个像素的归属。</p>
+  </div>
+  <div class="cards">
+
+    <article class="card2" style="--c:#059669">
+      <div class="ch"><span class="no2">EXP-05</span><span class="lv">⭐⭐ · 4 学时</span></div>
+      <h3>多边形轮廓拟合</h3>
+      <p class="desc2">一堆白色像素没法用。用一条"松紧带"勒紧，几千个点就变成几个顶点 —— 机器人才能算出"往哪走"。</p>
+      <ul class="ok">
+        <li>四步瘦身：二值化 → 轮廓 → 凸包 → 顶点</li>
+        <li>拖 epsilon 滑块，看顶点数怎么变</li>
+        <li>亲手体验 invert 开关：换个背景就全废</li>
+      </ul>
+      <div class="tags"><span>findContours</span><span>convexHull</span><span>approxPolyDP</span></div>
+      <a class="go" href="exp-05-line-following/index.html">开始实验 <em>形状识别</em></a>
+    </article>
+
+    <article class="card2" style="--c:#7c3aed">
+      <div class="ch"><span class="no2">EXP-06</span><span class="lv">⭐⭐ · 4 学时</span></div>
+      <h3>语义分割与背景替换</h3>
+      <p class="desc2">视频会议的虚拟背景怎么做的？不是套方框，是精确到每个像素地判断"这点算不算人"。</p>
+      <ul class="ok">
+        <li>理解 proto-mask：32 个系数组合 32 张模板</li>
+        <li>三种背景模式（黑 / 纯色 / 图片）全跑一遍</li>
+        <li>三线程 vs 单线程，帧率差近一倍</li>
+      </ul>
+      <div class="tags"><span>yolov8n-seg</span><span>掩码解码</span><span>Alpha 合成</span></div>
+      <a class="go" href="exp-06-semantic-segmentation/index.html">开始实验 <em>抠图</em></a>
+    </article>
+
+  </div>
+
+  <div class="h2s">
+    <div class="k">CHAPTER 3 · 跟踪与三维</div>
+    <h2>第 3 篇 · 把帧串成轨迹，把 2D 升到 3D</h2>
+    <p>跨帧记住"这是谁"，再补上缺失的距离维度。</p>
+  </div>
+  <div class="cards">
+
+    <article class="card2" style="--c:#e11d48">
+      <div class="ch"><span class="no2">EXP-07</span><span class="lv">⭐⭐⭐ · 4 学时 · 最难</span></div>
+      <h3>多目标跟踪（DeepSORT）</h3>
+      <p class="desc2">每一帧都是独立的，怎么让"同一个人"一直是 3 号？被挡住几秒再出来还得认出来。</p>
+      <ul class="ok">
+        <li>两条线索：Kalman 猜位置 + ReID 认长相</li>
+        <li>做一次遮挡实验：deepsort 能恢复 ID，sort 不能</li>
+        <li>拖 max_age，看"愿意等多久"怎么影响结果</li>
+      </ul>
+      <div class="tags"><span>Kalman</span><span>匈牙利匹配</span><span>ReID</span></div>
+      <a class="go" href="exp-07-deepsort-tracking/index.html">开始实验 <em>12~15 FPS</em></a>
+    </article>
+
+    <article class="card2" style="--c:#0891b2">
+      <div class="ch"><span class="no2">EXP-08</span><span class="lv">⭐⭐ · 4 学时</span></div>
+      <h3>深度相机与 3D 定位</h3>
+      <p class="desc2">点一下画面上的任意像素，程序告诉你"这点离你 43 厘米"以及它在空间中的三维坐标。</p>
+      <ul class="ok">
+        <li>理解"像素给方向，深度给距离，内参给几何"</li>
+        <li>手算一遍反投影公式，和程序结果对照</li>
+        <li>故意改错内参，看坐标怎么偏</li>
+      </ul>
+      <div class="tags"><span>HP60C</span><span>反投影</span><span>相机内参</span></div>
+      <a class="go" href="exp-08-depth-3d-detection/index.html">开始实验 <em>点一下测距</em></a>
+    </article>
+
+  </div>
+
+  <div class="h2s">
+    <div class="k">CHAPTER 4 · 人体感知与交互</div>
+    <h2>第 4 篇 · 把人体姿态变成机器人的指令</h2>
+    <p>MediaPipe 三件套，最后真的让车动起来。</p>
+  </div>
+  <div class="cards">
+
+    <article class="card2" style="--c:#db2777">
+      <div class="ch"><span class="no2">EXP-09</span><span class="lv">⭐⭐ · 4 学时</span></div>
+      <h3>人脸关键点（468 点）</h3>
+      <p class="desc2">美颜相机怎么知道该往哪儿瘦脸？因为它先在脸上找到了 468 个固定位置的点。</p>
+      <ul class="ok">
+        <li>理解"先找脸、再放大看脸"的两段式为什么必须</li>
+        <li>看懂逆映射：忘了这一步网格就会缩在角落</li>
+        <li>三种输入契约的差别（这是全课程最大坑源）</li>
+      </ul>
+      <div class="tags"><span>BlazeFace</span><span>双模型级联</span><span>468 点</span></div>
+      <a class="go" href="exp-09-face-landmarks/index.html">开始实验 <em>实时网格</em></a>
+    </article>
+
+    <article class="card2" style="--c:#4f46e5">
+      <div class="ch"><span class="no2">EXP-10</span><span class="lv">⭐⭐ · 4 学时</span></div>
+      <h3>骨骼关键点（33 点）</h3>
+      <p class="desc2">把一个人压缩成 33 个关节点，画成一具跟着你动的火柴人。判断"举手"只需要比较两个 y 坐标。</p>
+      <ul class="ok">
+        <li>认清最常用的 8 个点编号（11/12 髋、15/16 手腕）</li>
+        <li>理解 vis（可见度）为什么必须过滤</li>
+        <li>亲手写一个"举手检测"（就 3 行）</li>
+      </ul>
+      <div class="tags"><span>BlazePose</span><span>骨架拓扑</span><span>visible 过滤</span></div>
+      <a class="go" href="exp-10-pose-landmark/index.html">开始实验 <em>火柴人</em></a>
+    </article>
+
+    <article class="card2" style="--c:#ea580c">
+      <div class="ch"><span class="no2">EXP-11</span><span class="lv">⭐⭐⭐ · 4 学时</span></div>
+      <h3>体感控制：举左手就左转</h3>
+      <p class="desc2">22 个关节坐标 → if 规则 → 两个速度数 → 车真的动了。整门课第一次让视觉驱动动作。</p>
+      <ul class="ok">
+        <li>理解归一化：为什么必须除以"身长"</li>
+        <li>先用 turtlesim 海龟验方向，再上真车</li>
+        <li>自己加一条动作规则并验证</li>
+      </ul>
+      <div class="tags"><span>动作分类</span><span>优先级</span><span>cmd_vel</span></div>
+      <a class="go" href="exp-11-pose-control/index.html">开始实验 <em>车动起来</em></a>
+    </article>
+
+    <article class="card2" style="--c:#0f766e">
+      <div class="ch"><span class="no2">EXP-12</span><span class="lv">⭐⭐ · 4 学时 · 收官</span></div>
+      <h3>手势识别：4 模型接力</h3>
+      <p class="desc2">比个"耶"，机器就知道你在比"耶"。链路最长的实验：找手 → 21 点 → 128 维指纹 → 8 类分类。</p>
+      <ul class="ok">
+        <li>看懂四段链路各解决什么问题</li>
+        <li>理解"检测-跟踪状态机"怎么提速</li>
+        <li>用拇指食指夹角控制特效（纯几何）</li>
+      </ul>
+      <div class="tags"><span>21 关键点</span><span>Embedding</span><span>Softmax 8 类</span></div>
+      <a class="go" href="exp-12-hand-control/index.html">开始实验 <em>8 种手势</em></a>
+    </article>
+
+  </div>
+
+  <!-- 环境 -->
+  <div class="h2s">
+    <div class="k">SETUP</div>
+    <h2>课前一次性配好，课中不再折腾</h2>
+    <p>12 个实验共用同一套工程和环境。下面这些约定全部实验通用。</p>
+  </div>
+  <table class="env2">
+    <thead><tr><th>项目</th><th>约定</th><th>为什么</th></tr></thead>
+    <tbody>
+      <tr><td>实验箱</td><td>XFLZ_EAI_B2_PRO（RK3576，6TOPS NPU）</td><td>NPU 推理只能在这块板上跑，PC 上装不了 rknnlite</td></tr>
+      <tr><td>代码位置</td><td><code>~/ros2_ws/src/xflz_eai_car1/vision/</code></td><td>12 个实验各一个子目录，编号 01~12</td></tr>
+      <tr><td>相机启动</td><td><code>ros2 launch ascamera hp60c.launch.py</code></td><td>每个实时实验都要先在<b>另一个终端</b>起这个</td></tr>
+      <tr><td>ROS 域</td><td><code>export ROS_DOMAIN_ID=2</code></td><td><b>两个终端都要设</b>，否则相机和视觉节点互相看不见</td></tr>
+      <tr><td>虚拟环境</td><td><code>source /opt/ros/humble/setup.bash</code><br><code>source ~/ros2_ws/install/setup.bash</code></td><td>每个新终端都要 source，漏了会找不到包</td></tr>
+      <tr><td>浏览器看画面</td><td><code>http://&lt;板IP&gt;:8080~8084/xxx.mjpg</code></td><td>不用装客户端，手机连同一 WiFi 也能看</td></tr>
+      <tr><td>端口分配</td><td>01~08 用 <b>8080</b>；09=<b>8081</b>、10=<b>8082</b>、11=<b>8083</b>、12=<b>8084</b></td><td>这样多个实验可以同时跑，不撞端口</td></tr>
+      <tr><td>单测（可选）</td><td><code>python -m pytest tests/ -v</code></td><td>各实验 19~109 项单测，先全绿再上真机</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 故障速查 -->
+  <div class="h2s">
+    <div class="k">TROUBLESHOOTING</div>
+    <h2>六个"名场面"，先认个脸</h2>
+    <p>这些问题在所有实验里反复出现。遇到时不用慌，对照这里先试一遍。</p>
+  </div>
+  <div class="faults">
+    <div class="fault">
+      <b>检测框全消失了</b>
+      <span>指纹：<code>detections=0</code> 或分数全在 1e-9 量级。<br><em>九成是输入契约错</em> —— 该 uint8 的喂了 float，或 RGB/BGR 送反了。</span>
+    </div>
+    <div class="fault">
+      <b>框形状对但位置整体偏</b>
+      <span>指纹：框能圈住东西，但整体偏移固定距离。<br><em>一定是 letterbox 的 pad 没对上</em> —— 预处理和后处理要互逆。</span>
+    </div>
+    <div class="fault">
+      <b>板端跑得动、PC 上跑不动</b>
+      <span>指纹：<code>ModuleNotFoundError: rknnlite</code>。<br><em>NPU 推理只能在板上跑</em>。PC 上请用 .onnx 后端验证流程。</span>
+    </div>
+    <div class="fault">
+      <b>ros2 topic list 是空的</b>
+      <span>指纹：相机节点在跑，但看不到话题。<br><em>两个终端的 ROS_DOMAIN_ID 不一致</em>，各说各话。</span>
+    </div>
+    <div class="fault">
+      <b>MJPEG 地址打不开</b>
+      <span>指纹：浏览器 404 或超时。<br><em>检查三件事</em>：用板子真实 IP（不是 localhost）、端口对不对、demo 进程还在不在。</span>
+    </div>
+    <div class="fault">
+      <b>画面上出现问号方块</b>
+      <span>指纹：状态栏或标签里的中文变 <code>????</code>。<br><em>OpenCV 画不了中文</em>。窗口内文字一律用英文，这不是 bug。</span>
+    </div>
+  </div>
+
+  <div class="note">
+    <span>🧭</span>
+    <span><b>最后一句建议：</b>不要一上来就想"弄懂全部原理"。<b>先把 EXP-01 的三条命令照抄跑通</b>，看到屏幕上真的出现红框、终端真的打印出 <code>fps=13</code> —— 那一刻的"它真的动了"，比读十页原理更有价值。理解是在动手之后长出来的，不是之前。</span>
+  </div>
+
+</div>
+
+<footer>
+  <div class="fin">
+    <span>🎓 具身智能课程 · 机器人视觉入门 · 12 实验 / 48 学时</span>
+    <span>基于 robot_vision 实验指导书 + vision/ 源码整理，全部命令与参数已核对</span>
+  </div>
+</footer>
+
+<script src="shared/beginner.js" defer></script>
+</body>
+</html>

@@ -13,16 +13,16 @@ source_code_status: 源码已就位 (ros2_ws/src/xflz_eai_car1/vision/)
 
 ## 目录
 
-- [实验1：基于YOLOv8的工业表面缺陷检测实验](#实验1基于yolov8的工业表面缺陷检测实验)
-- [实验2：基于图像分类的垃圾分类实验](#实验2基于图像分类的垃圾分类实验)
-- [实验3：基于HSV色彩空间的颜色识别实验](#实验3基于hsv色彩空间的颜色识别实验)
-- [实验4：二维码生成与识别检测实验](#实验4二维码生成与识别检测实验)
-- [实验5：基于OpenCV的多边形轮廓拟合实验](#实验5基于opencv的多边形轮廓拟合实验)
+- [实验1：基于HSV色彩空间的颜色识别实验](#实验1基于hsv色彩空间的颜色识别实验)
+- [实验2：二维码生成与识别检测实验](#实验2二维码生成与识别检测实验)
+- [实验3：基于OpenCV的多边形轮廓拟合实验](#实验3基于opencv的多边形轮廓拟合实验)
+- [实验4：基于YOLOv8的工业表面缺陷检测实验](#实验4基于yolov8的工业表面缺陷检测实验)
+- [实验5：基于图像分类的垃圾分类实验](#实验5基于图像分类的垃圾分类实验)
 - [实验6：基于语义分割的背景分割实验](#实验6基于语义分割的背景分割实验)
 - [实验7：基于DeepSORT的多目标跟踪实验](#实验7基于deepsort的多目标跟踪实验)
-- [实验8：基于深度信息的3D物体检测实验](#实验8基于深度信息的3d物体检测实验)
-- [实验9：基于人脸关键点特征检测实验](#实验9基于人脸关键点特征检测实验)
-- [实验10：基于骨骼关键点的肢体检测实验](#实验10基于骨骼关键点的肢体检测实验)
+- [实验8：基于人脸关键点特征检测实验](#实验8基于人脸关键点特征检测实验)
+- [实验9：基于骨骼关键点的肢体检测实验](#实验9基于骨骼关键点的肢体检测实验)
+- [实验10：基于深度信息的3D物体检测实验](#实验10基于深度信息的3d物体检测实验)
 - [实验11：基于肢体动作的体感控制实验](#实验11基于肢体动作的体感控制实验)
 - [实验12：基于手指动作的控制实验](#实验12基于手指动作的控制实验)
 
@@ -30,1237 +30,40 @@ source_code_status: 源码已就位 (ros2_ws/src/xflz_eai_car1/vision/)
 
 ## 实验总览
 
+> **学习顺序说明**：下表按「由易到难」重排——先 OpenCV 传统视觉（免训练、可解释、帧率高），再 YOLO 系列（检测/分类/分割），接着 DeepSORT 跟踪，最后 MediaPipe 人体感知与控制。
+> `源码路径` 中的目录号是仓库交付号，与左侧学习序号不再一一对应，请以下表为准。
+
 | 编号 | 实验名称 | 学时 | 类型 | 难度 | 源码路径 |
 |------|---------|------|------|------|---------|
-| 实验1 | 基于YOLOv8的工业表面缺陷检测实验 | 4h | 综合性 | ⭐⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection` |
-| 实验2 | 基于图像分类的垃圾分类实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification` |
-| 实验3 | 基于HSV色彩空间的颜色识别实验 | 4h | 验证性 | ⭐ | `ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition` |
-| 实验4 | 二维码生成与识别检测实验 | 4h | 验证性 | ⭐ | `ros2_ws/src/xflz_eai_car1/vision/04_qrcode` |
-| 实验5 | 基于OpenCV的多边形轮廓拟合实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/05_line_following` |
+| 实验1 | 基于HSV色彩空间的颜色识别实验 | 4h | 验证性 | ⭐ | `ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition` |
+| 实验2 | 二维码生成与识别检测实验 | 4h | 验证性 | ⭐ | `ros2_ws/src/xflz_eai_car1/vision/04_qrcode` |
+| 实验3 | 基于OpenCV的多边形轮廓拟合实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/05_line_following` |
+| 实验4 | 基于YOLOv8的工业表面缺陷检测实验 | 4h | 综合性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection` |
+| 实验5 | 基于图像分类的垃圾分类实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification` |
 | 实验6 | 基于语义分割的背景分割实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/06_semantic_segmentation` |
 | 实验7 | 基于DeepSORT的多目标跟踪实验 | 4h | 综合性 | ⭐⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking` |
-| 实验8 | 基于深度信息的3D物体检测实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection` |
-| 实验9 | 基于人脸关键点特征检测实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/09_face_landmarks` |
-| 实验10 | 基于骨骼关键点的肢体检测实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark` |
+| 实验8 | 基于人脸关键点特征检测实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/09_face_landmarks` |
+| 实验9 | 基于骨骼关键点的肢体检测实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark` |
+| 实验10 | 基于深度信息的3D物体检测实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection` |
 | 实验11 | 基于肢体动作的体感控制实验 | 4h | 综合性 | ⭐⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/11_pose_control` |
 | 实验12 | 基于手指动作的控制实验 | 4h | 设计性 | ⭐⭐ | `ros2_ws/src/xflz_eai_car1/vision/12_hand_control` |
 
 **学时合计：48h**（12 个实验，对应 course-spec total_hours=48 中实验学时部分）
 
----
-## 实验1：基于YOLOv8的工业表面缺陷检测实验（4h）
+**技术栈递进**：
 
-> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection/`（仓库内相对路径，根 = 课程生成项目根目录）。已随仓库交付完整训练产物（`train/weights/best.pt`、`best.onnx`，9 输出）与转换产物（`models/defect_yolov8n_int8.rknn`，int8 单核+剪枝，200 张 val 校准）。板端验证通过，实测约 **13 FPS**（NPU）。
-
-### 1.1 关联知识点
-
-本实验对应第 1 章"工业缺陷检测与 YOLOv8 认知"，覆盖以下 7 个知识点（ID 遵循知识图谱编号约定，来源于 course-spec.yaml 的 knowledge_points）：
-
-- 1.1.1 YOLOv8模型架构 > 原理 > YOLOv8 采用 CSPDarknet 主干 + PAN-FPN 颈部 + 解耦检测头，引入 DFL（Distribution Focal Loss）边界框回归
-- 1.1.2 工业缺陷数据集 > 概念 > NEU-DET 数据集包含 6 类表面缺陷（crazing/inclusion/patches/pitted_surface/rolled-in_scale/scratches），YOLO 归一化标签格式
-- 1.2.1 模型训练与超参数 > 流程 > yolov8n + imgsz=640 + epochs=100 + batch=8 的训练配置与产物解读（mAP50=0.732）
-- 1.2.2 ONNX模型转换 > 流程 > 使用 RKNN 优化版 fork 导出 format=rknn 的 ONNX（3×nl 个原始张量，DFL 留在 CPU 侧，共 9 个输出）
-- 1.3.1 RKNN NPU部署 > 原理 > rknn-toolkit2 将 ONNX 转换为 rk3576 平台 int8 量化模型，RKNNLite 在 6TOPS NPU 上推理
-- 1.3.2 实时缺陷检测 > 流程 > letterbox 预处理 → RGB 通道交换 → NPU 推理 → DFL 解码 + 逐类 NMS → unletterbox 画框标注
-- 1.3.3 精度评测与质检 > 概念 > mAP50 指标（纯 numpy 实现）与 onnx/rknn 双后端精度对比
-
-### 1.2 实验目标
-
-1. 掌握 YOLOv8 目标检测模型的工业应用方法，理解模型架构、训练超参数与检测原理 — 原理理解
-2. 完成工业产品的缺陷自动检测与定位，实现缺陷类别识别与可视化标注 — 独立完成
-3. 理解工业质检场景下的数据集制作、模型训练、部署推理全流程，体验"PC 训练 → ONNX 导出 → RKNN 转换 → 板端 NPU 推理"的完整链路 — 迁移应用
-
-### 1.3 实验环境
-
-| 类别 | 配置 |
-|------|------|
-| 硬件 | 具身智能实验箱 B2（XFLZ_EAI_B2_PRO，RK3576 SoC，6TOPS NPU，含 HP60C 深度相机） |
-| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv 虚拟环境，rknnlite 2.3.2 / onnxruntime 1.23.2） |
-| 核心库 | OpenCV、NumPy、PyYAML、rknnlite（板端推理）、rknn-toolkit2（转换）、onnxruntime、mjpeg_streamer、rclpy + cv_bridge |
-| 训练框架 | ultralytics 8.3.229（RKNN 优化 fork，numpy<2.0，PC 侧） |
-| 主入口 | `src/app.py`（推理 CLI：单图 / 视频 / UVC 相机 / ROS2 相机）<br>`src/convert_rknn.py`（ONNX → RKNN 转换）<br>`src/eval_map.py`（mAP50 精度评测）<br>`scripts/train.sh` / `scripts/export_onnx.sh`（PC 训练与导出） |
-
-### 1.4 实验难度
-
-- 难度: ⭐⭐⭐ 综合性
-- 重点: YOLOv8 工业缺陷检测全流程（数据集 → 训练 → 导出 → 转换 → 部署推理 → 精度评测）
-- 难点: RKNN int8 量化精度控制（校准集、RGB/BGR 约定、letterbox 填充值一致性）与 NPU 部署的输入格式约束（4D NHWC、RGB、无归一化）
-
-### 1.5 实验现象
-
-**快速验证流程**（帮助学习者快速看到实验效果，全程在板载 B2 平台执行）：
-
-1. 进入项目根目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection`
-2. （可选）跑通单元测试：`pytest -v`（42 用例全绿，数据集用例在无 NEU-DET 的机器上自动跳过）
-3. 单图推理（仓库自带 4 张缺陷测试图 `images/1.jpg~4.jpg`）：`python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg`
-   - 终端打印每帧 FPS 与每个缺陷框的类别、置信度、坐标
-4. 查看标注结果：`out.jpg` 中缺陷区域被红色框标出，框上方打印类别名（如 `scratches 0.87`）
-5. 视频推理：`python src/app.py --model models/defect_yolov8n_int8.rknn --video test.mp4 --save out.mp4`
-6. 相机实时（标准流程）：先起相机驱动，再运行 `--ros` 模式（详见步骤 6）
-7. 浏览器查看 MJPEG 实时流：`http://<板IP>:8080/defect.mjpg`，移动工件观察缺陷框实时跟随
-
-```bash
-# 进入实验01
-cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection
-
-# 可选
-/home/iflytek/ros2_venv/bin/python -m pytest -v
-
-# 执行单图片推理（图片都在01_industrial_defect_detection/images）
-python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg
-```
-
-**执行现象**：`pytest -v` 运行约 40-60 秒，输出 42 个用例全部 passed；单图推理命令在约 0.1-0.3 秒内返回，终端打印类似 `fps=xx.x` 与每个缺陷框的 `类别 置信度 (x1,y1,x2,y2)`，同时在当前目录生成 `out.jpg`（红框标注图）。板端实测 NPU 推理约 **13 FPS**。
-
-**预期效果描述**：
-
-- **单图/视频**：6 类缺陷（裂纹 crazing、夹杂 inclusion、斑块 patches、麻点 pitted_surface、氧化铁皮 rolled-in_scale、划痕 scratches）均能以红框 + 类别 + 置信度标注，小目标缺陷（如麻点、划痕）也能稳定检出
-- **相机实时**：检测框在视频流中逐帧更新，终端每 30 帧打印一次平均帧率，板端实测约 **13 FPS**（yolov8n/640，NPU 单核+剪枝模型）
-- **精度表现**：随仓库交付的训练产物在 val 集达到 P=0.657 / R=0.706 / **mAP50=0.732**；RKNN int8 模型相对 ONNX 掉点 ≤3%
-- **完整链路**：一份 `best.pt` 权重依次经历 PyTorch 训练、ONNX 导出、RKNN int8 量化转换，最终在 6TOPS NPU 上以 13 FPS 实时运行，验证"训练部署一体"的工业落地范式
-
-```bash
-(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection$ python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg
-note: NEU-DET data.yaml 不在本机，使用内置 6 类名
-/home/iflytek/ros2_venv/lib/python3.10/site-packages/rknnlite/api/rknn_lite.py:41: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
-  import pkg_resources
-W rknn-toolkit-lite2 version: 2.3.2
-I RKNN: [16:45:27.301] RKNN Runtime Information, librknnrt version: 2.3.2 (429f97ae6b@2025-04-09T09:09:27)
-I RKNN: [16:45:27.301] RKNN Driver Information, version: 0.9.8
-I RKNN: [16:45:27.302] RKNN Model Information, version: 6, toolkit version: 2.3.0(compiler version: 2.3.0 (c949ad889d@2024-11-07T11:39:30)), target: RKNPU f2, target platform: rk3576, framework name: ONNX, framework layout: NCHW, model inference type: static_shape
-W RKNN: [16:45:27.327] query RKNN_QUERY_INPUT_DYNAMIC_RANGE error, rknn model is static shape type, please export rknn with dynamic_shapes
-W Query dynamic range failed. Ret code: RKNN_ERR_MODEL_INVALID. (If it is a static shape RKNN model, please ignore the above warning message.)
-fps=10.0
-  inclusion 0.826 (181,0,279,302)
-  inclusion 0.763 (96,430,214,641)
-saved -> out.jpg
-```
-
-![image-20260819164309192](assets/image-20260819164309192.png)![image-20260819164332854](assets/image-20260819164332854.png)
-
-### 1.6 实验步骤
-
-#### 整体流程图
-
-```mermaid
-graph LR
-    A[步骤1：项目结构与配置认知] --> B[步骤2：NEU-DET数据集理解与校验]
-    B --> C[步骤3：YOLOv8模型训练与结果分析]
-    C --> D[步骤4：RKNN-ONNX模型导出]
-    D --> E[步骤5：RKNN转换与int8量化]
-    E --> F[步骤6：NPU部署与实时缺陷检测]
-    F --> G[步骤7：mAP50精度评测与对比]
-    G --> H[完成]
-```
+| 阶段 | 实验 | 技术栈 | 是否需要训练 | 板端帧率 |
+|------|------|--------|-------------|---------|
+| ① 传统视觉 | 实验1~3 | OpenCV（HSV / QRCode / 轮廓） | 否 | 30~50 FPS |
+| ② 目标检测与分类 | 实验4~5 | YOLOv8 / YOLOv5 检测头 + RKNN | 是（已交付权重） | 13~18 FPS |
+| ③ 语义分割 | 实验6 | yolov8n-seg + 多线程推理池 | 是（已交付权重） | 40~60 FPS |
+| ④ 多目标跟踪 | 实验7 | YOLOv8 + DeepSORT + ReID | 是（已交付权重） | 12~15 FPS |
+| ⑤ 人体感知 | 实验8~10 | MediaPipe Blaze + 深度相机 | 是（已交付权重） | 10~28 FPS |
+| ⑥ 视觉控制闭环 | 实验11~12 | 关键点 + cmd_vel / 手势分类 | 是（已交付权重） | 10~12 FPS |
 
 ---
 
-#### 步骤1：项目结构与配置体系认知（阶段一：能运行，20min）
-
-> 📌 本步骤对应源码：`config/defect_config.yaml`、`src/config.py`
-
-**知识点讲解**：
-
-**配置驱动设计（1.1.2 延伸）**
-
-- **原理**：工业质检项目通常要求"配置与代码分离"，把数据集路径、训练超参、推理阈值、RKNN 转换参数全部收敛到一个 YAML 文件，保证实验可复现。本项目通过 `src/config.py` 的 `load_config()` 实现**契约式校验**：`REQUIRED` 字典（L14-35）声明了 dataset/train/infer/rknn/eval 五个区块必须存在的键与其类型，缺键或类型错误直接抛出 `ConfigError`（L38-39），避免"配置写错导致推理静默失败"这类隐蔽问题；未知键则忽略（向前兼容）。`resolve_path()`（L67-73）负责把配置中的相对路径解析为绝对路径。推理侧两个关键阈值——`score_thr=0.25`（置信度过滤）与 `iou_thr=0.45`（NMS 交并比阈值）——都在配置中集中管理（`config/defect_config.yaml` L22-26），调参无需改代码。
-- **源码对应**：`config/defect_config.yaml` L1-47（dataset L4-8 / train L10-20 / infer L22-26 / rknn L37-42 / eval L44-46）；`src/config.py` L14-35（REQUIRED）、L42-64（load_config）、L67-73（resolve_path）
-
-**知识储备补充**：
-
-- **背景与动机**：YAML 配置驱动是工业算法工程的标准实践——训练、评测、部署三阶段共享同一份配置，避免"训练用 A 参数、部署却写死 B 参数"导致的漂移。"契约式校验"（schema validation）把错误前置到加载阶段，而不是让错误配置在推理时静默产生错误结果。
-- **阈值语义**：`score_thr=0.25` 是置信度过滤阈值——低于它的检测框直接丢弃，值越大检测越保守（漏检增多、误检减少）；`iou_thr=0.45` 是 NMS 的交并比阈值——两个同类框 IoU 超过它则保留高分者。二者共同决定"输出的框数量与质量"，是目标检测的两个核心后处理超参。
-- **相对路径解析**：`resolve_path`（L67-73）基于**配置文件所在目录**解析相对路径，而非当前工作目录。这是关键设计：无论从哪个目录启动，配置里的 `dataset.root` 都能稳定解析到同一位置，保证实验跨目录可复现。
-- **参考资源**：PyYAML 官方文档 `yaml.safe_load`；JSON Schema 思想（配置契约校验的通用范式）。
-
-**配置参数速查表**（`config/defect_config.yaml`，按区块分列）：
-
-| 区块 | 参数 | 类型 | 默认/示例 | 说明 |
-|------|------|------|-----------|------|
-| `dataset` | `root` | str | `/home/.../NEU-DET.v1i.yolov8` | 训练数据集根目录（PC 端；板上推理/评测不需要） |
-| `dataset` | `data_yaml` | str | `data.yaml` | 数据集标注文件（含类别名） |
-| `dataset` | `splits` | list | `[train, valid, test]` | 参与校验的分割子集 |
-| `train` | `fork` | str | `/home/.../ultralytics_yolov8-main` | RKNN 优化版 ultralytics fork 路径 |
-| `train` | `model` | str | `yolov8n.pt` | 预训练权重 |
-| `train` | `imgsz` | int | `640` | 训练输入边长（精度-速度权衡） |
-| `train` | `epochs` | int | `100` | 训练轮数 |
-| `train` | `batch` | int | `8` | 批大小（GTX1060 建议 ≤8） |
-| `train` | `device` | int/str | `0` | 训练设备（无 CUDA 改 `cpu`） |
-| `train` | `project`/`name` | str | `runs/.../yolov8n_img640_e100` | 训练产物输出目录 |
-| `infer` | `imgsz` | int | `640` | 推理输入边长（须与训练一致） |
-| `infer` | `score_thr` | float | `0.25` | 置信度过滤阈值（越大越保守） |
-| `infer` | `iou_thr` | float | `0.45` | NMS 交并比阈值 |
-| `infer` | `pad_color` | list | `[0,0,0]` | letterbox 填充色（与 rknn_model_zoo 一致，勿改 114） |
-| `source` | `ros.rgb_topic` | str | `/ascamera_hp60c/.../rgb0/image` | ROS2 相机话题（严禁 remap） |
-| `source` | `ros.timeout` | float | `5.0` | 首帧等待秒数 |
-| `server` | `port` | int | `8080` | MJPEG 推流端口 |
-| `server` | `stream_name` | str | `defect.mjpg` | MJPEG 流名（已含 `.mjpg` 勿再追加） |
-| `rknn` | `target_platform` | str | `rk3576` | 转换目标平台 |
-| `rknn` | `quantize` | bool | `true` | 是否 int8 量化（转换脚本用） |
-| `rknn` | `calib_count` | int | `200` | int8 校准图片数（val 抽取） |
-| `rknn` | `onnx_model` | str | `train/weights/best.onnx` | 待转换 ONNX 路径 |
-| `rknn` | `rknn_model` | str | `models/defect_yolov8n_int8.rknn` | 转换产物 .rknn 路径 |
-| `eval` | `split` | str | `valid` | mAP50 评测用分割集 |
-| `eval` | `iou_thr` | float | `0.5` | mAP50 的 IoU 判定阈值 |
-
-> **说明**：`infer.imgsz` 须与训练 `train.imgsz` 一致（输入尺寸绑定）；`train.device` 无 GPU 改 `cpu`；`train.*` `rknn.*` 为 PC 侧（训练/转换），板端只用 `infer`/`source`/`server`。`source`/`server`/`train.run_dir` 不在 `REQUIRED` 校验内（未知键忽略，向前兼容）——改错不报错，注意自行核对。
-
-**操作步骤**：
-
-1. 查看项目目录结构，确认六大模块分工：
-   ```bash
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection
-   ls src/    # app / config / convert_rknn / dataset / eval_map / infer / metrics / mjpeg_server / postprocess / preprocess / ros2_source
-   ```
-
-2. 阅读配置文件，逐区块理解含义：
-   ```bash
-   cat config/defect_config.yaml
-   # 重点：infer.score_thr=0.25、infer.iou_thr=0.45、rknn.target_platform=rk3576、server.port=8080
-   ```
-
-3. 用 Python 验证配置加载与校验逻辑：
-
-   ```bash
-   PYTHONPATH=./src python -c "from config import load_config; cfg = load_config('config/defect_config.yaml'); print(cfg['infer'])"
-   # 预期输出：{'imgsz': 640, 'score_thr': 0.25, 'iou_thr': 0.45, 'pad_color': [0, 0, 0]}
-   ```
-
-4. 验证缺键报错（观察 ConfigError 契约）：
-   ```bash
-   PYTHONPATH=./src python -c "from config import load_config; load_config('config/defect_config.yaml')" # 正常
-   # 尝试删掉 yaml 中 infer 区块再运行，观察 ConfigError 提示缺失键
-   ```
-
-**易错点**：
-- ⚠️ 配置路径写相对路径时，`resolve_path` 基于**配置文件所在目录**解析（`config.py` L67-73），不是当前工作目录——跨目录运行务必注意
-
----
-
-#### 步骤2：工业缺陷数据集理解与校验（阶段一：能运行，30min）
-
-> 📌 本步骤对应源码：`src/dataset.py`
->
-> 需要自行准备相关数据集
-
-**知识点讲解**：
-
-**NEU-DET 数据集与 YOLO 标签格式（1.1.2）**
-
-- **原理**：NEU-DET（Northeastern University 表面缺陷数据集）是工业质检领域的标准公开数据集，包含热轧带钢表面 6 类缺陷（crazing 裂纹 / inclusion 夹杂 / patches 斑块 / pitted_surface 麻点 / rolled-in_scale 氧化铁皮 / scratches 划痕），共 1800 张 200×200 灰度图，已由社区转换为 YOLO 格式（`NEU-DET.v1i.yolov8`）。YOLO 标签为每行 `class_id cx cy w h` 的归一化格式（值域 0-1，相对图像宽高），与 COCO 的像素坐标格式不同。`src/dataset.py` 的 `validate_dataset()`（L19-85）负责**校验数据集结构**：确认 images/labels 目录存在、图像与标签一一对应、标签行数/坐标合法，输出统计（类别分布、样本数），为训练和评测提供数据完整性保障。`class_names()`（读 data.yaml）从 `names:` 字段提取 6 类名称供推理标注使用。
-- **源码对应**：`src/dataset.py` L19-85（validate_dataset：目录检查 L24-38 / 标签合法性 L40-66 / 统计输出 L68-85）、class_names 读取 data.yaml
-
-**知识储备补充**：
-
-- **背景与动机**：NEU-DET 由东北大学宋克臣团队于 2017 年发布，是热轧带钢表面缺陷检测的基准数据集。工业表面缺陷（尤其小尺度、低对比度缺陷）与通用目标检测数据集有本质差异：缺陷面积小（常不足图像 5%）、类间外观相似（crazing 与 scratches 均为细线纹理）、标注一致性要求极高——这使它成为检验检测模型"小目标 + 弱纹理"能力的标准测试床。
-
-- **YOLO 归一化标签格式**：每行 `class_id cx cy w h`，其中 $c_x, c_y, w, h$ 均为归一化值：
-
-  $$
-  c_x = \frac{x_{center}}{W}, \quad c_y = \frac{y_{center}}{H}, \quad w = \frac{bw}{W}, \quad h = \frac{bh}{H}
-  $$
-
-  其中 $W,H$ 为图像宽高，$(x_{center}, y_{center})$ 为框中心像素坐标，$bw,bh$ 为框宽高像素。归一化后标签与图像分辨率解耦——同一标注可适配任意 `imgsz` 训练。这与 COCO 的 `[x,y,w,h]` 像素坐标格式不同，混用是标注常见错误。
-  
-- **关键参数**：归一化坐标值域必须 ∈ [0,1]；越界或混入像素坐标会导致训练崩溃或 mAP 极低——`validate_dataset`（L40-66）正是校验这一点。
-
-- **参考资源**：
-
-  NEU-DET 论文（K. Song et al., *Surface defect detection method using saliency linear perceptual hashing technology*）；
-
-  Roboflow `NEU-DET.v1i.yolov8` 数据集页。
-
-**操作步骤**：
-
-1. 若本机已有 NEU-DET 数据集，配置 `config/defect_config.yaml` 中 `dataset.root` 指向其路径
-2. 运行数据集校验：
-   ```bash
-   PYTHONPATH=./src python -c "from dataset import validate_split, class_names; import pathlib; \
-   root = pathlib.Path('/home/iflytek/tmp/AIoT_B2/NEU-DET.v1i.yolov8'); \
-   print('classes:', class_names(root / 'data.yaml')); \
-   print('--- train ---'); print(validate_split(root, 'train')); \
-   print('--- val ---'); print(validate_split(root, 'val'))"
-   # 预期：打印类别统计（6 类缺陷各约 300 张）与标签合法性结果
-   ```
-3. 查看 2-3 张标注图，理解 YOLO 归一化标签与像素坐标的换算关系（用 OpenCV 画框验证）
-4. 思考：为什么工业缺陷数据集比通用目标检测数据集更难标注？（缺陷尺度小、类间相似、标注一致性要求高）
-
-下面是相关训练的标注照片，可以在 ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection/train 中进行查看
-
-<img src="assets/val_batch0_labels.jpg" alt="val_batch0_labels" style="zoom:25%;" />
-
-**易错点**：
-- ⚠️ 板上无 NEU-DET 数据集属正常现象——`app.py` L60-65 已内置 6 类名兜底，板上推理无需数据集
-- ⚠️ 标签坐标必须归一化（0-1），若混入像素坐标，训练会直接崩或 mAP 极低
-
----
-
-#### 步骤3：YOLOv8 模型训练与结果分析（阶段二：能理解，40min）
-
-> 📌 本步骤对应源码：`scripts/train.sh`、`train/args.yaml`
-
-**知识点讲解**：
-
-**YOLOv8 架构与训练流程（1.1.1、1.2.1）**
-
-- **原理**：YOLOv8 是 anchor-free 的实时目标检测器，主干 CSPDarknet 提取多尺度特征，PAN-FPN 颈部融合，**解耦检测头**分别输出分类与回归分支。回归分支采用 **DFL（Distribution Focal Loss）**：不直接回归偏移，而是预测 16 个 bin 的概率分布，加权求和得到连续偏移，对小目标更友好（`postprocess.dfl_decode` 对应实现）。训练配置收敛在 `train/args.yaml`：yolov8n、imgsz=640、epochs=100、batch=8、optimizer=auto、seed=0。训练产物 `train/weights/best.pt`（+ last.pt）与 `best.onnx`（RKNN 优化 fork 导出，9 输出）随仓库交付，**无需重训即可进入部署链路**；`scripts/train.sh`（L1-25）封装了 PC 侧训练入口。
-- **源码对应**：`scripts/train.sh` L1-25；`train/args.yaml` L1-106（超参数全量）；训练指标见 `train/results.csv`、曲线图 `train/*.png`
-
-**知识储备补充**：
-
-- **YOLOv8 架构拆解**：YOLOv8（2023，Ultralytics）相对 YOLOv5 的关键演进可归纳为四点
-
-  (1) **anchor-free**：去掉预置 anchor，直接回归中心点与宽高（中心点落在哪个 grid 哪个负责），减少超参；
-
-  (2) **C2f 模块**：替换 C3，借鉴 ELAN 结构引入更多梯度流分支，在相近计算量下提升表征；
-
-  (3) **解耦头（Decoupled Head）**：分类与回归分支分离，各自用不同尺度结构，缓解分类/回归任务冲突；
-
-  (4) **DFL 回归**。主干 CSPDarknet 提取 80/40/20 三个尺度的特征图（对应小/中/大目标），PAN-FPN 自顶向下 + 自底向上融合多尺度。
-
-- **DFL 原理**：DFL 不直接回归框偏移 $t$，而是用 16 个 bin 的概率分布表示其近似：
-
-  $$
-  t = \sum_{i=0}^{15} p_i \cdot i, \qquad p = \text{softmax}(z)
-  $$
-
-  其中 $z \in \mathbb{R}^{16}$ 是网络对 16 个 bin 的原始 logits，$p_i$ 为第 $i$ 个 bin 的 softmax 概率，$t$ 为加权和得到的连续偏移。相比单值回归，DFL 能刻画边界的不确定性，对小目标与边界模糊目标（如细纹理缺陷）更友好。解码时 `dfl_decode`（postprocess L34-42）执行 softmax 后加权求和。
-  
-- **精度-速度权衡**：imgsz=640 是速度与精度的折中。NPU 算力固定 6TOPS，特征图边长平方增长（640²→800² 计算量增约 56%），单帧耗时随之上升。640 能覆盖绝大多数缺陷尺度且保持实时，是工业部署的常用默认。
-
-- **参考资源**：
-
-  YOLOv8 论文（Jocher et al., Ultralytics YOLOv8）；
-
-  Ultralytics 官方文档《YOLOv8 Architecture Overview》；
-
-  DFL 原论文《Generalized Focal Loss》（Li et al., 2020）。
-
-相关YOLOv8网络架构图
-
-<img src="assets/1ebb040adac1e258c00d6e0868727559.jpeg" alt="img" style="zoom:25%;" />
-
-**操作步骤**：
-
-1. 查看训练产物目录，理解"一份权重，三种格式"：
-   ```bash
-   ls -la train/weights/    # best.pt (PyTorch) + best.onnx (RKNN-ONNX, 9输出)
-   ```
-
-2. 解读训练指标（`train/results.csv` 末尾几行）：
-   ```bash
-   tail -5 train/results.csv    # epoch/box_loss/cls_loss/dfl_loss/metrics/precision/recall/mAP50
-   # 参考：epoch 100 → P=0.657 / R=0.706 / mAP50=0.732 / mAP50-95=0.409
-   ```
-
-3. 查看混淆矩阵与 PR 曲线（`train/confusion_matrix.png`、`train/PR_curve.png`），分析哪两类缺陷最易混淆（通常 crazing 与 scratches 相似）
-
-   <img src="assets/confusion_matrix.png" alt="confusion_matrix" style="zoom:25%;" />
-
-   <img src="assets/PR_curve.png" alt="PR_curve" style="zoom:25%;" />
-
-4. （可选，PC 且需重训时）运行 `bash scripts/train.sh`，比较训练曲线
-
-5. 思考：为什么选择 imgsz=640 而不是 800？板端 NPU 算力固定（6TOPS），imgsz 越大单帧耗时越高——这是**精度-速度权衡**的典型例子
-
-**易错点**：
-
-- ⚠️ 训练框架必须是 RKNN 优化 fork（ultralytics 8.3.229 + numpy<2.0），官方版导出的 ONNX 不是 9 输出，无法直接转 rknn
-- ⚠️ 训练精度目标只是参考，mAP 达标 ≠ 板端可用——int8 量化会引入精度损失，需在步骤 7 验证掉点
-
----
-
-#### 步骤4：RKNN-ONNX 模型导出（阶段二：能理解，30min）
-
-> 📌 本步骤对应源码：`scripts/export_onnx.sh`
-
-**知识点讲解**：
-
-**RKNN 优化版 ONNX 导出（1.2.2）**
-
-- **原理**：官方 ultralytics 导出的 ONNX 把 DFL 解码也导出到计算图中（大量 Slice/Concat 算子），RKNN 转换器对这类动态索引支持差、易报错或低效。RKNN 优化 fork 提供了 `format='rknn'` 导出模式：**DFL 解码留在 CPU 侧**（Python 后处理实现），模型只输出 3×nl 个原始张量——每层 3 个：box `(1,64,h,w)`（DFL 原始分布）、cls `(1,nc,h,w)`（已 sigmoid）、cls_sum `(1,1,h,w)`（可忽略分支）。yolov8n 有 3 个检测层（80/40/20），故共 9 个输出。`export_onnx.sh`（L1-21）封装导出命令并校验输出数量。
-- **源码对应**：`scripts/export_onnx.sh` L1-21（导出 + 校验 L16-20）
-
-**知识储备补充**：
-
-- **背景与动机**：RKNN 转换器对 ONNX 算子的支持不是全集的——大量动态 Shape 算子（Slice/Concat 组合的动态索引、Reshape 依赖运行时值）在量化图优化阶段易失败或生成低效指令。RKNN 优化 fork 将"纯推理主干"与"DFL 后处理"分离：把后处理留在 CPU（Python），模型只保留稳定、可静态分析的算子，显著提高 RKNN 转换成功率与 NPU 效率。
-- **输出张量结构拆解**：每检测层输出 3 个张量——box `(1,64,h,w)` 是 DFL 的 16 bin × 4 坐标原始分布（回归分支），cls `(1,nc,h,w)` 是已 sigmoid 的类别分数（`nc`=6 类），cls_sum `(1,1,h,w)` 是类别分数和的可忽略分支。3 层 × 3 = 9 个输出：
-
-  $$
-  \text{outputs} = \bigcup_{l \in \{80,40,20\}} \{ \underbrace{\text{box}^{(l)}}_{1\times64\times h_l \times w_l},\; \underbrace{\text{cls}^{(l)}}_{1\times nc \times h_l \times w_l},\; \underbrace{\text{cls\_sum}^{(l)}}_{1\times 1\times h_l \times w_l} \}
-  $$
-
-  其中 $h_l = w_l = \text{imgsz}/l$（imgsz=640 → 8/16/32 下采样 → 80/40/20 特征图），`nc=6` 为缺陷类别数。
-- **参考资源**：RKNN 官方文档《RKNN Toolkit2 User Guide》ONNX 算子支持表；Ultralytics `yolo export` 文档。
-
-**操作步骤**：
-
-1. 查看导出脚本内容，理解关键参数：
-   ```bash
-   cat scripts/export_onnx.sh
-   # 核心：yolo export model=train/weights/best.pt format=onnx opset=12 imgsz=640
-   #       format=rknn（RKNN 优化 fork 专用）
-   ```
-
-2. 验证已交付的 ONNX 输出结构（无需重导）：
-   ```bash
-   python -c "
-   import onnxruntime as ort
-   sess = ort.InferenceSession('train/weights/best.onnx')
-   print('输入:', [i.name for i in sess.get_inputs()])
-   print('输出数:', len(sess.get_outputs()))
-   for o in sess.get_outputs(): print(' ', o.name, o.shape)"
-   # 预期输出数 = 9（3 层 × 3 张量）
-   ```
-
-   ```bash
-   输入: ['images']
-   输出数: 9
-     317 [1, 64, 80, 80]
-     325 [1, 6, 80, 80]
-     331 [1, 1, 80, 80]
-     338 [1, 64, 40, 40]
-     346 [1, 6, 40, 40]
-     352 [1, 1, 40, 40]
-     359 [1, 64, 20, 20]
-     367 [1, 6, 20, 20]
-     373 [1, 1, 20, 20]
-   ```
-
-   若需重导（PC 且 fork 环境就绪）：`bash scripts/export_onnx.sh train/weights/best.pt`
-
-**易错点**：
-
-- ⚠️ 输出不是 9 个 → 用了官方 ultralytics 或未指定 `format=rknn`（`export_onnx.sh` L16）
-- ⚠️ opset 过高（>12）可能导致 RKNN 转换器不支持某些算子，保持 opset=12
-
----
-
-#### 步骤5：RKNN 转换与 int8 量化（阶段二：能理解，40min）
-
-> 📌 本步骤对应源码：`src/convert_rknn.py`
-
-**知识点讲解**：
-
-**RKNN int8 量化原理（1.3.1）**
-
-- **原理**：RKNN 转换器（rknn-toolkit2）把 ONNX 图转换为 RK3576 平台的 NPU 指令集模型，核心是 **int8 量化**：权重和激活从 float32 缩放到 int8（w8a8），通过**校准集**统计激活分布确定每个张量的 scale/zero_point。量化配置要点：`quant_img_RGB2BGR=False`（L65）——因为导出模型的输入约定是 RGB；`target_platform='rk3576'`（L38-42）；校准集 200 张 val 图（`--calib-count 200`）。部署侧用 `RKNNLite`（`infer.py` L29-52）在 NPU 上推理，`init_runtime` 必须显式传 `core_mask=0`（NPU_CORE_AUTO，L36），None 在 2.3.2 会报 `core mode not supported`。模型推理输入必须是 **4D NHWC uint8**（静态 shape）且**不做 /255 归一化**——量化模型内部已含 scale。
-- **源码对应**：`src/convert_rknn.py` L25-109（参数解析 L25-40 / config 加载与 RGB2BGR 设置 L41-65 / 转换+量化 L66-91 / 输出保存 L92-109）
-
-**知识储备补充**：
-
-- **int8 量化原理**：量化把浮点张量映射到 int8 整数域。权重 $w$ 与激活 $x$ 的仿射量化：
-
-  $$
-  w_q = \text{round}\left( \frac{w}{s_w} \right), \qquad x_q = \text{round}\left( \frac{x}{s_x} \right)
-  $$
-
-  其中 $s_w, s_x$ 分别为权重与激活的量化步长（scale），由校准集统计激活数值分布确定。反量化近似：$\hat{w} \approx s_w \cdot w_q$。相比 fp32，int8 用 4 倍压缩的位宽换取 NPU 上更快的定点运算（w8a8 即权重/激活均 8bit）。代价是舍入误差引入的精度损失（本项目要求掉点 ≤3%）。
-- **校准集的作用**：scale 的确定依赖激活的真实分布。校准集（`--calib-count 200` 张 val 图）应代表部署时的真实数据分布——若校准图与推理数据分布偏差大，量化的 scale 估计失准，掉点加剧。这也是"校准图用 val 集而非 train 集"的原因。
-- **RGB2BGR 约定（关键）**：`quant_img_RGB2BGR=False`（L65）表示转换器**不**做通道交换——因为导出模型输入约定是 RGB，推理侧 `to_rgb()`（preprocess L45-52）已经把 BGR 帧换成 RGB 再喂 NPU。若转换侧与推理侧的约定不一致，检测框会整体偏移或错乱。这是本项目最易踩的坑之一。
-- **输入格式约束**：NPU 静态 shape 模型要求 4D NHWC uint8 输入，且**不做 /255 归一化**——量化模型内部已把 0-255 的 uint8 输入视为激活并含 scale，归一化会破坏输入分布。
-- **参考资源**：RKNN Toolkit2 官方文档《Quantization》；Google《Quantizing Deep Convolutional Networks for Efficient Inference》（Jacob et al., 2017）。
-
-**操作步骤**：
-
-1. 查看转换脚本参数：
-   ```bash
-   python src/convert_rknn.py --help
-   # --onnx --output --calib-dir --calib-count --imgsz --no-quantize
-   ```
-
-2. 重新转换（板上 ros2_venv 或 PC rknn 环境，需要 NEU-DET val 图作校准集）：
-   ```bash
-   python src/convert_rknn.py --onnx train/weights/best.onnx \
-     --output models/defect_yolov8n_int8.rknn \
-     --calib-dir <NEU-DET>/valid/images --calib-count 200
-   # 预期：打印量化信息与每层统计，最终生成 .rknn 文件
-   ```
-
-3. 对比已交付的 `models/defect_yolov8n_int8.rknn` 文件大小与 ONNX 差异（int8 通常更小）
-
-4. 思考：量化掉点的根源是什么？（权重/激活低比特表示 → 信息损失；校准集代表性不足 → 分布估计偏差）
-
-```python
-# src/convert_rknn.py 部分代码块解释
-if rknn.config(
-            mean_values=[[0, 0, 0]], std_values=[[255, 255, 255]],
-            target_platform=target,
-            quant_img_RGB2BGR=False,        # 输入已为 RGB（导出时固化），不再转色域
-            quantized_dtype="w8a8",         # toolkit2 默认 int8 量化
-            quantized_algorithm="normal",   # 默认
-            quantized_method="channel",     # 2.3.0 默认即 channel（逐通道量化）
-            optimization_level=3,           # 默认
-            single_core_mode=True,          # 单核模型：省内存（用户指定 2026-08-05）
-            model_pruning=True,             # 无损剪枝：省内存（用户指定 2026-08-05）
-        ) != 0:
-```
-
-| 参数                  | 值                | 说明                                                         |
-| --------------------- | ----------------- | ------------------------------------------------------------ |
-| `mean_values`         | `[[0,0,0]]`       | 输入图像每个通道的**均值**。配合 `std_values` 完成归一化：‑。本模型约定外部输入像素范围 `0‑255`，不需要做减均值，故 mean 设置为 0。 |
-| `std_values`          | `[[255,255,255]]` | 输入图像每个通道的**标准差**。本模型归一化公式：xnorm=xpixel/255，该归一化由 RKNN 运行时内部完成，Python 侧不需要手动执行 `/255`。 |
-| `target_platform`     | `target`          | 指定目标 RK 芯片平台，例如 `"rk3576"`。用于让工具针对该芯片算子库做编译适配、算子择优。 |
-| `quant_img_RGB2BGR`   | `False`           | **色域转换开关**。`False`= 关闭内部 RGB→BGR 转换。前提：预处理阶段已经把 OpenCV 默认 BGR 图像转为 RGB 再喂入模型；不要让 RKNN runtime 再做一次通道翻转，否则颜色错乱，出现 “框准、分类全错”。 |
-| `quantized_dtype`     | `"w8a8"`          | 量化数据类型：**权重 int8，激活值 int8（w8a8）**，即全 int8 量化。是 RK3576 最常用的量化模式，兼顾推理速度与模型体积；相比 fp16 大幅降低 NPU 内存占用。 |
-| `quantized_algorithm` | `"normal"`        | 量化算法，`normal`为标准 KL 散度量化算法，使用校准集统计激活值分布，生成量化参数；适合目标检测任务。 |
-| `quantized_method`    | `"channel"`       | **逐通道量化**。权重按每个卷积通道独立计算量化零点 / 缩放因子，精度更高；RKNN Toolkit2.3.0 版本后默认就是`channel`，优于旧版`tensor`（整个张量共用一套量化参数）。 |
-| `optimization_level`  | `3`               | 算子优化等级，范围 0‑3；3 代表开启全部编译器图优化：算子融合、常量折叠、算子替换为芯片硬件实现，最大化 NPU 推理性能。 |
-| `single_core_mode`    | `True`            | **单核模式**。编译出来的 RKNN 模型仅使用 1 颗 NPU 核心运行。✅优点：模型运行内存占用降低，适合内存紧张场景；⚠️缺点：不能利用多核并行，单帧推理延迟会变大，需要上层多线程推理池（RKNNPool）做多实例并发来拉高整体 FPS。 |
-| `model_pruning`       | `True`            | **无损模型剪枝**。RKNN 编译器做图级无损剪枝：移除无用常量、废弃分支、零权重通道，在不损失精度前提下减少模型大小与运行内存开销。 |
-
-**易错点**：
-
-- ⚠️ 校准图必须 jpg/png/bmp 且绝对路径、无中文（`convert_rknn.py` L22）；`--imgsz` 与训练一致（640）
-- ⚠️ `rgb2bgr` 必须 False（L65）：模型输入约定 RGB，转换侧与推理侧（`to_rgb`）必须一致
-- ⚠️ 掉点 >3% 时：增大 `--calib-count`、校准图用 val 集、必要时 `--no-quantize` 定位
-
----
-
-#### 步骤6：NPU 部署与实时缺陷检测（阶段三：能改造，45min）
-
-> 📌 本步骤对应源码：`src/app.py`、`src/infer.py`、`src/preprocess.py`、`src/postprocess.py`、`src/mjpeg_server.py`、`src/ros2_source.py`
-
-**知识点讲解**：
-
-**实时缺陷检测推理流水线（1.3.2）**
-- **原理**：板端推理是一条精心对齐的流水线（`Detector.detect`，`src/infer.py` L108-139）：
-
-  (1) **letterbox 预处理**（`src/preprocess.py` L27-37）——按 `scale=min(size/h, size/w)` 等比缩放并用 0 值填充到 640×640，保持宽高比不变、避免目标变形；
-
-  (2) **BGR→RGB 通道交换**（L45-52 `to_rgb`）——量化配置 `rgb2bgr=False` 决定了 NPU 输入必须是 RGB；
-
-  (3) **NPU 推理**（`src/infer.py` L44-49）——`RKNNLite.inference` 输入必须是 **4D NHWC uint8**（静态 shape 模型不接受 3D），且**不做 /255 归一化**（量化模型内部已含 scale）；
-
-  (4) **CPU 侧解码**（`src/postprocess.py`）——`dfl_decode`（L34-42）对 16 bin 做 softmax 加权求和还原边框偏移，`box_process`（L45-56）加 grid 中心与 stride 还原 xyxy，`decode_rknn`（L91-121）按 `score_thr=0.25` 过滤后 `classwise_nms`（L59-88）逐类做非极大值抑制（同类别重叠框只留最高分）；
-
-  (5) **unletterbox**（`src/preprocess.py` L40-42）把检测框映射回原始图像坐标，再由 `app.py` 的 `draw()`（L32-39）画红框与类别标签。后端抽象（`Backend` Protocol，`infer.py` L23-26）使同一套推理逻辑可在 RKNN（NPU）/ONNX（CPU）间切换，支撑精度对比。
-
-- **源码对应**：`src/preprocess.py` L27-37（letterbox）、L40-42（unletterbox）、L45-52（to_rgb）；`src/infer.py` L23-26（Backend 协议）、L29-52（RKNNBackend：load L38-42 / predict L44-49）、L108-139（Detector：detect L118-130）；`src/postprocess.py` L34-42（dfl_decode）、L45-56（box_process）、L59-88（classwise_nms）、L91-121（decode_rknn）；`src/app.py` L24-29（_make_backend）、L32-39（draw）、L71-75（run_frame）、L94-146（视频/相机/ROS 模式）；`src/mjpeg_server.py` L19-72（MjpegServer）；`src/ros2_source.py` L20-116（Ros2Camera：DEFAULT_TOPIC L29 / open L50-69 / _on_image L71-80 / read L82-92 / release L98-116）
-
-**知识储备补充**：
-
-- **letterbox 数学定义**：等比缩放因子为两轴缩放的最小值，保证不裁切内容：
-
-  $$
-  scale = \min\left( \frac{size}{h}, \frac{size}{w} \right), \qquad
-  pad_x = \left\lfloor \frac{size - w \cdot scale}{2} \right\rfloor, \qquad
-  pad_y = \left\lfloor \frac{size - h \cdot scale}{2} \right\rfloor
-  $$
-
-  其中 $(w,h)$ 为原图宽高，$size=640$ 为目标边长。缩放后图像 `(h·scale, w·scale)` 居中放入 `(640,640)` 画布，两侧填充 `pad_color`。部署推理必须用 **pad=0**（非训练用的 114）——填充值参与卷积计算，若与训练/量化不一致，边缘特征分布偏移导致框错位。`unletterbox` 反向映射：`(box - [pad_x, pad_y, pad_x, pad_y]) / scale`。
-- **DFL 解码公式**：对每个位置，4 个坐标各对应 16 bin 分布，softmax 后加权：
-
-  $$
-  \hat{t}_c = \sum_{i=0}^{15} i \cdot \text{softmax}(z_c)_i, \quad c \in \{l, t, r, b\}
-  $$
-
-  其中 $z_c \in \mathbb{R}^{16}$ 是坐标 $c$ 的 16 bin logits。再经 `box_process` 加 grid 中心与 stride 还原到特征图尺度：$x_{center} = (g_x + 0.5 - \hat{t}_l) \cdot stride$（含 anchor-free 的分布偏移），最后乘 stride 得像素坐标。
-- **逐类 NMS**：NMS（Non-Maximum Suppression）抑制同类重叠框——按置信度降序扫描，保留当前最高分框，抑制与之 IoU ≥ `iou_thr` 的同类别框。逐类（classwise）做 NMS 是因为不同类别的框允许重叠（如缺陷框内再套一个）。IoU 定义：
-
-  $$
-  \text{IoU}(A,B) = \frac{|A \cap B|}{|A \cup B|} = \frac{\text{inter}}{\text{area}_A + \text{area}_B - \text{inter}}
-  $$
-
-- **参考资源**：rknn_model_zoo `yolov8.py`（本实现逐行对齐的官方参考）；Ultralytics《YOLOv8 Inference》；OpenCV `cv2.resize` 文档。
-
-**推理数据流图**：
-
-```mermaid
-graph TD
-    subgraph 输入源
-        I1[单图 --image] --> P
-        I2[视频 --video] --> P
-        I3[UVC相机 --camera] --> P
-        I4[ROS2相机 --ros<br/>ascamera HP60C] --> P
-    end
-    P[letterbox 等比缩放+0填充<br/>preprocess.py L27-37] --> R[to_rgb BGR→RGB<br/>preprocess.py L45-52]
-    R --> N[RKNNLite NPU推理<br/>4D NHWC uint8<br/>infer.py L44-49]
-    N --> D[DFL解码+逐类NMS<br/>postprocess.py L91-121]
-    D --> U[unletterbox 映射回原图坐标<br/>preprocess.py L40-42]
-    U --> S[draw 画框标注<br/>app.py L32-39]
-    S --> O[MJPEG推流 :8080/defect.mjpg<br/>mjpeg_server.py]
-    S --> W[本地窗口 --display]
-```
-
-**操作步骤**：
-
-1. 单图推理（最简验证）：
-   ```bash
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection
-   python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg
-   # 预期：终端打印 fps=xx.x 与每个缺陷框 类别 置信度 (x1,y1,x2,y2)；out.jpg 为红框标注图
-   ```
-
-2. 视频推理：
-
-   需要准视频，本实验未提供
-
-   ```bash
-   python src/app.py --model models/defect_yolov8n_int8.rknn --video test.mp4 --save out.mp4
-   # 预期：每 30 帧打印一次 avg_fps，最终输出标注视频
-   ```
-
-3. 相机实时（板上标准流程，HP60C 走 ROS2 话题）：
-
-   ```bash
-   # 终端 1：启动相机驱动（ROS_DOMAIN_ID 必须与驱动一致，本板 =2）
-   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
-   export ROS_DOMAIN_ID=2
-   ros2 launch ascamera hp60c.launch.py
-   
-   # 终端 2：运行缺陷检测（同一 ROS_DOMAIN_ID）
-   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
-   export ROS_DOMAIN_ID=2
-   python src/app.py --model models/defect_yolov8n_int8.rknn --ros
-   # 预期：终端打印 frame N avg_fps=xx.x，板端实测约 13 FPS
-   ```
-
-4. 浏览器查看实时检测流：
-
-   - 同一局域网内访问 `http://<板IP>:8080/defect.mjpg`
-   - 移动带缺陷的工件，观察红框与类别标签实时跟随
-
-5. 验证后端可切换（精度对比前置）：
-   ```bash
-   python src/app.py --model train/weights/best.onnx --image images/1.jpg --save out_onnx.jpg
-   # .onnx 自动走 ONNXBackend（CPU），与 .rknn（NPU）对比帧率差异
-   ```
-
-6. 动手改造练习（阶段三）：修改 `src/app.py` L38-39 中画框颜色/线宽，或把 `score_thr` 从配置改为命令行参数，重新运行观察效果
-
-**易错点**：
-
-- ⚠️ **视频流推理报过程乱框** → **解决**：因为模型是特定场景特定识别，调用摄像头看正常环境会出现较多错误检测是正常现象
-
-- ⚠️ **推理报 `need 4dims input`** → **解决**：静态 shape 模型要求 4D 输入，`RKNNBackend.predict`（`infer.py` L47）已用 `np.newaxis` 补成 NHWC；手写推理代码时务必保持 4 维
-- ⚠️ **检测结果框整体偏移/错位** → **解决**：检查 letterbox 填充值（必须 0，非 114）与 BGR/RGB 约定（`to_rgb` 必须调用）；两侧不一致是框偏移的头号原因
-- ⚠️ **init_runtime 报 `core mode not supported`** → **解决**：`RKNNLite` 初始化必须显式传 `core_mask=0`（NPU_CORE_AUTO，`infer.py` L36），None 值在 2.3.2 上会报错
-- ⚠️ **MJPEG 浏览器 404** → **解决**：端口被其他 demo 占用，`mjpeg_server.py` L47-57 启动时已预检端口并明确报错；先关闭占用 8080 的进程
-- ⚠️ **--ros 模式取不到帧** → **解决**：确认相机驱动已启动、`ROS_DOMAIN_ID` 与驱动一致（本板 =2）、话题为 `/ascamera_hp60c/camera_publisher/rgb0/image`（`ros2_source.py` L29，勿 remap）
-
----
-
-#### 步骤7：mAP50 精度评测与 onnx/rknn 对比（阶段三：能改造，35min）
-
-> 📌 本步骤对应源码：`src/eval_map.py`、`src/metrics.py`
-
-**知识点讲解**：
-
-**mAP50 指标原理（1.3.3）**
-- **原理**：mAP（mean Average Precision）是目标检测的行业标准指标。其计算分四层：(1) **IoU**（`src/metrics.py` L28-39 `iou_matrix`）——预测框与真值框的交并比，向量化实现逐对计算；(2) **TP/FP 匹配**（L54-73 `_match_flags`）——预测框按置信度降序，与同类别 GT 计算 IoU，`IoU≥0.5` 且该 GT 未被匹配过则为 TP，否则 FP（一张 GT 只匹配一次）；(3) **PR 曲线与 AP**（L42-51 `_ap_from_pr`）——按置信度阈值从高到低扫描，计算 precision/recall 序列，用 all-point 插值求曲线下面积，即单个类别的 AP50；(4) **mAP50**（L76-112 `map50`）——各类 AP50 的平均，遵循 COCO/ultralytics 约定**无 GT 的类别不参与均值**，保证与官方 `yolo val` 可比。`eval_map.py`（L29-91）把评测组织为"遍历 val 集 → Detector 推理 → 解析 YOLO 标签为 GT → map50 计算"，`--backend` 参数支持 rknn/onnx 双后端，从而量化 int8 量化相对浮点模型的精度损失（本项目要求掉点 ≤3%）。
-- **源码对应**：`src/metrics.py` L28-39（iou_matrix）、L42-51（_ap_from_pr）、L54-73（_match_flags）、L76-112（map50）；`src/eval_map.py` L29-46（参数与 Detector 构建）、L48-79（评测循环与 GT 解析）、L81-91（结果输出）
-
-**知识储备补充**：
-
-- **PR 曲线与 AP 数学定义**：对每个类别，按置信度阈值 $\tau$ 从高到低扫描，得到 precision/recall 序列：
-
-  $$
-  \text{Precision}(\tau) = \frac{TP(\tau)}{TP(\tau) + FP(\tau)}, \qquad
-  \text{Recall}(\tau) = \frac{TP(\tau)}{TP(\tau) + FN(\tau)}
-  $$
-
-  AP 是 PR 曲线下的面积。本实现用 **all-point 插值**（非 COCO 的 101 点插值）：
-
-  $$
-  \text{AP} = \sum_{k} (R_{k+1} - R_k) \cdot P_{k+1}
-  $$
-
-  其中 $P_k, R_k$ 为按 recall 升序的第 $k$ 个插值点（recall 间隔上的最高 precision）。mAP50 即所有类别 AP50 的均值，`IoU_thr=0.5` 表示"预测框与 GT 的 IoU ≥ 0.5 即算命中"。
-- **TP/FP 匹配的贪心约束**：一张 GT 只匹配一次（`_match_flags`），防止多个预测框同时命中同一 GT 都算 TP——这保证了指标不被冗余预测虚高，是目标检测评测的通用约定。
-- **关键参数**：`iou_thr=0.5`（即 AP50）；"无 GT 的类不参与均值"（`metrics.py` L109-111）——若某类在测试集中无样本，其 AP 无定义，纳入均值会拉低 mAP 且与 `yolo val` 不可比。
-- **参考资源**：COCO 数据集评测官方定义（cocodataset.org）；Ultralytics《Metrics》文档；《The PASCAL Visual Object Classes Challenge》（Everingham et al., 2010）。
-
-**操作步骤**：
-
-1. 运行 RKNN 后端评测（板上，需要 NEU-DET 数据）：
-   ```bash
-   python src/eval_map.py --backend rknn \
-     --model models/defect_yolov8n_int8.rknn \
-     --data /home/iflytek/Src/AIoT_B2/NEU-DET.v1i.yolov8
-   # 预期输出：per-class AP50 表格 + mAP50（如 0.71x）
-   ```
-2. 运行 ONNX 后端评测，与 RKNN 对比：
-   ```bash
-   python src/eval_map.py --backend onnx \
-     --model train/weights/best.onnx \
-     --data /home/iflytek/Src/AIoT_B2/NEU-DET.v1i.yolov8
-   # 预期：onnx mAP50 略高于 rknn；掉点 = onnx - rknn ≤ 3%
-   ```
-3. 记录两类缺陷的 AP 差异，思考原因（如 crazing 与 scratches 类间相似，AP 通常偏低）
-4. 填写性能基线表（实验报告必填）：
-
-   | 指标 | 期望值 | 实测值 |
-   |------|-------|-------|
-   | onnx mAP50 | ≈0.73 |  |
-   | rknn(int8) mAP50 | 掉点 ≤3% |  |
-   | 单图推理 FPS（NPU） | ≥15（实测约 13） |  |
-   | MJPEG 流地址 | :8080/defect.mjpg 可访问 |  |
-
-**易错点**：
-- ⚠️ mAP 数值与 `yolo val` 不可比 → 保持"无 GT 类不参与均值"约定（`metrics.py` L109-111）；GT 与 pred 统一原始图像坐标（`eval_map.py` L74-75）
-- ⚠️ 评测耗时长 → 可先用 `--limit`（若支持）抽子集快速验证流程，再全量跑
-
----
-
-### 1.7 常见问题
-
-| 问题 | 原因 | 解决方法 |
-|------|------|---------|
-| 检测框整体偏移/错位 | letterbox 填充值或 BGR/RGB 约定与转换不一致 | 部署侧保持 pad=0（`preprocess.py` L8-9）与 `to_rgb()`（L45-52）；转换侧 `quant_img_RGB2BGR=False`（`convert_rknn.py` L65） |
-| NPU 推理报 `need 4dims input` | 静态 shape 模型要求 4D NHWC 输入 | 按 `infer.py` L47 加 `np.newaxis` 补维 |
-| init_runtime 报 `core mode not supported` | core_mask 传 None | 显式传 `core_mask=0`（NPU_CORE_AUTO，`infer.py` L36） |
-| RKNN 转换掉点 >3% | 校准集不足或预处理不一致 | 增大 `--calib-count`（`convert_rknn.py` L99）、校准图用 val 集且预处理与推理一致；必要时 `--no-quantize` 定位 |
-| 导出 ONNX 输出不是 9 个 | 用了官方 ultralytics 或未指定 format=rknn | 使用 RKNN 优化 fork + `format='rknn'`（`export_onnx.sh` L16），校验命令见 L20 |
-| MJPEG 浏览器 404 | 8080 端口被其他 demo 占用 | 关闭占用进程；启动时预检报错见 `mjpeg_server.py` L47-57 |
-| `--ros` 取不到帧 | 驱动未启动或 ROS_DOMAIN_ID 不一致 | 先 `ros2 launch ascamera hp60c.launch.py`；export ROS_DOMAIN_ID=2；话题勿 remap（`ros2_source.py` L29） |
-| 退出程序时报 C++ abort / core dumped | `Ros2Camera.release()` 先 destroy_node 再 rclpy.shutdown()，顺序反了 | 严格先 `rclpy.shutdown()` 后 `destroy_node`（`ros2_source.py` L98-116），release 已内置正确顺序 |
-| 量化校准报错或无效果 | 校准图路径含中文字符/格式不支持，或 imgsz 与模型不一致 | 校准图用 jpg/png/bmp 与绝对路径（`convert_rknn.py` L22）；`--imgsz` 与训练一致 |
-| 板上无训练集时推理报错 | `class_names` 读 data.yaml 失败抛 FileNotFoundError | 属正常现象，`app.py` L60-65 已内置 NEU-DET 6 类名兜底，板上推理无需数据集 |
-| mAP 数值与 `yolo val` 不可比 | 无 GT 的类参与了均值，或 GT 与预测坐标空间不一致 | 保持"无 GT 类不参与均值"约定（`metrics.py` L109-111）；GT 与 pred 统一原始图像坐标（`eval_map.py` L74-75） |
-
-### 1.8 扩展实验
-
-**扩展方向 1：缺陷精度提升与消融对比（进阶）**
-- 训练侧换更大模型 `yolov8s` 或提高 `imgsz=800`，对比 mAP50 提升与板端 FPS 下降的权衡（NPU 算力 6TOPS 固定，模型越大单帧耗时越高）
-- 增加校准图片数（`--calib-count 500`）或改用 fp16 转换，观察 int8 量化掉点变化
-- 用 `src/eval_map.py` 的 `--backend` 参数建立 torch / onnx / rknn 三方精度对比表，分析量化误差主要来自哪类缺陷
-
-**扩展方向 2：质检联动与缺陷统计报告（进阶）**
-- 在 `src/app.py` 主循环（L123-138）中按类别累加缺陷计数，周期性输出缺陷统计（如"scratches: 12 处"），生成质检报表，对应工业场景的"缺陷统计与质检报告生成"
-- 将 `Detector.detect()` 返回的 `Detection` 列表转换为 ROS2 `vision_msgs/Detection2DArray` 话题发布，供机械臂分拣或报警灯联动（需在 `ros2_source.py` 旁新增 publisher 模块）
-- 把 MJPEG 推流（`mjpeg_server.py`）与缺陷统计叠加显示在画面上，形成完整的人机交互质检界面
-
-### 1.9 实验报告要求
-
-**评分标准**：配置与数据集理解 10 分 + 训练产物分析 15 分 + ONNX/RKNN 转换 25 分 + NPU 实时推理与 MJPEG 演示 30 分 + mAP50 评测 10 分 + 实验报告 10 分 = 100 分。
-
-**报告必含内容**：
-1. 推理流水线框图（letterbox → RGB → NPU → DFL 解码/NMS → unletterbox），标注每步对应源码文件与行号
-2. 单图检测结果图（标注前/后对比）与 3 个检测框的类别、置信度、坐标数据
-3. 板端实测 FPS（单图/视频/相机三种模式）与性能基线表（1.6 步骤 7 表格）
-4. onnx vs rknn 的 mAP50 对比表，分析量化掉点原因
-5. 回答思考题：为什么部署推理用 pad=0 而训练用 114？为什么 NPU 输入必须是 RGB 且不做归一化？如果 score_thr 从 0.25 调到 0.5，检测结果会如何变化？
-6. 实验心得与问题记录（遇到的问题、排查过程、解决结果）
-
----
-
-## 更新日志
-
-| 版本 | 日期 | 变更 |
-|------|------|------|
-| v1.0 | 2026-08-10 | 初版生成（基于源码实测：app.py/infer.py/preprocess.py/postprocess.py/convert_rknn.py 等，源码路径 ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection，板端验证 13 FPS，训练产物 mAP50=0.732） |
-| v2.0 | 2026-08-19 | 知识点增强：各核心知识点追加「知识储备补充」（YOLOv8架构/DFL/letterbox/NMS/int8量化/mAP50 公式与参考资源）；1.5 追加可复现代码块与执行现象 |
-| v2.1 | 2026-08-21 | 步骤1 新增「配置参数速查表」：config/defect_config.yaml 全参数按区块分列（dataset/train/infer/source/server/rknn/eval），含类型/示例/说明；标注 PC 侧（train/rknn）与板端（infer/source/server）用途区分、`source`/`server`/`train.run_dir` 不在 REQUIRED 契约、infer.imgsz 须与 train.imgsz 一致等要点。表值经 load_config 实测核对 |
-
----
-
-## 实验2：基于图像分类的垃圾分类实验（4h）
-
-> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification/`。基于 `garbage_yolov5_20cls.rknn`（20 类垃圾分类模型，YOLOv5 式检测头：3 尺度 × 75 通道 = 3 anchors × (4+1+20)），改造 `rknn-python-Multithreading` 火焰检测例程为**多线程 RKNN 推理 + 逐目标分类 + 4 大类映射 + MJPEG 实时流**。单测 62/62 全绿（WSL rknn23 实测）。
-
-### 1.1 关联知识点
-
-- 1.1.1 图像分类原理 > 原理 > 垃圾分类采用 YOLOv5 式检测头（3 尺度 × 75 通道 = 3 anchors × (4+1+20)）同时输出类别与位置，区别于纯分类网络的整图单标签输出
-- 1.2.1 数据集搭建 > 概念 > 20 细类标签（bailuobo…zhuankuai，`config/labels.txt` 行号=类别 ID）与 4 大类映射（1=recyclable 2=kitchen_waste 3=hazardous_waste 4=other_waste，`config/category_map.txt`）
-- 1.3.1 多线程推理 > 流程 > RKNNPool 多线程推理池：NPU 核轮转 + 任务队列，最大化 6TOPS NPU 利用率
-- 1.3.2 模型部署 > 原理 > 模型输入 `[1,3,640,640]` float32，mean/std 0/255，**rgb2bgr=False（须喂 RGB）**；输出 3 尺度 `[1,75,80,80]/[1,75,40,40]/[1,75,20,20]`
-- 1.3.3 实时分类与分拣联动 > 流程 > letterbox 640(pad 0) + BGR→RGB → YOLOv5 解码（anchors/obj/逐类 NMS）→ 4 大类映射 → 原图坐标输出 → MJPEG 推流
-
-### 1.2 实验目标
-
-1. 掌握图像分类数据集搭建与 YOLOv5 式检测头模型部署方法 — 原理理解
-2. 实现基于视觉的垃圾分类（20 细类 + 4 大类映射）与 MJPEG 实时可视化 — 独立完成
-3. 理解多线程推理池如何提升 NPU 利用率，为机械臂分拣联动打基础 — 迁移应用
-
-### 1.3 实验环境
-
-| 类别 | 配置 |
-|------|------|
-| 硬件 | 具身智能实验箱 B2（XFLZ_EAI_B2_PRO，RK3576 SoC，6TOPS NPU，含 HP60C 深度相机） |
-| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv，rknnlite 2.3.2） |
-| 核心库 | OpenCV、NumPy、rknnlite、PyYAML（标准库 MJPEG，替代外部 mjpeg_streamer） |
-| 模型 | `garbage_yolov5_20cls.rknn`（20 类垃圾分类，YOLOv5 检测头，640×640 输入） |
-| 主入口 | `src/app.py`（单图/视频/相机/ROS 模式 + MJPEG + FPS） |
-
-### 1.4 实验难度
-
-- 难度: ⭐⭐ 设计性
-- 重点: YOLOv5 检测头解码（anchors + obj + 逐类 NMS）与 4 大类业务映射
-- 难点: 多线程推理池设计（核轮转 + 队列）与 RGB/float 输入约定
-
-### 1.5 实验现象
-
-**快速验证流程**：
-
-1. 进入项目目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification`
-2. 单元测试：`pytest tests/ -v`（62 用例全绿，从不加载真模型）
-3. 单图检测：`python src/app.py --image x.jpg --save out.jpg`
-   - 终端打印每个目标的「大类 细类 score」与坐标
-4. 视频检测 + MJPEG：`python src/app.py --video test.mp4`
-   - 浏览器访问 `http://<板IP>:8080/garbage_cam.mjpg` 查看标注流
-5. 相机实时（板上标准）：先起 ascamera 驱动，再 `python src/app.py --ros`
-
-```bash
-# 进入实验02
-cd ~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification
-
-# 可选
-/home/iflytek/ros2_venv/bin/python -m pytest -v
-
-# 执行单图片推理（图片都在02_garbage_classification/images）
-python src/app.py --model models/garbage_yolov5_20cls.rknn --image images/1.jpg --save out.jpg
-```
-
-**预期效果描述**：
-
-- 单图：水瓶 → `recyclable shuiping 0.xx`，胡萝卜→ `huluobo 鸡蛋...`，电池 → `hazardous_waste dianchi 0.xx`
-- 实时：检测框逐帧跟随，avg_fps ≥ 15（验收门），MJPEG 流可见「大类 细类 score」标注
-- 多线程：`--tpes 6` 时 NPU 多核轮转，帧率显著高于单线程
-
-**执行现象**：
-
-- `pytest tests/ -v` 运行约 30-50 秒，62 个用例全部 passed（含 test_config / test_preprocess / test_postprocess / test_detector / test_rknnpool / test_app / test_mjpeg_server / test_ros2_source）；从不加载真模型，全用 FakeBackend 预设输出
-- 单图推理 `python src/app.py --image images/1.jpg --save out.jpg` 约 0.1-0.3 秒返回，终端打印每个目标的 `大类 细类 score (x1,y1,x2,y2)`，当前目录生成 `out.jpg`（红框标注图）
-- 视频 + MJPEG 模式下终端每 30 帧打印一次 30 帧平均帧率，板端实测 tpes=2 时 avg_fps ≈ 15-18，tpes=6 时显著提升至 20+ FPS；浏览器 `http://<板IP>:8080/garbage_cam.mjpg` 可见实时标注流
-- 标注格式：`recyclable shuiping 0.87`（大类英文名 + 细类拼音 + 置信度），红框 2px 宽，文本位于框上方
-
-```bash
-(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification$ python src/app.py --model models/garbage_yolov5_20cls.rknn --image images/1.jpg --save out.jpg
-/home/iflytek/ros2_venv/lib/python3.10/site-packages/rknnlite/api/rknn_lite.py:41: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
-  import pkg_resources
-W rknn-toolkit-lite2 version: 2.3.2
-I RKNN: [17:20:51.340] RKNN Runtime Information, librknnrt version: 2.3.2 (429f97ae6b@2025-04-09T09:09:27)
-I RKNN: [17:20:51.340] RKNN Driver Information, version: 0.9.8
-I RKNN: [17:20:51.340] RKNN Model Information, version: 6, toolkit version: 2.3.0(compiler version: 2.3.0 (c949ad889d@2024-11-07T11:39:30)), target: RKNPU f2, target platform: rk3576, framework name: ONNX, framework layout: NCHW, model inference type: static_shape
-W RKNN: [17:20:51.365] query RKNN_QUERY_INPUT_DYNAMIC_RANGE error, rknn model is static shape type, please export rknn with dynamic_shapes
-W Query dynamic range failed. Ret code: RKNN_ERR_MODEL_INVALID. (If it is a static shape RKNN model, please ignore the above warning message.)
-saved -> out.jpg
-```
-
-<img src="assets/image-20260819172223216.png" alt="image-20260819172223216" style="zoom: 67%;" /><img src="assets/image-20260819172236760.png" alt="image-20260819172236760" style="zoom:67%;" />
-
-下面是对应部分训练集图片内容
-
-<img src="assets/image-20260820091701693.png" alt="image-20260820091701693" style="zoom: 50%;" /><img src="assets/image-20260820091716936.png" alt="image-20260820091716936" style="zoom: 50%;" />
-
-### 1.6 实验步骤
-
-#### 整体流程图
-
-```mermaid
-graph LR
-    A[步骤1: 模型与配置认知] --> B[步骤2: 预处理 letterbox+RGB]
-    B --> C[步骤3: YOLOv5解码与NMS]
-    C --> D[步骤4: 4大类映射]
-    D --> E[步骤5: 多线程推理池]
-    E --> F[步骤6: 实时推理与MJPEG]
-    F --> G[完成]
-```
-
-```mermaid
-graph TD
-    subgraph 端到端数据流
-        A1[输入 BGR 帧] --> B1[letterbox 640 pad 0]
-        B1 --> C1[BGR→RGB 通道交换]
-        C1 --> D1[NPU 推理 3尺度输出]
-        D1 --> E1[YOLOv5 anchor解码]
-        E1 --> F1[置信度过滤 score_thr]
-        F1 --> G1[逐类 NMS iou_thr]
-        G1 --> H1[unletterbox 映射回原图]
-        H1 --> I1[20细类→4大类映射]
-        I1 --> J1[画框标注 大类 细类 score]
-        J1 --> K1[MJPEG推流 :8080]
-    end
-```
-
----
-
-#### 步骤1：模型与配置认知（阶段一：能运行，20min）
-
-> 📌 本步骤对应源码：`config/garbage_config.yaml`、`config/labels.txt`、`src/config.py`
-
-**知识点讲解**：
-
-**模型元数据与业务映射（1.1.1、1.2.1）**
-- **原理**：`garbage_yolov5_20cls.rknn` 是 20 类垃圾分类检测模型，检测头为 **YOLOv5 式**：每个尺度输出 `[1, 75, h, w]`，75 = 3 anchors × (4 坐标 + 1 目标置信度 + 20 类)。模型事实（元数据核实）：输入 `[1,3,640,640]` float32，mean/std 0/255，**rgb2bgr=False（必须喂 RGB）**；anchors 为 YOLOv5 默认 9 组（`config/anchors.txt`）。业务层把 20 细类映射为 4 大类：1=recyclable（可回收）2=kitchen_waste（厨余）3=hazardous_waste（有害）4=other_waste（其他），映射关系在 `config/category_map.txt`（英文名）。`src/config.py` 负责加载 labels/category_map/anchors，**路径相对配置文件解析**——模型换位置时只需改 `model.path`。
-- **源码对应**：`config/garbage_config.yaml`（model.path / infer.sigmoid / pool.tpes）；`config/labels.txt`（20 细类，行号=类别 ID）；`config/category_map.txt`（4 大类）；`config/anchors.txt`（YOLOv5 默认 anchors）
-
-**知识储备补充**：
-
-- **分类 vs 检测的本质区别**：纯分类网络（如 ResNet）对整张图输出一个标签，而检测网络（如 YOLO）输出多个带坐标的框+类别。垃圾分类需要同时知道"是什么"和"在哪里"——同一帧可能有水瓶、电池、果皮三个目标，纯分类只能输出一个，检测网络则逐目标输出。YOLOv5 式检测头是"anchor-based"：预设不同尺度的先验框（anchor），网络只需预测偏移量，比纯回归更稳定。
-- **anchors 的数学含义**：9 组 anchor 分配到 3 个尺度（80×80 / 40×40 / 20×20），每尺度 3 组。小尺度特征图（20×20）锚定大物体（如 373×326 的大包装箱），大尺度特征图（80×80）锚定小物体（如 10×13 的胶囊）。解码时 anchor 参与宽高还原：
-
-  $$
-  w_{pred} = (2 \cdot t_w)^2 \times a_w, \quad h_{pred} = (2 \cdot t_h)^2 \times a_h
-  $$
-
-  其中 $t_w, t_h$ 为网络输出的归一化偏移，$a_w, a_h$ 为 anchor 宽高。$(2t)^2$ 的平方设计使宽高始终为正，且对小偏移敏感（中心偏移用 sigmoid，宽高用此方式）。
-- **sigmoid 配置的由来**：`infer.sigmoid: false` 表示后处理手动应用 sigmoid；若模型导出时图内已含 sigmoid，则手动再做一次只是单调压缩分数（$0 \to 0.5$, $1 \to 0.73$），结果不变但效率略降。配置的灵活性让同一后处理代码适配不同导出版本。
-- **路径解析设计**：`config.py` 中 `load_config()` 将 `model.path`、`model.labels` 等相对路径基于**配置文件所在目录**解析为绝对路径（`config/` 目录下），而非当前工作目录。这意味着无论从项目根还是 `src/` 启动，路径都能正确解析，保证跨目录运行不报错。
-- **参考资源**：Ultralytics YOLOv5 官方文档《Train Custom Data》锚框部分；RKNN Toolkit2 用户指南《Model Zoo》RK3576 平台量化说明。
-
-下面是YOLOv5网络框架图
-
-![YOLOv5_structure_v3.4](https://img-transfer.gitcode.com/?p=https%3A%2F%2Fuser-images.githubusercontent.com%2F27466624%2F200000324-70ae078f-cea7-4189-8baa-440656797dad.jpg&projectId=datawhalechina/thorough-pytorch&pageUrl=https%3A%2F%2Fgitcode.com%2Fdatawhalechina%2Fthorough-pytorch%2Fblob%2Fmain%2Fsource%2F%25E7%25AC%25AC%25E5%258D%2581%25E7%25AB%25A0%2FYOLO%25E7%25B3%25BB%25E5%2588%2597%25E8%25A7%25A3%25E8%25AF%25BB%2FMMYOLO%25E5%25AE%259E%25E7%258E%25B0%2Fyolov5_description.md)
-
-**配置参数速查表**（`config/garbage_config.yaml`，按区块分列）：
-
-| 区块 | 参数 | 类型 | 默认/示例 | 说明 |
-|------|------|------|-----------|------|
-| `model` | `path` | str | `../models/garbage_yolov5_20cls.rknn` | 模型路径（相对配置文件目录解析，模型在项目根 models/） |
-| `model` | `labels` | str | `labels.txt` | 20 细类标签文件（行号=类别 ID） |
-| `model` | `category_map` | str | `category_map.txt` | 细类→大类映射文件（每行 1-4） |
-| `model` | `category_names` | dict | `{"1":"recyclable",...}` | 4 大类 ID→英文名 |
-| `infer` | `imgsz` | int | `640` | 模型输入边长（元数据核实） |
-| `infer` | `preprocess` | str | `letterbox` | 预处理方式（letterbox 640 pad 0） |
-| `infer` | `score_thr` | float | `0.25` | 置信度过滤阈值 |
-| `infer` | `nms_thr` | float | `0.45` | NMS 交并比阈值 |
-| `infer` | `sigmoid` | bool | `False` | 后处理是否手动 sigmoid（图内已含则单调不变） |
-| `infer` | `anchors` | str | `anchors.txt` | YOLOv5 默认 9 组 anchors |
-| `pool` | `tpes` | int | `2` | 推理线程数（多核利用率；板端 2 核实测用 2） |
-| `pool` | `core_mask` | str | `auto` | NPU 核分配（round_robin 在 2 核板会卡死，勿用 [1,2,4]） |
-| `server` | `host` | str | `0.0.0.0` | MJPEG 监听地址 |
-| `server` | `port` | int | `8080` | MJPEG 端口 |
-| `server` | `stream_name` | str | `garbage_cam` | MJPEG 流名（库自动补 `.mjpg`） |
-| `server` | `quality` | int | `80` | JPEG 压缩质量 |
-| `server` | `fps` | int | `30` | MJPEG 推流帧率上限 |
-| `source` | `ros.rgb_topic` | str | `/ascamera_hp60c/.../rgb0/image` | ROS2 相机话题（严禁 remap） |
-| `source` | `ros.timeout` | float | `5.0` | 首帧等待秒数 |
-
-> **说明**：`model.*` `infer.*` 为本实验核心（模型元数据 + 解码参数）；`pool.tpes`/`core_mask` 调多线程性能；`server.*` 管 MJPEG 推流；`source.ros.*` 相机取流。`stream_name` 不带 `.mjpg`（库自动补），与 exp01/09+ 的"已含 .mjpg"约定不同——勿混用。
-
-**操作步骤**：
-
-1. 查看标签与映射文件，理解"细类 → 大类"的两级业务：
-   ```bash
-   cat config/labels.txt          # 20 细类（拼音命名：shuiping 水瓶、dianchi 电池…）
-   cat config/category_map.txt    # 每行: 细类ID 大类ID 大类英文名
-   ```
-2. 阅读 `config/garbage_config.yaml`，重点关注 `infer.sigmoid`（obj 分支是否已 sigmoid）与 `pool.tpes`（线程数）
-3. 用 Python 验证配置加载：
-   ```bash
-   PYTHONPATH=./src python -c "from config import load_labels, load_category_map, load_anchors; \
-   labels = load_labels('config/labels.txt'); \
-   print(len(labels), '细类'); \
-   cat_map = load_category_map('config/category_map.txt', n_labels=len(labels)); \
-   print(len(cat_map), '大类映射')"
-   ```
-
-**易错点**：
-
-- ⚠️ 若框偏移 → 调整 `config/anchors.txt`（核对导出配置）；若分数异常 → 切换 `infer.sigmoid: false`
-
----
-
-#### 步骤2：预处理 letterbox + RGB（阶段一：能运行，20min）
-
-> 📌 本步骤对应源码：`src/preprocess.py`
-
-**知识点讲解**：
-
-**输入对齐（1.3.2）**
-- **原理**：模型输入为 640×640 RGB float，而摄像头/图片是任意尺寸 BGR uint8。`prepare_input()` 完成三步对齐：(1) **letterbox 等比缩放 + pad 0 填充**到 640×640（pad 必须 0，与模型 zoo 对齐，避免填充色干扰检测）；(2) **BGR→RGB 通道交换**（模型 rgb2bgr=False 约定）；(3) **归一化约定**：模型要求 mean/std 0/255，即输入直接是 0-255 的 uint8 转 float，不做额外 /255（量化模型内部处理）。输出经 `unletterbox()` 把检测框映射回原始图像坐标。
-- **源码对应**：`src/preprocess.py`（prepare_input / unletterbox）
-
-**知识储备补充**：
-
-- **letterbox 为什么 pad=0**：模型训练时用黑色（0）填充，推理时也必须用黑色填充——否则填充区域的颜色值会参与特征提取，导致边缘目标出现伪检测。pad=0 是与模型训练时的数据增强约定对齐的关键约束。
-
-- **letterbox 等比缩放的数学**：给定输入图 $(H, W)$ 和目标尺寸 $S=640$，缩放因子为：
-
-  $$
-  s = \min\left(\frac{S}{H}, \frac{S}{W}\right)
-  $$
-
-  缩放后尺寸为 $(sH, sW)$，填充量为 $pad_x = \frac{S - sW}{2}$, $pad_y = \frac{S - sH}{2}$。letterbox 保持宽高比不变形，padding 居中对称——这是目标检测的标准预处理范式，与分类网络的 resize 拉伸不同。
-  
-- **BGR vs RGB 的工程背景**：OpenCV 默认以 BGR 读取图像（源于早期 Windows BMP 格式），而大多数深度学习模型训练时用 RGB。通道顺序错误是"检测框位置正确但分类全错"的最常见原因——因为 RGB 三通道的语义位置颠倒，模型看到的"红色"其实是蓝色。`to_rgb()`（`preprocess.py` L40-42）通过 `bgr_img[..., ::-1].copy()` 实现通道交换并返回拷贝，避免修改原帧。
-
-- **unletterbox 坐标逆映射**：检测框在 letterbox 空间输出后，需减去 padding 偏移再除以缩放因子映射回原图坐标：
-
-  $$
-  x_{orig} = \frac{x_{letterbox} - pad_x}{s}, \quad y_{orig} = \frac{y_{letterbox} - pad_y}{s}
-  $$
-
-  `unletterbox()`（`preprocess.py` L35-37）一行实现：`(boxes - pad_offset) / scale`。这是检测结果可视化的核心步骤——没有逆映射，框会偏到填充区域。
-  
-- **参考资源**：Ultralytics YOLOv5 `letterbox` 函数实现；OpenCV 官方文档 `cv2.resize` 插值方法选择。
-
-下面就是letterbox的具体实现图
-
-![image-20260819173701539](assets/image-20260819173701539.png)
-
-**操作步骤**：
-
-1. 用测试图验证预处理输出形状：
-   ```bash
-   PYTHONPATH=./src python -c "
-   import cv2, numpy as np
-   from preprocess import prepare_input
-   img = cv2.imread('images/1.jpg')
-   rgb, meta = prepare_input(img, 640)
-   print('输入形状:', rgb.shape, 'dtype:', rgb.dtype)   # 预期 (640,640,3) uint8 RGB
-   print('scale:', meta.scale, 'pad:', (meta.pad_x, meta.pad_y))"
-   ```
-
-```bash
-(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification$ PYTHONPATH=./src python -c "
-import cv2, numpy as np
-from preprocess import prepare_input
-img = cv2.imread('images/1.jpg')
-rgb, meta = prepare_input(img, 640)
-print('输入形状:', rgb.shape, 'dtype:', rgb.dtype)   # 预期 (640,640,3) uint8 RGB
-print('scale:', meta.scale, 'pad:', (meta.pad_x, meta.pad_y))"
-输入形状: (640, 640, 3) dtype: uint8
-scale: 1.0 pad: (0, 0)
-```
-
-2. 理解 letterbox 的 scale 计算（`min(640/h, 640/w)`），思考为什么 pad 必须是 0
-
-**易错点**：
-
-- ⚠️ RGB 与 BGR 混用是"检测框对但分类错"的头号原因——务必先 `to_rgb` 再喂模型
-
----
-
-#### 步骤3：YOLOv5 解码与逐类 NMS（阶段二：能理解，30min）
-
-> 📌 本步骤对应源码：`src/postprocess.py`
-
-**知识点讲解**：
-
-**YOLOv5 检测头解码（1.1.1）**
-- **原理**：YOLOv5 检测头输出为 anchor-based：每尺度 `[1,75,h,w]`，reshape 为 `[3, 25, h, w]`（3 anchors × 25 = 4 坐标 + 1 obj + 20 类）。解码步骤：
-
-  (1) 对每个 anchor 位置，用**预设 anchors** 将归一化偏移还原为 cx/cy/w/h（`decode_rknn_outputs`）；
-
-  (2) 目标置信度与类别分数结合（或直接取类最大分）；
-
-  (3) 按 `score_thr` 过滤；(4) **逐类 NMS**——同类别重叠框只保留最高分，跨类别不抑制。输出 `Detection` 列表（原图坐标，经 unletterbox），再由 `map_categories()` 完成 20 细类 → 4 大类映射。
-
-- **源码对应**：`src/postprocess.py`（Detection / decode_rknn_outputs / map_categories / NMS）
-
-**知识储备补充**：
-
-- **解码坐标还原的完整数学**：`decode_scale()`（`postprocess.py` L54-85）对单尺度 `(1,75,h,w)` 执行以下变换——首先 reshape 为 `(h, w, 3, 25)`（3 anchors × 25 维），25 维拆分为：$t_{xy}$（前 2 维，中心偏移）、$t_{wh}$（2-4 维，宽高偏移）、$t_{obj}$（第 4 维，目标置信度）、$t_{cls}$（5-24 维，20 类分数）。中心点坐标还原：
-
-  $$
-  c_x = (\sigma(t_{cx}) + g_x) \times stride, \quad c_y = (\sigma(t_{cy}) + g_y) \times stride
-  $$
-
-  其中 $\sigma$ 为 sigmoid 函数（把偏移约束到 0-1），$g_x, g_y$ 为网格左上角坐标（0, 1, 2, ..., h-1），$stride$ 为下采样倍数（80×80 → stride=8, 40×40 → stride=16, 20×20 → stride=32）。
-
-![image-20260820100141487](assets/image-20260820100141487.png)
-
-- **置信度与类别分数的组合**：最终分数 = $obj\_score \times cls\_score_{max}$。`decode_scale` 中 `keep = np.where((conf >= score_thr) & (cls_max >= score_thr))` 要求 obj 和 cls 同时超过阈值——这是 YOLOv5 的设计：obj 分支负责"这里有没有东西"，cls 分支负责"是什么"，二者共同过滤噪声。
-- **逐类 NMS vs 全局 NMS**：`classwise_nms()`（`postprocess.py` L88-110）对每个类别独立执行 NMS。全局 NMS 会抑制所有重叠框（跨类），但在垃圾分类场景中，一个水瓶可能同时被检为"recyclable"和"other"——逐类 NMS 允许不同类别的重叠框共存，符合业务需求。NMS 的核心 IoU 计算：
-  $$
-  IoU = \frac{Area(A \cap B)}{Area(A) + Area(B) - Area(A \cap B)}
-  $$
-
-  代码中 `+0.00001` 容差（`postprocess.py` L100）防止浮点精度导致的边界 case。
-
-下面是nms抑制的具体现象就是将多个重复框筛选出最好的
-
-![image-20260820094534557](assets/image-20260820094534557.png)
-
-- **xywh → xyxy 转换**：`decode_rknn_outputs()`（`postprocess.py` L130-140）在 NMS 前将中心点格式 `(cx, cy, w, h)` 转为角点格式 `(x1, y1, x2, y2)`：$x_1 = cx - w/2$, $y_1 = cy - h/2$, $x_2 = cx + w/2$, $y_2 = cy + h/2$。NMS 的 IoU 计算需要角点格式。
-- **参考资源**：YOLOv5 官方 `utils/general.py` `non_max_suppression` 函数；Joseph Redmon《YOLOv3: An Incremental Improvement》检测头设计。
-
-**操作步骤**：
-
-1. 阅读 `postprocess.py` 的解码主函数，理解 anchors 如何参与坐标还原
-2. 单元测试理解解码契约：
-   ```bash
-   pytest tests/test_postprocess.py -v
-   # 预期：decode/NMS/map_categories 用例全绿
-   ```
-3. 思考：为什么逐类 NMS 而非全局 NMS？（不同类目标可以重叠，如"瓶中水"场景）
-
-**易错点**：
-- ⚠️ anchors 与模型导出配置不一致 → 框整体偏移，调整 `config/anchors.txt`
-
----
-
-#### 步骤4：4 大类业务映射（阶段二：能理解，15min）
-
-> 📌 本步骤对应源码：`src/postprocess.py` map_categories、`config/category_map.txt`
-
-**知识点讲解**：
-
-**细类到大类的业务抽象（1.2.1）**
-- **原理**：20 细类过于细粒度（如 yaogao 牙膏、yaopian 药片），面向分拣业务需要 4 大类。`map_categories()` 依据 `category_map.txt` 把每个检测的 `class_id` 映射为 `(大类ID, 大类英文名)`，同时保留细类名用于标注显示。这种"模型输出细类、业务消费大类"的两级设计，使模型更换（如新增细类）不破坏下游分拣逻辑。
-- **源码对应**：`src/postprocess.py` map_categories；`src/app.py` L31-33（标注格式 `大类 细类 score`）
-
-**知识储备补充**：
-
-- **两级标签设计的工程价值**：20 细类是模型的"原子能力"——模型训练时学习每个细类的视觉特征；4 大类是业务的"消费单位"——分拣机械臂只关心四大类（可回收/厨余/有害/其他）。两级解耦的好处是：新增一个细类（如"纸杯"→recyclable）只需改 `category_map.txt`，不动模型和分拣代码。`map_categories()`（`postprocess.py` L158-165）一行映射：`cat = cat_map[d.class_id]`，`CategoryDetection.from_detection(d, cat, cat_names[str(cat)])`。
-- **category_map.txt 的行号契约**：`config/category_map.txt` 每行一个数字（1-4），行号与 `labels.txt` 严格对应——第 1 行对应 labels.txt 第 1 行的 `bailuobo`（细类 ID=0），值为 2 表示 `kitchen_waste`。错一行会导致全部映射偏移（如 shuiping 从 recyclable 变成 hazardous）。`load_category_map()`（`config.py` L78-85）读取并校验值域 ∈ {1,2,3,4}。
-- **标注格式的业务含义**：`app.py` L31 构造标注文本 `f"{d.category_name} {labels[d.class_id]} {d.score:.2f}"`——大类英文名在前（分拣指令依据），细类拼音在中间（调试定位），置信度在后（质检门控）。分拣系统只需解析第一个单词即可路由到对应仓位。
-- **参考资源**：《垃圾分类标志》GB/T 19095-2019 国家标准（四分类体系）；YOLOv5 自定义数据集训练文档。
-
-| ID   | 细类名称    | 大类编码 | 大类名称 | ID   | 细类名称         | 大类编码 | 大类名称 |
-| ---- | ----------- | -------- | -------- | ---- | ---------------- | -------- | -------- |
-| 0    | bailuobo    | 2        | 厨余垃圾 | 10   | shuiping         | 1        | 可回收物 |
-| 1    | caiye       | 2        | 厨余垃圾 | 11   | tizi             | 2        | 厨余垃圾 |
-| 2    | chuangkotie | 3        | 有害垃圾 | 12   | tudo             | 2        | 厨余垃圾 |
-| 3    | cipian      | 4        | 其他垃圾 | 13   | yaogao           | 3        | 有害垃圾 |
-| 4    | dianchi     | 3        | 有害垃圾 | 14   | yaopian          | 3        | 有害垃圾 |
-| 5    | eluanshi    | 4        | 其他垃圾 | 15   | yaopianbaozhuang | 3        | 有害垃圾 |
-| 6    | fanqie      | 2        | 厨余垃圾 | 16   | yaoping          | 3        | 有害垃圾 |
-| 7    | huluobo     | 2        | 厨余垃圾 | 17   | yilaguan         | 1        | 可回收物 |
-| 8    | jiaonang    | 3        | 有害垃圾 | 18   | zhibei           | 1        | 可回收物 |
-| 9    | lajiao      | 2        | 厨余垃圾 | 19   | zhuankuai        | 4        | 其他垃圾 |
-
-**操作步骤**：
-
-1. 查看 category_map.txt，找出 recyclable 包含哪些细类（shuiping 水瓶、yilaguan 易拉罐…）
-2. 运行单测验证映射正确性：`pytest tests/test_postprocess.py -k category -v`
-
-**易错点**：
-
-- ⚠️ category_map 行序必须与 labels.txt 行号严格对应，错一行全错
-
----
-
-#### 步骤5：多线程推理池 RKNNPool（阶段三：能改造，30min）
-
-> 📌 本步骤对应源码：`src/rknnpool.py`
-
-**知识点讲解**：
-
-**多线程推理池原理（1.3.1）**
-- **原理**：RK3576 NPU 支持多核（core_mask），单线程推理时 NPU 有核空闲。RKNNPool 用**生产者-消费者模型**：主线程读取帧放入任务队列，`--tpes N` 个工作线程从队列取帧，各自持有 RKNNLite 实例并**轮转绑定不同 NPU 核**（core_mask 0/1/2/3）并行推理，结果按序返回。这比单线程串行推理能显著提升 FPS（多核并行 + 取帧与推理重叠）。`rknn_backend_factory()` 为每个线程创建后端实例，`Detector` 注入后端完成检测。
-- **源码对应**：`src/rknnpool.py`（RKNNPool：入队 L58 / 工作线程 L62-76 / 结果回收 L79-81）；`src/detector.py` L126-128（make_rknn_backend）
-
-**知识储备补充**：
-
-- **生产者-消费者模型的线程安全**：`RKNNPool.__init__()`（`rknnpool.py` L47-56）创建两个 `queue.Queue`（`self.inputs` / `self.outputs`），Python `Queue` 内部用 `threading.Condition` 实现线程安全——`put()` 阻塞直到队列有空间，`get(timeout=1)` 超时返回空队列异常。工作线程（`_worker`，L62-76）循环取帧、处理、放结果，异常时 `(None, False)` 入队保证下游不死锁。
-- **核轮转（round_robin）**：`rknn_backend_factory('round_robin')`（`rknnpool.py` L30-33）按 `tid % 3` 绑定 `NPU_CORE_0/1/2`——RK3576 有 3 个 NPU 核，每个核独立运行推理任务。`core_mask` 参数传给 `RKNNBackend(core_mask=masks[tid % 3])`（`detector.py` L46），rknnlite 在 `init_runtime(core_mask=...)` 时绑定对应核。实测 `core_mask=auto`（L34-35）让 rknnlite 自动分配核更稳定，round_robin 在某些固件版本会卡死。
-- **为什么每个线程必须独立 RKNNLite 实例**：RKNNLite 的 `init_runtime()` 绑定 NPU 核并分配推理上下文——同一个实例不能被多线程共享（NPU 上下文非线程安全），会导致段错误或结果错乱。`RKNNPool`（L52-55）为每个线程调用 `backend_factory(i)` 创建独立后端，这是正确的做法。
-- **预填帧设计**：`app.py` L125-130 在主循环前预填 `tpes+1` 帧到队列，保证所有工作线程同时启动推理——消除首帧冷启动延迟，使 FPS 统计更准确。
-- **参考资源**：Python 标准库 `queue.Queue` 线程安全文档；RKNN Toolkit2 用户指南《RKNNLite API》`init_runtime` core_mask 参数说明。
-
-大致流程如下
-
-![生产者消费者模型详解以及实现_生产者消费者模型实现-CSDN博客](assets/format,png.png)
-
-**操作步骤**：
-
-1. 单线程 vs 多线程对比（验证池的价值）：
-   ```bash
-   python src/app.py --video test.mp4 --tpes 1
-   python src/app.py --video test.mp4 --tpes 6
-   # 对比 avg_fps：tpes 6 应明显更高
-   ```
-2. 阅读 rknnpool.py 的队列实现，理解线程安全（queue.Queue / 锁）
-3. 思考：线程数不是越多越好？——NPU 核数与内存限制决定最优 tpes（本板实测 6 左右）
-
-**易错点**：
-- ⚠️ 每个线程必须独立 RKNNLite 实例（NPU 上下文非线程共享），复用同一实例会崩溃
-- ⚠️ tpes 超过 NPU 核数不提升反而增加内存压力
-
----
-
-#### 步骤6：实时推理与 MJPEG 推流（阶段三：能改造，35min）
-
-> 📌 本步骤对应源码：`src/app.py`、`src/mjpeg_server.py`、`src/ros2_source.py`
-
-**知识点讲解**：
-
-**端到端实时链路（1.3.3）**
-- **原理**：`app.py` 组织完整链路：输入源（单图/视频/`--camera N` UVC/`--ros` ROS2 话题）→ 帧交给 `make_process_fn` 构造的 pool 处理函数 → 每个工作线程内 `Detector.detect()`（prepare_input → NPU 推理 → 解码 → 4 大类映射 → unletterbox）→ 画框标注（`大类 细类 score`）→ MJPEG 推流。`mjpeg_server.py` 用**标准库**实现 MJPEG（multipart/x-mixed-replace），替代外部 mjpeg_streamer，零额外依赖。板上相机标准路径是 HP60C 深度相机经 ascamera 话题取流（`ros2_source.py` Ros2Camera，DEFAULT_TOPIC `/ascamera_hp60c/camera_publisher/rgb0/image`），OpenCV 直连读不了（未编 libv4l）。
-- **源码对应**：`src/app.py` L24-35（make_process_fn 标注逻辑）、L38-150（main：参数 L40-50 / 单图 L70-82 / 视频相机 L85-150）；`src/mjpeg_server.py`（MjpegServer）；`src/ros2_source.py`（Ros2Camera：DEFAULT_TOPIC / open / read / release）
-
-**知识储备补充**：
-
-- **MJPEG 协议原理**：MJPEG（Motion JPEG）是 `multipart/x-mixed-replace` HTTP 响应——服务器以流式方式持续发送 JPEG 帧，浏览器原生支持实时刷新。相比 WebSocket + H.264 方案，MJPEG 零延迟（无解码缓冲区）、兼容性好（任何浏览器直接访问 URL），代价是带宽利用率低（每帧独立 JPEG 压缩，无帧间预测）。对于 640×480 垃圾分类场景，带宽完全够用。
-- **ROS2 话题取流的惰性导入设计**：`Ros2Camera`（`ros2_source.py` L30-35）在构造函数中不导入 rclpy——`open()` 方法才惰性导入并调用 `rclpy.init()`。这是关键设计：x86 开发机无 ROS 环境，单元测试用 FakeBackend + MockCamera 即可覆盖全链路；板上 `--ros` 模式才真正依赖 rclpy。`read(timeout)` 方法（L80-90）阻塞等待首帧或超时，返回 `(True, frame)` 或 `(False, None)`。
-- **Detector.detect() 的完整链路**：`detector.py` L93-110 的 `detect()` 方法串联了全部后处理——`prepare_input()`（预处理）→ `backend.predict()`（NPU 推理）→ `decode_rknn_outputs()`（YOLOv5 解码+逐类 NMS）→ `unletterbox()`（坐标逆映射）→ `map_categories()`（4 大类映射）。返回 `list[CategoryDetection]`（原图坐标 + 大类 + 细类名 + 分数），直接供 `make_process_fn` 画框。
-- **FPS 统计设计**：`app.py` L143-147 每 30 帧打印一次滑动窗口帧率 `30 / (time.time() - loop_t)`，L149 打印全程总平均帧率。滑动窗口帧率反映当前处理速度（受场景复杂度影响），总平均帧率反映整体性能——验收以总平均 ≥ 15 FPS 为门控。
-- **参考资源**：MJPEG Wikipedia 条目；ROS2 `sensor_msgs/Image` 消息定义；mjpeg_streamer PyPI 文档。
-
-大致流程如下
-
-![image-20260820101126152](assets/image-20260820101126152.png)
-
-**操作步骤**：
-
-1. 单图检测（最简验证）：
-   ```bash
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification
-   python src/app.py --image images/1.jpg --save out.jpg
-   # 预期：终端打印 大类 细类 score (x1,y1,x2,y2)
-   ```
-2. 视频 + MJPEG：
-   ```bash
-   python src/app.py --video test.mp4 --tpes 2 --port 8080
-   # 浏览器访问 http://<板IP>:8080/garbage_cam.mjpg
-   ```
-3. 相机实时（板上标准）：
-   ```bash
-   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
-   export ROS_DOMAIN_ID=2
-   ros2 launch ascamera hp60c.launch.py        # 终端 1
-   python src/app.py --ros                      # 终端 2，同一 ROS_DOMAIN_ID
-   # 预期：avg_fps ≥ 15，MJPEG 可见实时标注
-   ```
-4. 动手改造：修改 `src/app.py` L31 标注逻辑，把大类换成中文名（如 `可回收 水瓶 0.87`），重新运行
-
-**易错点**：
-- ⚠️ `--ros` 取不到帧 → ascamera 驱动先起、ROS_DOMAIN_ID 一致、话题勿 remap
-- ⚠️ MJPEG 404 → 8080 被占，`--port` 换端口或关占用进程
-
----
-
-### 1.7 常见问题
-
-| 问题 | 原因 | 解决方法 |
-|------|------|---------|
-| 检测框整体偏移 | anchors 与导出配置不一致 | 调整 `config/anchors.txt`（核对导出配置） |
-| 分数异常（全 0 或全 1） | obj 分支已/未 sigmoid 与配置不符 | 切换 `infer.sigmoid: false/true` |
-| 分类全错但框对 | RGB/BGR 约定错误 | 确认 `prepare_input` 先 BGR→RGB（模型 rgb2bgr=False） |
-| 多线程崩溃 | 线程共享同一 RKNNLite 实例 | 每线程独立实例（RKNNPool 已实现） |
-| MJPEG 404 | 8080 端口占用 | `--port` 换端口或关闭占用进程 |
-| --ros 取不到帧 | 驱动未启动/ROS_DOMAIN_ID 不一致 | ascamera 先起；export ROS_DOMAIN_ID=2；话题勿 remap |
-| 板上模型加载失败 | model.path 未改为板载路径 | 修改 `config/garbage_config.yaml` 的 `model.path` |
-
-### 1.8 扩展实验
-
-**扩展方向 1：机械臂分拣联动（进阶）**
-- 在 `app.py` 处理函数中，把 4 大类结果转换为分拣指令（如 recyclable → 机械臂抓取到 1 号仓），通过串口或 ROS2 话题发布（参考实验 05 的 cmd_vel 模式）
-
-**扩展方向 2：识别置信度优化（进阶）**
-- 在标注中加入细类置信度直方图；对不同大类设置不同 score_thr（有害垃圾从严），观察误检率变化
-- 把 `--tpes` 做成运行时动态调节，绘制"线程数 vs FPS"曲线，找出最优配置
-
-### 1.9 实验报告要求
-
-**评分标准**：模型元数据理解 15 分 + 预处理 15 分 + YOLOv5 解码 25 分 + 4 大类映射 15 分 + 实时演示 20 分 + 报告 10 分 = 100 分。
-
-**报告必含内容**：
-1. 模型输入输出规格表（形状/类型/通道顺序/anchors），标注对应的 config 文件
-2. 解码流程图（anchors → cx/cy/w/h → NMS → 大类映射），标注源码行号
-3. 单图检测结果图（≥3 个不同大类目标）与「大类 细类 score」数据
-4. tpes=1 vs tpes=6 的 FPS 对比数据与结论
-5. 回答思考题：为什么模型要求 RGB 而 OpenCV 默认 BGR？为什么逐类 NMS 允许跨类重叠？多线程池为什么比单线程快？
-6. 实验心得与问题记录
-
----
-
-## 更新日志
-
-| 版本 | 日期 | 变更 |
-|------|------|------|
-| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification，62 用例全绿，YOLOv5 检测头 20 细类 + 4 大类映射 + RKNNPool 多线程） |
-| v1.1 | 2026-08-19 | 模型名同步：rubbish_2_7.rknn → garbage_yolov5_20cls.rknn（config/garbage_config.yaml + models/ 目录核实） |
-| v2.0 | 2026-08-19 | 知识点增强：6 步骤均添加「知识储备补充」（含 anchors 数学公式、letterbox 缩放公式、解码坐标还原公式、IoU 公式、sigmoid 公式）；新增端到端 Mermaid 数据流图；1.5 追加「执行现象」段（pytest 62 用例、单图推理、视频 FPS、标注格式）；行号基于源码 real line numbers 重新核对（app.py L24-35 / L40-150、postprocess.py L54-85 / L88-110 / L130-140 / L158-165、rknnpool.py L30-33 / L47-56 / L62-76、detector.py L93-110）；5 个「参考资源」条目 |
-| v2.1 | 2026-08-21 | 步骤1 新增「配置参数速查表」：config/garbage_config.yaml 全参数按区块分列（model/infer/pool/server/source），含类型/默认值/说明；标注 pool.core_mask 两核板勿用 round_robin、`stream_name` 不带 `.mjpg`（与 exp01/09+ 约定不同）等要点。表值经 load_config 实测核对 |
-
----
-
-## 实验3：基于HSV色彩空间的颜色识别实验（4h）
+## 实验1：基于HSV色彩空间的颜色识别实验（4h）
 
 > ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition/`。⚠️ **注意**：课程目录名 "lab" 指实验编号，本实验实际使用 **HSV 色彩空间**（非 Lab 色彩空间）。对应课程内容：BGR→HSV 阈值掩膜 → 形态学开/闭 → 圆形轮廓标识 → 颜色名标注；可视化对齐车端 `visual_grasp` 双栏（左 RGB 栏 | 右 HSV Mask 栏）推流。单测 24/24 全绿，板端验证通过（约 50 FPS）。
 
@@ -1313,7 +116,7 @@ scale: 1.0 pad: (0, 0)
 - `--tune 红色 --ros` 启动后弹出 `lab_tune` 窗口（6 滑块）和 `lab_view` 窗口（双栏预览），首帧自动估计阈值并预置滑块位置；Ctrl+C 退出终端打印当前 H/S/V 阈值
 
 ```bash
-# 进入实验03
+# 进入实验1
 cd ~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
 
 # 可选
@@ -1822,7 +625,7 @@ flowchart LR
 
 ---
 
-## 实验4：二维码生成与识别检测实验（4h）
+## 实验2：二维码生成与识别检测实验（4h）
 
 > ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/04_qrcode/`。生成用 `qrcode` 库（纯 Python），检测用 **OpenCV 内置 `QRCodeDetector`**（零新增、无需模型权重，替代参考的 pyzbar——后者需系统库 libzbar0）。唯一新增依赖：`qrcode 7.4.2 + pypng`（板上需 `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple qrcode`）。单测 19/19 全绿。
 
@@ -1870,7 +673,7 @@ flowchart LR
    - MJPEG：`http://<板IP>:8080/qrcode.mjpg`，手机屏幕/打印码实时识别
 
 ```bash
-# 进入实验04
+# 进入实验2
 cd ~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
 
 # 可选
@@ -2313,7 +1116,7 @@ flowchart LR
 
 ---
 
-## 实验5：基于OpenCV的多边形轮廓拟合实验（4h）
+## 实验3：基于OpenCV的多边形轮廓拟合实验（4h）
 
 > ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/05_line_following/`。⚠️ **内容说明**：课程名义为「自主巡线」，实际内容 = 亚博课程「OpenCV应用——多边形轮廓」：不规则轮廓 → 拟合规则几何形状（凸包/多边形）并标注顶点数。纯 OpenCV 方案（用户指示：不参考 car1_app/line_following.py）。单测 21/21 全绿，板端验证通过。
 
@@ -2359,7 +1162,7 @@ flowchart LR
 5. 黑底彩色模式：`python src/app.py --image x.jpg --save out_dark.jpg`（由 `config/line_config.yaml` 的 `display.colored_mode` 控制：`true`=黑底彩色轮廓+质心，`false`=原图叠加；默认 `true`，单图命令即输出黑底双栏图）
 
 ```bash
-# 进入实验05
+# 进入实验3
 cd ~/ros2_ws/src/xflz_eai_car1/vision/05_line_following
 
 # 可选
@@ -2806,6 +1609,1218 @@ flowchart LR
 
 ---
 
+## 实验4：基于YOLOv8的工业表面缺陷检测实验（4h）
+
+> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection/`（仓库内相对路径，根 = 课程生成项目根目录）。已随仓库交付完整训练产物（`train/weights/best.pt`、`best.onnx`，9 输出）与转换产物（`models/defect_yolov8n_int8.rknn`，int8 单核+剪枝，200 张 val 校准）。板端验证通过，实测约 **13 FPS**（NPU）。
+
+### 1.1 关联知识点
+
+本实验对应第 1 章"工业缺陷检测与 YOLOv8 认知"，覆盖以下 7 个知识点（ID 遵循知识图谱编号约定，来源于 course-spec.yaml 的 knowledge_points）：
+
+- 1.1.1 YOLOv8模型架构 > 原理 > YOLOv8 采用 CSPDarknet 主干 + PAN-FPN 颈部 + 解耦检测头，引入 DFL（Distribution Focal Loss）边界框回归
+- 1.1.2 工业缺陷数据集 > 概念 > NEU-DET 数据集包含 6 类表面缺陷（crazing/inclusion/patches/pitted_surface/rolled-in_scale/scratches），YOLO 归一化标签格式
+- 1.2.1 模型训练与超参数 > 流程 > yolov8n + imgsz=640 + epochs=100 + batch=8 的训练配置与产物解读（mAP50=0.732）
+- 1.2.2 ONNX模型转换 > 流程 > 使用 RKNN 优化版 fork 导出 format=rknn 的 ONNX（3×nl 个原始张量，DFL 留在 CPU 侧，共 9 个输出）
+- 1.3.1 RKNN NPU部署 > 原理 > rknn-toolkit2 将 ONNX 转换为 rk3576 平台 int8 量化模型，RKNNLite 在 6TOPS NPU 上推理
+- 1.3.2 实时缺陷检测 > 流程 > letterbox 预处理 → RGB 通道交换 → NPU 推理 → DFL 解码 + 逐类 NMS → unletterbox 画框标注
+- 1.3.3 精度评测与质检 > 概念 > mAP50 指标（纯 numpy 实现）与 onnx/rknn 双后端精度对比
+
+### 1.2 实验目标
+
+1. 掌握 YOLOv8 目标检测模型的工业应用方法，理解模型架构、训练超参数与检测原理 — 原理理解
+2. 完成工业产品的缺陷自动检测与定位，实现缺陷类别识别与可视化标注 — 独立完成
+3. 理解工业质检场景下的数据集制作、模型训练、部署推理全流程，体验"PC 训练 → ONNX 导出 → RKNN 转换 → 板端 NPU 推理"的完整链路 — 迁移应用
+
+### 1.3 实验环境
+
+| 类别 | 配置 |
+|------|------|
+| 硬件 | 具身智能实验箱 B2（XFLZ_EAI_B2_PRO，RK3576 SoC，6TOPS NPU，含 HP60C 深度相机） |
+| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv 虚拟环境，rknnlite 2.3.2 / onnxruntime 1.23.2） |
+| 核心库 | OpenCV、NumPy、PyYAML、rknnlite（板端推理）、rknn-toolkit2（转换）、onnxruntime、mjpeg_streamer、rclpy + cv_bridge |
+| 训练框架 | ultralytics 8.3.229（RKNN 优化 fork，numpy<2.0，PC 侧） |
+| 主入口 | `src/app.py`（推理 CLI：单图 / 视频 / UVC 相机 / ROS2 相机）<br>`src/convert_rknn.py`（ONNX → RKNN 转换）<br>`src/eval_map.py`（mAP50 精度评测）<br>`scripts/train.sh` / `scripts/export_onnx.sh`（PC 训练与导出） |
+
+### 1.4 实验难度
+
+- 难度: ⭐⭐⭐ 综合性
+- 重点: YOLOv8 工业缺陷检测全流程（数据集 → 训练 → 导出 → 转换 → 部署推理 → 精度评测）
+- 难点: RKNN int8 量化精度控制（校准集、RGB/BGR 约定、letterbox 填充值一致性）与 NPU 部署的输入格式约束（4D NHWC、RGB、无归一化）
+
+### 1.5 实验现象
+
+**快速验证流程**（帮助学习者快速看到实验效果，全程在板载 B2 平台执行）：
+
+1. 进入项目根目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection`
+2. （可选）跑通单元测试：`pytest -v`（42 用例全绿，数据集用例在无 NEU-DET 的机器上自动跳过）
+3. 单图推理（仓库自带 4 张缺陷测试图 `images/1.jpg~4.jpg`）：`python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg`
+   - 终端打印每帧 FPS 与每个缺陷框的类别、置信度、坐标
+4. 查看标注结果：`out.jpg` 中缺陷区域被红色框标出，框上方打印类别名（如 `scratches 0.87`）
+5. 视频推理：`python src/app.py --model models/defect_yolov8n_int8.rknn --video test.mp4 --save out.mp4`
+6. 相机实时（标准流程）：先起相机驱动，再运行 `--ros` 模式（详见步骤 6）
+7. 浏览器查看 MJPEG 实时流：`http://<板IP>:8080/defect.mjpg`，移动工件观察缺陷框实时跟随
+
+```bash
+# 进入实验4
+cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection
+
+# 可选
+/home/iflytek/ros2_venv/bin/python -m pytest -v
+
+# 执行单图片推理（图片都在01_industrial_defect_detection/images）
+python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg
+```
+
+**执行现象**：`pytest -v` 运行约 40-60 秒，输出 42 个用例全部 passed；单图推理命令在约 0.1-0.3 秒内返回，终端打印类似 `fps=xx.x` 与每个缺陷框的 `类别 置信度 (x1,y1,x2,y2)`，同时在当前目录生成 `out.jpg`（红框标注图）。板端实测 NPU 推理约 **13 FPS**。
+
+**预期效果描述**：
+
+- **单图/视频**：6 类缺陷（裂纹 crazing、夹杂 inclusion、斑块 patches、麻点 pitted_surface、氧化铁皮 rolled-in_scale、划痕 scratches）均能以红框 + 类别 + 置信度标注，小目标缺陷（如麻点、划痕）也能稳定检出
+- **相机实时**：检测框在视频流中逐帧更新，终端每 30 帧打印一次平均帧率，板端实测约 **13 FPS**（yolov8n/640，NPU 单核+剪枝模型）
+- **精度表现**：随仓库交付的训练产物在 val 集达到 P=0.657 / R=0.706 / **mAP50=0.732**；RKNN int8 模型相对 ONNX 掉点 ≤3%
+- **完整链路**：一份 `best.pt` 权重依次经历 PyTorch 训练、ONNX 导出、RKNN int8 量化转换，最终在 6TOPS NPU 上以 13 FPS 实时运行，验证"训练部署一体"的工业落地范式
+
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection$ python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg
+note: NEU-DET data.yaml 不在本机，使用内置 6 类名
+/home/iflytek/ros2_venv/lib/python3.10/site-packages/rknnlite/api/rknn_lite.py:41: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+W rknn-toolkit-lite2 version: 2.3.2
+I RKNN: [16:45:27.301] RKNN Runtime Information, librknnrt version: 2.3.2 (429f97ae6b@2025-04-09T09:09:27)
+I RKNN: [16:45:27.301] RKNN Driver Information, version: 0.9.8
+I RKNN: [16:45:27.302] RKNN Model Information, version: 6, toolkit version: 2.3.0(compiler version: 2.3.0 (c949ad889d@2024-11-07T11:39:30)), target: RKNPU f2, target platform: rk3576, framework name: ONNX, framework layout: NCHW, model inference type: static_shape
+W RKNN: [16:45:27.327] query RKNN_QUERY_INPUT_DYNAMIC_RANGE error, rknn model is static shape type, please export rknn with dynamic_shapes
+W Query dynamic range failed. Ret code: RKNN_ERR_MODEL_INVALID. (If it is a static shape RKNN model, please ignore the above warning message.)
+fps=10.0
+  inclusion 0.826 (181,0,279,302)
+  inclusion 0.763 (96,430,214,641)
+saved -> out.jpg
+```
+
+![image-20260819164309192](assets/image-20260819164309192.png)![image-20260819164332854](assets/image-20260819164332854.png)
+
+### 1.6 实验步骤
+
+#### 整体流程图
+
+```mermaid
+graph LR
+    A[步骤1：项目结构与配置认知] --> B[步骤2：NEU-DET数据集理解与校验]
+    B --> C[步骤3：YOLOv8模型训练与结果分析]
+    C --> D[步骤4：RKNN-ONNX模型导出]
+    D --> E[步骤5：RKNN转换与int8量化]
+    E --> F[步骤6：NPU部署与实时缺陷检测]
+    F --> G[步骤7：mAP50精度评测与对比]
+    G --> H[完成]
+```
+
+---
+
+#### 步骤1：项目结构与配置体系认知（阶段一：能运行，20min）
+
+> 📌 本步骤对应源码：`config/defect_config.yaml`、`src/config.py`
+
+**知识点讲解**：
+
+**配置驱动设计（1.1.2 延伸）**
+
+- **原理**：工业质检项目通常要求"配置与代码分离"，把数据集路径、训练超参、推理阈值、RKNN 转换参数全部收敛到一个 YAML 文件，保证实验可复现。本项目通过 `src/config.py` 的 `load_config()` 实现**契约式校验**：`REQUIRED` 字典（L14-35）声明了 dataset/train/infer/rknn/eval 五个区块必须存在的键与其类型，缺键或类型错误直接抛出 `ConfigError`（L38-39），避免"配置写错导致推理静默失败"这类隐蔽问题；未知键则忽略（向前兼容）。`resolve_path()`（L67-73）负责把配置中的相对路径解析为绝对路径。推理侧两个关键阈值——`score_thr=0.25`（置信度过滤）与 `iou_thr=0.45`（NMS 交并比阈值）——都在配置中集中管理（`config/defect_config.yaml` L22-26），调参无需改代码。
+- **源码对应**：`config/defect_config.yaml` L1-47（dataset L4-8 / train L10-20 / infer L22-26 / rknn L37-42 / eval L44-46）；`src/config.py` L14-35（REQUIRED）、L42-64（load_config）、L67-73（resolve_path）
+
+**知识储备补充**：
+
+- **背景与动机**：YAML 配置驱动是工业算法工程的标准实践——训练、评测、部署三阶段共享同一份配置，避免"训练用 A 参数、部署却写死 B 参数"导致的漂移。"契约式校验"（schema validation）把错误前置到加载阶段，而不是让错误配置在推理时静默产生错误结果。
+- **阈值语义**：`score_thr=0.25` 是置信度过滤阈值——低于它的检测框直接丢弃，值越大检测越保守（漏检增多、误检减少）；`iou_thr=0.45` 是 NMS 的交并比阈值——两个同类框 IoU 超过它则保留高分者。二者共同决定"输出的框数量与质量"，是目标检测的两个核心后处理超参。
+- **相对路径解析**：`resolve_path`（L67-73）基于**配置文件所在目录**解析相对路径，而非当前工作目录。这是关键设计：无论从哪个目录启动，配置里的 `dataset.root` 都能稳定解析到同一位置，保证实验跨目录可复现。
+- **参考资源**：PyYAML 官方文档 `yaml.safe_load`；JSON Schema 思想（配置契约校验的通用范式）。
+
+**配置参数速查表**（`config/defect_config.yaml`，按区块分列）：
+
+| 区块 | 参数 | 类型 | 默认/示例 | 说明 |
+|------|------|------|-----------|------|
+| `dataset` | `root` | str | `/home/.../NEU-DET.v1i.yolov8` | 训练数据集根目录（PC 端；板上推理/评测不需要） |
+| `dataset` | `data_yaml` | str | `data.yaml` | 数据集标注文件（含类别名） |
+| `dataset` | `splits` | list | `[train, valid, test]` | 参与校验的分割子集 |
+| `train` | `fork` | str | `/home/.../ultralytics_yolov8-main` | RKNN 优化版 ultralytics fork 路径 |
+| `train` | `model` | str | `yolov8n.pt` | 预训练权重 |
+| `train` | `imgsz` | int | `640` | 训练输入边长（精度-速度权衡） |
+| `train` | `epochs` | int | `100` | 训练轮数 |
+| `train` | `batch` | int | `8` | 批大小（GTX1060 建议 ≤8） |
+| `train` | `device` | int/str | `0` | 训练设备（无 CUDA 改 `cpu`） |
+| `train` | `project`/`name` | str | `runs/.../yolov8n_img640_e100` | 训练产物输出目录 |
+| `infer` | `imgsz` | int | `640` | 推理输入边长（须与训练一致） |
+| `infer` | `score_thr` | float | `0.25` | 置信度过滤阈值（越大越保守） |
+| `infer` | `iou_thr` | float | `0.45` | NMS 交并比阈值 |
+| `infer` | `pad_color` | list | `[0,0,0]` | letterbox 填充色（与 rknn_model_zoo 一致，勿改 114） |
+| `source` | `ros.rgb_topic` | str | `/ascamera_hp60c/.../rgb0/image` | ROS2 相机话题（严禁 remap） |
+| `source` | `ros.timeout` | float | `5.0` | 首帧等待秒数 |
+| `server` | `port` | int | `8080` | MJPEG 推流端口 |
+| `server` | `stream_name` | str | `defect.mjpg` | MJPEG 流名（已含 `.mjpg` 勿再追加） |
+| `rknn` | `target_platform` | str | `rk3576` | 转换目标平台 |
+| `rknn` | `quantize` | bool | `true` | 是否 int8 量化（转换脚本用） |
+| `rknn` | `calib_count` | int | `200` | int8 校准图片数（val 抽取） |
+| `rknn` | `onnx_model` | str | `train/weights/best.onnx` | 待转换 ONNX 路径 |
+| `rknn` | `rknn_model` | str | `models/defect_yolov8n_int8.rknn` | 转换产物 .rknn 路径 |
+| `eval` | `split` | str | `valid` | mAP50 评测用分割集 |
+| `eval` | `iou_thr` | float | `0.5` | mAP50 的 IoU 判定阈值 |
+
+> **说明**：`infer.imgsz` 须与训练 `train.imgsz` 一致（输入尺寸绑定）；`train.device` 无 GPU 改 `cpu`；`train.*` `rknn.*` 为 PC 侧（训练/转换），板端只用 `infer`/`source`/`server`。`source`/`server`/`train.run_dir` 不在 `REQUIRED` 校验内（未知键忽略，向前兼容）——改错不报错，注意自行核对。
+
+**操作步骤**：
+
+1. 查看项目目录结构，确认六大模块分工：
+   ```bash
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection
+   ls src/    # app / config / convert_rknn / dataset / eval_map / infer / metrics / mjpeg_server / postprocess / preprocess / ros2_source
+   ```
+
+2. 阅读配置文件，逐区块理解含义：
+   ```bash
+   cat config/defect_config.yaml
+   # 重点：infer.score_thr=0.25、infer.iou_thr=0.45、rknn.target_platform=rk3576、server.port=8080
+   ```
+
+3. 用 Python 验证配置加载与校验逻辑：
+
+   ```bash
+   PYTHONPATH=./src python -c "from config import load_config; cfg = load_config('config/defect_config.yaml'); print(cfg['infer'])"
+   # 预期输出：{'imgsz': 640, 'score_thr': 0.25, 'iou_thr': 0.45, 'pad_color': [0, 0, 0]}
+   ```
+
+4. 验证缺键报错（观察 ConfigError 契约）：
+   ```bash
+   PYTHONPATH=./src python -c "from config import load_config; load_config('config/defect_config.yaml')" # 正常
+   # 尝试删掉 yaml 中 infer 区块再运行，观察 ConfigError 提示缺失键
+   ```
+
+**易错点**：
+- ⚠️ 配置路径写相对路径时，`resolve_path` 基于**配置文件所在目录**解析（`config.py` L67-73），不是当前工作目录——跨目录运行务必注意
+
+---
+
+#### 步骤2：工业缺陷数据集理解与校验（阶段一：能运行，30min）
+
+> 📌 本步骤对应源码：`src/dataset.py`
+>
+> 需要自行准备相关数据集
+
+**知识点讲解**：
+
+**NEU-DET 数据集与 YOLO 标签格式（1.1.2）**
+
+- **原理**：NEU-DET（Northeastern University 表面缺陷数据集）是工业质检领域的标准公开数据集，包含热轧带钢表面 6 类缺陷（crazing 裂纹 / inclusion 夹杂 / patches 斑块 / pitted_surface 麻点 / rolled-in_scale 氧化铁皮 / scratches 划痕），共 1800 张 200×200 灰度图，已由社区转换为 YOLO 格式（`NEU-DET.v1i.yolov8`）。YOLO 标签为每行 `class_id cx cy w h` 的归一化格式（值域 0-1，相对图像宽高），与 COCO 的像素坐标格式不同。`src/dataset.py` 的 `validate_dataset()`（L19-85）负责**校验数据集结构**：确认 images/labels 目录存在、图像与标签一一对应、标签行数/坐标合法，输出统计（类别分布、样本数），为训练和评测提供数据完整性保障。`class_names()`（读 data.yaml）从 `names:` 字段提取 6 类名称供推理标注使用。
+- **源码对应**：`src/dataset.py` L19-85（validate_dataset：目录检查 L24-38 / 标签合法性 L40-66 / 统计输出 L68-85）、class_names 读取 data.yaml
+
+**知识储备补充**：
+
+- **背景与动机**：NEU-DET 由东北大学宋克臣团队于 2017 年发布，是热轧带钢表面缺陷检测的基准数据集。工业表面缺陷（尤其小尺度、低对比度缺陷）与通用目标检测数据集有本质差异：缺陷面积小（常不足图像 5%）、类间外观相似（crazing 与 scratches 均为细线纹理）、标注一致性要求极高——这使它成为检验检测模型"小目标 + 弱纹理"能力的标准测试床。
+
+- **YOLO 归一化标签格式**：每行 `class_id cx cy w h`，其中 $c_x, c_y, w, h$ 均为归一化值：
+
+  $$
+  c_x = \frac{x_{center}}{W}, \quad c_y = \frac{y_{center}}{H}, \quad w = \frac{bw}{W}, \quad h = \frac{bh}{H}
+  $$
+
+  其中 $W,H$ 为图像宽高，$(x_{center}, y_{center})$ 为框中心像素坐标，$bw,bh$ 为框宽高像素。归一化后标签与图像分辨率解耦——同一标注可适配任意 `imgsz` 训练。这与 COCO 的 `[x,y,w,h]` 像素坐标格式不同，混用是标注常见错误。
+
+- **关键参数**：归一化坐标值域必须 ∈ [0,1]；越界或混入像素坐标会导致训练崩溃或 mAP 极低——`validate_dataset`（L40-66）正是校验这一点。
+
+- **参考资源**：
+
+  NEU-DET 论文（K. Song et al., *Surface defect detection method using saliency linear perceptual hashing technology*）；
+
+  Roboflow `NEU-DET.v1i.yolov8` 数据集页。
+
+**操作步骤**：
+
+1. 若本机已有 NEU-DET 数据集，配置 `config/defect_config.yaml` 中 `dataset.root` 指向其路径
+2. 运行数据集校验：
+   ```bash
+   PYTHONPATH=./src python -c "from dataset import validate_split, class_names; import pathlib; \
+   root = pathlib.Path('/home/iflytek/tmp/AIoT_B2/NEU-DET.v1i.yolov8'); \
+   print('classes:', class_names(root / 'data.yaml')); \
+   print('--- train ---'); print(validate_split(root, 'train')); \
+   print('--- val ---'); print(validate_split(root, 'val'))"
+   # 预期：打印类别统计（6 类缺陷各约 300 张）与标签合法性结果
+   ```
+3. 查看 2-3 张标注图，理解 YOLO 归一化标签与像素坐标的换算关系（用 OpenCV 画框验证）
+4. 思考：为什么工业缺陷数据集比通用目标检测数据集更难标注？（缺陷尺度小、类间相似、标注一致性要求高）
+
+下面是相关训练的标注照片，可以在 ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection/train 中进行查看
+
+<img src="assets/val_batch0_labels.jpg" alt="val_batch0_labels" style="zoom:25%;" />
+
+**易错点**：
+- ⚠️ 板上无 NEU-DET 数据集属正常现象——`app.py` L60-65 已内置 6 类名兜底，板上推理无需数据集
+- ⚠️ 标签坐标必须归一化（0-1），若混入像素坐标，训练会直接崩或 mAP 极低
+
+---
+
+#### 步骤3：YOLOv8 模型训练与结果分析（阶段二：能理解，40min）
+
+> 📌 本步骤对应源码：`scripts/train.sh`、`train/args.yaml`
+
+**知识点讲解**：
+
+**YOLOv8 架构与训练流程（1.1.1、1.2.1）**
+
+- **原理**：YOLOv8 是 anchor-free 的实时目标检测器，主干 CSPDarknet 提取多尺度特征，PAN-FPN 颈部融合，**解耦检测头**分别输出分类与回归分支。回归分支采用 **DFL（Distribution Focal Loss）**：不直接回归偏移，而是预测 16 个 bin 的概率分布，加权求和得到连续偏移，对小目标更友好（`postprocess.dfl_decode` 对应实现）。训练配置收敛在 `train/args.yaml`：yolov8n、imgsz=640、epochs=100、batch=8、optimizer=auto、seed=0。训练产物 `train/weights/best.pt`（+ last.pt）与 `best.onnx`（RKNN 优化 fork 导出，9 输出）随仓库交付，**无需重训即可进入部署链路**；`scripts/train.sh`（L1-25）封装了 PC 侧训练入口。
+- **源码对应**：`scripts/train.sh` L1-25；`train/args.yaml` L1-106（超参数全量）；训练指标见 `train/results.csv`、曲线图 `train/*.png`
+
+**知识储备补充**：
+
+- **YOLOv8 架构拆解**：YOLOv8（2023，Ultralytics）相对 YOLOv5 的关键演进可归纳为四点
+
+  (1) **anchor-free**：去掉预置 anchor，直接回归中心点与宽高（中心点落在哪个 grid 哪个负责），减少超参；
+
+  (2) **C2f 模块**：替换 C3，借鉴 ELAN 结构引入更多梯度流分支，在相近计算量下提升表征；
+
+  (3) **解耦头（Decoupled Head）**：分类与回归分支分离，各自用不同尺度结构，缓解分类/回归任务冲突；
+
+  (4) **DFL 回归**。主干 CSPDarknet 提取 80/40/20 三个尺度的特征图（对应小/中/大目标），PAN-FPN 自顶向下 + 自底向上融合多尺度。
+
+- **DFL 原理**：DFL 不直接回归框偏移 $t$，而是用 16 个 bin 的概率分布表示其近似：
+
+  $$
+  t = \sum_{i=0}^{15} p_i \cdot i, \qquad p = \text{softmax}(z)
+  $$
+
+  其中 $z \in \mathbb{R}^{16}$ 是网络对 16 个 bin 的原始 logits，$p_i$ 为第 $i$ 个 bin 的 softmax 概率，$t$ 为加权和得到的连续偏移。相比单值回归，DFL 能刻画边界的不确定性，对小目标与边界模糊目标（如细纹理缺陷）更友好。解码时 `dfl_decode`（postprocess L34-42）执行 softmax 后加权求和。
+
+- **精度-速度权衡**：imgsz=640 是速度与精度的折中。NPU 算力固定 6TOPS，特征图边长平方增长（640²→800² 计算量增约 56%），单帧耗时随之上升。640 能覆盖绝大多数缺陷尺度且保持实时，是工业部署的常用默认。
+
+- **参考资源**：
+
+  YOLOv8 论文（Jocher et al., Ultralytics YOLOv8）；
+
+  Ultralytics 官方文档《YOLOv8 Architecture Overview》；
+
+  DFL 原论文《Generalized Focal Loss》（Li et al., 2020）。
+
+相关YOLOv8网络架构图
+
+<img src="assets/1ebb040adac1e258c00d6e0868727559.jpeg" alt="img" style="zoom:25%;" />
+
+**操作步骤**：
+
+1. 查看训练产物目录，理解"一份权重，三种格式"：
+   ```bash
+   ls -la train/weights/    # best.pt (PyTorch) + best.onnx (RKNN-ONNX, 9输出)
+   ```
+
+2. 解读训练指标（`train/results.csv` 末尾几行）：
+   ```bash
+   tail -5 train/results.csv    # epoch/box_loss/cls_loss/dfl_loss/metrics/precision/recall/mAP50
+   # 参考：epoch 100 → P=0.657 / R=0.706 / mAP50=0.732 / mAP50-95=0.409
+   ```
+
+3. 查看混淆矩阵与 PR 曲线（`train/confusion_matrix.png`、`train/PR_curve.png`），分析哪两类缺陷最易混淆（通常 crazing 与 scratches 相似）
+
+   <img src="assets/confusion_matrix.png" alt="confusion_matrix" style="zoom:25%;" />
+
+   <img src="assets/PR_curve.png" alt="PR_curve" style="zoom:25%;" />
+
+4. （可选，PC 且需重训时）运行 `bash scripts/train.sh`，比较训练曲线
+
+5. 思考：为什么选择 imgsz=640 而不是 800？板端 NPU 算力固定（6TOPS），imgsz 越大单帧耗时越高——这是**精度-速度权衡**的典型例子
+
+**易错点**：
+
+- ⚠️ 训练框架必须是 RKNN 优化 fork（ultralytics 8.3.229 + numpy<2.0），官方版导出的 ONNX 不是 9 输出，无法直接转 rknn
+- ⚠️ 训练精度目标只是参考，mAP 达标 ≠ 板端可用——int8 量化会引入精度损失，需在步骤 7 验证掉点
+
+---
+
+#### 步骤4：RKNN-ONNX 模型导出（阶段二：能理解，30min）
+
+> 📌 本步骤对应源码：`scripts/export_onnx.sh`
+
+**知识点讲解**：
+
+**RKNN 优化版 ONNX 导出（1.2.2）**
+
+- **原理**：官方 ultralytics 导出的 ONNX 把 DFL 解码也导出到计算图中（大量 Slice/Concat 算子），RKNN 转换器对这类动态索引支持差、易报错或低效。RKNN 优化 fork 提供了 `format='rknn'` 导出模式：**DFL 解码留在 CPU 侧**（Python 后处理实现），模型只输出 3×nl 个原始张量——每层 3 个：box `(1,64,h,w)`（DFL 原始分布）、cls `(1,nc,h,w)`（已 sigmoid）、cls_sum `(1,1,h,w)`（可忽略分支）。yolov8n 有 3 个检测层（80/40/20），故共 9 个输出。`export_onnx.sh`（L1-21）封装导出命令并校验输出数量。
+- **源码对应**：`scripts/export_onnx.sh` L1-21（导出 + 校验 L16-20）
+
+**知识储备补充**：
+
+- **背景与动机**：RKNN 转换器对 ONNX 算子的支持不是全集的——大量动态 Shape 算子（Slice/Concat 组合的动态索引、Reshape 依赖运行时值）在量化图优化阶段易失败或生成低效指令。RKNN 优化 fork 将"纯推理主干"与"DFL 后处理"分离：把后处理留在 CPU（Python），模型只保留稳定、可静态分析的算子，显著提高 RKNN 转换成功率与 NPU 效率。
+- **输出张量结构拆解**：每检测层输出 3 个张量——box `(1,64,h,w)` 是 DFL 的 16 bin × 4 坐标原始分布（回归分支），cls `(1,nc,h,w)` 是已 sigmoid 的类别分数（`nc`=6 类），cls_sum `(1,1,h,w)` 是类别分数和的可忽略分支。3 层 × 3 = 9 个输出：
+
+  $$
+  \text{outputs} = \bigcup_{l \in \{80,40,20\}} \{ \underbrace{\text{box}^{(l)}}_{1\times64\times h_l \times w_l},\; \underbrace{\text{cls}^{(l)}}_{1\times nc \times h_l \times w_l},\; \underbrace{\text{cls\_sum}^{(l)}}_{1\times 1\times h_l \times w_l} \}
+  $$
+
+  其中 $h_l = w_l = \text{imgsz}/l$（imgsz=640 → 8/16/32 下采样 → 80/40/20 特征图），`nc=6` 为缺陷类别数。
+- **参考资源**：RKNN 官方文档《RKNN Toolkit2 User Guide》ONNX 算子支持表；Ultralytics `yolo export` 文档。
+
+**操作步骤**：
+
+1. 查看导出脚本内容，理解关键参数：
+   ```bash
+   cat scripts/export_onnx.sh
+   # 核心：yolo export model=train/weights/best.pt format=onnx opset=12 imgsz=640
+   #       format=rknn（RKNN 优化 fork 专用）
+   ```
+
+2. 验证已交付的 ONNX 输出结构（无需重导）：
+   ```bash
+   python -c "
+   import onnxruntime as ort
+   sess = ort.InferenceSession('train/weights/best.onnx')
+   print('输入:', [i.name for i in sess.get_inputs()])
+   print('输出数:', len(sess.get_outputs()))
+   for o in sess.get_outputs(): print(' ', o.name, o.shape)"
+   # 预期输出数 = 9（3 层 × 3 张量）
+   ```
+
+   ```bash
+   输入: ['images']
+   输出数: 9
+     317 [1, 64, 80, 80]
+     325 [1, 6, 80, 80]
+     331 [1, 1, 80, 80]
+     338 [1, 64, 40, 40]
+     346 [1, 6, 40, 40]
+     352 [1, 1, 40, 40]
+     359 [1, 64, 20, 20]
+     367 [1, 6, 20, 20]
+     373 [1, 1, 20, 20]
+   ```
+
+   若需重导（PC 且 fork 环境就绪）：`bash scripts/export_onnx.sh train/weights/best.pt`
+
+**易错点**：
+
+- ⚠️ 输出不是 9 个 → 用了官方 ultralytics 或未指定 `format=rknn`（`export_onnx.sh` L16）
+- ⚠️ opset 过高（>12）可能导致 RKNN 转换器不支持某些算子，保持 opset=12
+
+---
+
+#### 步骤5：RKNN 转换与 int8 量化（阶段二：能理解，40min）
+
+> 📌 本步骤对应源码：`src/convert_rknn.py`
+
+**知识点讲解**：
+
+**RKNN int8 量化原理（1.3.1）**
+
+- **原理**：RKNN 转换器（rknn-toolkit2）把 ONNX 图转换为 RK3576 平台的 NPU 指令集模型，核心是 **int8 量化**：权重和激活从 float32 缩放到 int8（w8a8），通过**校准集**统计激活分布确定每个张量的 scale/zero_point。量化配置要点：`quant_img_RGB2BGR=False`（L65）——因为导出模型的输入约定是 RGB；`target_platform='rk3576'`（L38-42）；校准集 200 张 val 图（`--calib-count 200`）。部署侧用 `RKNNLite`（`infer.py` L29-52）在 NPU 上推理，`init_runtime` 必须显式传 `core_mask=0`（NPU_CORE_AUTO，L36），None 在 2.3.2 会报 `core mode not supported`。模型推理输入必须是 **4D NHWC uint8**（静态 shape）且**不做 /255 归一化**——量化模型内部已含 scale。
+- **源码对应**：`src/convert_rknn.py` L25-109（参数解析 L25-40 / config 加载与 RGB2BGR 设置 L41-65 / 转换+量化 L66-91 / 输出保存 L92-109）
+
+**知识储备补充**：
+
+- **int8 量化原理**：量化把浮点张量映射到 int8 整数域。权重 $w$ 与激活 $x$ 的仿射量化：
+
+  $$
+  w_q = \text{round}\left( \frac{w}{s_w} \right), \qquad x_q = \text{round}\left( \frac{x}{s_x} \right)
+  $$
+
+  其中 $s_w, s_x$ 分别为权重与激活的量化步长（scale），由校准集统计激活数值分布确定。反量化近似：$\hat{w} \approx s_w \cdot w_q$。相比 fp32，int8 用 4 倍压缩的位宽换取 NPU 上更快的定点运算（w8a8 即权重/激活均 8bit）。代价是舍入误差引入的精度损失（本项目要求掉点 ≤3%）。
+- **校准集的作用**：scale 的确定依赖激活的真实分布。校准集（`--calib-count 200` 张 val 图）应代表部署时的真实数据分布——若校准图与推理数据分布偏差大，量化的 scale 估计失准，掉点加剧。这也是"校准图用 val 集而非 train 集"的原因。
+- **RGB2BGR 约定（关键）**：`quant_img_RGB2BGR=False`（L65）表示转换器**不**做通道交换——因为导出模型输入约定是 RGB，推理侧 `to_rgb()`（preprocess L45-52）已经把 BGR 帧换成 RGB 再喂 NPU。若转换侧与推理侧的约定不一致，检测框会整体偏移或错乱。这是本项目最易踩的坑之一。
+- **输入格式约束**：NPU 静态 shape 模型要求 4D NHWC uint8 输入，且**不做 /255 归一化**——量化模型内部已把 0-255 的 uint8 输入视为激活并含 scale，归一化会破坏输入分布。
+- **参考资源**：RKNN Toolkit2 官方文档《Quantization》；Google《Quantizing Deep Convolutional Networks for Efficient Inference》（Jacob et al., 2017）。
+
+**操作步骤**：
+
+1. 查看转换脚本参数：
+   ```bash
+   python src/convert_rknn.py --help
+   # --onnx --output --calib-dir --calib-count --imgsz --no-quantize
+   ```
+
+2. 重新转换（板上 ros2_venv 或 PC rknn 环境，需要 NEU-DET val 图作校准集）：
+   ```bash
+   python src/convert_rknn.py --onnx train/weights/best.onnx \
+     --output models/defect_yolov8n_int8.rknn \
+     --calib-dir <NEU-DET>/valid/images --calib-count 200
+   # 预期：打印量化信息与每层统计，最终生成 .rknn 文件
+   ```
+
+3. 对比已交付的 `models/defect_yolov8n_int8.rknn` 文件大小与 ONNX 差异（int8 通常更小）
+
+4. 思考：量化掉点的根源是什么？（权重/激活低比特表示 → 信息损失；校准集代表性不足 → 分布估计偏差）
+
+```python
+# src/convert_rknn.py 部分代码块解释
+if rknn.config(
+            mean_values=[[0, 0, 0]], std_values=[[255, 255, 255]],
+            target_platform=target,
+            quant_img_RGB2BGR=False,        # 输入已为 RGB（导出时固化），不再转色域
+            quantized_dtype="w8a8",         # toolkit2 默认 int8 量化
+            quantized_algorithm="normal",   # 默认
+            quantized_method="channel",     # 2.3.0 默认即 channel（逐通道量化）
+            optimization_level=3,           # 默认
+            single_core_mode=True,          # 单核模型：省内存（用户指定 2026-08-05）
+            model_pruning=True,             # 无损剪枝：省内存（用户指定 2026-08-05）
+        ) != 0:
+```
+
+| 参数                  | 值                | 说明                                                         |
+| --------------------- | ----------------- | ------------------------------------------------------------ |
+| `mean_values`         | `[[0,0,0]]`       | 输入图像每个通道的**均值**。配合 `std_values` 完成归一化：‑。本模型约定外部输入像素范围 `0‑255`，不需要做减均值，故 mean 设置为 0。 |
+| `std_values`          | `[[255,255,255]]` | 输入图像每个通道的**标准差**。本模型归一化公式：xnorm=xpixel/255，该归一化由 RKNN 运行时内部完成，Python 侧不需要手动执行 `/255`。 |
+| `target_platform`     | `target`          | 指定目标 RK 芯片平台，例如 `"rk3576"`。用于让工具针对该芯片算子库做编译适配、算子择优。 |
+| `quant_img_RGB2BGR`   | `False`           | **色域转换开关**。`False`= 关闭内部 RGB→BGR 转换。前提：预处理阶段已经把 OpenCV 默认 BGR 图像转为 RGB 再喂入模型；不要让 RKNN runtime 再做一次通道翻转，否则颜色错乱，出现 “框准、分类全错”。 |
+| `quantized_dtype`     | `"w8a8"`          | 量化数据类型：**权重 int8，激活值 int8（w8a8）**，即全 int8 量化。是 RK3576 最常用的量化模式，兼顾推理速度与模型体积；相比 fp16 大幅降低 NPU 内存占用。 |
+| `quantized_algorithm` | `"normal"`        | 量化算法，`normal`为标准 KL 散度量化算法，使用校准集统计激活值分布，生成量化参数；适合目标检测任务。 |
+| `quantized_method`    | `"channel"`       | **逐通道量化**。权重按每个卷积通道独立计算量化零点 / 缩放因子，精度更高；RKNN Toolkit2.3.0 版本后默认就是`channel`，优于旧版`tensor`（整个张量共用一套量化参数）。 |
+| `optimization_level`  | `3`               | 算子优化等级，范围 0‑3；3 代表开启全部编译器图优化：算子融合、常量折叠、算子替换为芯片硬件实现，最大化 NPU 推理性能。 |
+| `single_core_mode`    | `True`            | **单核模式**。编译出来的 RKNN 模型仅使用 1 颗 NPU 核心运行。✅优点：模型运行内存占用降低，适合内存紧张场景；⚠️缺点：不能利用多核并行，单帧推理延迟会变大，需要上层多线程推理池（RKNNPool）做多实例并发来拉高整体 FPS。 |
+| `model_pruning`       | `True`            | **无损模型剪枝**。RKNN 编译器做图级无损剪枝：移除无用常量、废弃分支、零权重通道，在不损失精度前提下减少模型大小与运行内存开销。 |
+
+**易错点**：
+
+- ⚠️ 校准图必须 jpg/png/bmp 且绝对路径、无中文（`convert_rknn.py` L22）；`--imgsz` 与训练一致（640）
+- ⚠️ `rgb2bgr` 必须 False（L65）：模型输入约定 RGB，转换侧与推理侧（`to_rgb`）必须一致
+- ⚠️ 掉点 >3% 时：增大 `--calib-count`、校准图用 val 集、必要时 `--no-quantize` 定位
+
+---
+
+#### 步骤6：NPU 部署与实时缺陷检测（阶段三：能改造，45min）
+
+> 📌 本步骤对应源码：`src/app.py`、`src/infer.py`、`src/preprocess.py`、`src/postprocess.py`、`src/mjpeg_server.py`、`src/ros2_source.py`
+
+**知识点讲解**：
+
+**实时缺陷检测推理流水线（1.3.2）**
+- **原理**：板端推理是一条精心对齐的流水线（`Detector.detect`，`src/infer.py` L108-139）：
+
+  (1) **letterbox 预处理**（`src/preprocess.py` L27-37）——按 `scale=min(size/h, size/w)` 等比缩放并用 0 值填充到 640×640，保持宽高比不变、避免目标变形；
+
+  (2) **BGR→RGB 通道交换**（L45-52 `to_rgb`）——量化配置 `rgb2bgr=False` 决定了 NPU 输入必须是 RGB；
+
+  (3) **NPU 推理**（`src/infer.py` L44-49）——`RKNNLite.inference` 输入必须是 **4D NHWC uint8**（静态 shape 模型不接受 3D），且**不做 /255 归一化**（量化模型内部已含 scale）；
+
+  (4) **CPU 侧解码**（`src/postprocess.py`）——`dfl_decode`（L34-42）对 16 bin 做 softmax 加权求和还原边框偏移，`box_process`（L45-56）加 grid 中心与 stride 还原 xyxy，`decode_rknn`（L91-121）按 `score_thr=0.25` 过滤后 `classwise_nms`（L59-88）逐类做非极大值抑制（同类别重叠框只留最高分）；
+
+  (5) **unletterbox**（`src/preprocess.py` L40-42）把检测框映射回原始图像坐标，再由 `app.py` 的 `draw()`（L32-39）画红框与类别标签。后端抽象（`Backend` Protocol，`infer.py` L23-26）使同一套推理逻辑可在 RKNN（NPU）/ONNX（CPU）间切换，支撑精度对比。
+
+- **源码对应**：`src/preprocess.py` L27-37（letterbox）、L40-42（unletterbox）、L45-52（to_rgb）；`src/infer.py` L23-26（Backend 协议）、L29-52（RKNNBackend：load L38-42 / predict L44-49）、L108-139（Detector：detect L118-130）；`src/postprocess.py` L34-42（dfl_decode）、L45-56（box_process）、L59-88（classwise_nms）、L91-121（decode_rknn）；`src/app.py` L24-29（_make_backend）、L32-39（draw）、L71-75（run_frame）、L94-146（视频/相机/ROS 模式）；`src/mjpeg_server.py` L19-72（MjpegServer）；`src/ros2_source.py` L20-116（Ros2Camera：DEFAULT_TOPIC L29 / open L50-69 / _on_image L71-80 / read L82-92 / release L98-116）
+
+**知识储备补充**：
+
+- **letterbox 数学定义**：等比缩放因子为两轴缩放的最小值，保证不裁切内容：
+
+  $$
+  scale = \min\left( \frac{size}{h}, \frac{size}{w} \right), \qquad
+  pad_x = \left\lfloor \frac{size - w \cdot scale}{2} \right\rfloor, \qquad
+  pad_y = \left\lfloor \frac{size - h \cdot scale}{2} \right\rfloor
+  $$
+
+  其中 $(w,h)$ 为原图宽高，$size=640$ 为目标边长。缩放后图像 `(h·scale, w·scale)` 居中放入 `(640,640)` 画布，两侧填充 `pad_color`。部署推理必须用 **pad=0**（非训练用的 114）——填充值参与卷积计算，若与训练/量化不一致，边缘特征分布偏移导致框错位。`unletterbox` 反向映射：`(box - [pad_x, pad_y, pad_x, pad_y]) / scale`。
+- **DFL 解码公式**：对每个位置，4 个坐标各对应 16 bin 分布，softmax 后加权：
+
+  $$
+  \hat{t}_c = \sum_{i=0}^{15} i \cdot \text{softmax}(z_c)_i, \quad c \in \{l, t, r, b\}
+  $$
+
+  其中 $z_c \in \mathbb{R}^{16}$ 是坐标 $c$ 的 16 bin logits。再经 `box_process` 加 grid 中心与 stride 还原到特征图尺度：$x_{center} = (g_x + 0.5 - \hat{t}_l) \cdot stride$（含 anchor-free 的分布偏移），最后乘 stride 得像素坐标。
+- **逐类 NMS**：NMS（Non-Maximum Suppression）抑制同类重叠框——按置信度降序扫描，保留当前最高分框，抑制与之 IoU ≥ `iou_thr` 的同类别框。逐类（classwise）做 NMS 是因为不同类别的框允许重叠（如缺陷框内再套一个）。IoU 定义：
+
+  $$
+  \text{IoU}(A,B) = \frac{|A \cap B|}{|A \cup B|} = \frac{\text{inter}}{\text{area}_A + \text{area}_B - \text{inter}}
+  $$
+
+- **参考资源**：rknn_model_zoo `yolov8.py`（本实现逐行对齐的官方参考）；Ultralytics《YOLOv8 Inference》；OpenCV `cv2.resize` 文档。
+
+**推理数据流图**：
+
+```mermaid
+graph TD
+    subgraph 输入源
+        I1[单图 --image] --> P
+        I2[视频 --video] --> P
+        I3[UVC相机 --camera] --> P
+        I4[ROS2相机 --ros<br/>ascamera HP60C] --> P
+    end
+    P[letterbox 等比缩放+0填充<br/>preprocess.py L27-37] --> R[to_rgb BGR→RGB<br/>preprocess.py L45-52]
+    R --> N[RKNNLite NPU推理<br/>4D NHWC uint8<br/>infer.py L44-49]
+    N --> D[DFL解码+逐类NMS<br/>postprocess.py L91-121]
+    D --> U[unletterbox 映射回原图坐标<br/>preprocess.py L40-42]
+    U --> S[draw 画框标注<br/>app.py L32-39]
+    S --> O[MJPEG推流 :8080/defect.mjpg<br/>mjpeg_server.py]
+    S --> W[本地窗口 --display]
+```
+
+**操作步骤**：
+
+1. 单图推理（最简验证）：
+   ```bash
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection
+   python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg
+   # 预期：终端打印 fps=xx.x 与每个缺陷框 类别 置信度 (x1,y1,x2,y2)；out.jpg 为红框标注图
+   ```
+
+2. 视频推理：
+
+   需要准视频，本实验未提供
+
+   ```bash
+   python src/app.py --model models/defect_yolov8n_int8.rknn --video test.mp4 --save out.mp4
+   # 预期：每 30 帧打印一次 avg_fps，最终输出标注视频
+   ```
+
+3. 相机实时（板上标准流程，HP60C 走 ROS2 话题）：
+
+   ```bash
+   # 终端 1：启动相机驱动（ROS_DOMAIN_ID 必须与驱动一致，本板 =2）
+   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+   export ROS_DOMAIN_ID=2
+   ros2 launch ascamera hp60c.launch.py
+
+   # 终端 2：运行缺陷检测（同一 ROS_DOMAIN_ID）
+   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+   export ROS_DOMAIN_ID=2
+   python src/app.py --model models/defect_yolov8n_int8.rknn --ros
+   # 预期：终端打印 frame N avg_fps=xx.x，板端实测约 13 FPS
+   ```
+
+4. 浏览器查看实时检测流：
+
+   - 同一局域网内访问 `http://<板IP>:8080/defect.mjpg`
+   - 移动带缺陷的工件，观察红框与类别标签实时跟随
+
+5. 验证后端可切换（精度对比前置）：
+   ```bash
+   python src/app.py --model train/weights/best.onnx --image images/1.jpg --save out_onnx.jpg
+   # .onnx 自动走 ONNXBackend（CPU），与 .rknn（NPU）对比帧率差异
+   ```
+
+6. 动手改造练习（阶段三）：修改 `src/app.py` L38-39 中画框颜色/线宽，或把 `score_thr` 从配置改为命令行参数，重新运行观察效果
+
+**易错点**：
+
+- ⚠️ **视频流推理报过程乱框** → **解决**：因为模型是特定场景特定识别，调用摄像头看正常环境会出现较多错误检测是正常现象
+
+- ⚠️ **推理报 `need 4dims input`** → **解决**：静态 shape 模型要求 4D 输入，`RKNNBackend.predict`（`infer.py` L47）已用 `np.newaxis` 补成 NHWC；手写推理代码时务必保持 4 维
+- ⚠️ **检测结果框整体偏移/错位** → **解决**：检查 letterbox 填充值（必须 0，非 114）与 BGR/RGB 约定（`to_rgb` 必须调用）；两侧不一致是框偏移的头号原因
+- ⚠️ **init_runtime 报 `core mode not supported`** → **解决**：`RKNNLite` 初始化必须显式传 `core_mask=0`（NPU_CORE_AUTO，`infer.py` L36），None 值在 2.3.2 上会报错
+- ⚠️ **MJPEG 浏览器 404** → **解决**：端口被其他 demo 占用，`mjpeg_server.py` L47-57 启动时已预检端口并明确报错；先关闭占用 8080 的进程
+- ⚠️ **--ros 模式取不到帧** → **解决**：确认相机驱动已启动、`ROS_DOMAIN_ID` 与驱动一致（本板 =2）、话题为 `/ascamera_hp60c/camera_publisher/rgb0/image`（`ros2_source.py` L29，勿 remap）
+
+---
+
+#### 步骤7：mAP50 精度评测与 onnx/rknn 对比（阶段三：能改造，35min）
+
+> 📌 本步骤对应源码：`src/eval_map.py`、`src/metrics.py`
+
+**知识点讲解**：
+
+**mAP50 指标原理（1.3.3）**
+- **原理**：mAP（mean Average Precision）是目标检测的行业标准指标。其计算分四层：(1) **IoU**（`src/metrics.py` L28-39 `iou_matrix`）——预测框与真值框的交并比，向量化实现逐对计算；(2) **TP/FP 匹配**（L54-73 `_match_flags`）——预测框按置信度降序，与同类别 GT 计算 IoU，`IoU≥0.5` 且该 GT 未被匹配过则为 TP，否则 FP（一张 GT 只匹配一次）；(3) **PR 曲线与 AP**（L42-51 `_ap_from_pr`）——按置信度阈值从高到低扫描，计算 precision/recall 序列，用 all-point 插值求曲线下面积，即单个类别的 AP50；(4) **mAP50**（L76-112 `map50`）——各类 AP50 的平均，遵循 COCO/ultralytics 约定**无 GT 的类别不参与均值**，保证与官方 `yolo val` 可比。`eval_map.py`（L29-91）把评测组织为"遍历 val 集 → Detector 推理 → 解析 YOLO 标签为 GT → map50 计算"，`--backend` 参数支持 rknn/onnx 双后端，从而量化 int8 量化相对浮点模型的精度损失（本项目要求掉点 ≤3%）。
+- **源码对应**：`src/metrics.py` L28-39（iou_matrix）、L42-51（_ap_from_pr）、L54-73（_match_flags）、L76-112（map50）；`src/eval_map.py` L29-46（参数与 Detector 构建）、L48-79（评测循环与 GT 解析）、L81-91（结果输出）
+
+**知识储备补充**：
+
+- **PR 曲线与 AP 数学定义**：对每个类别，按置信度阈值 $\tau$ 从高到低扫描，得到 precision/recall 序列：
+
+  $$
+  \text{Precision}(\tau) = \frac{TP(\tau)}{TP(\tau) + FP(\tau)}, \qquad
+  \text{Recall}(\tau) = \frac{TP(\tau)}{TP(\tau) + FN(\tau)}
+  $$
+
+  AP 是 PR 曲线下的面积。本实现用 **all-point 插值**（非 COCO 的 101 点插值）：
+
+  $$
+  \text{AP} = \sum_{k} (R_{k+1} - R_k) \cdot P_{k+1}
+  $$
+
+  其中 $P_k, R_k$ 为按 recall 升序的第 $k$ 个插值点（recall 间隔上的最高 precision）。mAP50 即所有类别 AP50 的均值，`IoU_thr=0.5` 表示"预测框与 GT 的 IoU ≥ 0.5 即算命中"。
+- **TP/FP 匹配的贪心约束**：一张 GT 只匹配一次（`_match_flags`），防止多个预测框同时命中同一 GT 都算 TP——这保证了指标不被冗余预测虚高，是目标检测评测的通用约定。
+- **关键参数**：`iou_thr=0.5`（即 AP50）；"无 GT 的类不参与均值"（`metrics.py` L109-111）——若某类在测试集中无样本，其 AP 无定义，纳入均值会拉低 mAP 且与 `yolo val` 不可比。
+- **参考资源**：COCO 数据集评测官方定义（cocodataset.org）；Ultralytics《Metrics》文档；《The PASCAL Visual Object Classes Challenge》（Everingham et al., 2010）。
+
+**操作步骤**：
+
+1. 运行 RKNN 后端评测（板上，需要 NEU-DET 数据）：
+   ```bash
+   python src/eval_map.py --backend rknn \
+     --model models/defect_yolov8n_int8.rknn \
+     --data /home/iflytek/Src/AIoT_B2/NEU-DET.v1i.yolov8
+   # 预期输出：per-class AP50 表格 + mAP50（如 0.71x）
+   ```
+2. 运行 ONNX 后端评测，与 RKNN 对比：
+   ```bash
+   python src/eval_map.py --backend onnx \
+     --model train/weights/best.onnx \
+     --data /home/iflytek/Src/AIoT_B2/NEU-DET.v1i.yolov8
+   # 预期：onnx mAP50 略高于 rknn；掉点 = onnx - rknn ≤ 3%
+   ```
+3. 记录两类缺陷的 AP 差异，思考原因（如 crazing 与 scratches 类间相似，AP 通常偏低）
+4. 填写性能基线表（实验报告必填）：
+
+   | 指标 | 期望值 | 实测值 |
+   |------|-------|-------|
+   | onnx mAP50 | ≈0.73 |  |
+   | rknn(int8) mAP50 | 掉点 ≤3% |  |
+   | 单图推理 FPS（NPU） | ≥15（实测约 13） |  |
+   | MJPEG 流地址 | :8080/defect.mjpg 可访问 |  |
+
+**易错点**：
+- ⚠️ mAP 数值与 `yolo val` 不可比 → 保持"无 GT 类不参与均值"约定（`metrics.py` L109-111）；GT 与 pred 统一原始图像坐标（`eval_map.py` L74-75）
+- ⚠️ 评测耗时长 → 可先用 `--limit`（若支持）抽子集快速验证流程，再全量跑
+
+---
+
+### 1.7 常见问题
+
+| 问题 | 原因 | 解决方法 |
+|------|------|---------|
+| 检测框整体偏移/错位 | letterbox 填充值或 BGR/RGB 约定与转换不一致 | 部署侧保持 pad=0（`preprocess.py` L8-9）与 `to_rgb()`（L45-52）；转换侧 `quant_img_RGB2BGR=False`（`convert_rknn.py` L65） |
+| NPU 推理报 `need 4dims input` | 静态 shape 模型要求 4D NHWC 输入 | 按 `infer.py` L47 加 `np.newaxis` 补维 |
+| init_runtime 报 `core mode not supported` | core_mask 传 None | 显式传 `core_mask=0`（NPU_CORE_AUTO，`infer.py` L36） |
+| RKNN 转换掉点 >3% | 校准集不足或预处理不一致 | 增大 `--calib-count`（`convert_rknn.py` L99）、校准图用 val 集且预处理与推理一致；必要时 `--no-quantize` 定位 |
+| 导出 ONNX 输出不是 9 个 | 用了官方 ultralytics 或未指定 format=rknn | 使用 RKNN 优化 fork + `format='rknn'`（`export_onnx.sh` L16），校验命令见 L20 |
+| MJPEG 浏览器 404 | 8080 端口被其他 demo 占用 | 关闭占用进程；启动时预检报错见 `mjpeg_server.py` L47-57 |
+| `--ros` 取不到帧 | 驱动未启动或 ROS_DOMAIN_ID 不一致 | 先 `ros2 launch ascamera hp60c.launch.py`；export ROS_DOMAIN_ID=2；话题勿 remap（`ros2_source.py` L29） |
+| 退出程序时报 C++ abort / core dumped | `Ros2Camera.release()` 先 destroy_node 再 rclpy.shutdown()，顺序反了 | 严格先 `rclpy.shutdown()` 后 `destroy_node`（`ros2_source.py` L98-116），release 已内置正确顺序 |
+| 量化校准报错或无效果 | 校准图路径含中文字符/格式不支持，或 imgsz 与模型不一致 | 校准图用 jpg/png/bmp 与绝对路径（`convert_rknn.py` L22）；`--imgsz` 与训练一致 |
+| 板上无训练集时推理报错 | `class_names` 读 data.yaml 失败抛 FileNotFoundError | 属正常现象，`app.py` L60-65 已内置 NEU-DET 6 类名兜底，板上推理无需数据集 |
+| mAP 数值与 `yolo val` 不可比 | 无 GT 的类参与了均值，或 GT 与预测坐标空间不一致 | 保持"无 GT 类不参与均值"约定（`metrics.py` L109-111）；GT 与 pred 统一原始图像坐标（`eval_map.py` L74-75） |
+
+### 1.8 扩展实验
+
+**扩展方向 1：缺陷精度提升与消融对比（进阶）**
+- 训练侧换更大模型 `yolov8s` 或提高 `imgsz=800`，对比 mAP50 提升与板端 FPS 下降的权衡（NPU 算力 6TOPS 固定，模型越大单帧耗时越高）
+- 增加校准图片数（`--calib-count 500`）或改用 fp16 转换，观察 int8 量化掉点变化
+- 用 `src/eval_map.py` 的 `--backend` 参数建立 torch / onnx / rknn 三方精度对比表，分析量化误差主要来自哪类缺陷
+
+**扩展方向 2：质检联动与缺陷统计报告（进阶）**
+- 在 `src/app.py` 主循环（L123-138）中按类别累加缺陷计数，周期性输出缺陷统计（如"scratches: 12 处"），生成质检报表，对应工业场景的"缺陷统计与质检报告生成"
+- 将 `Detector.detect()` 返回的 `Detection` 列表转换为 ROS2 `vision_msgs/Detection2DArray` 话题发布，供机械臂分拣或报警灯联动（需在 `ros2_source.py` 旁新增 publisher 模块）
+- 把 MJPEG 推流（`mjpeg_server.py`）与缺陷统计叠加显示在画面上，形成完整的人机交互质检界面
+
+### 1.9 实验报告要求
+
+**评分标准**：配置与数据集理解 10 分 + 训练产物分析 15 分 + ONNX/RKNN 转换 25 分 + NPU 实时推理与 MJPEG 演示 30 分 + mAP50 评测 10 分 + 实验报告 10 分 = 100 分。
+
+**报告必含内容**：
+1. 推理流水线框图（letterbox → RGB → NPU → DFL 解码/NMS → unletterbox），标注每步对应源码文件与行号
+2. 单图检测结果图（标注前/后对比）与 3 个检测框的类别、置信度、坐标数据
+3. 板端实测 FPS（单图/视频/相机三种模式）与性能基线表（1.6 步骤 7 表格）
+4. onnx vs rknn 的 mAP50 对比表，分析量化掉点原因
+5. 回答思考题：为什么部署推理用 pad=0 而训练用 114？为什么 NPU 输入必须是 RGB 且不做归一化？如果 score_thr 从 0.25 调到 0.5，检测结果会如何变化？
+6. 实验心得与问题记录（遇到的问题、排查过程、解决结果）
+
+---
+
+## 更新日志
+
+| 版本 | 日期 | 变更 |
+|------|------|------|
+| v1.0 | 2026-08-10 | 初版生成（基于源码实测：app.py/infer.py/preprocess.py/postprocess.py/convert_rknn.py 等，源码路径 ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection，板端验证 13 FPS，训练产物 mAP50=0.732） |
+| v2.0 | 2026-08-19 | 知识点增强：各核心知识点追加「知识储备补充」（YOLOv8架构/DFL/letterbox/NMS/int8量化/mAP50 公式与参考资源）；1.5 追加可复现代码块与执行现象 |
+| v2.1 | 2026-08-21 | 步骤1 新增「配置参数速查表」：config/defect_config.yaml 全参数按区块分列（dataset/train/infer/source/server/rknn/eval），含类型/示例/说明；标注 PC 侧（train/rknn）与板端（infer/source/server）用途区分、`source`/`server`/`train.run_dir` 不在 REQUIRED 契约、infer.imgsz 须与 train.imgsz 一致等要点。表值经 load_config 实测核对 |
+
+---
+
+## 实验5：基于图像分类的垃圾分类实验（4h）
+
+> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification/`。基于 `garbage_yolov5_20cls.rknn`（20 类垃圾分类模型，YOLOv5 式检测头：3 尺度 × 75 通道 = 3 anchors × (4+1+20)），改造 `rknn-python-Multithreading` 火焰检测例程为**多线程 RKNN 推理 + 逐目标分类 + 4 大类映射 + MJPEG 实时流**。单测 62/62 全绿（WSL rknn23 实测）。
+
+### 1.1 关联知识点
+
+- 1.1.1 图像分类原理 > 原理 > 垃圾分类采用 YOLOv5 式检测头（3 尺度 × 75 通道 = 3 anchors × (4+1+20)）同时输出类别与位置，区别于纯分类网络的整图单标签输出
+- 1.2.1 数据集搭建 > 概念 > 20 细类标签（bailuobo…zhuankuai，`config/labels.txt` 行号=类别 ID）与 4 大类映射（1=recyclable 2=kitchen_waste 3=hazardous_waste 4=other_waste，`config/category_map.txt`）
+- 1.3.1 多线程推理 > 流程 > RKNNPool 多线程推理池：NPU 核轮转 + 任务队列，最大化 6TOPS NPU 利用率
+- 1.3.2 模型部署 > 原理 > 模型输入 `[1,3,640,640]` float32，mean/std 0/255，**rgb2bgr=False（须喂 RGB）**；输出 3 尺度 `[1,75,80,80]/[1,75,40,40]/[1,75,20,20]`
+- 1.3.3 实时分类与分拣联动 > 流程 > letterbox 640(pad 0) + BGR→RGB → YOLOv5 解码（anchors/obj/逐类 NMS）→ 4 大类映射 → 原图坐标输出 → MJPEG 推流
+
+### 1.2 实验目标
+
+1. 掌握图像分类数据集搭建与 YOLOv5 式检测头模型部署方法 — 原理理解
+2. 实现基于视觉的垃圾分类（20 细类 + 4 大类映射）与 MJPEG 实时可视化 — 独立完成
+3. 理解多线程推理池如何提升 NPU 利用率，为机械臂分拣联动打基础 — 迁移应用
+
+### 1.3 实验环境
+
+| 类别 | 配置 |
+|------|------|
+| 硬件 | 具身智能实验箱 B2（XFLZ_EAI_B2_PRO，RK3576 SoC，6TOPS NPU，含 HP60C 深度相机） |
+| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv，rknnlite 2.3.2） |
+| 核心库 | OpenCV、NumPy、rknnlite、PyYAML（标准库 MJPEG，替代外部 mjpeg_streamer） |
+| 模型 | `garbage_yolov5_20cls.rknn`（20 类垃圾分类，YOLOv5 检测头，640×640 输入） |
+| 主入口 | `src/app.py`（单图/视频/相机/ROS 模式 + MJPEG + FPS） |
+
+### 1.4 实验难度
+
+- 难度: ⭐⭐ 设计性
+- 重点: YOLOv5 检测头解码（anchors + obj + 逐类 NMS）与 4 大类业务映射
+- 难点: 多线程推理池设计（核轮转 + 队列）与 RGB/float 输入约定
+
+### 1.5 实验现象
+
+**快速验证流程**：
+
+1. 进入项目目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification`
+2. 单元测试：`pytest tests/ -v`（62 用例全绿，从不加载真模型）
+3. 单图检测：`python src/app.py --image x.jpg --save out.jpg`
+   - 终端打印每个目标的「大类 细类 score」与坐标
+4. 视频检测 + MJPEG：`python src/app.py --video test.mp4`
+   - 浏览器访问 `http://<板IP>:8080/garbage_cam.mjpg` 查看标注流
+5. 相机实时（板上标准）：先起 ascamera 驱动，再 `python src/app.py --ros`
+
+```bash
+# 进入实验5
+cd ~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification
+
+# 可选
+/home/iflytek/ros2_venv/bin/python -m pytest -v
+
+# 执行单图片推理（图片都在02_garbage_classification/images）
+python src/app.py --model models/garbage_yolov5_20cls.rknn --image images/1.jpg --save out.jpg
+```
+
+**预期效果描述**：
+
+- 单图：水瓶 → `recyclable shuiping 0.xx`，胡萝卜→ `huluobo 鸡蛋...`，电池 → `hazardous_waste dianchi 0.xx`
+- 实时：检测框逐帧跟随，avg_fps ≥ 15（验收门），MJPEG 流可见「大类 细类 score」标注
+- 多线程：`--tpes 6` 时 NPU 多核轮转，帧率显著高于单线程
+
+**执行现象**：
+
+- `pytest tests/ -v` 运行约 30-50 秒，62 个用例全部 passed（含 test_config / test_preprocess / test_postprocess / test_detector / test_rknnpool / test_app / test_mjpeg_server / test_ros2_source）；从不加载真模型，全用 FakeBackend 预设输出
+- 单图推理 `python src/app.py --image images/1.jpg --save out.jpg` 约 0.1-0.3 秒返回，终端打印每个目标的 `大类 细类 score (x1,y1,x2,y2)`，当前目录生成 `out.jpg`（红框标注图）
+- 视频 + MJPEG 模式下终端每 30 帧打印一次 30 帧平均帧率，板端实测 tpes=2 时 avg_fps ≈ 15-18，tpes=6 时显著提升至 20+ FPS；浏览器 `http://<板IP>:8080/garbage_cam.mjpg` 可见实时标注流
+- 标注格式：`recyclable shuiping 0.87`（大类英文名 + 细类拼音 + 置信度），红框 2px 宽，文本位于框上方
+
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification$ python src/app.py --model models/garbage_yolov5_20cls.rknn --image images/1.jpg --save out.jpg
+/home/iflytek/ros2_venv/lib/python3.10/site-packages/rknnlite/api/rknn_lite.py:41: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+W rknn-toolkit-lite2 version: 2.3.2
+I RKNN: [17:20:51.340] RKNN Runtime Information, librknnrt version: 2.3.2 (429f97ae6b@2025-04-09T09:09:27)
+I RKNN: [17:20:51.340] RKNN Driver Information, version: 0.9.8
+I RKNN: [17:20:51.340] RKNN Model Information, version: 6, toolkit version: 2.3.0(compiler version: 2.3.0 (c949ad889d@2024-11-07T11:39:30)), target: RKNPU f2, target platform: rk3576, framework name: ONNX, framework layout: NCHW, model inference type: static_shape
+W RKNN: [17:20:51.365] query RKNN_QUERY_INPUT_DYNAMIC_RANGE error, rknn model is static shape type, please export rknn with dynamic_shapes
+W Query dynamic range failed. Ret code: RKNN_ERR_MODEL_INVALID. (If it is a static shape RKNN model, please ignore the above warning message.)
+saved -> out.jpg
+```
+
+<img src="assets/image-20260819172223216.png" alt="image-20260819172223216" style="zoom: 67%;" /><img src="assets/image-20260819172236760.png" alt="image-20260819172236760" style="zoom:67%;" />
+
+下面是对应部分训练集图片内容
+
+<img src="assets/image-20260820091701693.png" alt="image-20260820091701693" style="zoom: 50%;" /><img src="assets/image-20260820091716936.png" alt="image-20260820091716936" style="zoom: 50%;" />
+
+### 1.6 实验步骤
+
+#### 整体流程图
+
+```mermaid
+graph LR
+    A[步骤1: 模型与配置认知] --> B[步骤2: 预处理 letterbox+RGB]
+    B --> C[步骤3: YOLOv5解码与NMS]
+    C --> D[步骤4: 4大类映射]
+    D --> E[步骤5: 多线程推理池]
+    E --> F[步骤6: 实时推理与MJPEG]
+    F --> G[完成]
+```
+
+```mermaid
+graph TD
+    subgraph 端到端数据流
+        A1[输入 BGR 帧] --> B1[letterbox 640 pad 0]
+        B1 --> C1[BGR→RGB 通道交换]
+        C1 --> D1[NPU 推理 3尺度输出]
+        D1 --> E1[YOLOv5 anchor解码]
+        E1 --> F1[置信度过滤 score_thr]
+        F1 --> G1[逐类 NMS iou_thr]
+        G1 --> H1[unletterbox 映射回原图]
+        H1 --> I1[20细类→4大类映射]
+        I1 --> J1[画框标注 大类 细类 score]
+        J1 --> K1[MJPEG推流 :8080]
+    end
+```
+
+---
+
+#### 步骤1：模型与配置认知（阶段一：能运行，20min）
+
+> 📌 本步骤对应源码：`config/garbage_config.yaml`、`config/labels.txt`、`src/config.py`
+
+**知识点讲解**：
+
+**模型元数据与业务映射（1.1.1、1.2.1）**
+- **原理**：`garbage_yolov5_20cls.rknn` 是 20 类垃圾分类检测模型，检测头为 **YOLOv5 式**：每个尺度输出 `[1, 75, h, w]`，75 = 3 anchors × (4 坐标 + 1 目标置信度 + 20 类)。模型事实（元数据核实）：输入 `[1,3,640,640]` float32，mean/std 0/255，**rgb2bgr=False（必须喂 RGB）**；anchors 为 YOLOv5 默认 9 组（`config/anchors.txt`）。业务层把 20 细类映射为 4 大类：1=recyclable（可回收）2=kitchen_waste（厨余）3=hazardous_waste（有害）4=other_waste（其他），映射关系在 `config/category_map.txt`（英文名）。`src/config.py` 负责加载 labels/category_map/anchors，**路径相对配置文件解析**——模型换位置时只需改 `model.path`。
+- **源码对应**：`config/garbage_config.yaml`（model.path / infer.sigmoid / pool.tpes）；`config/labels.txt`（20 细类，行号=类别 ID）；`config/category_map.txt`（4 大类）；`config/anchors.txt`（YOLOv5 默认 anchors）
+
+**知识储备补充**：
+
+- **分类 vs 检测的本质区别**：纯分类网络（如 ResNet）对整张图输出一个标签，而检测网络（如 YOLO）输出多个带坐标的框+类别。垃圾分类需要同时知道"是什么"和"在哪里"——同一帧可能有水瓶、电池、果皮三个目标，纯分类只能输出一个，检测网络则逐目标输出。YOLOv5 式检测头是"anchor-based"：预设不同尺度的先验框（anchor），网络只需预测偏移量，比纯回归更稳定。
+- **anchors 的数学含义**：9 组 anchor 分配到 3 个尺度（80×80 / 40×40 / 20×20），每尺度 3 组。小尺度特征图（20×20）锚定大物体（如 373×326 的大包装箱），大尺度特征图（80×80）锚定小物体（如 10×13 的胶囊）。解码时 anchor 参与宽高还原：
+
+  $$
+  w_{pred} = (2 \cdot t_w)^2 \times a_w, \quad h_{pred} = (2 \cdot t_h)^2 \times a_h
+  $$
+
+  其中 $t_w, t_h$ 为网络输出的归一化偏移，$a_w, a_h$ 为 anchor 宽高。$(2t)^2$ 的平方设计使宽高始终为正，且对小偏移敏感（中心偏移用 sigmoid，宽高用此方式）。
+- **sigmoid 配置的由来**：`infer.sigmoid: false` 表示后处理手动应用 sigmoid；若模型导出时图内已含 sigmoid，则手动再做一次只是单调压缩分数（$0 \to 0.5$, $1 \to 0.73$），结果不变但效率略降。配置的灵活性让同一后处理代码适配不同导出版本。
+- **路径解析设计**：`config.py` 中 `load_config()` 将 `model.path`、`model.labels` 等相对路径基于**配置文件所在目录**解析为绝对路径（`config/` 目录下），而非当前工作目录。这意味着无论从项目根还是 `src/` 启动，路径都能正确解析，保证跨目录运行不报错。
+- **参考资源**：Ultralytics YOLOv5 官方文档《Train Custom Data》锚框部分；RKNN Toolkit2 用户指南《Model Zoo》RK3576 平台量化说明。
+
+下面是YOLOv5网络框架图
+
+![YOLOv5_structure_v3.4](https://img-transfer.gitcode.com/?p=https%3A%2F%2Fuser-images.githubusercontent.com%2F27466624%2F200000324-70ae078f-cea7-4189-8baa-440656797dad.jpg&projectId=datawhalechina/thorough-pytorch&pageUrl=https%3A%2F%2Fgitcode.com%2Fdatawhalechina%2Fthorough-pytorch%2Fblob%2Fmain%2Fsource%2F%25E7%25AC%25AC%25E5%258D%2581%25E7%25AB%25A0%2FYOLO%25E7%25B3%25BB%25E5%2588%2597%25E8%25A7%25A3%25E8%25AF%25BB%2FMMYOLO%25E5%25AE%259E%25E7%258E%25B0%2Fyolov5_description.md)
+
+**配置参数速查表**（`config/garbage_config.yaml`，按区块分列）：
+
+| 区块 | 参数 | 类型 | 默认/示例 | 说明 |
+|------|------|------|-----------|------|
+| `model` | `path` | str | `../models/garbage_yolov5_20cls.rknn` | 模型路径（相对配置文件目录解析，模型在项目根 models/） |
+| `model` | `labels` | str | `labels.txt` | 20 细类标签文件（行号=类别 ID） |
+| `model` | `category_map` | str | `category_map.txt` | 细类→大类映射文件（每行 1-4） |
+| `model` | `category_names` | dict | `{"1":"recyclable",...}` | 4 大类 ID→英文名 |
+| `infer` | `imgsz` | int | `640` | 模型输入边长（元数据核实） |
+| `infer` | `preprocess` | str | `letterbox` | 预处理方式（letterbox 640 pad 0） |
+| `infer` | `score_thr` | float | `0.25` | 置信度过滤阈值 |
+| `infer` | `nms_thr` | float | `0.45` | NMS 交并比阈值 |
+| `infer` | `sigmoid` | bool | `False` | 后处理是否手动 sigmoid（图内已含则单调不变） |
+| `infer` | `anchors` | str | `anchors.txt` | YOLOv5 默认 9 组 anchors |
+| `pool` | `tpes` | int | `2` | 推理线程数（多核利用率；板端 2 核实测用 2） |
+| `pool` | `core_mask` | str | `auto` | NPU 核分配（round_robin 在 2 核板会卡死，勿用 [1,2,4]） |
+| `server` | `host` | str | `0.0.0.0` | MJPEG 监听地址 |
+| `server` | `port` | int | `8080` | MJPEG 端口 |
+| `server` | `stream_name` | str | `garbage_cam` | MJPEG 流名（库自动补 `.mjpg`） |
+| `server` | `quality` | int | `80` | JPEG 压缩质量 |
+| `server` | `fps` | int | `30` | MJPEG 推流帧率上限 |
+| `source` | `ros.rgb_topic` | str | `/ascamera_hp60c/.../rgb0/image` | ROS2 相机话题（严禁 remap） |
+| `source` | `ros.timeout` | float | `5.0` | 首帧等待秒数 |
+
+> **说明**：`model.*` `infer.*` 为本实验核心（模型元数据 + 解码参数）；`pool.tpes`/`core_mask` 调多线程性能；`server.*` 管 MJPEG 推流；`source.ros.*` 相机取流。`stream_name` 不带 `.mjpg`（库自动补），与 exp01/09+ 的"已含 .mjpg"约定不同——勿混用。
+
+**操作步骤**：
+
+1. 查看标签与映射文件，理解"细类 → 大类"的两级业务：
+   ```bash
+   cat config/labels.txt          # 20 细类（拼音命名：shuiping 水瓶、dianchi 电池…）
+   cat config/category_map.txt    # 每行: 细类ID 大类ID 大类英文名
+   ```
+2. 阅读 `config/garbage_config.yaml`，重点关注 `infer.sigmoid`（obj 分支是否已 sigmoid）与 `pool.tpes`（线程数）
+3. 用 Python 验证配置加载：
+   ```bash
+   PYTHONPATH=./src python -c "from config import load_labels, load_category_map, load_anchors; \
+   labels = load_labels('config/labels.txt'); \
+   print(len(labels), '细类'); \
+   cat_map = load_category_map('config/category_map.txt', n_labels=len(labels)); \
+   print(len(cat_map), '大类映射')"
+   ```
+
+**易错点**：
+
+- ⚠️ 若框偏移 → 调整 `config/anchors.txt`（核对导出配置）；若分数异常 → 切换 `infer.sigmoid: false`
+
+---
+
+#### 步骤2：预处理 letterbox + RGB（阶段一：能运行，20min）
+
+> 📌 本步骤对应源码：`src/preprocess.py`
+
+**知识点讲解**：
+
+**输入对齐（1.3.2）**
+- **原理**：模型输入为 640×640 RGB float，而摄像头/图片是任意尺寸 BGR uint8。`prepare_input()` 完成三步对齐：(1) **letterbox 等比缩放 + pad 0 填充**到 640×640（pad 必须 0，与模型 zoo 对齐，避免填充色干扰检测）；(2) **BGR→RGB 通道交换**（模型 rgb2bgr=False 约定）；(3) **归一化约定**：模型要求 mean/std 0/255，即输入直接是 0-255 的 uint8 转 float，不做额外 /255（量化模型内部处理）。输出经 `unletterbox()` 把检测框映射回原始图像坐标。
+- **源码对应**：`src/preprocess.py`（prepare_input / unletterbox）
+
+**知识储备补充**：
+
+- **letterbox 为什么 pad=0**：模型训练时用黑色（0）填充，推理时也必须用黑色填充——否则填充区域的颜色值会参与特征提取，导致边缘目标出现伪检测。pad=0 是与模型训练时的数据增强约定对齐的关键约束。
+
+- **letterbox 等比缩放的数学**：给定输入图 $(H, W)$ 和目标尺寸 $S=640$，缩放因子为：
+
+  $$
+  s = \min\left(\frac{S}{H}, \frac{S}{W}\right)
+  $$
+
+  缩放后尺寸为 $(sH, sW)$，填充量为 $pad_x = \frac{S - sW}{2}$, $pad_y = \frac{S - sH}{2}$。letterbox 保持宽高比不变形，padding 居中对称——这是目标检测的标准预处理范式，与分类网络的 resize 拉伸不同。
+  
+- **BGR vs RGB 的工程背景**：OpenCV 默认以 BGR 读取图像（源于早期 Windows BMP 格式），而大多数深度学习模型训练时用 RGB。通道顺序错误是"检测框位置正确但分类全错"的最常见原因——因为 RGB 三通道的语义位置颠倒，模型看到的"红色"其实是蓝色。`to_rgb()`（`preprocess.py` L40-42）通过 `bgr_img[..., ::-1].copy()` 实现通道交换并返回拷贝，避免修改原帧。
+
+- **unletterbox 坐标逆映射**：检测框在 letterbox 空间输出后，需减去 padding 偏移再除以缩放因子映射回原图坐标：
+
+  $$
+  x_{orig} = \frac{x_{letterbox} - pad_x}{s}, \quad y_{orig} = \frac{y_{letterbox} - pad_y}{s}
+  $$
+
+  `unletterbox()`（`preprocess.py` L35-37）一行实现：`(boxes - pad_offset) / scale`。这是检测结果可视化的核心步骤——没有逆映射，框会偏到填充区域。
+  
+- **参考资源**：Ultralytics YOLOv5 `letterbox` 函数实现；OpenCV 官方文档 `cv2.resize` 插值方法选择。
+
+下面就是letterbox的具体实现图
+
+![image-20260819173701539](assets/image-20260819173701539.png)
+
+**操作步骤**：
+
+1. 用测试图验证预处理输出形状：
+   ```bash
+   PYTHONPATH=./src python -c "
+   import cv2, numpy as np
+   from preprocess import prepare_input
+   img = cv2.imread('images/1.jpg')
+   rgb, meta = prepare_input(img, 640)
+   print('输入形状:', rgb.shape, 'dtype:', rgb.dtype)   # 预期 (640,640,3) uint8 RGB
+   print('scale:', meta.scale, 'pad:', (meta.pad_x, meta.pad_y))"
+   ```
+
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification$ PYTHONPATH=./src python -c "
+import cv2, numpy as np
+from preprocess import prepare_input
+img = cv2.imread('images/1.jpg')
+rgb, meta = prepare_input(img, 640)
+print('输入形状:', rgb.shape, 'dtype:', rgb.dtype)   # 预期 (640,640,3) uint8 RGB
+print('scale:', meta.scale, 'pad:', (meta.pad_x, meta.pad_y))"
+输入形状: (640, 640, 3) dtype: uint8
+scale: 1.0 pad: (0, 0)
+```
+
+2. 理解 letterbox 的 scale 计算（`min(640/h, 640/w)`），思考为什么 pad 必须是 0
+
+**易错点**：
+
+- ⚠️ RGB 与 BGR 混用是"检测框对但分类错"的头号原因——务必先 `to_rgb` 再喂模型
+
+---
+
+#### 步骤3：YOLOv5 解码与逐类 NMS（阶段二：能理解，30min）
+
+> 📌 本步骤对应源码：`src/postprocess.py`
+
+**知识点讲解**：
+
+**YOLOv5 检测头解码（1.1.1）**
+- **原理**：YOLOv5 检测头输出为 anchor-based：每尺度 `[1,75,h,w]`，reshape 为 `[3, 25, h, w]`（3 anchors × 25 = 4 坐标 + 1 obj + 20 类）。解码步骤：
+
+  (1) 对每个 anchor 位置，用**预设 anchors** 将归一化偏移还原为 cx/cy/w/h（`decode_rknn_outputs`）；
+
+  (2) 目标置信度与类别分数结合（或直接取类最大分）；
+
+  (3) 按 `score_thr` 过滤；(4) **逐类 NMS**——同类别重叠框只保留最高分，跨类别不抑制。输出 `Detection` 列表（原图坐标，经 unletterbox），再由 `map_categories()` 完成 20 细类 → 4 大类映射。
+
+- **源码对应**：`src/postprocess.py`（Detection / decode_rknn_outputs / map_categories / NMS）
+
+**知识储备补充**：
+
+- **解码坐标还原的完整数学**：`decode_scale()`（`postprocess.py` L54-85）对单尺度 `(1,75,h,w)` 执行以下变换——首先 reshape 为 `(h, w, 3, 25)`（3 anchors × 25 维），25 维拆分为：$t_{xy}$（前 2 维，中心偏移）、$t_{wh}$（2-4 维，宽高偏移）、$t_{obj}$（第 4 维，目标置信度）、$t_{cls}$（5-24 维，20 类分数）。中心点坐标还原：
+
+  $$
+  c_x = (\sigma(t_{cx}) + g_x) \times stride, \quad c_y = (\sigma(t_{cy}) + g_y) \times stride
+  $$
+
+  其中 $\sigma$ 为 sigmoid 函数（把偏移约束到 0-1），$g_x, g_y$ 为网格左上角坐标（0, 1, 2, ..., h-1），$stride$ 为下采样倍数（80×80 → stride=8, 40×40 → stride=16, 20×20 → stride=32）。
+
+![image-20260820100141487](assets/image-20260820100141487.png)
+
+- **置信度与类别分数的组合**：最终分数 = $obj\_score \times cls\_score_{max}$。`decode_scale` 中 `keep = np.where((conf >= score_thr) & (cls_max >= score_thr))` 要求 obj 和 cls 同时超过阈值——这是 YOLOv5 的设计：obj 分支负责"这里有没有东西"，cls 分支负责"是什么"，二者共同过滤噪声。
+- **逐类 NMS vs 全局 NMS**：`classwise_nms()`（`postprocess.py` L88-110）对每个类别独立执行 NMS。全局 NMS 会抑制所有重叠框（跨类），但在垃圾分类场景中，一个水瓶可能同时被检为"recyclable"和"other"——逐类 NMS 允许不同类别的重叠框共存，符合业务需求。NMS 的核心 IoU 计算：
+  $$
+  IoU = \frac{Area(A \cap B)}{Area(A) + Area(B) - Area(A \cap B)}
+  $$
+
+  代码中 `+0.00001` 容差（`postprocess.py` L100）防止浮点精度导致的边界 case。
+
+下面是nms抑制的具体现象就是将多个重复框筛选出最好的
+
+![image-20260820094534557](assets/image-20260820094534557.png)
+
+- **xywh → xyxy 转换**：`decode_rknn_outputs()`（`postprocess.py` L130-140）在 NMS 前将中心点格式 `(cx, cy, w, h)` 转为角点格式 `(x1, y1, x2, y2)`：$x_1 = cx - w/2$, $y_1 = cy - h/2$, $x_2 = cx + w/2$, $y_2 = cy + h/2$。NMS 的 IoU 计算需要角点格式。
+- **参考资源**：YOLOv5 官方 `utils/general.py` `non_max_suppression` 函数；Joseph Redmon《YOLOv3: An Incremental Improvement》检测头设计。
+
+**操作步骤**：
+
+1. 阅读 `postprocess.py` 的解码主函数，理解 anchors 如何参与坐标还原
+2. 单元测试理解解码契约：
+   ```bash
+   pytest tests/test_postprocess.py -v
+   # 预期：decode/NMS/map_categories 用例全绿
+   ```
+3. 思考：为什么逐类 NMS 而非全局 NMS？（不同类目标可以重叠，如"瓶中水"场景）
+
+**易错点**：
+- ⚠️ anchors 与模型导出配置不一致 → 框整体偏移，调整 `config/anchors.txt`
+
+---
+
+#### 步骤4：4 大类业务映射（阶段二：能理解，15min）
+
+> 📌 本步骤对应源码：`src/postprocess.py` map_categories、`config/category_map.txt`
+
+**知识点讲解**：
+
+**细类到大类的业务抽象（1.2.1）**
+- **原理**：20 细类过于细粒度（如 yaogao 牙膏、yaopian 药片），面向分拣业务需要 4 大类。`map_categories()` 依据 `category_map.txt` 把每个检测的 `class_id` 映射为 `(大类ID, 大类英文名)`，同时保留细类名用于标注显示。这种"模型输出细类、业务消费大类"的两级设计，使模型更换（如新增细类）不破坏下游分拣逻辑。
+- **源码对应**：`src/postprocess.py` map_categories；`src/app.py` L31-33（标注格式 `大类 细类 score`）
+
+**知识储备补充**：
+
+- **两级标签设计的工程价值**：20 细类是模型的"原子能力"——模型训练时学习每个细类的视觉特征；4 大类是业务的"消费单位"——分拣机械臂只关心四大类（可回收/厨余/有害/其他）。两级解耦的好处是：新增一个细类（如"纸杯"→recyclable）只需改 `category_map.txt`，不动模型和分拣代码。`map_categories()`（`postprocess.py` L158-165）一行映射：`cat = cat_map[d.class_id]`，`CategoryDetection.from_detection(d, cat, cat_names[str(cat)])`。
+- **category_map.txt 的行号契约**：`config/category_map.txt` 每行一个数字（1-4），行号与 `labels.txt` 严格对应——第 1 行对应 labels.txt 第 1 行的 `bailuobo`（细类 ID=0），值为 2 表示 `kitchen_waste`。错一行会导致全部映射偏移（如 shuiping 从 recyclable 变成 hazardous）。`load_category_map()`（`config.py` L78-85）读取并校验值域 ∈ {1,2,3,4}。
+- **标注格式的业务含义**：`app.py` L31 构造标注文本 `f"{d.category_name} {labels[d.class_id]} {d.score:.2f}"`——大类英文名在前（分拣指令依据），细类拼音在中间（调试定位），置信度在后（质检门控）。分拣系统只需解析第一个单词即可路由到对应仓位。
+- **参考资源**：《垃圾分类标志》GB/T 19095-2019 国家标准（四分类体系）；YOLOv5 自定义数据集训练文档。
+
+| ID   | 细类名称    | 大类编码 | 大类名称 | ID   | 细类名称         | 大类编码 | 大类名称 |
+| ---- | ----------- | -------- | -------- | ---- | ---------------- | -------- | -------- |
+| 0    | bailuobo    | 2        | 厨余垃圾 | 10   | shuiping         | 1        | 可回收物 |
+| 1    | caiye       | 2        | 厨余垃圾 | 11   | tizi             | 2        | 厨余垃圾 |
+| 2    | chuangkotie | 3        | 有害垃圾 | 12   | tudo             | 2        | 厨余垃圾 |
+| 3    | cipian      | 4        | 其他垃圾 | 13   | yaogao           | 3        | 有害垃圾 |
+| 4    | dianchi     | 3        | 有害垃圾 | 14   | yaopian          | 3        | 有害垃圾 |
+| 5    | eluanshi    | 4        | 其他垃圾 | 15   | yaopianbaozhuang | 3        | 有害垃圾 |
+| 6    | fanqie      | 2        | 厨余垃圾 | 16   | yaoping          | 3        | 有害垃圾 |
+| 7    | huluobo     | 2        | 厨余垃圾 | 17   | yilaguan         | 1        | 可回收物 |
+| 8    | jiaonang    | 3        | 有害垃圾 | 18   | zhibei           | 1        | 可回收物 |
+| 9    | lajiao      | 2        | 厨余垃圾 | 19   | zhuankuai        | 4        | 其他垃圾 |
+
+**操作步骤**：
+
+1. 查看 category_map.txt，找出 recyclable 包含哪些细类（shuiping 水瓶、yilaguan 易拉罐…）
+2. 运行单测验证映射正确性：`pytest tests/test_postprocess.py -k category -v`
+
+**易错点**：
+
+- ⚠️ category_map 行序必须与 labels.txt 行号严格对应，错一行全错
+
+---
+
+#### 步骤5：多线程推理池 RKNNPool（阶段三：能改造，30min）
+
+> 📌 本步骤对应源码：`src/rknnpool.py`
+
+**知识点讲解**：
+
+**多线程推理池原理（1.3.1）**
+- **原理**：RK3576 NPU 支持多核（core_mask），单线程推理时 NPU 有核空闲。RKNNPool 用**生产者-消费者模型**：主线程读取帧放入任务队列，`--tpes N` 个工作线程从队列取帧，各自持有 RKNNLite 实例并**轮转绑定不同 NPU 核**（core_mask 0/1/2/3）并行推理，结果按序返回。这比单线程串行推理能显著提升 FPS（多核并行 + 取帧与推理重叠）。`rknn_backend_factory()` 为每个线程创建后端实例，`Detector` 注入后端完成检测。
+- **源码对应**：`src/rknnpool.py`（RKNNPool：入队 L58 / 工作线程 L62-76 / 结果回收 L79-81）；`src/detector.py` L126-128（make_rknn_backend）
+
+**知识储备补充**：
+
+- **生产者-消费者模型的线程安全**：`RKNNPool.__init__()`（`rknnpool.py` L47-56）创建两个 `queue.Queue`（`self.inputs` / `self.outputs`），Python `Queue` 内部用 `threading.Condition` 实现线程安全——`put()` 阻塞直到队列有空间，`get(timeout=1)` 超时返回空队列异常。工作线程（`_worker`，L62-76）循环取帧、处理、放结果，异常时 `(None, False)` 入队保证下游不死锁。
+- **核轮转（round_robin）**：`rknn_backend_factory('round_robin')`（`rknnpool.py` L30-33）按 `tid % 3` 绑定 `NPU_CORE_0/1/2`——RK3576 有 3 个 NPU 核，每个核独立运行推理任务。`core_mask` 参数传给 `RKNNBackend(core_mask=masks[tid % 3])`（`detector.py` L46），rknnlite 在 `init_runtime(core_mask=...)` 时绑定对应核。实测 `core_mask=auto`（L34-35）让 rknnlite 自动分配核更稳定，round_robin 在某些固件版本会卡死。
+- **为什么每个线程必须独立 RKNNLite 实例**：RKNNLite 的 `init_runtime()` 绑定 NPU 核并分配推理上下文——同一个实例不能被多线程共享（NPU 上下文非线程安全），会导致段错误或结果错乱。`RKNNPool`（L52-55）为每个线程调用 `backend_factory(i)` 创建独立后端，这是正确的做法。
+- **预填帧设计**：`app.py` L125-130 在主循环前预填 `tpes+1` 帧到队列，保证所有工作线程同时启动推理——消除首帧冷启动延迟，使 FPS 统计更准确。
+- **参考资源**：Python 标准库 `queue.Queue` 线程安全文档；RKNN Toolkit2 用户指南《RKNNLite API》`init_runtime` core_mask 参数说明。
+
+大致流程如下
+
+![生产者消费者模型详解以及实现_生产者消费者模型实现-CSDN博客](assets/format,png.png)
+
+**操作步骤**：
+
+1. 单线程 vs 多线程对比（验证池的价值）：
+   ```bash
+   python src/app.py --video test.mp4 --tpes 1
+   python src/app.py --video test.mp4 --tpes 6
+   # 对比 avg_fps：tpes 6 应明显更高
+   ```
+2. 阅读 rknnpool.py 的队列实现，理解线程安全（queue.Queue / 锁）
+3. 思考：线程数不是越多越好？——NPU 核数与内存限制决定最优 tpes（本板实测 6 左右）
+
+**易错点**：
+- ⚠️ 每个线程必须独立 RKNNLite 实例（NPU 上下文非线程共享），复用同一实例会崩溃
+- ⚠️ tpes 超过 NPU 核数不提升反而增加内存压力
+
+---
+
+#### 步骤6：实时推理与 MJPEG 推流（阶段三：能改造，35min）
+
+> 📌 本步骤对应源码：`src/app.py`、`src/mjpeg_server.py`、`src/ros2_source.py`
+
+**知识点讲解**：
+
+**端到端实时链路（1.3.3）**
+- **原理**：`app.py` 组织完整链路：输入源（单图/视频/`--camera N` UVC/`--ros` ROS2 话题）→ 帧交给 `make_process_fn` 构造的 pool 处理函数 → 每个工作线程内 `Detector.detect()`（prepare_input → NPU 推理 → 解码 → 4 大类映射 → unletterbox）→ 画框标注（`大类 细类 score`）→ MJPEG 推流。`mjpeg_server.py` 用**标准库**实现 MJPEG（multipart/x-mixed-replace），替代外部 mjpeg_streamer，零额外依赖。板上相机标准路径是 HP60C 深度相机经 ascamera 话题取流（`ros2_source.py` Ros2Camera，DEFAULT_TOPIC `/ascamera_hp60c/camera_publisher/rgb0/image`），OpenCV 直连读不了（未编 libv4l）。
+- **源码对应**：`src/app.py` L24-35（make_process_fn 标注逻辑）、L38-150（main：参数 L40-50 / 单图 L70-82 / 视频相机 L85-150）；`src/mjpeg_server.py`（MjpegServer）；`src/ros2_source.py`（Ros2Camera：DEFAULT_TOPIC / open / read / release）
+
+**知识储备补充**：
+
+- **MJPEG 协议原理**：MJPEG（Motion JPEG）是 `multipart/x-mixed-replace` HTTP 响应——服务器以流式方式持续发送 JPEG 帧，浏览器原生支持实时刷新。相比 WebSocket + H.264 方案，MJPEG 零延迟（无解码缓冲区）、兼容性好（任何浏览器直接访问 URL），代价是带宽利用率低（每帧独立 JPEG 压缩，无帧间预测）。对于 640×480 垃圾分类场景，带宽完全够用。
+- **ROS2 话题取流的惰性导入设计**：`Ros2Camera`（`ros2_source.py` L30-35）在构造函数中不导入 rclpy——`open()` 方法才惰性导入并调用 `rclpy.init()`。这是关键设计：x86 开发机无 ROS 环境，单元测试用 FakeBackend + MockCamera 即可覆盖全链路；板上 `--ros` 模式才真正依赖 rclpy。`read(timeout)` 方法（L80-90）阻塞等待首帧或超时，返回 `(True, frame)` 或 `(False, None)`。
+- **Detector.detect() 的完整链路**：`detector.py` L93-110 的 `detect()` 方法串联了全部后处理——`prepare_input()`（预处理）→ `backend.predict()`（NPU 推理）→ `decode_rknn_outputs()`（YOLOv5 解码+逐类 NMS）→ `unletterbox()`（坐标逆映射）→ `map_categories()`（4 大类映射）。返回 `list[CategoryDetection]`（原图坐标 + 大类 + 细类名 + 分数），直接供 `make_process_fn` 画框。
+- **FPS 统计设计**：`app.py` L143-147 每 30 帧打印一次滑动窗口帧率 `30 / (time.time() - loop_t)`，L149 打印全程总平均帧率。滑动窗口帧率反映当前处理速度（受场景复杂度影响），总平均帧率反映整体性能——验收以总平均 ≥ 15 FPS 为门控。
+- **参考资源**：MJPEG Wikipedia 条目；ROS2 `sensor_msgs/Image` 消息定义；mjpeg_streamer PyPI 文档。
+
+大致流程如下
+
+![image-20260820101126152](assets/image-20260820101126152.png)
+
+**操作步骤**：
+
+1. 单图检测（最简验证）：
+   ```bash
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification
+   python src/app.py --image images/1.jpg --save out.jpg
+   # 预期：终端打印 大类 细类 score (x1,y1,x2,y2)
+   ```
+2. 视频 + MJPEG：
+   ```bash
+   python src/app.py --video test.mp4 --tpes 2 --port 8080
+   # 浏览器访问 http://<板IP>:8080/garbage_cam.mjpg
+   ```
+3. 相机实时（板上标准）：
+   ```bash
+   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+   export ROS_DOMAIN_ID=2
+   ros2 launch ascamera hp60c.launch.py        # 终端 1
+   python src/app.py --ros                      # 终端 2，同一 ROS_DOMAIN_ID
+   # 预期：avg_fps ≥ 15，MJPEG 可见实时标注
+   ```
+4. 动手改造：修改 `src/app.py` L31 标注逻辑，把大类换成中文名（如 `可回收 水瓶 0.87`），重新运行
+
+**易错点**：
+- ⚠️ `--ros` 取不到帧 → ascamera 驱动先起、ROS_DOMAIN_ID 一致、话题勿 remap
+- ⚠️ MJPEG 404 → 8080 被占，`--port` 换端口或关占用进程
+
+---
+
+### 1.7 常见问题
+
+| 问题 | 原因 | 解决方法 |
+|------|------|---------|
+| 检测框整体偏移 | anchors 与导出配置不一致 | 调整 `config/anchors.txt`（核对导出配置） |
+| 分数异常（全 0 或全 1） | obj 分支已/未 sigmoid 与配置不符 | 切换 `infer.sigmoid: false/true` |
+| 分类全错但框对 | RGB/BGR 约定错误 | 确认 `prepare_input` 先 BGR→RGB（模型 rgb2bgr=False） |
+| 多线程崩溃 | 线程共享同一 RKNNLite 实例 | 每线程独立实例（RKNNPool 已实现） |
+| MJPEG 404 | 8080 端口占用 | `--port` 换端口或关闭占用进程 |
+| --ros 取不到帧 | 驱动未启动/ROS_DOMAIN_ID 不一致 | ascamera 先起；export ROS_DOMAIN_ID=2；话题勿 remap |
+| 板上模型加载失败 | model.path 未改为板载路径 | 修改 `config/garbage_config.yaml` 的 `model.path` |
+
+### 1.8 扩展实验
+
+**扩展方向 1：机械臂分拣联动（进阶）**
+- 在 `app.py` 处理函数中，把 4 大类结果转换为分拣指令（如 recyclable → 机械臂抓取到 1 号仓），通过串口或 ROS2 话题发布（参考实验 05 的 cmd_vel 模式）
+
+**扩展方向 2：识别置信度优化（进阶）**
+- 在标注中加入细类置信度直方图；对不同大类设置不同 score_thr（有害垃圾从严），观察误检率变化
+- 把 `--tpes` 做成运行时动态调节，绘制"线程数 vs FPS"曲线，找出最优配置
+
+### 1.9 实验报告要求
+
+**评分标准**：模型元数据理解 15 分 + 预处理 15 分 + YOLOv5 解码 25 分 + 4 大类映射 15 分 + 实时演示 20 分 + 报告 10 分 = 100 分。
+
+**报告必含内容**：
+1. 模型输入输出规格表（形状/类型/通道顺序/anchors），标注对应的 config 文件
+2. 解码流程图（anchors → cx/cy/w/h → NMS → 大类映射），标注源码行号
+3. 单图检测结果图（≥3 个不同大类目标）与「大类 细类 score」数据
+4. tpes=1 vs tpes=6 的 FPS 对比数据与结论
+5. 回答思考题：为什么模型要求 RGB 而 OpenCV 默认 BGR？为什么逐类 NMS 允许跨类重叠？多线程池为什么比单线程快？
+6. 实验心得与问题记录
+
+---
+
+## 更新日志
+
+| 版本 | 日期 | 变更 |
+|------|------|------|
+| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification，62 用例全绿，YOLOv5 检测头 20 细类 + 4 大类映射 + RKNNPool 多线程） |
+| v1.1 | 2026-08-19 | 模型名同步：rubbish_2_7.rknn → garbage_yolov5_20cls.rknn（config/garbage_config.yaml + models/ 目录核实） |
+| v2.0 | 2026-08-19 | 知识点增强：6 步骤均添加「知识储备补充」（含 anchors 数学公式、letterbox 缩放公式、解码坐标还原公式、IoU 公式、sigmoid 公式）；新增端到端 Mermaid 数据流图；1.5 追加「执行现象」段（pytest 62 用例、单图推理、视频 FPS、标注格式）；行号基于源码 real line numbers 重新核对（app.py L24-35 / L40-150、postprocess.py L54-85 / L88-110 / L130-140 / L158-165、rknnpool.py L30-33 / L47-56 / L62-76、detector.py L93-110）；5 个「参考资源」条目 |
+| v2.1 | 2026-08-21 | 步骤1 新增「配置参数速查表」：config/garbage_config.yaml 全参数按区块分列（model/infer/pool/server/source），含类型/默认值/说明；标注 pool.core_mask 两核板勿用 round_robin、`stream_name` 不带 `.mjpg`（与 exp01/09+ 约定不同）等要点。表值经 load_config 实测核对 |
+
+---
+
 ## 实验6：基于语义分割的背景分割实验（4h）
 
 > ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/06_semantic_segmentation/`。⚠️ **内容说明**：课程「清除背景」语义，本实验用**语义分割人物抠图 + 背景替换**（yolov8n-seg，COCO 80 类，模型 3.2M 参数），效果更符合课程目标。已交付 `models/yolov8n-seg.onnx`（13 输出）与 `models/yolov8n-seg.rknn`（板上 int8 转换产物）。单测 38/38 全绿，板端验证通过（3 worker 池约 40-60 FPS）。
@@ -2853,7 +2868,7 @@ flowchart LR
 5. 换背景：修改 `background.mode`（black/solid/image）后重跑
 
 ```bash
-# 进入实验06
+# 进入实验6
 cd ~/ros2_ws/src/xflz_eai_car1/vision/06_semantic_segmentation
 
 # 可选
@@ -3027,7 +3042,7 @@ flowchart LR
 **知识点讲解**：
 
 **输入对齐（复用 exp01 语义）**
-- **原理**：与实验1一致：letterbox（pad 0）等比缩放到 640×640 → BGR→RGB 通道交换（模型 rgb2bgr=False）→ unletterbox 把检测框/掩码映射回原图坐标。掩码解码在 imgsz 坐标系完成，最终映射回原始分辨率。
+- **原理**：与实验4一致：letterbox（pad 0）等比缩放到 640×640 → BGR→RGB 通道交换（模型 rgb2bgr=False）→ unletterbox 把检测框/掩码映射回原图坐标。掩码解码在 imgsz 坐标系完成，最终映射回原始分辨率。
 - **源码对应**：`src/preprocess.py`（letterbox / to_rgb / unletterbox）
 
 **知识储备补充**：
@@ -3353,7 +3368,7 @@ flowchart LR
 **知识点讲解**：
 
 **round_robin 绑核推理池（1.3.3）**
-- **原理**：实验2 RKNNPool 的升级版：N 个 worker 各持**独立 RKNN 实例**，`round_robin` 模式下每个 worker 用 `core_mask = tid % 3` 绑定不同 NPU 核（RK3576 三核轮转），实现**多核并行推理**——3 worker 帧率可达单线程 2 倍以上（本实验实测 40-60 FPS vs 20-40 FPS）。注意板上无 rknnlite 时用完整 `RKNN` 实例（非 RKNNLite）。`config` 的 `pool.workers` / `pool.core_mask`（round_robin/auto）控制并行度，内存紧张时 workers=2 + auto。
+- **原理**：实验5 RKNNPool 的升级版：N 个 worker 各持**独立 RKNN 实例**，`round_robin` 模式下每个 worker 用 `core_mask = tid % 3` 绑定不同 NPU 核（RK3576 三核轮转），实现**多核并行推理**——3 worker 帧率可达单线程 2 倍以上（本实验实测 40-60 FPS vs 20-40 FPS）。注意板上无 rknnlite 时用完整 `RKNN` 实例（非 RKNNLite）。`config` 的 `pool.workers` / `pool.core_mask`（round_robin/auto）控制并行度，内存紧张时 workers=2 + auto。
 - **源码对应**：`src/rknnpool.py`（RKNNPool：worker 线程 / core_mask 绑核 / 队列）；`src/app.py`（main：池构建 / 取流 / 掩码映射回原图 / MJPEG）
 
 **知识储备补充**：
@@ -3509,7 +3524,7 @@ flowchart LR
 5. 遮挡测试：用手遮挡目标数秒后移开，观察 ID 是否恢复
 
 ```bash
-# 进入实验07
+# 进入实验7
 cd ~/ros2_ws/src/xflz_eai_car1/vision/07_multi_object_tracking
 
 # 可选
@@ -3598,7 +3613,7 @@ flowchart LR
 **知识点讲解**：
 
 **检测层复用（1.1.1）**
-- **原理**：与实验1/6 同款解码模式：`models/yolov8n.rknn` 是 COCO 80 类检测模型（9 输出 = 3 层 × [box, cls, cls_sum]）。解码链路：DFL 解码（16 bins softmax 期望）→ grid+stride 还原 xyxy → **cls_sum×cls 过滤**（与分割模型同款类别得分加权）→ 逐类 NMS。输出 `Detection`（框 + 类别 + 分数），送入 tracker 的数据关联。
+- **原理**：与实验4/6 同款解码模式：`models/yolov8n.rknn` 是 COCO 80 类检测模型（9 输出 = 3 层 × [box, cls, cls_sum]）。解码链路：DFL 解码（16 bins softmax 期望）→ grid+stride 还原 xyxy → **cls_sum×cls 过滤**（与分割模型同款类别得分加权）→ 逐类 NMS。输出 `Detection`（框 + 类别 + 分数），送入 tracker 的数据关联。
 - **源码对应**：`src/detect.py`（decode：DFL / grid xyxy / cls_sum×cls / NMS）；`models/yolov8n.rknn`
 
 **知识储备补充**：
@@ -4131,503 +4146,7 @@ flowchart LR
 
 ---
 
-## 实验8：基于深度信息的3D物体检测实验（4h）
-
-> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection/`。⚠️ **内容说明**：按 `depth_viewer_guide.md` 移植规格实现——**深度相机双栏显示（左 RGB | 右 Depth 伪彩）+ 点击读深度（mm/m + 相机坐标反投影）**，规格明确「无检测」（visual_grasp 最小子集）。vendor 参考课用 MediaPipe Objectron（mediapipe 无 aarch64 wheel，弃用）。单测 24/24 全绿，板端验证通过（深度合成）。
-
-### 1.1 关联知识点
-
-- 1.1.1 深度相机原理 > 原理 > HP60C 深度相机（RGB 镜头 + 深度传感器）输出 uint16 深度图（单位 mm），0 表示无效像素；区别于普通 RGB 相机的 2D 信息，深度提供"距离"维度
-- 1.2.1 深度图处理 > 流程 > uint16 PNG 加载（mm）→ 有效像素 min-max 归一化 → jet 伪彩映射（`applyColorMap`），灰度近远可视化
-- 1.2.2 点击读深度 > 流程 > 窗口坐标 (u,v) 除以 display_scale 还原原图坐标 → 读 depth[v,u]（mm）→ ×0.001 转米
-- 1.3.1 相机坐标反投影 > 公式 > x=(u-cx)·z/fx, y=(v-cy)·z/fy（相机内参 fx/fy/cx/cy 来自 ascam.yaml 标定），把像素+深度映射为 3D 坐标
-- 1.3.2 实时深度可视化 > 流程 > 板上 ROS2 话题取流（严禁 remap）→ 双栏合成（RGB|Depth）→ MJPEG 推流 + 窗口点击交互
-
-### 1.2 实验目标
-
-1. 掌握深度相机的成像原理与深度图数据格式（uint16 mm、无效值语义）— 原理理解
-2. 实现深度图加载、伪彩可视化与点击读深度功能 — 独立完成
-3. 理解相机内参反投影原理，实现像素坐标 → 3D 相机坐标的换算 — 迁移应用
-
-### 1.3 实验环境
-
-| 类别 | 配置 |
-|------|------|
-| 硬件 | 具身智能实验箱 B2（XFLZ_EAI_B2_PRO，RK3576 SoC，6TOPS NPU，含 HP60C 深度相机） |
-| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv） |
-| 核心库 | OpenCV、NumPy（纯 CPU，无需 NPU） |
-| 数据源 | 文件模式（uint16 PNG）+ ROS 模式（ascamera 话题，板载 rclpy） |
-| 主入口 | `src/app.py`（--display 窗口点击 / MJPEG 推流 / --ros 板上模式） |
-
-### 1.4 实验难度
-
-- 难度: ⭐⭐ 设计性
-- 重点: 深度图可视化 + 点击读深度 + 内参反投影
-- 难点: 相机内参理解与反投影公式；无效像素处理（0 值）；窗口坐标缩放还原
-
-### 1.5 实验现象
-
-**快速验证流程**：
-
-1. 进入项目目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection`
-
-2. 单元测试：`pytest tests/ -v`（24 用例全绿）
-
-3. 文件模式（需 config 填 rgb_path/depth_path，depth 为 uint16 PNG）：
-
-4. 点击深度图任一点 → 终端 `Click (u, v): z = XXXX mm (X.XXX m)`；有内参时附加 `xyz=(x, y, z) m`
-
-5. 板上 ROS 模式：先起相机驱动，再 `python src/app.py --config config/depth3d_config.yaml --ros`
-   - MJPEG：`http://<板IP>:8080/depth.mjpg`
-   
-   ```bash
-   # 进入实验00
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
-   
-   # 可选
-   /home/iflytek/ros2_venv/bin/python -m pytest -v
-   
-   # 相机实时，修改config配置detect.classes为0（人）
-   ros2 launch ascamera hp60c.launch.py        										# 终端 1
-   python src/app.py --config config/depth3d_config.yaml --display                     # 终端 2
-   ```
-
-**执行现象**：
-
-1. 单元测试 `pytest tests/ -v` 输出 24 个用例全部 passed（约 10-20 秒完成），覆盖 depth.py / view.py / app.py / config.py 四个模块
-2. 文件模式窗口打开后，左侧显示 RGB 彩色图像（正常拍照色彩），右侧显示深度伪彩图（jet 色带：近处物体偏红色/暖色调，远处背景偏蓝色/冷色调），顶部黄色状态栏文字 "Click depth image to read depth" 清晰可见
-3. 点击近处物体（如桌面物体）→ 终端输出类似 `Click (320, 240): z = 523 mm (0.523 m) xyz=(0.012, -0.005, 0.523) m`；点击远处背景 → z 值显著增大（如 1500 mm 以上）；点击无效区域（无深度处）→ 输出 `invalid`
-4. 板上 ROS 模式启动后，MJPEG 推流画面实时刷新，移动相机或物体时深度数值连续变化，左 RGB 右 Depth 双栏同步更新
-
-**预期效果描述**：
-- 双栏图：左 RGB、右 Depth 伪彩（jet，近红远蓝或按映射），状态栏文字可见
-- 点击物体 vs 背景数值差异明显（物体近、背景远）；无效区（0）提示 invalid
-- 有内参时输出相机坐标 `xyz=(x, y, z) m`——为 3D 定位/抓取打基础
-- 板上：`ros2 topic hz .../rgb0/image` ≈ 25Hz；深度单位 mm（数值勿 ×1000 误解）
-
-```bash
-Click (269, 324): z = 309 mm (0.309 m)  xyz=(-0.039, 0.046, 0.309) m
-```
-
-![image-20260820163436128](assets/image-20260820163436128.png)
-
-### 1.6 实验步骤
-
-#### 整体流程图
-
-```mermaid
-graph LR
-    A[步骤1：深度相机原理认知] --> B[步骤2：深度图加载与归一化]
-    B --> C[步骤3：伪彩可视化]
-    C --> D[步骤4：点击读深度]
-    D --> E[步骤5：内参反投影3D坐标]
-    E --> F[步骤6：实时双栏可视化]
-    F --> G[完成]
-```
-
----
-
-#### 步骤1：深度相机原理认知（阶段一：能运行，20min）
-
-> 📌 本步骤对应源码：`config/depth3d_config.yaml`
-
-**知识点讲解**：
-
-**深度相机与深度图格式（1.1.1）**
-- **原理**：HP60C 深度相机由 RGB 镜头 + 深度传感器（结构光/ToF 类）构成，深度传感器输出**逐像素距离图**。深度图格式约定：**uint16 存储，单位毫米（mm）**，0 值表示该像素无效（未测到/太近/太远）。为什么用 uint16？——深度范围可达 0-65535mm（65 米），uint8 只有 0-255mm 不够用。深度图与 RGB 图经标定对齐（同一视角），是后续 3D 感知（点云、抓取定位）的基础数据。
-- **源码对应**：`config/depth3d_config.yaml`（depth.scale=0.001 mm→m / invalid=0 / display_scale / camera 内参）
-
-**知识储备补充**：
-
-- **深度传感器工作原理**：HP60C 采用主动红外深度传感技术（结构光或 ToF），发射红外散斑或调制光，经物体反射后由红外接收器采集。深度传感器通过三角测量或飞行时间（ToF）计算每个像素到相机的物理距离，输出与 RGB 图像分辨率一致的逐像素深度矩阵。结构光方案在近距（0.2-1.5m）精度较高但受环境光干扰大；ToF 方案抗环境光强但近距离精度略低。HP60C 两种技术融合，适用于室内机器人场景。
-
-![深度相机介绍-CSDN博客](assets/1157643a6d094c2589f57e1c7aaed5a6.png)
-
-- **深度图数据结构**：深度图本质是一个二维矩阵，每个元素存储该像素位置的物理距离。OpenCV 中深度图通常以单通道 `uint16` 格式存储在 PNG 文件中，0 值约定为"无效像素"（无反射信号/超出量程/遮挡）。实际深度值范围 1mm-65535mm，uint16 的 16bit 位宽恰好覆盖机器人常用的 0.1-6m 测距范围。
-- **RGB-D 对齐意义**：深度图与 RGB 图像在空间上逐像素对齐（同一视角、同一时刻采集），意味着 RGB 图像的每个像素 $(u,v)$ 都对应一个深度值 $d(u,v)$，形成 **RGB-D 数据对**。这是后续 3D 感知（点云生成、物体 6DoF 位姿估计、机械臂抓取定位）的基础——没有深度，2D 图像无法直接提供物体在三维空间中的位置信息。
-
-- **参考资源**：HP60C 深度相机技术规格书（厂商文档）；Intel RealSense 深度相机原理（同类技术对比）；OpenCV `cv2.IMREAD_UNCHANGED` 官方文档。
-
-**配置参数速查表**（`config/depth3d_config.yaml`，按区块分列）：
-
-| 区块 | 参数 | 类型 | 默认/示例 | 说明 |
-|------|------|------|-----------|------|
-| `depth` | `scale` | float | `0.001` | uint16 mm→米（÷1000） |
-| `depth` | `invalid_value` | int | `0` | 无效深度值（0=无效，平台事实） |
-| `depth` | `colormap` | str | `jet` | 深度伪彩（jet/gray） |
-| `depth` | `display_scale` | float | `0.666` | 显示缩放（点击坐标 ÷scale 还原 640×480） |
-| `cam3d` | `fx`/`fy` | float | `608.39958`/`611.20714` | 相机内参（HP60C 标定，ascam.yaml 来源） |
-| `cam3d` | `cx`/`cy` | float | `328.30096`/`226.46483` | 主点坐标 |
-| `cam3d` | `width`/`height` | int | `640`/`480` | 分辨率 |
-| `source` | `mode` | str | `ros` | image（文件对）/ros（板上 rclpy 订阅；板上标准） |
-| `source` | `rgb_path` | str | `""` | image 模式 RGB 图路径（BGR png/jpg） |
-| `source` | `depth_path` | str | `""` | image 模式深度图路径（uint16 png） |
-| `display` | `show`/`window_name` | bool/str | `false`/`RGB | Depth` | 本地窗口 |
-| `server` | `port` | int | `8080` | MJPEG 端口 |
-| `server` | `stream_name` | str | `depth.mjpg` | MJPEG 流名 |
-
-> **说明**：`depth.scale`/`invalid_value` 是深度读数关键（uint16 mm + 0 无效）；`cam3d` 内参仅点击反投影用（HP60C 标定值，勿随意改）；`source.mode=ros` 为板上标准（image 需提供 rgb+depth 文件对）。
-
-**操作步骤**：
-
-1. 查看 `config/depth3d_config.yaml`，理解 depth.scale（0.001 = mm→m）、invalid（0）、display_scale（显示缩放）、camera（fx/fy/cx/cy 内参）
-2. 查看内参来源（`ascam.yaml`，HP60C RGB 标定）
-3. 思考：深度为 0 的像素代表什么？为什么不能当真实距离 0mm？
-
-**流程图（深度数据链路）**：
-
-```mermaid
-graph LR
-    A[RGB uint8 图] --> B[深度 uint16 mm 图]
-    B --> C[像素对齐 RGB-D 对]
-    C --> D[逐像素物理距离]
-    D --> E[3D 感知基础]
-```
-
-**易错点**：
-
-- ⚠️ 深度单位 mm：数值勿 ×1000 误解（z_mm → z_m 用 ×0.001，不是 ×1000）
-
----
-
-#### 步骤2：深度图加载与归一化（阶段一：能运行，25min）
-
-> 📌 本步骤对应源码：`src/depth.py` load_depth / normalize_depth
-
-**知识点讲解**：
-
-**uint16 加载与归一化（1.2.1）**
-
-- **原理**：`load_depth()`（L22-27）用 `cv2.imread(path, IMREAD_UNCHANGED)` **保留 16bit** 读取（不带 UNCHANGED 会被截断成 8bit，深度全毁），返回 mm 数组。`normalize_depth()`（L30-41）把有效像素 min-max 线性拉伸到 0-255：先屏蔽无效值（`depth != invalid`），对有效像素求 min/max 后线性映射；单值深度（hi==lo）直接置 255 全亮。归一化是伪彩可视化的前置——深度范围大（0.3m-10m），直接 8bit 显示会糊成一片。
-- **源码对应**：`src/depth.py` L22-27（load_depth）、L30-41（normalize_depth：有效掩膜 L33 / min-max 映射 L35-40）
-
-**知识储备补充**：
-
-- **IMREAD_UNCHANGED 机制**：OpenCV 的 `cv2.imread()` 默认行为是将图像转换为 `uint8`（8bit），无论原文件是 16bit 还是 32bit。`IMREAD_UNCHANGED` 标志禁止这种截断转换，保留原始数据类型。对于深度图（uint16 PNG），截断意味着所有 >255mm 的深度值被 mod 256 截断——例如 500mm 变成 244mm，完全失去物理意义。这是深度图处理中最常见的初学者陷阱。
-- **min-max 归一化原理**：将深度值从原始范围 $[d_{\min}, d_{\max}]$ 线性映射到 $[0, 255]$：
-
-  $$
-  d_{\text{norm}}(u,v) = \frac{d(u,v) - d_{\min}}{d_{\max} - d_{\min}} \times 255
-  $$
-
-  其中 $d_{\min}, d_{\max}$ 仅在有效像素（$d \neq 0$）中统计。屏蔽无效值（0）避免将"无深度"误判为"最近"——若不屏蔽，0 值会使 $d_{\min}=0$，有效深度的对比度大幅压缩（例如 1m-5m 的物体被映射到 51-255，细节丢失）。
-- **单值深度处理**：当所有有效像素深度值相同（$d_{\max} = d_{\min}$），归一化公式分母为 0，直接置 255 全亮（`normalize_depth` L38-39）。这在近距离平面物体（如桌面）拍摄时常见——整个物体处于同一深度，伪彩图呈现均匀颜色。
-- **参考资源**：OpenCV `cv2.imread` 官方文档（IMREAD_UNCHANGED 说明）；NumPy `ndarray.astype` 类型转换文档。
-
-**操作步骤**：
-
-1. 验证深度图读取与归一化（16bit 保留；无真实深度图时用合成数组演示）：
-   ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
-   
-   PYTHONPATH=./src python -c "
-   import numpy as np
-   from depth import load_depth, normalize_depth
-   d = np.zeros((20, 20), np.uint16); d[5:15, 5:15] = 500   # 合成：中央 500mm 物体
-   print('dtype:', d.dtype, '范围:', d.min(), '-', d.max())
-   print('无效像素占比:', float((d == 0).mean()))            # 0 = 无效
-   norm = normalize_depth(d)
-   print('归一化后 0-255:', norm.min(), '-', norm.max(), '(无效区=0)')"
-   # 真图：d = load_depth('depth.png')   # uint16 PNG，IMREAD_UNCHANGED 保留 16bit
-   # 预期：dtype uint16；范围 0-500；无效占比 0.75；归一化中央 255、无效区 0
-   ```
-
-   ```bash
-   dtype: uint16 范围: 0 - 500
-   无效像素占比: 0.75
-   归一化后 0-255: 0 - 255 (无效区=0)
-   ```
-
-2. 用普通 imread（不带 UNCHANGED）对照读取，观察深度数据是否被截断破坏
-
-3. 打印无效像素占比：`float((d==0).mean())`
-
-**流程图（加载与归一化）**：
-
-```mermaid
-graph LR
-    A[IMREAD_UNCHANGED] --> B[uint16 深度图]
-    B --> C[屏蔽无效值 0]
-    C --> D[有效像素 min-max]
-    D --> E[0-255 归一化]
-```
-**易错点**：
-- ⚠️ 不带 IMREAD_UNCHANGED → 16bit 截断成 8bit，深度数据毁坏
-- ⚠️ 归一化必须屏蔽无效值，否则 0 值拉低 min 使有效深度对比度受损
-
----
-
-#### 步骤3：伪彩可视化（阶段二：能理解，20min）
-
-> 📌 本步骤对应源码：`src/depth.py` pseudocolor
-
-**知识点讲解**：
-
-**伪彩映射原理（1.2.1）**
-- **原理**：人眼对灰度梯度不敏感，深度图用**伪彩**（colormap）增强可读性。`pseudocolor()`（L44-48）：`cv2.applyColorMap(depth_norm, COLORMAP_JET)` 把 8bit 灰度映射为 jet 彩色（低值蓝→高值红，或按映射表）；`gray` 模式退化为三通道灰阶。jet 的优势：相邻深度差异用色相区分，肉眼可快速判断远近层次。双栏右侧即此伪彩图。
-- **源码对应**：`src/depth.py` L44-48（pseudocolor：gray L46-47 / jet L48）
-
-**知识储备补充**：
-
-- **伪彩映射原理**：伪彩（pseudocolor）是一种将单通道灰度图像映射为三通道彩色图像的技术，目的是增强人眼对数值差异的感知能力。人眼视网膜约有 100 万个视杆细胞（感知亮度）但有 600 万个视锥细胞（感知颜色），对色相差异的分辨力远高于灰度差异。对于深度图，伪彩将连续的深度值映射为从蓝（远）到红（近）的连续色带，使操作者一眼即可区分远近层次。
-- **COLORMAP_JET 色带**：OpenCV 的 `COLORMAP_JET` 是最常用的深度伪彩方案，色带从低值到高值依次为：深蓝 → 浅蓝 → 青 → 绿 → 黄 → 橙 → 红。低值（0）对应深蓝（近处/最近），高值（255）对应红色（远处/最远）。注意：归一化后的 0 值像素（无效区）也被映射为深蓝，这与"近处深蓝"的语义存在冲突——实际应用中需区分"有效深蓝（近处）"与"无效深蓝（无深度）"。
-- **gray 模式退化**：`gray` 模式将 8bit 灰度直接复制为三通道（`COLOR_GRAY2BGR`），等效于显示原始灰度图。适用于对比伪彩与灰度的可读性差异——灰度模式下近处（高值，亮灰）与远处（低值，暗灰）的对比度远低于伪彩模式。
-
-- **参考资源**：OpenCV `cv2.applyColorMap` 官方文档（COLORMAP_JET 色带说明）；matplotlib `imshow` colormap 选项（伪彩方案对比）。
-
-**操作步骤**：
-
-1. 生成伪彩图并保存（无真实深度图时用合成数组演示）：
-   ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
-   
-   PYTHONPATH=./src python -c "
-   import numpy as np, cv2
-   from depth import load_depth, normalize_depth, pseudocolor
-   d = np.zeros((20, 20), np.uint16); d[5:15, 5:15] = 500
-   norm = normalize_depth(d)
-   jet = pseudocolor(norm, 'jet')
-   print('jet 形状:', jet.shape, jet.dtype)      # (20,20,3) uint8 BGR 伪彩
-   cv2.imwrite('depth_jet.png', jet)           # 真图：d = load_depth('depth.png')
-   print('伪彩图已保存 depth_jet.png')"
-   # 预期：jet (20,20,3) uint8；gray 模式输出三通道灰阶
-   ```
-2. 对比 jet / gray 两种模式的可读性差异
-3. 思考：为什么深度可视化用伪彩而非灰度？工业应用（如避障调试）中哪种更直观？
-
-**流程图（伪彩映射）**：
-
-```mermaid
-graph LR
-    A[8bit 深度图] --> B[applyColorMap jet]
-    B --> C["(H,W,3) 伪彩"]
-    C --> D[近红远蓝]
-```
-**易错点**：
-- ⚠️ applyColorMap 要求 8bit 输入——必须先 normalize_depth 再伪彩
-
----
-
-#### 步骤4：点击读深度（阶段二：能理解，25min）
-
-> 📌 本步骤对应源码：`src/depth.py` read_depth、`src/app.py` 点击事件
-
-**知识点讲解**：
-
-**窗口坐标还原（1.2.2）**
-- **原理**：`read_depth()`（L51-66）实现点击读深度：先做**边界检查**（u/v 越界返回无效，L55-56），再读 `depth[v,u]`（L57），0 值返回无效（L58-59），有效则 `z_m = z_mm * 0.001` 转米（L60）。**关键细节**：窗口显示有缩放（display_scale），点击坐标 (u,v) 必须**除以 display_scale** 还原为原图坐标再读深度——否则读错像素（README 验证要点明确要求）。`ClickResult`（L15-19）承载 z_mm/z_m/xyz 三态结果。
-- **源码对应**：`src/depth.py` L51-66（read_depth：边界检查 L55-56 / 读深度 L57 / 无效值 L58-59 / 米转换 L60）；`src/app.py`（鼠标回调：坐标 ÷ display_scale）
-
-**知识储备补充**：
-
-- **坐标缩放还原原理**：显示窗口将原始图像（640×480）按 `display_scale=0.666` 缩放后显示（实际显示约 426×320 像素）。用户点击的是显示窗口坐标，而深度数组索引需要原始图像坐标。坐标转换公式：
-
-  $$
-  u_{\text{原图}} = \frac{x_{\text{窗口}}}{\text{display\_scale}}, \quad v_{\text{原图}} = \frac{y_{\text{窗口}}}{\text{display\_scale}}
-  $$
-
-  `view.py` 的 `click_to_pixel()`（L30-35）处理双栏视图的特殊逻辑：当点击位置在右栏（深度栏）时，需先减去左栏宽度（`left_w = img_w × scale`）再除以 scale。`screen_to_pixel()`（L24-27）执行通用的 ÷scale 还原。
-- **ClickResult 三态**：`ClickResult`（L15-19）是深度读取的结构化结果——`z_mm`（整数毫米）、`z_m`（浮点米）、`xyz`（相机坐标系 3D 坐标或 None）。当 `cam` 参数为 None 时（未配置内参），`xyz` 为 None；配置内参后附加反投影坐标。这种"可选增强"设计使同一函数适配有无内参两种场景。
-- **边界检查防御**：`read_depth()` 先检查 `0 <= u < w and 0 <= v < h`（L55-56），越界直接返回 `ClickResult(0, 0.0, None)`。这是防御性编程——防止用户点击窗口边缘（缩放后边界可能对不齐）导致数组越界崩溃。
-
-- **参考资源**：NumPy 数组索引文档（`array[v, u]` 行列顺序说明）；OpenCV 鼠标回调 `cv2.setMouseCallback` 官方文档。
-
-**操作步骤**：
-
-1. 文件模式窗口点击（板上：x86 无 mjpeg_streamer，`app.py` 的 `require()` 会提示安装并退出）：
-   ```bash
-   # 进入实验目录
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
-   
-   ros2 launch ascamera hp60c.launch.py        										# 终端 1
-   python src/app.py --config config/depth3d_config.yaml --display                     # 终端 2
-   # 点击深度图任一点，终端输出 Click (u,v): z = XXXX mm (X.XXX m)
-   ```
-2. 分别点击近处物体与远处背景，对比深度数值差异（物体近、背景远）
-3. 点击无效区域（无深度处），观察 invalid 提示
-4. 验证坐标还原（板上窗口）：窗口缩放后点击同一物理点，确认读出深度一致（÷ display_scale 生效）
-
-![image-20260820163436128](assets/image-20260820163436128.png)
-
-**流程图（点击读深度）**：
-
-```mermaid
-graph LR
-    A[窗口点击 x,y] --> B[除以 display_scale]
-    B --> C[原图 u,v]
-    C --> D["读depth[v,u]"]
-    D --> E{深度 = 0?}
-    E -->|是| F[无效]
-    E -->|否| G[mm → m]
-```
-**易错点**：
-- ⚠️ 点击坐标不除 display_scale → 读错像素（缩放窗口时尤其明显）
-
----
-
-#### 步骤5：相机内参反投影（阶段三：能改造，30min）
-
-> 📌 本步骤对应源码：`src/depth.py` read_depth 反投影段
-
-**知识点讲解**：
-
-**针孔模型与反投影公式（1.3.1）**
-- **原理**：相机把 3D 点投影到 2D 像素遵循**针孔模型**：`u = fx·x/z + cx`，`v = fy·y/z + cy`（fx/fy 焦距像素、cx/cy 光心偏移，来自标定）。**反投影**（2D+深度 → 3D）即逆运算：`x = (u-cx)·z/fx`，`y = (v-cy)·z/fy`（L63-64），z 为深度（米）。这一公式把"像素 + 距离"换算为**相机坐标系下的 3D 坐标**——是机械臂抓取定位、点云生成、避障的核心数学。内参默认取 `ascam.yaml`（HP60C RGB 标定），驱动配置加密，深度内参以实测微调。
-- **源码对应**：`src/depth.py` L62-65（反投影：x L63 / y L64 / xyz 元组 L65）；`config/depth3d_config.yaml` camera 内参
-
-**知识储备补充**：
-
-- **针孔相机模型（Pinhole Camera Model）**：针孔模型是最基本的相机几何模型，假设光线通过一个无穷小的针孔投影到成像平面。3D 空间点 $(x, y, z)$（相机坐标系，z 为光轴方向即深度）投影到 2D 像素 $(u, v)$ 的正向公式：
-$$
-  u = f_x \cdot \frac{x}{z} + c_x, \quad v = f_y \cdot \frac{y}{z} + c_y
-  $$
-  
-其中 $f_x, f_y$ 为焦距（单位：像素），$c_x, c_y$ 为主点（光轴与成像平面交点的像素坐标）。这四个参数 $(f_x, f_y, c_x, c_y)$ 统称为**相机内参**（intrinsic parameters），由相机标定（calibration）获得。HP60C 的标定结果存储在 `ascam.yaml` 中。
-
-<img src="assets/image-20260820164529174.png" alt="image-20260820164529174" style="zoom:67%;" />
-
-- **反投影公式推导**：由正向投影公式反解 $(x, y)$：
-  $$
-  x = (u - c_x) \cdot \frac{z}{f_x}, \quad y = (v - c_y) \cdot \frac{z}{f_y}
-  $$
-
-  其中 $z$ 为该像素的深度值（单位：米）。代码实现（`src/depth.py` L63-64）：`x = (u - cam["cx"]) * z_m / cam["fx"]`。反投影要求 $z$ 为米（与 $f_x$ 的像素/米标度一致），这也是为什么深度值需先从 mm 转换为 m（$\times 0.001$）。得到的 $(x, y, z)$ 是**相机坐标系**下的 3D 坐标——原点在相机光心，z 轴沿光轴指向场景。
-
-- **内参标定与误差传递**：相机内参通过棋盘格标定（张正友标定法）获得，标定精度直接影响反投影的 3D 坐标质量。内参误差（焦距偏差、主点偏移）会随深度 $z$ 线性放大到 3D 坐标：$x$ 的误差 $\Delta x = \Delta c_x \cdot z / f_x + (u - c_x) \cdot \Delta z / f_x$。对于远距离目标（$z$ 大），内参偏差的影响更显著。HP60C 的 RGB 内参来自 `ascam.yaml` 标定，深度内参需以实测微调（`config/depth3d_config.yaml` 的 `cam3d` 区块）。
-
-- **参考资源**：张正友相机标定法论文（Z. Zhang, *A Flexible New Technique for Camera Calibration*, 2000）；OpenCV `cv2.calibrateCamera` 官方文档；Intel RealSense 内参说明（同类深度相机参考）。
-
-**操作步骤**：
-
-1. 配置内参后点击读深度，观察附加输出（板上窗口：x86 无 mjpeg_streamer，`app.py` 的 `require()` 会直接退出）：
-   ```bash
-   # 进入实验目录
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
-   
-   ros2 launch ascamera hp60c.launch.py        										# 终端 1
-   python src/app.py --config config/depth3d_config.yaml --display                     # 终端 2
-   # 点击深度图任一点，终端预期：Click (u, v): z = XXXX mm (X.XXX m) xyz=(x, y, z) m
-   ```
-2. 验证反投影合理性：同一物体不同像素点击，z 相近但 x/y 随像素位置变化（近大远小）
-3. 手工验证公式：给定 u,v,z 手算 x,y，与程序输出对比
-4. 思考：fx/fy/cx/cy 的物理意义？为什么标定误差会放大到 3D 坐标？
-
-**流程图（内参反投影）**：
-
-```mermaid
-graph LR
-    A[像素 u,v + 深度 z] --> B["x=(u-cx)×z/fx"]
-    B --> C[相机坐标系 3D]
-    C --> D[机械臂抓取]
-```
-**易错点**：
-- ⚠️ 反投影要求 z 为**米**（公式中 z 单位须与 fx 的像素/米标度一致，L63-64 用 z_m）
-- ⚠️ 内参不准 → 3D 坐标系统性偏移（深度内参以实测微调）
-
----
-
-#### 步骤6：实时双栏可视化（阶段三：能改造，30min）
-
-> 📌 本步骤对应源码：`src/app.py`、`src/ros2_source.py`（或 ROS 模式取流）
-
-**知识点讲解**：
-
-**实时深度链路（1.3.2）**
-- **原理**：板上 ROS 模式：ascamera 驱动发布 RGB（`.../rgb0/image`）与深度（`.../depth0/image`）话题，`app.py` 订阅（**严禁 remap**——话题名与驱动约定一致）→ 深度图经 load/normalize/pseudocolor 处理 → 与 RGB 合成双栏 → MJPEG 推流（`http://<板IP>:8080/depth.mjpg`）。`view.py` 负责双栏合成 + 状态栏 + 点击坐标还原/标注。已知坑：首帧黑帧（`rgb.mean() < 5` 跳过，已内置）；深度 0 = 无效。
-- **源码对应**：`src/app.py`（main：文件/ROS 模式 / 双栏合成 / MJPEG / 鼠标回调）；`src/view.py`（双栏合成 + 状态栏）；`src/depth.py`（处理管线）
-
-**知识储备补充**：
-
-- **ROS2 话题订阅与帧缓存**：`ros2_source.py` 的 `Ros2Camera` 类封装了 ROS2 话题订阅逻辑——`open()` 惰性导入 `rclpy`，创建节点订阅 `/ascamera_hp60c/camera_publisher/rgb0/image`（`sensor_msgs/Image`，BGR8 编码），回调 `_on_image()` 将 `cv_bridge` 转换后的 BGR 帧存入 `_frame` 缓冲区。`read()` 方法阻塞等待首帧或超时（默认 5s），返回 `(True, frame)` 或 `(False, None)`。这种"VideoCapture 兼容接口"设计使文件模式与 ROS 模式的主循环代码完全一致——切换模式只需替换数据源。
-- **双栏合成逻辑**：`view.py` 的 `compose_rgbd()`（L11-22）将 RGB 与伪彩深度图水平拼接：左栏 RGB、右栏深度伪彩，均按 `display_scale` 缩放（L15-17），顶部叠加黄色状态栏文字（L19-20）。`np.hstack()` 执行水平拼接，输出形状为 `(H', 2W', 3)`。
-- **MJPEG 推流**：`mjpeg_server.py` 启动 HTTP 服务器监听 `:8080`，`set_frame()` 方法将最新合成帧编码为 JPEG 并通过 multipart 流推送给浏览器客户端。客户端通过 `http://<板IP>:8080/depth.mjpg` 访问实时画面，无需安装任何客户端软件。
-- **参考资源**：ROS2 `sensor_msgs/Image` 消息定义；cv_bridge 官方文档（ROS Image ↔ OpenCV 转换）；MJPEG streaming HTTP 协议说明。
-
-**操作步骤**：
-
-1. 板上 ROS 模式：
-   ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
-   # 终端 1：起相机驱动（HP60C，话题名不可 remap）
-   source ~/ros2_ws/install/setup.bash
-   ros2 launch car1_peripherals depth_camera.launch.py
-   # 终端 2：运行深度查看器
-   source ~/ros2_ws/install/setup.bash
-   python src/app.py --config config/depth3d_config.yaml --ros --display
-   # MJPEG: http://<板IP>:8080/depth.mjpg
-   ```
-2. 验证话题频率：`ros2 topic hz .../rgb0/image`（≈ 25Hz）
-3. 实时点击读深度：对准物体移动，观察深度数值连续变化
-4. 动手改造：在双栏图中叠加"中心点深度"实时显示（十字光标 + 深度数值），实现简易测距仪
-
-![image-20260820163436128](assets/image-20260820163436128.png)
-
-**流程图（实时双栏可视化）**：
-
-```mermaid
-graph LR
-    A[ROS2 rgb0/image] --> B[RGB 帧]
-    C[ROS2 depth0/image] --> D[深度图处理]
-    B --> E[双栏合成]
-    D --> E
-    E --> F[MJPEG 推流]
-```
-**易错点**：
-- ⚠️ 话题严禁 remap——与驱动约定不一致取不到帧
-- ⚠️ 首帧黑帧（rgb.mean()<5）已内置跳过；深度 0 = 无效勿当 0mm
-
----
-
-### 1.7 常见问题
-
-| 问题 | 原因 | 解决方法 |
-|------|------|---------|
-| 深度数值偏大 1000 倍 | mm 与 m 单位误解 | mm→m 用 ×0.001（`depth.scale`），勿 ×1000 |
-| 深度图全黑/花屏 | 读取时未保留 16bit | `cv2.imread(path, IMREAD_UNCHANGED)` |
-| 点击读出深度与画面不符 | 窗口缩放未还原坐标 | 点击坐标 ÷ display_scale 再读 |
-| 无效区读出 0 | 该像素无深度（正常） | 识别 0 为 invalid（L58-59），勿当 0mm |
-| 3D 坐标偏移 | 内参不准 | 深度内参以实测微调（config camera） |
-| 首帧黑帧 | 相机首帧未就绪 | 已内置 `rgb.mean()<5` 跳过 |
-| ROS 取不到帧 | 话题 remap 或驱动未起 | 严禁 remap；确认驱动话题与 config 一致 |
-| --ros 帧率低 | 话题频率不足 | `ros2 topic hz` 验证 ≈25Hz |
-
-### 1.8 扩展实验
-
-**扩展方向 1：简易测距与越界报警（进阶）**
-- 在双栏图中叠加中心点深度实时显示；设定安全距离阈值（如 <0.5m 报警），实现避障原型
-
-**扩展方向 2：点云生成（进阶）**
-- 遍历有效深度像素批量反投影为 3D 点，用 Open3D 或 matplotlib 生成稀疏点云可视化，体验"深度图 → 点云"的完整 3D 感知链路
-
-### 1.9 实验报告要求
-
-**评分标准**：深度相机原理 15 分 + 深度图处理 20 分 + 伪彩可视化 15 分 + 点击读深度 20 分 + 反投影 20 分 + 报告 10 分 = 100 分。
-
-**报告必含内容**：
-1. 深度图格式说明（uint16/mm/0 无效）与加载对比（UNCHANGED vs 默认）
-2. 归一化前后深度直方图或对比图
-3. 双栏可视化截图（左 RGB | 右 Depth 伪彩）
-4. 点击读深度记录表（≥5 个点：物体/背景/无效区）
-5. 反投影验证：手算 vs 程序输出对比
-6. 回答思考题：为什么深度用 uint16？反投影公式的物理意义？标定误差如何影响 3D 坐标？
-7. 实验心得与问题记录
-
----
-
-## 更新日志
-
-| 版本 | 日期 | 变更 |
-|------|------|------|
-| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection，24 用例全绿，uint16 深度加载 + jet 伪彩 + 点击读深度 + 内参反投影 + 双栏 MJPEG，板端验证通过） |
-| v2.0 | 2026-08-19 | 知识点增强：6 个「知识储备补充」小节（深度传感器原理与 RGB-D 对齐、IMREAD_UNCHANGED 与 min-max 归一化原理、伪彩映射原理与 JET 色带、坐标缩放还原与 ClickResult、针孔模型反投影公式推导与内参标定误差传递、ROS2 话题订阅与双栏合成）；4 个公式块（min-max 归一化、针孔正向投影、反投影公式、深度归一化）；Mermaid 流程图；执行现象段；行号基于源码核实 |
-| v2.1 | 2026-08-21 | 步骤 1 新增「配置参数速查表」：config/depth3d_config.yaml 全参数（depth/cam3d/source/display/server）；标注 depth.scale=0.001（mm→m）、invalid_value=0、cam3d 内参（HP60C 标定，ascam.yaml 来源，勿随意改）。表值经 config 实测核对 |
-
----
-
-## 实验9：基于人脸关键点特征检测实验（4h）
+## 实验8：基于人脸关键点特征检测实验（4h）
 
 > ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/09_face_landmarks/`。**方案 = mediapipe Blaze 模型转 RKNN，板上 RKNNLite NPU 推理 468 点网格**（双模型：face_detection_short_range 检测 + face_landmark 468 点）。交付形态为 ament_python ROS2 包 `car1_face_landmark/`，内层 `face_landmark_core/` 纯逻辑 x86 全可测。测试 109 用例全绿，板端验证通过（用户确认，FPS ≥10，fp16 混合量化）。
 
@@ -5193,7 +4712,7 @@ graph LR
 
 ---
 
-## 实验10：基于骨骼关键点的肢体检测实验（4h）
+## 实验9：基于骨骼关键点的肢体检测实验（4h）
 
 > ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark/`。**方案 = mediapipe `pose_landmark_full` tflite 转 RKNN（fp16/rk3576），板上 RKNNLite NPU 推理 33 点骨架**（vendor 10_姿态检测 视觉对齐：左=原图+FPS 红字，右=黑底红点绿线骨架）。单模型整图推理（256×256 输入，无独立检测器）。测试 45 项 x86 全绿，模型已转换入库（用户，pose_landmark_full.rknn）。
 
@@ -5295,7 +4814,7 @@ graph LR
 
 **姿态估计问题与 BlazePose 方案（1.1.1）**
 
-- **原理**：人体姿态估计（Pose Estimation）定位**人体关键点**——33 个点覆盖头（鼻/眼/耳）、躯干（肩/髋）、四肢（肘/腕/膝/踝），每点含 `[x, y, z, visibility]`（z 为相对深度，vis 为可见度）。BlazePose 采用**单模型整图推理**（256×256，无独立检测器——mediapipe-rknn 参考即此形态），区别于实验9 人脸的双模型级联。33 点骨架是动作识别（实验11）、体感控制、康复评估的基础。vendor 用 mediapipe solutions（板上 aarch64 不可装），本实验用 RKNN BlazePose → RKNNLite NPU。
+- **原理**：人体姿态估计（Pose Estimation）定位**人体关键点**——33 个点覆盖头（鼻/眼/耳）、躯干（肩/髋）、四肢（肘/腕/膝/踝），每点含 `[x, y, z, visibility]`（z 为相对深度，vis 为可见度）。BlazePose 采用**单模型整图推理**（256×256，无独立检测器——mediapipe-rknn 参考即此形态），区别于实验8 人脸的双模型级联。33 点骨架是动作识别（实验11）、体感控制、康复评估的基础。vendor 用 mediapipe solutions（板上 aarch64 不可装），本实验用 RKNN BlazePose → RKNNLite NPU。
 - **源码对应**：`pose.py`（POSE_CONNECTIONS 35 边拓扑、decode_pose 33×4 解析）；`engine.py`（PoseEngine 单模型引擎，presence<阈值 → 空结果）
 
 **知识储备补充**：
@@ -5305,7 +4824,7 @@ graph LR
 
 <img src="assets/image-20260821090257502.png" alt="image-20260821090257502" style="zoom: 67%;" />
 
-- **BlazePose 架构对比**：BlazePose 与实验9 的 BlazeFace 人脸关键点检测有三点核心差异：
+- **BlazePose 架构对比**：BlazePose 与实验8 的 BlazeFace 人脸关键点检测有三点核心差异：
 
   (1) 输入分辨率——256×256（pose）vs 128×128（face）；
 
@@ -5372,8 +4891,8 @@ $$
   x_{\text{norm}} = \frac{x - 127.5}{128}, \quad x_{\text{norm}} \in [-1, 1]
   $$
   
-调用方只需确保输入为 RGB 格式、uint8 数据类型、shape `(1, 256, 256, 3)` 的 NHWC 张量。**手动除以 127.5 再减 1 会导致双重归一化**——板端实测 presence 从 0.998 暴跌至 0.055，骨架完全不输出。这与实验1 YOLOv8 的"不做归一化、直喂 uint8"是同一类设计思路：量化模型内部已含 scale/zero_point，外部归一化会破坏输入分布。
-- **letterbox 策略对比**：本实验的 `resize_pad`（`pose.py` L42-53）采用灰边填充（`np.full((size, size, 3), 114, dtype=np.uint8)`），而实验1 YOLOv8 的 letterbox 默认用黑边填充（`pad_value=0`）。填充颜色不影响推理精度（模型对 padding 区域不敏感），但影响逆映射——灰边 114 是 mediapipe-rknn 参考实现的约定，保持与训练时一致。
+调用方只需确保输入为 RGB 格式、uint8 数据类型、shape `(1, 256, 256, 3)` 的 NHWC 张量。**手动除以 127.5 再减 1 会导致双重归一化**——板端实测 presence 从 0.998 暴跌至 0.055，骨架完全不输出。这与实验4 YOLOv8 的"不做归一化、直喂 uint8"是同一类设计思路：量化模型内部已含 scale/zero_point，外部归一化会破坏输入分布。
+- **letterbox 策略对比**：本实验的 `resize_pad`（`pose.py` L42-53）采用灰边填充（`np.full((size, size, 3), 114, dtype=np.uint8)`），而实验4 YOLOv8 的 letterbox 默认用黑边填充（`pad_value=0`）。填充颜色不影响推理精度（模型对 padding 区域不敏感），但影响逆映射——灰边 114 是 mediapipe-rknn 参考实现的约定，保持与训练时一致。
 
 - **参考资源**：RKNN Toolkit2 User Guide 归一化配置文档；MediaPipe Pose Landmark 模型规格；mediapipe-rknn GitHub 项目 pose_landmark 转换脚本。
 
@@ -5542,7 +5061,7 @@ graph LR
 
 **知识储备补充**：
 
-- **MJPEG 推流架构**：`mjpeg_server.py` 使用 `mjpeg_streamer` 库（pip 安装），`MjpegServer` 类封装了 HTTP 服务器 + JPEG 编码流。核心接口：`set_frame(bgr)` 接收 BGR numpy 数组，库内部编码为 JPEG 并通过 HTTP chunked transfer 推送到订阅者。流地址格式 `http://<host>:<port>/<stream_name>.mjpg`，本实验使用 `:8082/pose.mjpg`（区别于实验9 的 `:8081/face.mjpg`）。`start()` 方法含端口预检——若端口已被占用（上个 demo 未关），立即报错退出，避免静默 404。
+- **MJPEG 推流架构**：`mjpeg_server.py` 使用 `mjpeg_streamer` 库（pip 安装），`MjpegServer` 类封装了 HTTP 服务器 + JPEG 编码流。核心接口：`set_frame(bgr)` 接收 BGR numpy 数组，库内部编码为 JPEG 并通过 HTTP chunked transfer 推送到订阅者。流地址格式 `http://<host>:<port>/<stream_name>.mjpg`，本实验使用 `:8082/pose.mjpg`（区别于实验8 的 `:8081/face.mjpg`）。`start()` 方法含端口预检——若端口已被占用（上个 demo 未关），立即报错退出，避免静默 404。
 - **状态栏设计**：`put_status`（`view.py`）在双栏底部绘制 24px 高黑条，白字显示 `FPS: N Pose: OK/--`。`Pose: OK` 表示当前帧检测到人体（`result.detected = True`），`Pose: --` 表示无人或 presence 低于阈值。`add_fps` 在左栏左上角叠加红字 `FPS : N`，字体大小 0.9、红色 `(0,0,255)`，与 vendor 视觉风格对齐。
 - **参考资源**：mjpeg_streamer PyPI 文档；OpenCV `cv2.putText` API。
 
@@ -5734,6 +5253,502 @@ graph LR
 
 ---
 
+## 实验10：基于深度信息的3D物体检测实验（4h）
+
+> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection/`。⚠️ **内容说明**：按 `depth_viewer_guide.md` 移植规格实现——**深度相机双栏显示（左 RGB | 右 Depth 伪彩）+ 点击读深度（mm/m + 相机坐标反投影）**，规格明确「无检测」（visual_grasp 最小子集）。vendor 参考课用 MediaPipe Objectron（mediapipe 无 aarch64 wheel，弃用）。单测 24/24 全绿，板端验证通过（深度合成）。
+
+### 1.1 关联知识点
+
+- 1.1.1 深度相机原理 > 原理 > HP60C 深度相机（RGB 镜头 + 深度传感器）输出 uint16 深度图（单位 mm），0 表示无效像素；区别于普通 RGB 相机的 2D 信息，深度提供"距离"维度
+- 1.2.1 深度图处理 > 流程 > uint16 PNG 加载（mm）→ 有效像素 min-max 归一化 → jet 伪彩映射（`applyColorMap`），灰度近远可视化
+- 1.2.2 点击读深度 > 流程 > 窗口坐标 (u,v) 除以 display_scale 还原原图坐标 → 读 depth[v,u]（mm）→ ×0.001 转米
+- 1.3.1 相机坐标反投影 > 公式 > x=(u-cx)·z/fx, y=(v-cy)·z/fy（相机内参 fx/fy/cx/cy 来自 ascam.yaml 标定），把像素+深度映射为 3D 坐标
+- 1.3.2 实时深度可视化 > 流程 > 板上 ROS2 话题取流（严禁 remap）→ 双栏合成（RGB|Depth）→ MJPEG 推流 + 窗口点击交互
+
+### 1.2 实验目标
+
+1. 掌握深度相机的成像原理与深度图数据格式（uint16 mm、无效值语义）— 原理理解
+2. 实现深度图加载、伪彩可视化与点击读深度功能 — 独立完成
+3. 理解相机内参反投影原理，实现像素坐标 → 3D 相机坐标的换算 — 迁移应用
+
+### 1.3 实验环境
+
+| 类别 | 配置 |
+|------|------|
+| 硬件 | 具身智能实验箱 B2（XFLZ_EAI_B2_PRO，RK3576 SoC，6TOPS NPU，含 HP60C 深度相机） |
+| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv） |
+| 核心库 | OpenCV、NumPy（纯 CPU，无需 NPU） |
+| 数据源 | 文件模式（uint16 PNG）+ ROS 模式（ascamera 话题，板载 rclpy） |
+| 主入口 | `src/app.py`（--display 窗口点击 / MJPEG 推流 / --ros 板上模式） |
+
+### 1.4 实验难度
+
+- 难度: ⭐⭐ 设计性
+- 重点: 深度图可视化 + 点击读深度 + 内参反投影
+- 难点: 相机内参理解与反投影公式；无效像素处理（0 值）；窗口坐标缩放还原
+
+### 1.5 实验现象
+
+**快速验证流程**：
+
+1. 进入项目目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection`
+
+2. 单元测试：`pytest tests/ -v`（24 用例全绿）
+
+3. 文件模式（需 config 填 rgb_path/depth_path，depth 为 uint16 PNG）：
+
+4. 点击深度图任一点 → 终端 `Click (u, v): z = XXXX mm (X.XXX m)`；有内参时附加 `xyz=(x, y, z) m`
+
+5. 板上 ROS 模式：先起相机驱动，再 `python src/app.py --config config/depth3d_config.yaml --ros`
+   - MJPEG：`http://<板IP>:8080/depth.mjpg`
+   
+   ```bash
+   # 进入实验00
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   
+   # 可选
+   /home/iflytek/ros2_venv/bin/python -m pytest -v
+   
+   # 相机实时，修改config配置detect.classes为0（人）
+   ros2 launch ascamera hp60c.launch.py        										# 终端 1
+   python src/app.py --config config/depth3d_config.yaml --display                     # 终端 2
+   ```
+
+**执行现象**：
+
+1. 单元测试 `pytest tests/ -v` 输出 24 个用例全部 passed（约 10-20 秒完成），覆盖 depth.py / view.py / app.py / config.py 四个模块
+2. 文件模式窗口打开后，左侧显示 RGB 彩色图像（正常拍照色彩），右侧显示深度伪彩图（jet 色带：近处物体偏红色/暖色调，远处背景偏蓝色/冷色调），顶部黄色状态栏文字 "Click depth image to read depth" 清晰可见
+3. 点击近处物体（如桌面物体）→ 终端输出类似 `Click (320, 240): z = 523 mm (0.523 m) xyz=(0.012, -0.005, 0.523) m`；点击远处背景 → z 值显著增大（如 1500 mm 以上）；点击无效区域（无深度处）→ 输出 `invalid`
+4. 板上 ROS 模式启动后，MJPEG 推流画面实时刷新，移动相机或物体时深度数值连续变化，左 RGB 右 Depth 双栏同步更新
+
+**预期效果描述**：
+- 双栏图：左 RGB、右 Depth 伪彩（jet，近红远蓝或按映射），状态栏文字可见
+- 点击物体 vs 背景数值差异明显（物体近、背景远）；无效区（0）提示 invalid
+- 有内参时输出相机坐标 `xyz=(x, y, z) m`——为 3D 定位/抓取打基础
+- 板上：`ros2 topic hz .../rgb0/image` ≈ 25Hz；深度单位 mm（数值勿 ×1000 误解）
+
+```bash
+Click (269, 324): z = 309 mm (0.309 m)  xyz=(-0.039, 0.046, 0.309) m
+```
+
+![image-20260820163436128](assets/image-20260820163436128.png)
+
+### 1.6 实验步骤
+
+#### 整体流程图
+
+```mermaid
+graph LR
+    A[步骤1：深度相机原理认知] --> B[步骤2：深度图加载与归一化]
+    B --> C[步骤3：伪彩可视化]
+    C --> D[步骤4：点击读深度]
+    D --> E[步骤5：内参反投影3D坐标]
+    E --> F[步骤6：实时双栏可视化]
+    F --> G[完成]
+```
+
+---
+
+#### 步骤1：深度相机原理认知（阶段一：能运行，20min）
+
+> 📌 本步骤对应源码：`config/depth3d_config.yaml`
+
+**知识点讲解**：
+
+**深度相机与深度图格式（1.1.1）**
+- **原理**：HP60C 深度相机由 RGB 镜头 + 深度传感器（结构光/ToF 类）构成，深度传感器输出**逐像素距离图**。深度图格式约定：**uint16 存储，单位毫米（mm）**，0 值表示该像素无效（未测到/太近/太远）。为什么用 uint16？——深度范围可达 0-65535mm（65 米），uint8 只有 0-255mm 不够用。深度图与 RGB 图经标定对齐（同一视角），是后续 3D 感知（点云、抓取定位）的基础数据。
+- **源码对应**：`config/depth3d_config.yaml`（depth.scale=0.001 mm→m / invalid=0 / display_scale / camera 内参）
+
+**知识储备补充**：
+
+- **深度传感器工作原理**：HP60C 采用主动红外深度传感技术（结构光或 ToF），发射红外散斑或调制光，经物体反射后由红外接收器采集。深度传感器通过三角测量或飞行时间（ToF）计算每个像素到相机的物理距离，输出与 RGB 图像分辨率一致的逐像素深度矩阵。结构光方案在近距（0.2-1.5m）精度较高但受环境光干扰大；ToF 方案抗环境光强但近距离精度略低。HP60C 两种技术融合，适用于室内机器人场景。
+
+![深度相机介绍-CSDN博客](assets/1157643a6d094c2589f57e1c7aaed5a6.png)
+
+- **深度图数据结构**：深度图本质是一个二维矩阵，每个元素存储该像素位置的物理距离。OpenCV 中深度图通常以单通道 `uint16` 格式存储在 PNG 文件中，0 值约定为"无效像素"（无反射信号/超出量程/遮挡）。实际深度值范围 1mm-65535mm，uint16 的 16bit 位宽恰好覆盖机器人常用的 0.1-6m 测距范围。
+- **RGB-D 对齐意义**：深度图与 RGB 图像在空间上逐像素对齐（同一视角、同一时刻采集），意味着 RGB 图像的每个像素 $(u,v)$ 都对应一个深度值 $d(u,v)$，形成 **RGB-D 数据对**。这是后续 3D 感知（点云生成、物体 6DoF 位姿估计、机械臂抓取定位）的基础——没有深度，2D 图像无法直接提供物体在三维空间中的位置信息。
+
+- **参考资源**：HP60C 深度相机技术规格书（厂商文档）；Intel RealSense 深度相机原理（同类技术对比）；OpenCV `cv2.IMREAD_UNCHANGED` 官方文档。
+
+**配置参数速查表**（`config/depth3d_config.yaml`，按区块分列）：
+
+| 区块 | 参数 | 类型 | 默认/示例 | 说明 |
+|------|------|------|-----------|------|
+| `depth` | `scale` | float | `0.001` | uint16 mm→米（÷1000） |
+| `depth` | `invalid_value` | int | `0` | 无效深度值（0=无效，平台事实） |
+| `depth` | `colormap` | str | `jet` | 深度伪彩（jet/gray） |
+| `depth` | `display_scale` | float | `0.666` | 显示缩放（点击坐标 ÷scale 还原 640×480） |
+| `cam3d` | `fx`/`fy` | float | `608.39958`/`611.20714` | 相机内参（HP60C 标定，ascam.yaml 来源） |
+| `cam3d` | `cx`/`cy` | float | `328.30096`/`226.46483` | 主点坐标 |
+| `cam3d` | `width`/`height` | int | `640`/`480` | 分辨率 |
+| `source` | `mode` | str | `ros` | image（文件对）/ros（板上 rclpy 订阅；板上标准） |
+| `source` | `rgb_path` | str | `""` | image 模式 RGB 图路径（BGR png/jpg） |
+| `source` | `depth_path` | str | `""` | image 模式深度图路径（uint16 png） |
+| `display` | `show`/`window_name` | bool/str | `false`/`RGB | Depth` | 本地窗口 |
+| `server` | `port` | int | `8080` | MJPEG 端口 |
+| `server` | `stream_name` | str | `depth.mjpg` | MJPEG 流名 |
+
+> **说明**：`depth.scale`/`invalid_value` 是深度读数关键（uint16 mm + 0 无效）；`cam3d` 内参仅点击反投影用（HP60C 标定值，勿随意改）；`source.mode=ros` 为板上标准（image 需提供 rgb+depth 文件对）。
+
+**操作步骤**：
+
+1. 查看 `config/depth3d_config.yaml`，理解 depth.scale（0.001 = mm→m）、invalid（0）、display_scale（显示缩放）、camera（fx/fy/cx/cy 内参）
+2. 查看内参来源（`ascam.yaml`，HP60C RGB 标定）
+3. 思考：深度为 0 的像素代表什么？为什么不能当真实距离 0mm？
+
+**流程图（深度数据链路）**：
+
+```mermaid
+graph LR
+    A[RGB uint8 图] --> B[深度 uint16 mm 图]
+    B --> C[像素对齐 RGB-D 对]
+    C --> D[逐像素物理距离]
+    D --> E[3D 感知基础]
+```
+
+**易错点**：
+
+- ⚠️ 深度单位 mm：数值勿 ×1000 误解（z_mm → z_m 用 ×0.001，不是 ×1000）
+
+---
+
+#### 步骤2：深度图加载与归一化（阶段一：能运行，25min）
+
+> 📌 本步骤对应源码：`src/depth.py` load_depth / normalize_depth
+
+**知识点讲解**：
+
+**uint16 加载与归一化（1.2.1）**
+
+- **原理**：`load_depth()`（L22-27）用 `cv2.imread(path, IMREAD_UNCHANGED)` **保留 16bit** 读取（不带 UNCHANGED 会被截断成 8bit，深度全毁），返回 mm 数组。`normalize_depth()`（L30-41）把有效像素 min-max 线性拉伸到 0-255：先屏蔽无效值（`depth != invalid`），对有效像素求 min/max 后线性映射；单值深度（hi==lo）直接置 255 全亮。归一化是伪彩可视化的前置——深度范围大（0.3m-10m），直接 8bit 显示会糊成一片。
+- **源码对应**：`src/depth.py` L22-27（load_depth）、L30-41（normalize_depth：有效掩膜 L33 / min-max 映射 L35-40）
+
+**知识储备补充**：
+
+- **IMREAD_UNCHANGED 机制**：OpenCV 的 `cv2.imread()` 默认行为是将图像转换为 `uint8`（8bit），无论原文件是 16bit 还是 32bit。`IMREAD_UNCHANGED` 标志禁止这种截断转换，保留原始数据类型。对于深度图（uint16 PNG），截断意味着所有 >255mm 的深度值被 mod 256 截断——例如 500mm 变成 244mm，完全失去物理意义。这是深度图处理中最常见的初学者陷阱。
+- **min-max 归一化原理**：将深度值从原始范围 $[d_{\min}, d_{\max}]$ 线性映射到 $[0, 255]$：
+
+  $$
+  d_{\text{norm}}(u,v) = \frac{d(u,v) - d_{\min}}{d_{\max} - d_{\min}} \times 255
+  $$
+
+  其中 $d_{\min}, d_{\max}$ 仅在有效像素（$d \neq 0$）中统计。屏蔽无效值（0）避免将"无深度"误判为"最近"——若不屏蔽，0 值会使 $d_{\min}=0$，有效深度的对比度大幅压缩（例如 1m-5m 的物体被映射到 51-255，细节丢失）。
+- **单值深度处理**：当所有有效像素深度值相同（$d_{\max} = d_{\min}$），归一化公式分母为 0，直接置 255 全亮（`normalize_depth` L38-39）。这在近距离平面物体（如桌面）拍摄时常见——整个物体处于同一深度，伪彩图呈现均匀颜色。
+- **参考资源**：OpenCV `cv2.imread` 官方文档（IMREAD_UNCHANGED 说明）；NumPy `ndarray.astype` 类型转换文档。
+
+**操作步骤**：
+
+1. 验证深度图读取与归一化（16bit 保留；无真实深度图时用合成数组演示）：
+   ```bash
+   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   
+   PYTHONPATH=./src python -c "
+   import numpy as np
+   from depth import load_depth, normalize_depth
+   d = np.zeros((20, 20), np.uint16); d[5:15, 5:15] = 500   # 合成：中央 500mm 物体
+   print('dtype:', d.dtype, '范围:', d.min(), '-', d.max())
+   print('无效像素占比:', float((d == 0).mean()))            # 0 = 无效
+   norm = normalize_depth(d)
+   print('归一化后 0-255:', norm.min(), '-', norm.max(), '(无效区=0)')"
+   # 真图：d = load_depth('depth.png')   # uint16 PNG，IMREAD_UNCHANGED 保留 16bit
+   # 预期：dtype uint16；范围 0-500；无效占比 0.75；归一化中央 255、无效区 0
+   ```
+
+   ```bash
+   dtype: uint16 范围: 0 - 500
+   无效像素占比: 0.75
+   归一化后 0-255: 0 - 255 (无效区=0)
+   ```
+
+2. 用普通 imread（不带 UNCHANGED）对照读取，观察深度数据是否被截断破坏
+
+3. 打印无效像素占比：`float((d==0).mean())`
+
+**流程图（加载与归一化）**：
+
+```mermaid
+graph LR
+    A[IMREAD_UNCHANGED] --> B[uint16 深度图]
+    B --> C[屏蔽无效值 0]
+    C --> D[有效像素 min-max]
+    D --> E[0-255 归一化]
+```
+**易错点**：
+- ⚠️ 不带 IMREAD_UNCHANGED → 16bit 截断成 8bit，深度数据毁坏
+- ⚠️ 归一化必须屏蔽无效值，否则 0 值拉低 min 使有效深度对比度受损
+
+---
+
+#### 步骤3：伪彩可视化（阶段二：能理解，20min）
+
+> 📌 本步骤对应源码：`src/depth.py` pseudocolor
+
+**知识点讲解**：
+
+**伪彩映射原理（1.2.1）**
+- **原理**：人眼对灰度梯度不敏感，深度图用**伪彩**（colormap）增强可读性。`pseudocolor()`（L44-48）：`cv2.applyColorMap(depth_norm, COLORMAP_JET)` 把 8bit 灰度映射为 jet 彩色（低值蓝→高值红，或按映射表）；`gray` 模式退化为三通道灰阶。jet 的优势：相邻深度差异用色相区分，肉眼可快速判断远近层次。双栏右侧即此伪彩图。
+- **源码对应**：`src/depth.py` L44-48（pseudocolor：gray L46-47 / jet L48）
+
+**知识储备补充**：
+
+- **伪彩映射原理**：伪彩（pseudocolor）是一种将单通道灰度图像映射为三通道彩色图像的技术，目的是增强人眼对数值差异的感知能力。人眼视网膜约有 100 万个视杆细胞（感知亮度）但有 600 万个视锥细胞（感知颜色），对色相差异的分辨力远高于灰度差异。对于深度图，伪彩将连续的深度值映射为从蓝（远）到红（近）的连续色带，使操作者一眼即可区分远近层次。
+- **COLORMAP_JET 色带**：OpenCV 的 `COLORMAP_JET` 是最常用的深度伪彩方案，色带从低值到高值依次为：深蓝 → 浅蓝 → 青 → 绿 → 黄 → 橙 → 红。低值（0）对应深蓝（近处/最近），高值（255）对应红色（远处/最远）。注意：归一化后的 0 值像素（无效区）也被映射为深蓝，这与"近处深蓝"的语义存在冲突——实际应用中需区分"有效深蓝（近处）"与"无效深蓝（无深度）"。
+- **gray 模式退化**：`gray` 模式将 8bit 灰度直接复制为三通道（`COLOR_GRAY2BGR`），等效于显示原始灰度图。适用于对比伪彩与灰度的可读性差异——灰度模式下近处（高值，亮灰）与远处（低值，暗灰）的对比度远低于伪彩模式。
+
+- **参考资源**：OpenCV `cv2.applyColorMap` 官方文档（COLORMAP_JET 色带说明）；matplotlib `imshow` colormap 选项（伪彩方案对比）。
+
+**操作步骤**：
+
+1. 生成伪彩图并保存（无真实深度图时用合成数组演示）：
+   ```bash
+   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   
+   PYTHONPATH=./src python -c "
+   import numpy as np, cv2
+   from depth import load_depth, normalize_depth, pseudocolor
+   d = np.zeros((20, 20), np.uint16); d[5:15, 5:15] = 500
+   norm = normalize_depth(d)
+   jet = pseudocolor(norm, 'jet')
+   print('jet 形状:', jet.shape, jet.dtype)      # (20,20,3) uint8 BGR 伪彩
+   cv2.imwrite('depth_jet.png', jet)           # 真图：d = load_depth('depth.png')
+   print('伪彩图已保存 depth_jet.png')"
+   # 预期：jet (20,20,3) uint8；gray 模式输出三通道灰阶
+   ```
+2. 对比 jet / gray 两种模式的可读性差异
+3. 思考：为什么深度可视化用伪彩而非灰度？工业应用（如避障调试）中哪种更直观？
+
+**流程图（伪彩映射）**：
+
+```mermaid
+graph LR
+    A[8bit 深度图] --> B[applyColorMap jet]
+    B --> C["(H,W,3) 伪彩"]
+    C --> D[近红远蓝]
+```
+**易错点**：
+- ⚠️ applyColorMap 要求 8bit 输入——必须先 normalize_depth 再伪彩
+
+---
+
+#### 步骤4：点击读深度（阶段二：能理解，25min）
+
+> 📌 本步骤对应源码：`src/depth.py` read_depth、`src/app.py` 点击事件
+
+**知识点讲解**：
+
+**窗口坐标还原（1.2.2）**
+- **原理**：`read_depth()`（L51-66）实现点击读深度：先做**边界检查**（u/v 越界返回无效，L55-56），再读 `depth[v,u]`（L57），0 值返回无效（L58-59），有效则 `z_m = z_mm * 0.001` 转米（L60）。**关键细节**：窗口显示有缩放（display_scale），点击坐标 (u,v) 必须**除以 display_scale** 还原为原图坐标再读深度——否则读错像素（README 验证要点明确要求）。`ClickResult`（L15-19）承载 z_mm/z_m/xyz 三态结果。
+- **源码对应**：`src/depth.py` L51-66（read_depth：边界检查 L55-56 / 读深度 L57 / 无效值 L58-59 / 米转换 L60）；`src/app.py`（鼠标回调：坐标 ÷ display_scale）
+
+**知识储备补充**：
+
+- **坐标缩放还原原理**：显示窗口将原始图像（640×480）按 `display_scale=0.666` 缩放后显示（实际显示约 426×320 像素）。用户点击的是显示窗口坐标，而深度数组索引需要原始图像坐标。坐标转换公式：
+
+  $$
+  u_{\text{原图}} = \frac{x_{\text{窗口}}}{\text{display\_scale}}, \quad v_{\text{原图}} = \frac{y_{\text{窗口}}}{\text{display\_scale}}
+  $$
+
+  `view.py` 的 `click_to_pixel()`（L30-35）处理双栏视图的特殊逻辑：当点击位置在右栏（深度栏）时，需先减去左栏宽度（`left_w = img_w × scale`）再除以 scale。`screen_to_pixel()`（L24-27）执行通用的 ÷scale 还原。
+- **ClickResult 三态**：`ClickResult`（L15-19）是深度读取的结构化结果——`z_mm`（整数毫米）、`z_m`（浮点米）、`xyz`（相机坐标系 3D 坐标或 None）。当 `cam` 参数为 None 时（未配置内参），`xyz` 为 None；配置内参后附加反投影坐标。这种"可选增强"设计使同一函数适配有无内参两种场景。
+- **边界检查防御**：`read_depth()` 先检查 `0 <= u < w and 0 <= v < h`（L55-56），越界直接返回 `ClickResult(0, 0.0, None)`。这是防御性编程——防止用户点击窗口边缘（缩放后边界可能对不齐）导致数组越界崩溃。
+
+- **参考资源**：NumPy 数组索引文档（`array[v, u]` 行列顺序说明）；OpenCV 鼠标回调 `cv2.setMouseCallback` 官方文档。
+
+**操作步骤**：
+
+1. 文件模式窗口点击（板上：x86 无 mjpeg_streamer，`app.py` 的 `require()` 会提示安装并退出）：
+   ```bash
+   # 进入实验目录
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   
+   ros2 launch ascamera hp60c.launch.py        										# 终端 1
+   python src/app.py --config config/depth3d_config.yaml --display                     # 终端 2
+   # 点击深度图任一点，终端输出 Click (u,v): z = XXXX mm (X.XXX m)
+   ```
+2. 分别点击近处物体与远处背景，对比深度数值差异（物体近、背景远）
+3. 点击无效区域（无深度处），观察 invalid 提示
+4. 验证坐标还原（板上窗口）：窗口缩放后点击同一物理点，确认读出深度一致（÷ display_scale 生效）
+
+![image-20260820163436128](assets/image-20260820163436128.png)
+
+**流程图（点击读深度）**：
+
+```mermaid
+graph LR
+    A[窗口点击 x,y] --> B[除以 display_scale]
+    B --> C[原图 u,v]
+    C --> D["读depth[v,u]"]
+    D --> E{深度 = 0?}
+    E -->|是| F[无效]
+    E -->|否| G[mm → m]
+```
+**易错点**：
+- ⚠️ 点击坐标不除 display_scale → 读错像素（缩放窗口时尤其明显）
+
+---
+
+#### 步骤5：相机内参反投影（阶段三：能改造，30min）
+
+> 📌 本步骤对应源码：`src/depth.py` read_depth 反投影段
+
+**知识点讲解**：
+
+**针孔模型与反投影公式（1.3.1）**
+- **原理**：相机把 3D 点投影到 2D 像素遵循**针孔模型**：`u = fx·x/z + cx`，`v = fy·y/z + cy`（fx/fy 焦距像素、cx/cy 光心偏移，来自标定）。**反投影**（2D+深度 → 3D）即逆运算：`x = (u-cx)·z/fx`，`y = (v-cy)·z/fy`（L63-64），z 为深度（米）。这一公式把"像素 + 距离"换算为**相机坐标系下的 3D 坐标**——是机械臂抓取定位、点云生成、避障的核心数学。内参默认取 `ascam.yaml`（HP60C RGB 标定），驱动配置加密，深度内参以实测微调。
+- **源码对应**：`src/depth.py` L62-65（反投影：x L63 / y L64 / xyz 元组 L65）；`config/depth3d_config.yaml` camera 内参
+
+**知识储备补充**：
+
+- **针孔相机模型（Pinhole Camera Model）**：针孔模型是最基本的相机几何模型，假设光线通过一个无穷小的针孔投影到成像平面。3D 空间点 $(x, y, z)$（相机坐标系，z 为光轴方向即深度）投影到 2D 像素 $(u, v)$ 的正向公式：
+$$
+  u = f_x \cdot \frac{x}{z} + c_x, \quad v = f_y \cdot \frac{y}{z} + c_y
+  $$
+  
+其中 $f_x, f_y$ 为焦距（单位：像素），$c_x, c_y$ 为主点（光轴与成像平面交点的像素坐标）。这四个参数 $(f_x, f_y, c_x, c_y)$ 统称为**相机内参**（intrinsic parameters），由相机标定（calibration）获得。HP60C 的标定结果存储在 `ascam.yaml` 中。
+
+<img src="assets/image-20260820164529174.png" alt="image-20260820164529174" style="zoom:67%;" />
+
+- **反投影公式推导**：由正向投影公式反解 $(x, y)$：
+  $$
+  x = (u - c_x) \cdot \frac{z}{f_x}, \quad y = (v - c_y) \cdot \frac{z}{f_y}
+  $$
+
+  其中 $z$ 为该像素的深度值（单位：米）。代码实现（`src/depth.py` L63-64）：`x = (u - cam["cx"]) * z_m / cam["fx"]`。反投影要求 $z$ 为米（与 $f_x$ 的像素/米标度一致），这也是为什么深度值需先从 mm 转换为 m（$\times 0.001$）。得到的 $(x, y, z)$ 是**相机坐标系**下的 3D 坐标——原点在相机光心，z 轴沿光轴指向场景。
+
+- **内参标定与误差传递**：相机内参通过棋盘格标定（张正友标定法）获得，标定精度直接影响反投影的 3D 坐标质量。内参误差（焦距偏差、主点偏移）会随深度 $z$ 线性放大到 3D 坐标：$x$ 的误差 $\Delta x = \Delta c_x \cdot z / f_x + (u - c_x) \cdot \Delta z / f_x$。对于远距离目标（$z$ 大），内参偏差的影响更显著。HP60C 的 RGB 内参来自 `ascam.yaml` 标定，深度内参需以实测微调（`config/depth3d_config.yaml` 的 `cam3d` 区块）。
+
+- **参考资源**：张正友相机标定法论文（Z. Zhang, *A Flexible New Technique for Camera Calibration*, 2000）；OpenCV `cv2.calibrateCamera` 官方文档；Intel RealSense 内参说明（同类深度相机参考）。
+
+**操作步骤**：
+
+1. 配置内参后点击读深度，观察附加输出（板上窗口：x86 无 mjpeg_streamer，`app.py` 的 `require()` 会直接退出）：
+   ```bash
+   # 进入实验目录
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   
+   ros2 launch ascamera hp60c.launch.py        										# 终端 1
+   python src/app.py --config config/depth3d_config.yaml --display                     # 终端 2
+   # 点击深度图任一点，终端预期：Click (u, v): z = XXXX mm (X.XXX m) xyz=(x, y, z) m
+   ```
+2. 验证反投影合理性：同一物体不同像素点击，z 相近但 x/y 随像素位置变化（近大远小）
+3. 手工验证公式：给定 u,v,z 手算 x,y，与程序输出对比
+4. 思考：fx/fy/cx/cy 的物理意义？为什么标定误差会放大到 3D 坐标？
+
+**流程图（内参反投影）**：
+
+```mermaid
+graph LR
+    A[像素 u,v + 深度 z] --> B["x=(u-cx)×z/fx"]
+    B --> C[相机坐标系 3D]
+    C --> D[机械臂抓取]
+```
+**易错点**：
+- ⚠️ 反投影要求 z 为**米**（公式中 z 单位须与 fx 的像素/米标度一致，L63-64 用 z_m）
+- ⚠️ 内参不准 → 3D 坐标系统性偏移（深度内参以实测微调）
+
+---
+
+#### 步骤6：实时双栏可视化（阶段三：能改造，30min）
+
+> 📌 本步骤对应源码：`src/app.py`、`src/ros2_source.py`（或 ROS 模式取流）
+
+**知识点讲解**：
+
+**实时深度链路（1.3.2）**
+- **原理**：板上 ROS 模式：ascamera 驱动发布 RGB（`.../rgb0/image`）与深度（`.../depth0/image`）话题，`app.py` 订阅（**严禁 remap**——话题名与驱动约定一致）→ 深度图经 load/normalize/pseudocolor 处理 → 与 RGB 合成双栏 → MJPEG 推流（`http://<板IP>:8080/depth.mjpg`）。`view.py` 负责双栏合成 + 状态栏 + 点击坐标还原/标注。已知坑：首帧黑帧（`rgb.mean() < 5` 跳过，已内置）；深度 0 = 无效。
+- **源码对应**：`src/app.py`（main：文件/ROS 模式 / 双栏合成 / MJPEG / 鼠标回调）；`src/view.py`（双栏合成 + 状态栏）；`src/depth.py`（处理管线）
+
+**知识储备补充**：
+
+- **ROS2 话题订阅与帧缓存**：`ros2_source.py` 的 `Ros2Camera` 类封装了 ROS2 话题订阅逻辑——`open()` 惰性导入 `rclpy`，创建节点订阅 `/ascamera_hp60c/camera_publisher/rgb0/image`（`sensor_msgs/Image`，BGR8 编码），回调 `_on_image()` 将 `cv_bridge` 转换后的 BGR 帧存入 `_frame` 缓冲区。`read()` 方法阻塞等待首帧或超时（默认 5s），返回 `(True, frame)` 或 `(False, None)`。这种"VideoCapture 兼容接口"设计使文件模式与 ROS 模式的主循环代码完全一致——切换模式只需替换数据源。
+- **双栏合成逻辑**：`view.py` 的 `compose_rgbd()`（L11-22）将 RGB 与伪彩深度图水平拼接：左栏 RGB、右栏深度伪彩，均按 `display_scale` 缩放（L15-17），顶部叠加黄色状态栏文字（L19-20）。`np.hstack()` 执行水平拼接，输出形状为 `(H', 2W', 3)`。
+- **MJPEG 推流**：`mjpeg_server.py` 启动 HTTP 服务器监听 `:8080`，`set_frame()` 方法将最新合成帧编码为 JPEG 并通过 multipart 流推送给浏览器客户端。客户端通过 `http://<板IP>:8080/depth.mjpg` 访问实时画面，无需安装任何客户端软件。
+- **参考资源**：ROS2 `sensor_msgs/Image` 消息定义；cv_bridge 官方文档（ROS Image ↔ OpenCV 转换）；MJPEG streaming HTTP 协议说明。
+
+**操作步骤**：
+
+1. 板上 ROS 模式：
+   ```bash
+   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   # 终端 1：起相机驱动（HP60C，话题名不可 remap）
+   source ~/ros2_ws/install/setup.bash
+   ros2 launch car1_peripherals depth_camera.launch.py
+   # 终端 2：运行深度查看器
+   source ~/ros2_ws/install/setup.bash
+   python src/app.py --config config/depth3d_config.yaml --ros --display
+   # MJPEG: http://<板IP>:8080/depth.mjpg
+   ```
+2. 验证话题频率：`ros2 topic hz .../rgb0/image`（≈ 25Hz）
+3. 实时点击读深度：对准物体移动，观察深度数值连续变化
+4. 动手改造：在双栏图中叠加"中心点深度"实时显示（十字光标 + 深度数值），实现简易测距仪
+
+![image-20260820163436128](assets/image-20260820163436128.png)
+
+**流程图（实时双栏可视化）**：
+
+```mermaid
+graph LR
+    A[ROS2 rgb0/image] --> B[RGB 帧]
+    C[ROS2 depth0/image] --> D[深度图处理]
+    B --> E[双栏合成]
+    D --> E
+    E --> F[MJPEG 推流]
+```
+**易错点**：
+- ⚠️ 话题严禁 remap——与驱动约定不一致取不到帧
+- ⚠️ 首帧黑帧（rgb.mean()<5）已内置跳过；深度 0 = 无效勿当 0mm
+
+---
+
+### 1.7 常见问题
+
+| 问题 | 原因 | 解决方法 |
+|------|------|---------|
+| 深度数值偏大 1000 倍 | mm 与 m 单位误解 | mm→m 用 ×0.001（`depth.scale`），勿 ×1000 |
+| 深度图全黑/花屏 | 读取时未保留 16bit | `cv2.imread(path, IMREAD_UNCHANGED)` |
+| 点击读出深度与画面不符 | 窗口缩放未还原坐标 | 点击坐标 ÷ display_scale 再读 |
+| 无效区读出 0 | 该像素无深度（正常） | 识别 0 为 invalid（L58-59），勿当 0mm |
+| 3D 坐标偏移 | 内参不准 | 深度内参以实测微调（config camera） |
+| 首帧黑帧 | 相机首帧未就绪 | 已内置 `rgb.mean()<5` 跳过 |
+| ROS 取不到帧 | 话题 remap 或驱动未起 | 严禁 remap；确认驱动话题与 config 一致 |
+| --ros 帧率低 | 话题频率不足 | `ros2 topic hz` 验证 ≈25Hz |
+
+### 1.8 扩展实验
+
+**扩展方向 1：简易测距与越界报警（进阶）**
+- 在双栏图中叠加中心点深度实时显示；设定安全距离阈值（如 <0.5m 报警），实现避障原型
+
+**扩展方向 2：点云生成（进阶）**
+- 遍历有效深度像素批量反投影为 3D 点，用 Open3D 或 matplotlib 生成稀疏点云可视化，体验"深度图 → 点云"的完整 3D 感知链路
+
+### 1.9 实验报告要求
+
+**评分标准**：深度相机原理 15 分 + 深度图处理 20 分 + 伪彩可视化 15 分 + 点击读深度 20 分 + 反投影 20 分 + 报告 10 分 = 100 分。
+
+**报告必含内容**：
+1. 深度图格式说明（uint16/mm/0 无效）与加载对比（UNCHANGED vs 默认）
+2. 归一化前后深度直方图或对比图
+3. 双栏可视化截图（左 RGB | 右 Depth 伪彩）
+4. 点击读深度记录表（≥5 个点：物体/背景/无效区）
+5. 反投影验证：手算 vs 程序输出对比
+6. 回答思考题：为什么深度用 uint16？反投影公式的物理意义？标定误差如何影响 3D 坐标？
+7. 实验心得与问题记录
+
+---
+
+## 更新日志
+
+| 版本 | 日期 | 变更 |
+|------|------|------|
+| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection，24 用例全绿，uint16 深度加载 + jet 伪彩 + 点击读深度 + 内参反投影 + 双栏 MJPEG，板端验证通过） |
+| v2.0 | 2026-08-19 | 知识点增强：6 个「知识储备补充」小节（深度传感器原理与 RGB-D 对齐、IMREAD_UNCHANGED 与 min-max 归一化原理、伪彩映射原理与 JET 色带、坐标缩放还原与 ClickResult、针孔模型反投影公式推导与内参标定误差传递、ROS2 话题订阅与双栏合成）；4 个公式块（min-max 归一化、针孔正向投影、反投影公式、深度归一化）；Mermaid 流程图；执行现象段；行号基于源码核实 |
+| v2.1 | 2026-08-21 | 步骤 1 新增「配置参数速查表」：config/depth3d_config.yaml 全参数（depth/cam3d/source/display/server）；标注 depth.scale=0.001（mm→m）、invalid_value=0、cam3d 内参（HP60C 标定，ascam.yaml 来源，勿随意改）。表值经 config 实测核对 |
+
+---
+
 ## 实验11：基于肢体动作的体感控制实验（4h）
 
 > ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/11_pose_control/`。**在 exp10 姿态骨架基础上加「动作分类 → 控制指令」**（vendor 11_整体检测_体感 为纯可视化无控制逻辑；PLAN exp11 要求"动作分类→控制指令"）。5 种动作规则（actions.py，物理直觉优先），可选发布 `/cmd_vel`（默认关，防误动）。测试 55 项 x86 全绿（含 10 项动作分类），模型已转换入库。
@@ -5913,7 +5928,7 @@ graph LR
 **知识点讲解**：
 
 **exp10 能力复用（1.3.2）**
-- **原理**：体感控制直接复用实验10 的 BlazePose 33 点推理链：模型（pose_landmark_full.rknn，256×256 整图）→ RKNNLiteBackend → 33 点**原图像素坐标** [x,y,z,vis]。动作分类入口 `classify_action(landmarks_px, h, w)` 接收像素坐标 33×4 + 帧尺寸，内部 `_norm()` 归一化后执行规则判定——引擎输出像素坐标，动作模块内部归一化，职责清晰。复用而非重写是工程常态：能力分层（感知→理解→决策→执行）让每层可独立演进。
+- **原理**：体感控制直接复用实验9 的 BlazePose 33 点推理链：模型（pose_landmark_full.rknn，256×256 整图）→ RKNNLiteBackend → 33 点**原图像素坐标** [x,y,z,vis]。动作分类入口 `classify_action(landmarks_px, h, w)` 接收像素坐标 33×4 + 帧尺寸，内部 `_norm()` 归一化后执行规则判定——引擎输出像素坐标，动作模块内部归一化，职责清晰。复用而非重写是工程常态：能力分层（感知→理解→决策→执行）让每层可独立演进。
 - **源码对应**：`pose_control_core/engine.py`（PoseEngine，exp10 同款）；`backend.py`（RKNNLiteBackend）；`pose.py`（33 点解码→原图像素坐标）
 
 **知识储备补充**：
@@ -6303,7 +6318,7 @@ graph LR
 | v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/11_pose_control，55 项测试全绿，BlazePose 33 点 + 5 动作规则 + 优先级/vis 过滤 + cmd_vel 发布，模型已入库） |
 | v1.1 | 2026-08-19 | 源码同步：actions.py 重构为 Action 类(name,label) + 常量(STOP/FORWARD/BACKWARD/TURN_LEFT/TURN_RIGHT) + classify_action(landmarks_px,h,w) 统一入口；输入为像素坐标 33×4 + 帧尺寸，_norm() 内部归一化（非外部归一化）；规则值不变（0.72/0.08/优先级） |
 | v2.0 | 2026-08-19 | 知识点增强：新增 6 个「知识储备补充」小节（动作分类背景、Action 数据类设计、BlazePose 输出格式与归一化约束、阈值物理意义与归一化公式、优先级安全设计、Twist 消息与 clamp 机制、闭环管线时序）；4+ 个公式块（归一化、vis 过滤分段函数、Twist 映射）；执行现象段；参考资源 6 条；全文行号基于 actions.py L32-36/L39-43/L46-50/L53-75、view.py L12-20/L23-31、pose.py L1-8/L45-55/L58-88/L91-100 重新核对 |
-| v2.1 | 2026-08-21 | 与实验10 文档格式对齐：7 个步骤各补 Mermaid 流程图（分类认知/骨架复用/规则设计/优先级/指令映射/cmd_vel 发布/实时演示）；路径统一 `cd ~/ros2_ws/src/...` + `PYTHONPATH=car1_pose_control:$PYTHONPATH`（防 rclpy 陷阱）；步骤2 新增合成关键点命令（x86 可跑，输出 5 动作标签） |
+| v2.1 | 2026-08-21 | 与实验9 文档格式对齐：7 个步骤各补 Mermaid 流程图（分类认知/骨架复用/规则设计/优先级/指令映射/cmd_vel 发布/实时演示）；路径统一 `cd ~/ros2_ws/src/...` + `PYTHONPATH=car1_pose_control:$PYTHONPATH`（防 rclpy 陷阱）；步骤2 新增合成关键点命令（x86 可跑，输出 5 动作标签） |
 | v2.2 | 2026-08-21 | 步骤1 新增「配置参数速查表」：config/pose_control_config.yaml 全参数（model/backend/source/display/server/control）；标注 control.publish_cmd_vel 默认 false 防误动、改 config 后 launch 需 colcon build 同步 install、topic 车 vs turtlesim 可配 |
 
 ---
@@ -6868,13 +6883,10 @@ graph LR
 | v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/12_hand_control，58 项测试全绿，palm+21点+embedder+8类 4 模型管线 + 检测-跟踪状态机 + 特效/手指计数，板端验证通过） |
 | v1.1 | 2026-08-19 | 源码同步：补充 pose.py 预留模块说明（BlazePose 几何复用：POSE_CONNECTIONS/resize_pad/decode_pose/prepare，INPUT_SIZE=256，当前未被引擎引用，属预留） |
 | v2.0 | 2026-08-19 | 知识点增强：4 步骤追加「知识储备补充」（4 模型拆分动机与契约差异 / blazeface 2016 锚与 union_bbox 算法 / 状态机核心逻辑 _track_roi/_detect_roi / 逆映射矩阵公式 / norm_tensor z 归一化实测 / softmax 数值稳定 / 余弦定理夹角映射 / 5 种特效实现 / 双栏合成架构）；执行现象段追加板端实际输出描述；新增 Mermaid 检测-跟踪状态机图；公式块 4 处（仿射逆映射、norm_tensor、softmax、夹角映射）；参考资源 8 条；行号核对源码 |
-| v2.1 | 2026-08-21 | 与实验10/11 文档格式对齐：7 步骤各补 Mermaid 流程图；路径统一 `cd ~/...` + `PYTHONPATH=car1_hand_control:$PYTHONPATH`；步骤6 新增合成手指命令；1.5 快速验证与图1 截图指引修订 |
+| v2.1 | 2026-08-21 | 与实验9/11 文档格式对齐：7 步骤各补 Mermaid 流程图；路径统一 `cd ~/...` + `PYTHONPATH=car1_hand_control:$PYTHONPATH`；步骤6 新增合成手指命令；1.5 快速验证与图1 截图指引修订 |
 | v2.2 | 2026-08-21 | 步骤1 新增「配置参数速查表」：config/hand_control_config.yaml 全参数（model 4 模型/backend/source/display/server）；标注 4 模型输入契约差异（①② float32[0,1]、③ norm /224、④ float 无 mean/std）、stream_name 已含 .mjpg |
 
 ---
 
-## 更新日志
+---
 
-| 版本 | 日期 | 变更 |
-|------|------|------|
-| v2.0 | 2026-08-21 | v2 初版合并：12 个实验指导书（知识增强版，各实验含「知识点讲解/知识储备补充/配置参数速查表/Mermaid 流程图」，行号基于源码 real line numbers 核对） |

@@ -1,86 +1,92 @@
-## 实验4：二维码生成与识别检测实验（4h）
+## 实验4：基于YOLOv8的工业表面缺陷检测实验（4h）
 
-> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/04_qrcode/`。生成用 `qrcode` 库（纯 Python），检测用 **OpenCV 内置 `QRCodeDetector`**（零新增、无需模型权重，替代参考的 pyzbar——后者需系统库 libzbar0）。唯一新增依赖：`qrcode 7.4.2 + pypng`（板上需 `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple qrcode`）。单测 19/19 全绿。
+> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection/`（仓库内相对路径，根 = 课程生成项目根目录）。已随仓库交付完整训练产物（`train/weights/best.pt`、`best.onnx`，9 输出）与转换产物（`models/defect_yolov8n_int8.rknn`，int8 单核+剪枝，200 张 val 校准）。板端验证通过，实测约 **13 FPS**（NPU）。
 
 ### 1.1 关联知识点
 
-- 1.1.1 二维码编码原理 > 原理 > 二维码（QR Code）通过矩阵码元编码数据，含功能图形（定位/校正/时序）与数据区；支持版本 1-40、4 级纠错（L/M/Q/H）
-- 1.2.1 QRCode 库生成 > 流程 > `qrcode.QRCode(version, error_correction, box_size, border)` + `add_data` + `make_image`，生成图片保存
-- 1.3.1 OpenCV 实时检测 > 流程 > `cv2.QRCodeDetector.detectAndDecode` 返回数据与四角点坐标；单码图可掩掉已识别区域循环检测，但**整图多码会触发单目标检测器定位串扰而失败**（需逐码分图）
-- 1.3.2 实时识别与解析 > 流程 > 摄像头取流 → 逐帧 detectAndDecode → 框选识别区域 + 打印解析文本 → MJPEG 推流
+本实验对应第 1 章"工业缺陷检测与 YOLOv8 认知"，覆盖以下 7 个知识点（ID 遵循知识图谱编号约定，来源于 course-spec.yaml 的 knowledge_points）：
+
+- 1.1.1 YOLOv8模型架构 > 原理 > YOLOv8 采用 CSPDarknet 主干 + PAN-FPN 颈部 + 解耦检测头，引入 DFL（Distribution Focal Loss）边界框回归
+- 1.1.2 工业缺陷数据集 > 概念 > NEU-DET 数据集包含 6 类表面缺陷（crazing/inclusion/patches/pitted_surface/rolled-in_scale/scratches），YOLO 归一化标签格式
+- 1.2.1 模型训练与超参数 > 流程 > yolov8n + imgsz=640 + epochs=100 + batch=8 的训练配置与产物解读（mAP50=0.732）
+- 1.2.2 ONNX模型转换 > 流程 > 使用 RKNN 优化版 fork 导出 format=rknn 的 ONNX（3×nl 个原始张量，DFL 留在 CPU 侧，共 9 个输出）
+- 1.3.1 RKNN NPU部署 > 原理 > rknn-toolkit2 将 ONNX 转换为 rk3576 平台 int8 量化模型，RKNNLite 在 6TOPS NPU 上推理
+- 1.3.2 实时缺陷检测 > 流程 > letterbox 预处理 → RGB 通道交换 → NPU 推理 → DFL 解码 + 逐类 NMS → unletterbox 画框标注
+- 1.3.3 精度评测与质检 > 概念 > mAP50 指标（纯 numpy 实现）与 onnx/rknn 双后端精度对比
 
 ### 1.2 实验目标
 
-1. 掌握二维码的编码生成原理（版本/纠错/尺寸参数语义）— 原理理解
-2. 使用 OpenCV 内置检测器实现摄像头实时检测并解析二维码内容 — 独立完成
-3. 理解"生成-检测-解析"闭环在物联网/工业场景的应用（设备标识、信息传递）— 迁移应用
+1. 掌握 YOLOv8 目标检测模型的工业应用方法，理解模型架构、训练超参数与检测原理 — 原理理解
+2. 完成工业产品的缺陷自动检测与定位，实现缺陷类别识别与可视化标注 — 独立完成
+3. 理解工业质检场景下的数据集制作、模型训练、部署推理全流程，体验"PC 训练 → ONNX 导出 → RKNN 转换 → 板端 NPU 推理"的完整链路 — 迁移应用
 
 ### 1.3 实验环境
 
 | 类别 | 配置 |
 |------|------|
 | 硬件 | 具身智能实验箱 B2（XFLZ_EAI_B2_PRO，RK3576 SoC，6TOPS NPU，含 HP60C 深度相机） |
-| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv） |
-| 核心库 | OpenCV（内置 QRCodeDetector）、qrcode 7.4.2 + pypng（需安装）、NumPy |
-| 模型 | 无需模型权重（QRCodeDetector 为 OpenCV 内置算法） |
-| 主入口 | `src/app.py`（--generate 生成 / --detect 检测，支持图像/视频/相机/ROS 模式） |
+| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv 虚拟环境，rknnlite 2.3.2 / onnxruntime 1.23.2） |
+| 核心库 | OpenCV、NumPy、PyYAML、rknnlite（板端推理）、rknn-toolkit2（转换）、onnxruntime、mjpeg_streamer、rclpy + cv_bridge |
+| 训练框架 | ultralytics 8.3.229（RKNN 优化 fork，numpy<2.0，PC 侧） |
+| 主入口 | `src/app.py`（推理 CLI：单图 / 视频 / UVC 相机 / ROS2 相机）<br>`src/convert_rknn.py`（ONNX → RKNN 转换）<br>`src/eval_map.py`（mAP50 精度评测）<br>`scripts/train.sh` / `scripts/export_onnx.sh`（PC 训练与导出） |
 
 ### 1.4 实验难度
 
-- 难度: ⭐ 验证性
-- 重点: 二维码生成参数语义 + OpenCV 实时检测解析
-- 难点: 理解 `QRCodeDetector` 单目标检测局限（整图多码定位串扰失败，需逐码分图）；低分辨率/远距离二维码的识别率
+- 难度: ⭐⭐⭐ 综合性
+- 重点: YOLOv8 工业缺陷检测全流程（数据集 → 训练 → 导出 → 转换 → 部署推理 → 精度评测）
+- 难点: RKNN int8 量化精度控制（校准集、RGB/BGR 约定、letterbox 填充值一致性）与 NPU 部署的输入格式约束（4D NHWC、RGB、无归一化）
 
 ### 1.5 实验现象
 
-**快速验证流程**：
+**快速验证流程**（帮助学习者快速看到实验效果，全程在板载 B2 平台执行）：
 
-1. 进入项目目录：`cd ros2_ws/src/xflz_eai_car1/vision/04_qrcode`
-2. 安装依赖（板上）：`pip install -i https://pypi.tuna.tsinghua.edu.cn/simple qrcode`
-3. 单元测试：`pytest tests/ -v`（19 用例全绿）
-4. 生成二维码：`python src/app.py --generate "https://example.com" --save my_qr.png`
-   - 手机/电脑扫码可打开对应内容
-5. 识别：`python src/app.py --detect --image my_qr.png`
-   - 终端打印解析文本，输出框选标注图
-6. 相机实时（板上标准）：先起 ascamera 驱动，再 `python src/app.py --detect --ros`
-   - MJPEG：`http://<板IP>:8080/qrcode.mjpg`，手机屏幕/打印码实时识别
+1. 进入项目根目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection`
+2. （可选）跑通单元测试：`pytest -v`（42 用例全绿，数据集用例在无 NEU-DET 的机器上自动跳过）
+3. 单图推理（仓库自带 4 张缺陷测试图 `images/1.jpg~4.jpg`）：`python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg`
+   - 终端打印每帧 FPS 与每个缺陷框的类别、置信度、坐标
+4. 查看标注结果：`out.jpg` 中缺陷区域被红色框标出，框上方打印类别名（如 `scratches 0.87`）
+5. 视频推理：`python src/app.py --model models/defect_yolov8n_int8.rknn --video test.mp4 --save out.mp4`
+6. 相机实时（标准流程）：先起相机驱动，再运行 `--ros` 模式（详见步骤 6）
+7. 浏览器查看 MJPEG 实时流：`http://<板IP>:8080/defect.mjpg`，移动工件观察缺陷框实时跟随
 
 ```bash
-# 进入实验04
-cd ~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
+# 进入实验4
+cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection
 
 # 可选
 /home/iflytek/ros2_venv/bin/python -m pytest -v
 
-# 生成二维码
-python src/app.py --generate "https://example.com" --save my_qr.png
-
-# 识别刚刚生成的二维码
-python src/app.py --detect --image my_qr.png
+# 执行单图片推理（图片都在01_industrial_defect_detection/images）
+python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg
 ```
+
+**执行现象**：`pytest -v` 运行约 40-60 秒，输出 42 个用例全部 passed；单图推理命令在约 0.1-0.3 秒内返回，终端打印类似 `fps=xx.x` 与每个缺陷框的 `类别 置信度 (x1,y1,x2,y2)`，同时在当前目录生成 `out.jpg`（红框标注图）。板端实测 NPU 推理约 **13 FPS**。
 
 **预期效果描述**：
 
-- 生成：指定数据、版本、纠错等级、尺寸的二维码图片正确保存
-- 识别：图像中二维码被绿框框选，框上方打印解析文本（≤40 字符截断）
-- 多码说明：`cv2.QRCodeDetector` 为单目标检测器，**整图含多码时第一轮定位即失败**（详见步骤3 限说明）；多码需逐码分图检测
-- 实时：摄像头对准手机屏幕/打印的二维码即时解析，MJPEG 流实时更新
-
-**执行现象**：
-- 单元测试：`pytest tests/ -v` 运行约 3-5 秒，输出 19 个用例全部 passed，覆盖 generate（版本/纠错/空数据）、detect（单码 roundtrip / 噪声空 / 降采样坐标映射）、draw（截断标注）、config（schema 校验/色域检查）四组（注意：单测的 detect 均为**单码**用例——与整图多码不可行的实测一致）
-- 生成命令：`python src/app.py --generate "https://example.com" --save my_qr.png` 立即返回，终端输出 `已保存: my_qr.png`，文件大小约 3-4 KB（版本 1 + 纠错 M + box_size 5）
-- 识别命令：`python src/app.py --detect --image my_qr.png --save out.png` 立即返回，终端打印 `[QR] https://example.com`，`out.png` 中二维码区域被绿框框选、框上方显示完整文本
-- 多码说明：`detect_qr` 的掩膜循环**依赖检测器先定位到单码**。同一张图内含多个二维码时，OpenCV `QRCodeDetector` 定位阶段会把不同码的 finder pattern 交叉误配成伪码，第一轮 `detectAndDecode` 即返回空串（`data=''`），循环不触发——**整图并行识别多码实测不可行**（x86 4.8.1 与板端 ROS OpenCV 一致）。多码场景应逐码分图检测（见步骤3）
-- 实时流：板上启动后 MJPEG 流地址 `http://<板IP>:8080/qrcode.mjpg` 可在浏览器打开，对准手机屏幕上的二维码时文本即时刷新，延迟 < 0.5 秒
+- **单图/视频**：6 类缺陷（裂纹 crazing、夹杂 inclusion、斑块 patches、麻点 pitted_surface、氧化铁皮 rolled-in_scale、划痕 scratches）均能以红框 + 类别 + 置信度标注，小目标缺陷（如麻点、划痕）也能稳定检出
+- **相机实时**：检测框在视频流中逐帧更新，终端每 30 帧打印一次平均帧率，板端实测约 **13 FPS**（yolov8n/640，NPU 单核+剪枝模型）
+- **精度表现**：随仓库交付的训练产物在 val 集达到 P=0.657 / R=0.706 / **mAP50=0.732**；RKNN int8 模型相对 ONNX 掉点 ≤3%
+- **完整链路**：一份 `best.pt` 权重依次经历 PyTorch 训练、ONNX 导出、RKNN int8 量化转换，最终在 6TOPS NPU 上以 13 FPS 实时运行，验证"训练部署一体"的工业落地范式
 
 ```bash
-(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode$ python src/app.py --generate "https://example.com" --save my_qr.png
-QR 已保存: /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/04_qrcode/my_qr.png
-(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode$ python src/app.py --detect --image my_qr.png
-[QR] https://example.com
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection$ python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg
+note: NEU-DET data.yaml 不在本机，使用内置 6 类名
+/home/iflytek/ros2_venv/lib/python3.10/site-packages/rknnlite/api/rknn_lite.py:41: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+W rknn-toolkit-lite2 version: 2.3.2
+I RKNN: [16:45:27.301] RKNN Runtime Information, librknnrt version: 2.3.2 (429f97ae6b@2025-04-09T09:09:27)
+I RKNN: [16:45:27.301] RKNN Driver Information, version: 0.9.8
+I RKNN: [16:45:27.302] RKNN Model Information, version: 6, toolkit version: 2.3.0(compiler version: 2.3.0 (c949ad889d@2024-11-07T11:39:30)), target: RKNPU f2, target platform: rk3576, framework name: ONNX, framework layout: NCHW, model inference type: static_shape
+W RKNN: [16:45:27.327] query RKNN_QUERY_INPUT_DYNAMIC_RANGE error, rknn model is static shape type, please export rknn with dynamic_shapes
+W Query dynamic range failed. Ret code: RKNN_ERR_MODEL_INVALID. (If it is a static shape RKNN model, please ignore the above warning message.)
+fps=10.0
+  inclusion 0.826 (181,0,279,302)
+  inclusion 0.763 (96,430,214,641)
+saved -> out.jpg
 ```
 
-![image-20260820112500424](assets/image-20260820112500424.png)
+![image-20260819164309192](assets/image-20260819164309192.png)![image-20260819164332854](assets/image-20260819164332854.png)
 
 ### 1.6 实验步骤
 
@@ -88,358 +94,562 @@ QR 已保存: /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/04_qrcode/my_qr.png
 
 ```mermaid
 graph LR
-    A[步骤1：二维码原理认知] --> B[步骤2：qrcode库生成]
-    B --> C[步骤3：OpenCV检测与多码循环]
-    C --> D[步骤4：标注与解析]
-    D --> E[步骤5：实时相机识别]
-    E --> F[完成]
+    A[步骤1：项目结构与配置认知] --> B[步骤2：NEU-DET数据集理解与校验]
+    B --> C[步骤3：YOLOv8模型训练与结果分析]
+    C --> D[步骤4：RKNN-ONNX模型导出]
+    D --> E[步骤5：RKNN转换与int8量化]
+    E --> F[步骤6：NPU部署与实时缺陷检测]
+    F --> G[步骤7：mAP50精度评测与对比]
+    G --> H[完成]
 ```
 
 ---
 
-#### 步骤1：二维码原理认知（阶段一：能运行，20min）
+#### 步骤1：项目结构与配置体系认知（阶段一：能运行，20min）
 
-> 📌 本步骤对应源码：`src/config.py` error_correction_level
+> 📌 本步骤对应源码：`config/defect_config.yaml`、`src/config.py`
 
 **知识点讲解**：
 
-**QR Code 结构与纠错原理（1.1.1）**
-- **原理**：QR Code（Quick Response Code）是矩阵式二维条码，结构含：**定位图形**（三个角的回字方块，用于检测与旋转校正）、**校正图形**（版本≥2 时的小方块，用于畸变校正）、**时序图形**（定位图形间黑白交替线）、数据区与纠错码区。**版本**（1-40）决定尺寸与容量，版本越高容量越大；**纠错等级**（L≈7%/M≈15%/Q≈25%/H≈30% 恢复能力）决定污损/遮挡容忍度——等级越高纠错越强但数据容量越小。`error_correction_level()` 把配置中的 L/M/Q/H 字符串映射为 qrcode 库常量。
-- **源码对应**：`src/config.py` error_correction_level；`config/qr_config.yaml`（generate.version / error_correction / box_size / border）
+**配置驱动设计（1.1.2 延伸）**
+
+- **原理**：工业质检项目通常要求"配置与代码分离"，把数据集路径、训练超参、推理阈值、RKNN 转换参数全部收敛到一个 YAML 文件，保证实验可复现。本项目通过 `src/config.py` 的 `load_config()` 实现**契约式校验**：`REQUIRED` 字典（L14-35）声明了 dataset/train/infer/rknn/eval 五个区块必须存在的键与其类型，缺键或类型错误直接抛出 `ConfigError`（L38-39），避免"配置写错导致推理静默失败"这类隐蔽问题；未知键则忽略（向前兼容）。`resolve_path()`（L67-73）负责把配置中的相对路径解析为绝对路径。推理侧两个关键阈值——`score_thr=0.25`（置信度过滤）与 `iou_thr=0.45`（NMS 交并比阈值）——都在配置中集中管理（`config/defect_config.yaml` L22-26），调参无需改代码。
+- **源码对应**：`config/defect_config.yaml` L1-47（dataset L4-8 / train L10-20 / infer L22-26 / rknn L37-42 / eval L44-46）；`src/config.py` L14-35（REQUIRED）、L42-64（load_config）、L67-73（resolve_path）
 
 **知识储备补充**：
 
-- **QR Code 矩阵结构**：QR Code 是由方形模块（module）组成的二维矩阵。每个模块为 1 bit（黑=1，白=0）。矩阵尺寸由版本号决定——版本 $v$ 的矩阵边长 $M$ 满足：
-  $$
-  M = 17 + 4v
-  $$
-  
-  例如版本 1 为 21×21 模块，版本 10 为 57×57，版本 40 为 177×177。功能图形（定位、校正、时序）固定占位，剩余面积容纳数据与纠错码。
-  
-- **Reed-Solomon 纠错原理**：QR Code 使用 Reed-Solomon（RS）纠错码，属于多项式纠错码。编码过程：将数据视为 GF(256) 域上的多项式 $d(x)$，生成 $t$ 个校验符号——$t$ 由纠错等级决定（L: $t \approx 7\% \cdot n$，M: 15%，Q: 25%，H: 30%，$n$ 为总符号数）。解码时可纠正 $\lfloor t/2 \rfloor$ 个符号错误或 $t$ 个擦除（位置已知的错误）。本项目配置纠错等级为 M（`config/qr_config.yaml` L4），可恢复约 15% 的码元污损——工业场景（污损多、距离远）应选 Q 或 H 等级。
+- **背景与动机**：YAML 配置驱动是工业算法工程的标准实践——训练、评测、部署三阶段共享同一份配置，避免"训练用 A 参数、部署却写死 B 参数"导致的漂移。"契约式校验"（schema validation）把错误前置到加载阶段，而不是让错误配置在推理时静默产生错误结果。
+- **阈值语义**：`score_thr=0.25` 是置信度过滤阈值——低于它的检测框直接丢弃，值越大检测越保守（漏检增多、误检减少）；`iou_thr=0.45` 是 NMS 的交并比阈值——两个同类框 IoU 超过它则保留高分者。二者共同决定"输出的框数量与质量"，是目标检测的两个核心后处理超参。
+- **相对路径解析**：`resolve_path`（L67-73）基于**配置文件所在目录**解析相对路径，而非当前工作目录。这是关键设计：无论从哪个目录启动，配置里的 `dataset.root` 都能稳定解析到同一位置，保证实验跨目录可复现。
+- **参考资源**：PyYAML 官方文档 `yaml.safe_load`；JSON Schema 思想（配置契约校验的通用范式）。
 
-- **版本与容量关系**：每个版本的每个纠错等级有固定数据容量（字节）。版本 1-L 约 17 字节，版本 10-M 约 395 字节，版本 40-H 约 1852 字节。`qrcode.QRCode(version=1, ...)` 设定版本 1，若数据超出该版本容量，`make(fit=True)` 会自动升版至足够大的版本。这也是本项目配置注释"勿用 H——板端实测 cv2.QRCodeDetector 解不了 H+中文 UTF-8"的原因：H 等级纠错码占比最高（约 30%），留给数据的空间最小，中文 UTF-8 编码体积大，版本 1+H 无法容纳。
-
-- **参考资源**：ISO/IEC 18004:2015 标准（QR Code 符号规范）；`qrcode` 库官方文档 `https://pypi.org/project/qrcode/`；Thonky QR Code 教程 `https://www.thonky.com/qr-code-tutorial/`
-
-<img src="assets/image-20260820133314253.png" alt="image-20260820133314253" style="zoom: 67%;" />
-
-**配置参数速查表**（`config/qrcode_config.yaml`，按区块分列）：
+**配置参数速查表**（`config/defect_config.yaml`，按区块分列）：
 
 | 区块 | 参数 | 类型 | 默认/示例 | 说明 |
 |------|------|------|-----------|------|
-| `generate` | `version` | int | `1` | 二维码版本 1-40（fit=True 自动扩版） |
-| `generate` | `error_correction` | str | `M` | 纠错级 L/M/Q/H；**勿用 H**（板载 cv2 解不了 H+中文） |
-| `generate` | `box_size` | int | `5` | 每格像素数 |
-| `generate` | `border` | int | `4` | 边框格数 |
-| `generate` | `fill_color`/`back_color` | list | `[0,0,0]`/`[255,255,255]` | 前后景色 RGB |
-| `detect` | `scale` | float | `0.5` | 检测前缩放（大图提速） |
-| `camera` | `index` | int | `0` | VideoCapture 索引 |
-| `camera` | `width`/`height` | int | `640`/`480` | 取流分辨率 |
-| `display` | `show` | bool | `false` | 本地窗口（板上置 false） |
-| `display` | `window_name` | str | `qrcode` | 窗口名 |
-| `source` | `ros.rgb_topic` | str | `/ascara_hp60c/.../rgb0/image` | 相机话题（勿 remap） |
+| `dataset` | `root` | str | `/home/.../NEU-DET.v1i.yolov8` | 训练数据集根目录（PC 端；板上推理/评测不需要） |
+| `dataset` | `data_yaml` | str | `data.yaml` | 数据集标注文件（含类别名） |
+| `dataset` | `splits` | list | `[train, valid, test]` | 参与校验的分割子集 |
+| `train` | `fork` | str | `/home/.../ultralytics_yolov8-main` | RKNN 优化版 ultralytics fork 路径 |
+| `train` | `model` | str | `yolov8n.pt` | 预训练权重 |
+| `train` | `imgsz` | int | `640` | 训练输入边长（精度-速度权衡） |
+| `train` | `epochs` | int | `100` | 训练轮数 |
+| `train` | `batch` | int | `8` | 批大小（GTX1060 建议 ≤8） |
+| `train` | `device` | int/str | `0` | 训练设备（无 CUDA 改 `cpu`） |
+| `train` | `project`/`name` | str | `runs/.../yolov8n_img640_e100` | 训练产物输出目录 |
+| `infer` | `imgsz` | int | `640` | 推理输入边长（须与训练一致） |
+| `infer` | `score_thr` | float | `0.25` | 置信度过滤阈值（越大越保守） |
+| `infer` | `iou_thr` | float | `0.45` | NMS 交并比阈值 |
+| `infer` | `pad_color` | list | `[0,0,0]` | letterbox 填充色（与 rknn_model_zoo 一致，勿改 114） |
+| `source` | `ros.rgb_topic` | str | `/ascamera_hp60c/.../rgb0/image` | ROS2 相机话题（严禁 remap） |
 | `source` | `ros.timeout` | float | `5.0` | 首帧等待秒数 |
-> **说明**：`generate`/`detect` 为本实验核心；`error_correction H` 为已知板端陷阱。`camera`/`source`/`display` 运行环境。
+| `server` | `port` | int | `8080` | MJPEG 推流端口 |
+| `server` | `stream_name` | str | `defect.mjpg` | MJPEG 流名（已含 `.mjpg` 勿再追加） |
+| `rknn` | `target_platform` | str | `rk3576` | 转换目标平台 |
+| `rknn` | `quantize` | bool | `true` | 是否 int8 量化（转换脚本用） |
+| `rknn` | `calib_count` | int | `200` | int8 校准图片数（val 抽取） |
+| `rknn` | `onnx_model` | str | `train/weights/best.onnx` | 待转换 ONNX 路径 |
+| `rknn` | `rknn_model` | str | `models/defect_yolov8n_int8.rknn` | 转换产物 .rknn 路径 |
+| `eval` | `split` | str | `valid` | mAP50 评测用分割集 |
+| `eval` | `iou_thr` | float | `0.5` | mAP50 的 IoU 判定阈值 |
+
+> **说明**：`infer.imgsz` 须与训练 `train.imgsz` 一致（输入尺寸绑定）；`train.device` 无 GPU 改 `cpu`；`train.*` `rknn.*` 为 PC 侧（训练/转换），板端只用 `infer`/`source`/`server`。`source`/`server`/`train.run_dir` 不在 `REQUIRED` 校验内（未知键忽略，向前兼容）——改错不报错，注意自行核对。
 
 **操作步骤**：
 
-1. 查看 `config/qr_config.yaml` 生成参数，理解 version/error_correction/box_size/border 语义
-2. 阅读 `src/config.py` error_correction_level 实现
-3. 思考：工业场景（污损多、距离远）应选什么纠错等级？为什么？
+1. 查看项目目录结构，确认六大模块分工：
+   ```bash
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection
+   ls src/    # app / config / convert_rknn / dataset / eval_map / infer / metrics / mjpeg_server / postprocess / preprocess / ros2_source
+   ```
+
+2. 阅读配置文件，逐区块理解含义：
+   ```bash
+   cat config/defect_config.yaml
+   # 重点：infer.score_thr=0.25、infer.iou_thr=0.45、rknn.target_platform=rk3576、server.port=8080
+   ```
+
+3. 用 Python 验证配置加载与校验逻辑：
+
+   ```bash
+   PYTHONPATH=./src python -c "from config import load_config; cfg = load_config('config/defect_config.yaml'); print(cfg['infer'])"
+   # 预期输出：{'imgsz': 640, 'score_thr': 0.25, 'iou_thr': 0.45, 'pad_color': [0, 0, 0]}
+   ```
+
+4. 验证缺键报错（观察 ConfigError 契约）：
+   ```bash
+   PYTHONPATH=./src python -c "from config import load_config; load_config('config/defect_config.yaml')" # 正常
+   # 尝试删掉 yaml 中 infer 区块再运行，观察 ConfigError 提示缺失键
+   ```
 
 **易错点**：
-- ⚠️ 纠错等级与容量互斥：等级越高单码容量越小，长文本需版本+等级权衡
-
-**流程图**：
-
-```mermaid
-flowchart LR
-    A[QR Code 矩阵结构<br/>定位/校正/时序图形<br/>数据区 + 纠错码区] --> B[版本 1-40<br/>矩阵边长 M = 17 + 4v]
-    B --> C[纠错等级 L/M/Q/H<br/>L≈7% M≈15% Q≈25% H≈30%<br/>等级越高 纠错越强 容量越小]
-    C --> D[error_correction_level<br/>字符串映射 qrcode 常量]
-    C --> E[选型权衡<br/>污损多远距离选 Q/H<br/>长文本需版本+等级权衡]
-
-    style C fill:#fff3d6,stroke:#b90,stroke-width:1px
-```
+- ⚠️ 配置路径写相对路径时，`resolve_path` 基于**配置文件所在目录**解析（`config.py` L67-73），不是当前工作目录——跨目录运行务必注意
 
 ---
 
-#### 步骤2：qrcode 库生成二维码（阶段一：能运行，25min）
+#### 步骤2：工业缺陷数据集理解与校验（阶段一：能运行，30min）
 
-> 📌 本步骤对应源码：`src/qr.py` generate_qr
+> 📌 本步骤对应源码：`src/dataset.py`
+>
+> 需要自行准备相关数据集
 
 **知识点讲解**：
 
-**生成流程（1.2.1）**
-- **原理**：`generate_qr()`（L30-45）完整演示生成四步：(1) 构造 `qrcode.QRCode(version, error_correction, box_size, border)`——version 指定固定版本（1-40），`make(fit=True)` 时若数据超出该版本会自动升版；(2) `add_data(data)` 填充用户数据；(3) `make(fit=True)` 计算编码矩阵；(4) `make_image(fill_color, back_color)` 渲染为 PIL 图像，`.convert("RGB")` 后经 OpenCV 转 BGR 输出。`box_size` 控制每模块像素数（清晰度），`border` 控制四周留白（标准为 4 模块）。空数据直接抛 `ValueError`（L32-33）。
-- **源码对应**：`src/qr.py` L30-45（generate_qr：参数 L35-40 / add_data L41 / make L42 / 渲染转 BGR L43-45）
+**NEU-DET 数据集与 YOLO 标签格式（1.1.2）**
+
+- **原理**：NEU-DET（Northeastern University 表面缺陷数据集）是工业质检领域的标准公开数据集，包含热轧带钢表面 6 类缺陷（crazing 裂纹 / inclusion 夹杂 / patches 斑块 / pitted_surface 麻点 / rolled-in_scale 氧化铁皮 / scratches 划痕），共 1800 张 200×200 灰度图，已由社区转换为 YOLO 格式（`NEU-DET.v1i.yolov8`）。YOLO 标签为每行 `class_id cx cy w h` 的归一化格式（值域 0-1，相对图像宽高），与 COCO 的像素坐标格式不同。`src/dataset.py` 的 `validate_dataset()`（L19-85）负责**校验数据集结构**：确认 images/labels 目录存在、图像与标签一一对应、标签行数/坐标合法，输出统计（类别分布、样本数），为训练和评测提供数据完整性保障。`class_names()`（读 data.yaml）从 `names:` 字段提取 6 类名称供推理标注使用。
+- **源码对应**：`src/dataset.py` L19-85（validate_dataset：目录检查 L24-38 / 标签合法性 L40-66 / 统计输出 L68-85）、class_names 读取 data.yaml
 
 **知识储备补充**：
 
-- **生成参数语义详解**：`qrcode.QRCode` 的四个构造参数各有明确语义——`version`（int 1-40 或 None）：固定版本号，None 时由 `make(fit=True)` 自动选择最小版本；`error_correction`：纠错等级常量（`ERROR_CORRECT_L/M/Q/H`），`config.py` L28-33 的 `EC_LEVELS` 字典完成字符串→常量映射；`box_size`（int）：每个模块渲染为多少像素的正方形，值越大生成图越大越清晰但文件越大；`border`（int）：四周静区（quiet zone）模块数，ISO 标准要求最少 4 模块，低于此值可能被扫描器忽略。
+- **背景与动机**：NEU-DET 由东北大学宋克臣团队于 2017 年发布，是热轧带钢表面缺陷检测的基准数据集。工业表面缺陷（尤其小尺度、低对比度缺陷）与通用目标检测数据集有本质差异：缺陷面积小（常不足图像 5%）、类间外观相似（crazing 与 scratches 均为细线纹理）、标注一致性要求极高——这使它成为检验检测模型"小目标 + 弱纹理"能力的标准测试床。
 
-- **`fit=True` 自动升版机制**：当指定版本的数据容量不足以容纳输入数据时，`make(fit=True)` 会自动选择能容纳该数据的最小版本。这意味着 `generate_qr` 中 `version=1`（`config/qr_config.yaml` L3）配合 `fit=True` 是"从版本 1 开始，按需升版"——短 URL（如 `https://example.com`）保持版本 1，较长文本可能升至版本 2-5。
+- **YOLO 归一化标签格式**：每行 `class_id cx cy w h`，其中 $c_x, c_y, w, h$ 均为归一化值：
 
-- **色域转换**：`qrcode` 库基于 PIL/Pillow 渲染，输出为 RGB 格式（`qr.py` L43：`.convert("RGB")`）。OpenCV 内部使用 BGR 格式，因此必须经 `cv2.cvtColor(..., cv2.COLOR_RGB2BGR)` 转换（L45），否则颜色通道错位导致前景/背景反转。
+  $$
+  c_x = \frac{x_{center}}{W}, \quad c_y = \frac{y_{center}}{H}, \quad w = \frac{bw}{W}, \quad h = \frac{bh}{H}
+  $$
 
-- **参考资源**：Pillow 文档 `Image.convert`；OpenCV 色彩空间转换 `cv2.cvtColor`；`qrcode` 源码 `qrcode.image.pil` 模块
+  其中 $W,H$ 为图像宽高，$(x_{center}, y_{center})$ 为框中心像素坐标，$bw,bh$ 为框宽高像素。归一化后标签与图像分辨率解耦——同一标注可适配任意 `imgsz` 训练。这与 COCO 的 `[x,y,w,h]` 像素坐标格式不同，混用是标注常见错误。
+
+- **关键参数**：归一化坐标值域必须 ∈ [0,1]；越界或混入像素坐标会导致训练崩溃或 mAP 极低——`validate_dataset`（L40-66）正是校验这一点。
+
+- **参考资源**：
+
+  NEU-DET 论文（K. Song et al., *Surface defect detection method using saliency linear perceptual hashing technology*）；
+
+  Roboflow `NEU-DET.v1i.yolov8` 数据集页。
 
 **操作步骤**：
 
-1. 生成并保存二维码：
+1. 若本机已有 NEU-DET 数据集，配置 `config/defect_config.yaml` 中 `dataset.root` 指向其路径
+2. 运行数据集校验：
    ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
-   
-   # 生成二维码内容为 "https://example.com"
-   python src/app.py --generate "https://example.com" --save my_qr.png
-   # my_qr.png 生成成功
+   PYTHONPATH=./src python -c "from dataset import validate_split, class_names; import pathlib; \
+   root = pathlib.Path('/home/iflytek/tmp/AIoT_B2/NEU-DET.v1i.yolov8'); \
+   print('classes:', class_names(root / 'data.yaml')); \
+   print('--- train ---'); print(validate_split(root, 'train')); \
+   print('--- val ---'); print(validate_split(root, 'val'))"
+   # 预期：打印类别统计（6 类缺陷各约 300 张）与标签合法性结果
    ```
-2. 验证扫码：手机/电脑摄像头扫 my_qr.png，可打开 example.com
-3. 中文字符测试：
-   ```bash
-   python src/app.py --generate "你好，具身智能" --save cn_qr.png
-   ```
-4. 对比不同纠错等级/版本的二维码密度差异（改 config 后重新生成，观察码图复杂度）
+3. 查看 2-3 张标注图，理解 YOLO 归一化标签与像素坐标的换算关系（用 OpenCV 画框验证）
+4. 思考：为什么工业缺陷数据集比通用目标检测数据集更难标注？（缺陷尺度小、类间相似、标注一致性要求高）
+
+下面是相关训练的标注照片，可以在 ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection/train 中进行查看
+
+<img src="assets/val_batch0_labels.jpg" alt="val_batch0_labels" style="zoom:25%;" />
 
 **易错点**：
-
-- ⚠️ 数据为空 → ValueError（L32-33），先判空
-- ⚠️ 生成图片色域：qrcode 库输出 RGB，OpenCV 显示需转 BGR（L45）
-
-**流程图**：
-
-```mermaid
-flowchart LR
-    S[数据 data<br/>判空检查] --> A["qrcode.QRCode<br/>version / error_correction<br/>box_size / border"]
-    A --> B[add_data 填充数据]
-    B --> C[make fit=True<br/>按需自动升版 计算编码矩阵]
-    C --> D[make_image 渲染<br/>fill_color 前景 / back_color 背景<br/>PIL 输出 RGB]
-    D --> E[convert RGB<br/>→ cvtColor 转 BGR]
-    E --> F[保存二维码图片]
-
-    style A fill:#e8f0ff,stroke:#448,stroke-width:1px
-```
+- ⚠️ 板上无 NEU-DET 数据集属正常现象——`app.py` L60-65 已内置 6 类名兜底，板上推理无需数据集
+- ⚠️ 标签坐标必须归一化（0-1），若混入像素坐标，训练会直接崩或 mAP 极低
 
 ---
 
-#### 步骤3：OpenCV 检测与多码循环（阶段二：能理解，30min）
+#### 步骤3：YOLOv8 模型训练与结果分析（阶段二：能理解，40min）
 
-> 📌 本步骤对应源码：`src/qr.py` detect_qr
+> 📌 本步骤对应源码：`scripts/train.sh`、`train/args.yaml`
 
 **知识点讲解**：
 
-**QRCodeDetector 与掩膜循环（1.3.1）**
-- **原理**：`cv2.QRCodeDetector.detectAndDecode(img)` 返回 `(data, points, straight_qrcode)`——data 为解析文本（失败时空串），points 为二维码四角点坐标。单次调用只检出一个码，`detect_qr()`（L48-79）在 `MAX_DETECT_PASSES=8` 上限内反复调用，每次检出后**把已识别区域涂白**（L74-78，`work[y1:y2,x1:x2]=255`）再继续找下一个，直到无新码或达到上限（防死循环）。此外支持 `scale=0.5` 降采样加速（L53-55）：大图先缩一半再检测，坐标用 `factor=1/scale` 映射回原图。points 四角点取 min/max 得到外接框（L66-71）。
+**YOLOv8 架构与训练流程（1.1.1、1.2.1）**
 
-> ⚠️ **单目标检测器局限（x86 + 板端实测一致）**：`QRCodeDetector` 是**单目标**检测器。同一张图内含**多个**二维码时，定位阶段（找 3 个 finder pattern 并匹配）会把**来自不同码的 finder 交叉组合**成伪码，透视矫正后解码失败返回空串——第一轮 `detectAndDecode` 就得不到任何码，掩膜循环无从触发。因此掩膜循环**只在检测器能先定位并解出第一个码时才有意义**（如单码图、或码间有足够间距使检测器不串扰）。整图并行识别多码实测**不可行**（`multi_qr.png` 3 码一行 → `detect_qr` 返回空表）；多码请逐码分图检测。
-- **源码对应**：`src/qr.py` L48-79（detect_qr：降采样 L52-55 / 循环检测 L59-78 / 掩膜 L74-78）
+- **原理**：YOLOv8 是 anchor-free 的实时目标检测器，主干 CSPDarknet 提取多尺度特征，PAN-FPN 颈部融合，**解耦检测头**分别输出分类与回归分支。回归分支采用 **DFL（Distribution Focal Loss）**：不直接回归偏移，而是预测 16 个 bin 的概率分布，加权求和得到连续偏移，对小目标更友好（`postprocess.dfl_decode` 对应实现）。训练配置收敛在 `train/args.yaml`：yolov8n、imgsz=640、epochs=100、batch=8、optimizer=auto、seed=0。训练产物 `train/weights/best.pt`（+ last.pt）与 `best.onnx`（RKNN 优化 fork 导出，9 输出）随仓库交付，**无需重训即可进入部署链路**；`scripts/train.sh`（L1-25）封装了 PC 侧训练入口。
+- **源码对应**：`scripts/train.sh` L1-25；`train/args.yaml` L1-106（超参数全量）；训练指标见 `train/results.csv`、曲线图 `train/*.png`
 
 **知识储备补充**：
 
-- **降采样加速原理**：`detect_qr` 在检测前将输入图像按 `scale`（默认 0.5）缩放（L52-55），处理的是缩小后的图像。QRCodeDetector 的检测复杂度与像素数近似线性相关，半分辨率图像像素数降至 25%，检测速度提升约 3-4 倍。检测后坐标需乘以 $factor = 1/scale$ 映射回原图坐标（L66-67），否则标注框会错位——这是多码循环中最常见的 bug。
+- **YOLOv8 架构拆解**：YOLOv8（2023，Ultralytics）相对 YOLOv5 的关键演进可归纳为四点
 
-- **掩膜循环机制**：`detectAndDecode` 单次调用只返回第一个检测到的码——**前提是它先定位到了那一个码**。掩膜方式是将已识别区域涂为白色（`work[y1:y2,x1:x2]=255`，L78），白色背景对该区域等同于"无码"，随后下一次调用可在图中其余位置找下一个。`MAX_DETECT_PASSES=8`（L21）是硬上限，防止某些异常图像（如噪声模式反复被误检为码）导致死循环。**注意**：该循环无法克服上面的单目标定位局限——若第一轮 `detectAndDecode` 因多码串扰返回空，循环一次都不会进入。因此"多码检测"的可靠做法是逐码分图（每图一个码），而非依赖整图的掩膜循环。
+  (1) **anchor-free**：去掉预置 anchor，直接回归中心点与宽高（中心点落在哪个 grid 哪个负责），减少超参；
 
-- **四角点→外接框**：`detectAndDecode` 返回的 `points` 形状为 `(1, 4, 2)`——4 个顶点的 $(x, y)$ 坐标（可能因透视畸变不是矩形）。代码取所有 $x$ 的 min/max 和所有 $y$ 的 min/max 得到轴对齐外接框（L66-71），这是最简化的框提取方式，适用于检测标注但不精确匹配透视形状。
+  (2) **C2f 模块**：替换 C3，借鉴 ELAN 结构引入更多梯度流分支，在相近计算量下提升表征；
 
-- **参考资源**：OpenCV `QRCodeDetector` 文档 `https://docs.opencv.org/4.x/d5/d54/classcv_1_1QRCodeDetector.html`；QR Code ISO/IEC 18004 检测算法章节
+  (3) **解耦头（Decoupled Head）**：分类与回归分支分离，各自用不同尺度结构，缓解分类/回归任务冲突；
+
+  (4) **DFL 回归**。主干 CSPDarknet 提取 80/40/20 三个尺度的特征图（对应小/中/大目标），PAN-FPN 自顶向下 + 自底向上融合多尺度。
+
+- **DFL 原理**：DFL 不直接回归框偏移 $t$，而是用 16 个 bin 的概率分布表示其近似：
+
+  $$
+  t = \sum_{i=0}^{15} p_i \cdot i, \qquad p = \text{softmax}(z)
+  $$
+
+  其中 $z \in \mathbb{R}^{16}$ 是网络对 16 个 bin 的原始 logits，$p_i$ 为第 $i$ 个 bin 的 softmax 概率，$t$ 为加权和得到的连续偏移。相比单值回归，DFL 能刻画边界的不确定性，对小目标与边界模糊目标（如细纹理缺陷）更友好。解码时 `dfl_decode`（postprocess L34-42）执行 softmax 后加权求和。
+
+- **精度-速度权衡**：imgsz=640 是速度与精度的折中。NPU 算力固定 6TOPS，特征图边长平方增长（640²→800² 计算量增约 56%），单帧耗时随之上升。640 能覆盖绝大多数缺陷尺度且保持实时，是工业部署的常用默认。
+
+- **参考资源**：
+
+  YOLOv8 论文（Jocher et al., Ultralytics YOLOv8）；
+
+  Ultralytics 官方文档《YOLOv8 Architecture Overview》；
+
+  DFL 原论文《Generalized Focal Loss》（Li et al., 2020）。
+
+相关YOLOv8网络架构图
+
+<img src="assets/1ebb040adac1e258c00d6e0868727559.jpeg" alt="img" style="zoom:25%;" />
 
 **操作步骤**：
 
-1. 生成多个单码图（每张一个码）：
+1. 查看训练产物目录，理解"一份权重，三种格式"：
    ```bash
-   python src/app.py --generate "https://example.com" --save q1.png
-   python src/app.py --generate "你好，具身智能"     --save q2.png
-   python src/app.py --generate "grasp:apple"       --save q3.png
+   ls -la train/weights/    # best.pt (PyTorch) + best.onnx (RKNN-ONNX, 9输出)
    ```
 
-   ![image-20260820133830333](assets/image-20260820133853554.png)![image-20260820133843520](assets/image-20260820133843520.png)![image-20260820133900996](assets/image-20260820133900996.png)
-
-2. 逐码检测（**不要拼成一张图**——整图多码会触发检测器定位串扰失败，见上）：
-
+2. 解读训练指标（`train/results.csv` 末尾几行）：
    ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
-   
-   python src/app.py --detect --image q1.png --save out1.png
-   python src/app.py --detect --image q2.png --save out2.png
-   python src/app.py --detect --image q3.png --save out3.png
-   # 预期：每个码各自检出，框选 + 文本标注
+   tail -5 train/results.csv    # epoch/box_loss/cls_loss/dfl_loss/metrics/precision/recall/mAP50
+   # 参考：epoch 100 → P=0.657 / R=0.706 / mAP50=0.732 / mAP50-95=0.409
    ```
 
-   ![image-20260820133805085](assets/image-20260820133805085.png)
+3. 查看混淆矩阵与 PR 曲线（`train/confusion_matrix.png`、`train/PR_curve.png`），分析哪两类缺陷最易混淆（通常 crazing 与 scratches 相似）
 
-3. 单测理解循环逻辑：`pytest tests/test_qr.py -v`
+   <img src="assets/confusion_matrix.png" alt="confusion_matrix" style="zoom:25%;" />
 
-4. 思考：MAX_DETECT_PASSES=8 的作用？为什么同一张图放多个码会检出失败？
+   <img src="assets/PR_curve.png" alt="PR_curve" style="zoom:25%;" />
+
+4. （可选，PC 且需重训时）运行 `bash scripts/train.sh`，比较训练曲线
+
+5. 思考：为什么选择 imgsz=640 而不是 800？板端 NPU 算力固定（6TOPS），imgsz 越大单帧耗时越高——这是**精度-速度权衡**的典型例子
 
 **易错点**：
-- ⚠️ 不掩掉已识别区域会死循环检出同一码——掩膜是必须步骤（L74-78）
-- ⚠️ 降采样后坐标必须乘回 factor（L66-67），否则框错位
-- ⚠️ **整图含多码会检出失败**（OpenCV 单目标检测器定位串扰，第一轮即空）——多码请逐码分图检测
-- ⚠️ 显示乱码“？？？？？”是因为Opencv渲染的中文字体不存在
 
-**流程图**（注：此掩膜循环**仅适用于检测器能先定位到单码的图**——整图多码时第一轮即失败，见上）：
-
-```mermaid
-flowchart LR
-    A[输入图 单码为佳] --> B[降采样 scale=0.5<br/>像素减至25% 提速3-4倍]
-    B --> C{"detectAndDecode<br/>检出 + 解析"}
-
-    C -- 检出 data 非空 --> D[取四角点 points<br/>min/max 得外接框<br/>坐标 × factor 映射回原图]
-    D --> E[记录 QRResult 文本+坐标]
-    E --> F[将已识别区域涂白<br/>work 局部 = 255]
-    F --> C
-
-    C -- 无新码 或达上限 --> G[结束<br/>MAX_DETECT_PASSES=8 防死循环]
-    D --> H[框错位元凶<br/>若未乘回 factor]
-
-    style F fill:#ffe0e0,stroke:#c00,stroke-width:2px
-    style C fill:#e8f0ff,stroke:#448,stroke-width:1px
-    style H fill:#fff3d6,stroke:#b90,stroke-width:1px
-```
+- ⚠️ 训练框架必须是 RKNN 优化 fork（ultralytics 8.3.229 + numpy<2.0），官方版导出的 ONNX 不是 9 输出，无法直接转 rknn
+- ⚠️ 训练精度目标只是参考，mAP 达标 ≠ 板端可用——int8 量化会引入精度损失，需在步骤 7 验证掉点
 
 ---
 
-#### 步骤4：标注与解析文本（阶段二：能理解，20min）
+#### 步骤4：RKNN-ONNX 模型导出（阶段二：能理解，30min）
 
-> 📌 本步骤对应源码：`src/qr.py` draw_qr
+> 📌 本步骤对应源码：`scripts/export_onnx.sh`
 
 **知识点讲解**：
 
-**结果可视化（1.3.2）**
-- **原理**：`draw_qr()`（L82-90）在检测结果上绘制：绿框（L86）+ 解析文本（L87-89）。文本超 40 字符截断为 37 字符 + "..."（L87），避免超长 URL 撑爆画面；文本绘制在框上方（y1-6，最小 16 防止越界）。`QRResult` 数据类（L21-27）承载 text + 四角坐标，是检测与绘制间的数据契约。
-- **源码对应**：`src/qr.py` L82-90（draw_qr：画框 L86 / 文本截断 L87 / putText L88-89）
+**RKNN 优化版 ONNX 导出（1.2.2）**
+
+- **原理**：官方 ultralytics 导出的 ONNX 把 DFL 解码也导出到计算图中（大量 Slice/Concat 算子），RKNN 转换器对这类动态索引支持差、易报错或低效。RKNN 优化 fork 提供了 `format='rknn'` 导出模式：**DFL 解码留在 CPU 侧**（Python 后处理实现），模型只输出 3×nl 个原始张量——每层 3 个：box `(1,64,h,w)`（DFL 原始分布）、cls `(1,nc,h,w)`（已 sigmoid）、cls_sum `(1,1,h,w)`（可忽略分支）。yolov8n 有 3 个检测层（80/40/20），故共 9 个输出。`export_onnx.sh`（L1-21）封装导出命令并校验输出数量。
+- **源码对应**：`scripts/export_onnx.sh` L1-21（导出 + 校验 L16-20）
 
 **知识储备补充**：
 
-- **文本截断策略**：`draw_qr` 将超过 40 字符的解析文本截断为前 37 字符加 "..."（L87），防止长 URL（如含 token 的 IoT 设备注册链接）超出图像边界。截断阈值 40 是经验值——`FONT_HERSHEY_SIMPLEX` 0.6 缩放下，40 个字符约 240 像素宽，适配 640 宽度画面且留出框宽余量。`putText` 的 $y$ 坐标取 `max(16, y1-6)`（L88），确保框紧贴图像顶部时文本不越界。
+- **背景与动机**：RKNN 转换器对 ONNX 算子的支持不是全集的——大量动态 Shape 算子（Slice/Concat 组合的动态索引、Reshape 依赖运行时值）在量化图优化阶段易失败或生成低效指令。RKNN 优化 fork 将"纯推理主干"与"DFL 后处理"分离：把后处理留在 CPU（Python），模型只保留稳定、可静态分析的算子，显著提高 RKNN 转换成功率与 NPU 效率。
+- **输出张量结构拆解**：每检测层输出 3 个张量——box `(1,64,h,w)` 是 DFL 的 16 bin × 4 坐标原始分布（回归分支），cls `(1,nc,h,w)` 是已 sigmoid 的类别分数（`nc`=6 类），cls_sum `(1,1,h,w)` 是类别分数和的可忽略分支。3 层 × 3 = 9 个输出：
 
-- **QRResult 数据契约**：`QRResult`（L24-29）是 `dataclass(frozen=True)`，包含 `text`（str）和 `x1/y1/x2/y2`（int）四个坐标。`detect_qr` 产出 `list[QRResult]`，`draw_qr` 消费它——解耦了检测与绘制逻辑。这种"中间数据类"模式在 CV pipeline 中很常见，便于单元测试（可构造 `QRResult` 测试 `draw_qr`）和扩展（新增字段如置信度、旋转角度不影响现有调用者）。
+  $$
+  \text{outputs} = \bigcup_{l \in \{80,40,20\}} \{ \underbrace{\text{box}^{(l)}}_{1\times64\times h_l \times w_l},\; \underbrace{\text{cls}^{(l)}}_{1\times nc \times h_l \times w_l},\; \underbrace{\text{cls\_sum}^{(l)}}_{1\times 1\times h_l \times w_l} \}
+  $$
 
-- **参考资源**：OpenCV `cv2.putText` 文档；Python `dataclasses` 模块
+  其中 $h_l = w_l = \text{imgsz}/l$（imgsz=640 → 8/16/32 下采样 → 80/40/20 特征图），`nc=6` 为缺陷类别数。
+- **参考资源**：RKNN 官方文档《RKNN Toolkit2 User Guide》ONNX 算子支持表；Ultralytics `yolo export` 文档。
 
 **操作步骤**：
 
-1. 检测 + 标注：
+1. 查看导出脚本内容，理解关键参数：
    ```bash
-   # 执行目录：ros2_ws/src/xflz_eai_car1/vision/04_qrcode
-   cd ros2_ws/src/xflz_eai_car1/vision/04_qrcode
-   
-   python src/app.py --detect --image my_qr.png --save out.png
-   # out.png：绿框 + 文本标注
+   cat scripts/export_onnx.sh
+   # 核心：yolo export model=train/weights/best.pt format=onnx opset=12 imgsz=640
+   #       format=rknn（RKNN 优化 fork 专用）
    ```
-2. 生成超长文本二维码（>40 字符），观察截断显示效果
-3. 动手改造：把标注文本改为显示在框下方，或改框色
 
-![image-20260820133805085](assets/image-20260820133805085.png)
+2. 验证已交付的 ONNX 输出结构（无需重导）：
+   ```bash
+   python -c "
+   import onnxruntime as ort
+   sess = ort.InferenceSession('train/weights/best.onnx')
+   print('输入:', [i.name for i in sess.get_inputs()])
+   print('输出数:', len(sess.get_outputs()))
+   for o in sess.get_outputs(): print(' ', o.name, o.shape)"
+   # 预期输出数 = 9（3 层 × 3 张量）
+   ```
+
+   ```bash
+   输入: ['images']
+   输出数: 9
+     317 [1, 64, 80, 80]
+     325 [1, 6, 80, 80]
+     331 [1, 1, 80, 80]
+     338 [1, 64, 40, 40]
+     346 [1, 6, 40, 40]
+     352 [1, 1, 40, 40]
+     359 [1, 64, 20, 20]
+     367 [1, 6, 20, 20]
+     373 [1, 1, 20, 20]
+   ```
+
+   若需重导（PC 且 fork 环境就绪）：`bash scripts/export_onnx.sh train/weights/best.pt`
 
 **易错点**：
-- ⚠️ 文本超长溢出画面 → 40 字符截断（L87）已处理
 
-**流程图**：
-
-```mermaid
-flowchart LR
-    A["QRResult<br/>text + x1/y1/x2/y2<br/>检测与绘制数据契约"] --> B{文本长度}
-    B -->|"≤40 字符"| C["完整标注<br/>label = text"]
-    B -->|">40 字符"| D["截断为前37字符 + ...<br/>label = text[:37] + ..."]
-    C --> E[draw_qr 绘制]
-    D --> E
-    E --> F[绿框 cv2.rectangle]
-    E --> G["文本 putText<br/>框上方 y1-6<br/>max(16,y1-6) 防越界"]
-    F --> H[标注图输出]
-    G --> H
-
-    style D fill:#fff3d6,stroke:#b90,stroke-width:1px
-```
+- ⚠️ 输出不是 9 个 → 用了官方 ultralytics 或未指定 `format=rknn`（`export_onnx.sh` L16）
+- ⚠️ opset 过高（>12）可能导致 RKNN 转换器不支持某些算子，保持 opset=12
 
 ---
 
-#### 步骤5：实时相机识别与 MJPEG 推流（阶段三：能改造，35min）
+#### 步骤5：RKNN 转换与 int8 量化（阶段二：能理解，40min）
 
-> 📌 本步骤对应源码：`src/app.py`、`src/ros2_source.py`
+> 📌 本步骤对应源码：`src/convert_rknn.py`
 
 **知识点讲解**：
 
-**实时识别链路（1.3.2）**
-- **原理**：`app.py` 的 `--detect` 模式组织实时链路：取流（--image/--video/--camera/--ros）→ 逐帧 `detect_qr` → `draw_qr` 标注 → 本地窗口（--display）或 MJPEG 推流（`http://<板IP>:8080/qrcode.mjpg`）。板上相机标准路径是 HP60C 深度相机经 ascamera 话题取流（`ros2_source.py` Ros2Camera，话题 `/ascamera_hp60c/camera_publisher/rgb0/image`），OpenCV 直连读不了（未编 libv4l）。识别速度取决于图像分辨率与码大小——降采样参数在检测前生效。
-- **源码对应**：`src/app.py`（main：--detect 分支 / 取流 / 推流）；`src/ros2_source.py`（Ros2Camera：DEFAULT_TOPIC / open / read / release）
+**RKNN int8 量化原理（1.3.1）**
+
+- **原理**：RKNN 转换器（rknn-toolkit2）把 ONNX 图转换为 RK3576 平台的 NPU 指令集模型，核心是 **int8 量化**：权重和激活从 float32 缩放到 int8（w8a8），通过**校准集**统计激活分布确定每个张量的 scale/zero_point。量化配置要点：`quant_img_RGB2BGR=False`（L65）——因为导出模型的输入约定是 RGB；`target_platform='rk3576'`（L38-42）；校准集 200 张 val 图（`--calib-count 200`）。部署侧用 `RKNNLite`（`infer.py` L29-52）在 NPU 上推理，`init_runtime` 必须显式传 `core_mask=0`（NPU_CORE_AUTO，L36），None 在 2.3.2 会报 `core mode not supported`。模型推理输入必须是 **4D NHWC uint8**（静态 shape）且**不做 /255 归一化**——量化模型内部已含 scale。
+- **源码对应**：`src/convert_rknn.py` L25-109（参数解析 L25-40 / config 加载与 RGB2BGR 设置 L41-65 / 转换+量化 L66-91 / 输出保存 L92-109）
 
 **知识储备补充**：
 
-- **MJPEG 推流原理**：`MjpegServer`（`mjpeg_server.py`）在端口 8080 启动 HTTP 服务，提供 `/qrcode.mjpg` 流地址。MJPEG（Motion JPEG）将每帧 JPEG 图像以 multipart 流式传输——浏览器打开流地址即可实时查看，无需额外播放器。相比 RTSP/WebRTC，MJPEG 实现简单（纯 HTTP）、延迟极低（帧级），适合嵌入式设备调试。代价是带宽较高（未做帧间压缩），但局域网场景足够。
+- **int8 量化原理**：量化把浮点张量映射到 int8 整数域。权重 $w$ 与激活 $x$ 的仿射量化：
 
-- **ROS2 话题取流适配**：`Ros2Camera`（`ros2_source.py`）封装了 rclpy 惰性导入——构造时不依赖 ROS 环境，`open()` 时才导入 rclpy + cv_bridge 并建节点订阅。这是关键设计：x86 PC 无 ROS 环境时可跑单元测试（mock 回调逻辑），板上 `open()` 后自动切换为真实 ROS2 话题订阅。默认话题 `/ascamera_hp60c/camera_publisher/rgb0/image`（`ros2_source.py` L17）必须与 ascamera 驱动输出一致，`ROS_DOMAIN_ID` 也须匹配（本板 =2）。
+  $$
+  w_q = \text{round}\left( \frac{w}{s_w} \right), \qquad x_q = \text{round}\left( \frac{x}{s_x} \right)
+  $$
 
-- **实时性能瓶颈**：检测延迟 = 降采样耗时 + `detectAndDecode` 耗时 + 标注耗时。对于 640×480 输入（scale=0.5 → 320×240），QRCodeDetector 单帧检测约 5-15 ms（取决于码复杂度与数量），总帧率可达 30-60 FPS。瓶颈通常在取流端（ROS2 回调延迟）或网络带宽（MJPEG 编码），而非检测算法本身。
-
-- **参考资源**：ROS2 `sensor_msgs/Image` 消息类型；`cv_bridge` 官方文档；MJPEG over HTTP RFC（草案）
-
-![image-20260820101126152](assets/image-20260820101126152.png)
+  其中 $s_w, s_x$ 分别为权重与激活的量化步长（scale），由校准集统计激活数值分布确定。反量化近似：$\hat{w} \approx s_w \cdot w_q$。相比 fp32，int8 用 4 倍压缩的位宽换取 NPU 上更快的定点运算（w8a8 即权重/激活均 8bit）。代价是舍入误差引入的精度损失（本项目要求掉点 ≤3%）。
+- **校准集的作用**：scale 的确定依赖激活的真实分布。校准集（`--calib-count 200` 张 val 图）应代表部署时的真实数据分布——若校准图与推理数据分布偏差大，量化的 scale 估计失准，掉点加剧。这也是"校准图用 val 集而非 train 集"的原因。
+- **RGB2BGR 约定（关键）**：`quant_img_RGB2BGR=False`（L65）表示转换器**不**做通道交换——因为导出模型输入约定是 RGB，推理侧 `to_rgb()`（preprocess L45-52）已经把 BGR 帧换成 RGB 再喂 NPU。若转换侧与推理侧的约定不一致，检测框会整体偏移或错乱。这是本项目最易踩的坑之一。
+- **输入格式约束**：NPU 静态 shape 模型要求 4D NHWC uint8 输入，且**不做 /255 归一化**——量化模型内部已把 0-255 的 uint8 输入视为激活并含 scale，归一化会破坏输入分布。
+- **参考资源**：RKNN Toolkit2 官方文档《Quantization》；Google《Quantizing Deep Convolutional Networks for Efficient Inference》（Jacob et al., 2017）。
 
 **操作步骤**：
 
-1. 相机实时（板上标准）：
+1. 查看转换脚本参数：
    ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
+   python src/convert_rknn.py --help
+   # --onnx --output --calib-dir --calib-count --imgsz --no-quantize
+   ```
+
+2. 重新转换（板上 ros2_venv 或 PC rknn 环境，需要 NEU-DET val 图作校准集）：
+   ```bash
+   python src/convert_rknn.py --onnx train/weights/best.onnx \
+     --output models/defect_yolov8n_int8.rknn \
+     --calib-dir <NEU-DET>/valid/images --calib-count 200
+   # 预期：打印量化信息与每层统计，最终生成 .rknn 文件
+   ```
+
+3. 对比已交付的 `models/defect_yolov8n_int8.rknn` 文件大小与 ONNX 差异（int8 通常更小）
+
+4. 思考：量化掉点的根源是什么？（权重/激活低比特表示 → 信息损失；校准集代表性不足 → 分布估计偏差）
+
+```python
+# src/convert_rknn.py 部分代码块解释
+if rknn.config(
+            mean_values=[[0, 0, 0]], std_values=[[255, 255, 255]],
+            target_platform=target,
+            quant_img_RGB2BGR=False,        # 输入已为 RGB（导出时固化），不再转色域
+            quantized_dtype="w8a8",         # toolkit2 默认 int8 量化
+            quantized_algorithm="normal",   # 默认
+            quantized_method="channel",     # 2.3.0 默认即 channel（逐通道量化）
+            optimization_level=3,           # 默认
+            single_core_mode=True,          # 单核模型：省内存（用户指定 2026-08-05）
+            model_pruning=True,             # 无损剪枝：省内存（用户指定 2026-08-05）
+        ) != 0:
+```
+
+| 参数                  | 值                | 说明                                                         |
+| --------------------- | ----------------- | ------------------------------------------------------------ |
+| `mean_values`         | `[[0,0,0]]`       | 输入图像每个通道的**均值**。配合 `std_values` 完成归一化：‑。本模型约定外部输入像素范围 `0‑255`，不需要做减均值，故 mean 设置为 0。 |
+| `std_values`          | `[[255,255,255]]` | 输入图像每个通道的**标准差**。本模型归一化公式：xnorm=xpixel/255，该归一化由 RKNN 运行时内部完成，Python 侧不需要手动执行 `/255`。 |
+| `target_platform`     | `target`          | 指定目标 RK 芯片平台，例如 `"rk3576"`。用于让工具针对该芯片算子库做编译适配、算子择优。 |
+| `quant_img_RGB2BGR`   | `False`           | **色域转换开关**。`False`= 关闭内部 RGB→BGR 转换。前提：预处理阶段已经把 OpenCV 默认 BGR 图像转为 RGB 再喂入模型；不要让 RKNN runtime 再做一次通道翻转，否则颜色错乱，出现 “框准、分类全错”。 |
+| `quantized_dtype`     | `"w8a8"`          | 量化数据类型：**权重 int8，激活值 int8（w8a8）**，即全 int8 量化。是 RK3576 最常用的量化模式，兼顾推理速度与模型体积；相比 fp16 大幅降低 NPU 内存占用。 |
+| `quantized_algorithm` | `"normal"`        | 量化算法，`normal`为标准 KL 散度量化算法，使用校准集统计激活值分布，生成量化参数；适合目标检测任务。 |
+| `quantized_method`    | `"channel"`       | **逐通道量化**。权重按每个卷积通道独立计算量化零点 / 缩放因子，精度更高；RKNN Toolkit2.3.0 版本后默认就是`channel`，优于旧版`tensor`（整个张量共用一套量化参数）。 |
+| `optimization_level`  | `3`               | 算子优化等级，范围 0‑3；3 代表开启全部编译器图优化：算子融合、常量折叠、算子替换为芯片硬件实现，最大化 NPU 推理性能。 |
+| `single_core_mode`    | `True`            | **单核模式**。编译出来的 RKNN 模型仅使用 1 颗 NPU 核心运行。✅优点：模型运行内存占用降低，适合内存紧张场景；⚠️缺点：不能利用多核并行，单帧推理延迟会变大，需要上层多线程推理池（RKNNPool）做多实例并发来拉高整体 FPS。 |
+| `model_pruning`       | `True`            | **无损模型剪枝**。RKNN 编译器做图级无损剪枝：移除无用常量、废弃分支、零权重通道，在不损失精度前提下减少模型大小与运行内存开销。 |
+
+**易错点**：
+
+- ⚠️ 校准图必须 jpg/png/bmp 且绝对路径、无中文（`convert_rknn.py` L22）；`--imgsz` 与训练一致（640）
+- ⚠️ `rgb2bgr` 必须 False（L65）：模型输入约定 RGB，转换侧与推理侧（`to_rgb`）必须一致
+- ⚠️ 掉点 >3% 时：增大 `--calib-count`、校准图用 val 集、必要时 `--no-quantize` 定位
+
+---
+
+#### 步骤6：NPU 部署与实时缺陷检测（阶段三：能改造，45min）
+
+> 📌 本步骤对应源码：`src/app.py`、`src/infer.py`、`src/preprocess.py`、`src/postprocess.py`、`src/mjpeg_server.py`、`src/ros2_source.py`
+
+**知识点讲解**：
+
+**实时缺陷检测推理流水线（1.3.2）**
+- **原理**：板端推理是一条精心对齐的流水线（`Detector.detect`，`src/infer.py` L108-139）：
+
+  (1) **letterbox 预处理**（`src/preprocess.py` L27-37）——按 `scale=min(size/h, size/w)` 等比缩放并用 0 值填充到 640×640，保持宽高比不变、避免目标变形；
+
+  (2) **BGR→RGB 通道交换**（L45-52 `to_rgb`）——量化配置 `rgb2bgr=False` 决定了 NPU 输入必须是 RGB；
+
+  (3) **NPU 推理**（`src/infer.py` L44-49）——`RKNNLite.inference` 输入必须是 **4D NHWC uint8**（静态 shape 模型不接受 3D），且**不做 /255 归一化**（量化模型内部已含 scale）；
+
+  (4) **CPU 侧解码**（`src/postprocess.py`）——`dfl_decode`（L34-42）对 16 bin 做 softmax 加权求和还原边框偏移，`box_process`（L45-56）加 grid 中心与 stride 还原 xyxy，`decode_rknn`（L91-121）按 `score_thr=0.25` 过滤后 `classwise_nms`（L59-88）逐类做非极大值抑制（同类别重叠框只留最高分）；
+
+  (5) **unletterbox**（`src/preprocess.py` L40-42）把检测框映射回原始图像坐标，再由 `app.py` 的 `draw()`（L32-39）画红框与类别标签。后端抽象（`Backend` Protocol，`infer.py` L23-26）使同一套推理逻辑可在 RKNN（NPU）/ONNX（CPU）间切换，支撑精度对比。
+
+- **源码对应**：`src/preprocess.py` L27-37（letterbox）、L40-42（unletterbox）、L45-52（to_rgb）；`src/infer.py` L23-26（Backend 协议）、L29-52（RKNNBackend：load L38-42 / predict L44-49）、L108-139（Detector：detect L118-130）；`src/postprocess.py` L34-42（dfl_decode）、L45-56（box_process）、L59-88（classwise_nms）、L91-121（decode_rknn）；`src/app.py` L24-29（_make_backend）、L32-39（draw）、L71-75（run_frame）、L94-146（视频/相机/ROS 模式）；`src/mjpeg_server.py` L19-72（MjpegServer）；`src/ros2_source.py` L20-116（Ros2Camera：DEFAULT_TOPIC L29 / open L50-69 / _on_image L71-80 / read L82-92 / release L98-116）
+
+**知识储备补充**：
+
+- **letterbox 数学定义**：等比缩放因子为两轴缩放的最小值，保证不裁切内容：
+
+  $$
+  scale = \min\left( \frac{size}{h}, \frac{size}{w} \right), \qquad
+  pad_x = \left\lfloor \frac{size - w \cdot scale}{2} \right\rfloor, \qquad
+  pad_y = \left\lfloor \frac{size - h \cdot scale}{2} \right\rfloor
+  $$
+
+  其中 $(w,h)$ 为原图宽高，$size=640$ 为目标边长。缩放后图像 `(h·scale, w·scale)` 居中放入 `(640,640)` 画布，两侧填充 `pad_color`。部署推理必须用 **pad=0**（非训练用的 114）——填充值参与卷积计算，若与训练/量化不一致，边缘特征分布偏移导致框错位。`unletterbox` 反向映射：`(box - [pad_x, pad_y, pad_x, pad_y]) / scale`。
+- **DFL 解码公式**：对每个位置，4 个坐标各对应 16 bin 分布，softmax 后加权：
+
+  $$
+  \hat{t}_c = \sum_{i=0}^{15} i \cdot \text{softmax}(z_c)_i, \quad c \in \{l, t, r, b\}
+  $$
+
+  其中 $z_c \in \mathbb{R}^{16}$ 是坐标 $c$ 的 16 bin logits。再经 `box_process` 加 grid 中心与 stride 还原到特征图尺度：$x_{center} = (g_x + 0.5 - \hat{t}_l) \cdot stride$（含 anchor-free 的分布偏移），最后乘 stride 得像素坐标。
+- **逐类 NMS**：NMS（Non-Maximum Suppression）抑制同类重叠框——按置信度降序扫描，保留当前最高分框，抑制与之 IoU ≥ `iou_thr` 的同类别框。逐类（classwise）做 NMS 是因为不同类别的框允许重叠（如缺陷框内再套一个）。IoU 定义：
+
+  $$
+  \text{IoU}(A,B) = \frac{|A \cap B|}{|A \cup B|} = \frac{\text{inter}}{\text{area}_A + \text{area}_B - \text{inter}}
+  $$
+
+- **参考资源**：rknn_model_zoo `yolov8.py`（本实现逐行对齐的官方参考）；Ultralytics《YOLOv8 Inference》；OpenCV `cv2.resize` 文档。
+
+**推理数据流图**：
+
+```mermaid
+graph TD
+    subgraph 输入源
+        I1[单图 --image] --> P
+        I2[视频 --video] --> P
+        I3[UVC相机 --camera] --> P
+        I4[ROS2相机 --ros<br/>ascamera HP60C] --> P
+    end
+    P[letterbox 等比缩放+0填充<br/>preprocess.py L27-37] --> R[to_rgb BGR→RGB<br/>preprocess.py L45-52]
+    R --> N[RKNNLite NPU推理<br/>4D NHWC uint8<br/>infer.py L44-49]
+    N --> D[DFL解码+逐类NMS<br/>postprocess.py L91-121]
+    D --> U[unletterbox 映射回原图坐标<br/>preprocess.py L40-42]
+    U --> S[draw 画框标注<br/>app.py L32-39]
+    S --> O[MJPEG推流 :8080/defect.mjpg<br/>mjpeg_server.py]
+    S --> W[本地窗口 --display]
+```
+
+**操作步骤**：
+
+1. 单图推理（最简验证）：
+   ```bash
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection
+   python src/app.py --model models/defect_yolov8n_int8.rknn --image images/1.jpg --save out.jpg
+   # 预期：终端打印 fps=xx.x 与每个缺陷框 类别 置信度 (x1,y1,x2,y2)；out.jpg 为红框标注图
+   ```
+
+2. 视频推理：
+
+   需要准视频，本实验未提供
+
+   ```bash
+   python src/app.py --model models/defect_yolov8n_int8.rknn --video test.mp4 --save out.mp4
+   # 预期：每 30 帧打印一次 avg_fps，最终输出标注视频
+   ```
+
+3. 相机实时（板上标准流程，HP60C 走 ROS2 话题）：
+
+   ```bash
+   # 终端 1：启动相机驱动（ROS_DOMAIN_ID 必须与驱动一致，本板 =2）
    source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
    export ROS_DOMAIN_ID=2
-   ros2 launch ascamera hp60c.launch.py        # 终端 1
-   python src/app.py --detect --ros             # 终端 2
-   # MJPEG: http://<板IP>:8080/qrcode.mjpg
+   ros2 launch ascamera hp60c.launch.py
+
+   # 终端 2：运行缺陷检测（同一 ROS_DOMAIN_ID）
+   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+   export ROS_DOMAIN_ID=2
+   python src/app.py --model models/defect_yolov8n_int8.rknn --ros
+   # 预期：终端打印 frame N avg_fps=xx.x，板端实测约 13 FPS
    ```
-2. 用手机屏幕显示二维码对准相机，观察实时识别（文本即时更新）
-3. 打印二维码贴在工件/卡片上，测试不同距离/角度的识别率
-4. 动手改造：在识别到特定内容（如含 "grasp"）时打印触发消息，为分拣联动打基础
 
-```bash
-(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode$ python src/app.py --detect --ros
+4. 浏览器查看实时检测流：
 
-Streams index: http://127.0.0.1:8080
-Available streams:
+   - 同一局域网内访问 `http://<板IP>:8080/defect.mjpg`
+   - 移动带缺陷的工件，观察红框与类别标签实时跟随
 
-http://127.0.0.1:8080/qrcode.mjpg
---------------------------------
+5. 验证后端可切换（精度对比前置）：
+   ```bash
+   python src/app.py --model train/weights/best.onnx --image images/1.jpg --save out_onnx.jpg
+   # .onnx 自动走 ONNXBackend（CPU），与 .rknn（NPU）对比帧率差异
+   ```
 
-
-Streams index: http://10.1.134.58:8080
-Available streams:
-
-http://10.1.134.58:8080/qrcode.mjpg
---------------------------------
-
-
-Press Ctrl+C to stop the server
-
-30帧平均帧率: 31.1
-[QR] https://example.com
-[QR] https://example.com
-[QR] https://example.com
-```
-
-<img src="assets/image-20260820134309004.png" alt="image-20260820134309004" style="zoom: 50%;" />
+6. 动手改造练习（阶段三）：修改 `src/app.py` L38-39 中画框颜色/线宽，或把 `score_thr` 从配置改为命令行参数，重新运行观察效果
 
 **易错点**：
 
-- ⚠️ --ros 取不到帧 → ascamera 先起、ROS_DOMAIN_ID 一致、话题勿 remap
-- ⚠️ 远距离/小码识别率低 → 靠近或提高分辨率；反光表面可调整角度
+- ⚠️ **视频流推理报过程乱框** → **解决**：因为模型是特定场景特定识别，调用摄像头看正常环境会出现较多错误检测是正常现象
 
-**流程图**：
+- ⚠️ **推理报 `need 4dims input`** → **解决**：静态 shape 模型要求 4D 输入，`RKNNBackend.predict`（`infer.py` L47）已用 `np.newaxis` 补成 NHWC；手写推理代码时务必保持 4 维
+- ⚠️ **检测结果框整体偏移/错位** → **解决**：检查 letterbox 填充值（必须 0，非 114）与 BGR/RGB 约定（`to_rgb` 必须调用）；两侧不一致是框偏移的头号原因
+- ⚠️ **init_runtime 报 `core mode not supported`** → **解决**：`RKNNLite` 初始化必须显式传 `core_mask=0`（NPU_CORE_AUTO，`infer.py` L36），None 值在 2.3.2 上会报错
+- ⚠️ **MJPEG 浏览器 404** → **解决**：端口被其他 demo 占用，`mjpeg_server.py` L47-57 启动时已预检端口并明确报错；先关闭占用 8080 的进程
+- ⚠️ **--ros 模式取不到帧** → **解决**：确认相机驱动已启动、`ROS_DOMAIN_ID` 与驱动一致（本板 =2）、话题为 `/ascamera_hp60c/camera_publisher/rgb0/image`（`ros2_source.py` L29，勿 remap）
 
-```mermaid
-flowchart LR
-    A[取流 --image/--video/--camera/--ros<br/>Ros2Camera 惰性导入 rclpy] --> B[逐帧 detect_qr<br/>降采样 => 掩膜循环<br/>单码图识别]
-    B --> C[draw_qr 标注<br/>绿框 + 解析文本]
-    C --> D{MJPEG 推流<br/>MjpegServer :8080<br/>qrcode.mjpg}
-    D -->|浏览器访问| E[实时查看二维码解析]
-    D -->|--display| F[本地窗口]
+---
 
-    style A fill:#e8f0ff,stroke:#448,stroke-width:1px
-```
+#### 步骤7：mAP50 精度评测与 onnx/rknn 对比（阶段三：能改造，35min）
+
+> 📌 本步骤对应源码：`src/eval_map.py`、`src/metrics.py`
+
+**知识点讲解**：
+
+**mAP50 指标原理（1.3.3）**
+- **原理**：mAP（mean Average Precision）是目标检测的行业标准指标。其计算分四层：(1) **IoU**（`src/metrics.py` L28-39 `iou_matrix`）——预测框与真值框的交并比，向量化实现逐对计算；(2) **TP/FP 匹配**（L54-73 `_match_flags`）——预测框按置信度降序，与同类别 GT 计算 IoU，`IoU≥0.5` 且该 GT 未被匹配过则为 TP，否则 FP（一张 GT 只匹配一次）；(3) **PR 曲线与 AP**（L42-51 `_ap_from_pr`）——按置信度阈值从高到低扫描，计算 precision/recall 序列，用 all-point 插值求曲线下面积，即单个类别的 AP50；(4) **mAP50**（L76-112 `map50`）——各类 AP50 的平均，遵循 COCO/ultralytics 约定**无 GT 的类别不参与均值**，保证与官方 `yolo val` 可比。`eval_map.py`（L29-91）把评测组织为"遍历 val 集 → Detector 推理 → 解析 YOLO 标签为 GT → map50 计算"，`--backend` 参数支持 rknn/onnx 双后端，从而量化 int8 量化相对浮点模型的精度损失（本项目要求掉点 ≤3%）。
+- **源码对应**：`src/metrics.py` L28-39（iou_matrix）、L42-51（_ap_from_pr）、L54-73（_match_flags）、L76-112（map50）；`src/eval_map.py` L29-46（参数与 Detector 构建）、L48-79（评测循环与 GT 解析）、L81-91（结果输出）
+
+**知识储备补充**：
+
+- **PR 曲线与 AP 数学定义**：对每个类别，按置信度阈值 $\tau$ 从高到低扫描，得到 precision/recall 序列：
+
+  $$
+  \text{Precision}(\tau) = \frac{TP(\tau)}{TP(\tau) + FP(\tau)}, \qquad
+  \text{Recall}(\tau) = \frac{TP(\tau)}{TP(\tau) + FN(\tau)}
+  $$
+
+  AP 是 PR 曲线下的面积。本实现用 **all-point 插值**（非 COCO 的 101 点插值）：
+
+  $$
+  \text{AP} = \sum_{k} (R_{k+1} - R_k) \cdot P_{k+1}
+  $$
+
+  其中 $P_k, R_k$ 为按 recall 升序的第 $k$ 个插值点（recall 间隔上的最高 precision）。mAP50 即所有类别 AP50 的均值，`IoU_thr=0.5` 表示"预测框与 GT 的 IoU ≥ 0.5 即算命中"。
+- **TP/FP 匹配的贪心约束**：一张 GT 只匹配一次（`_match_flags`），防止多个预测框同时命中同一 GT 都算 TP——这保证了指标不被冗余预测虚高，是目标检测评测的通用约定。
+- **关键参数**：`iou_thr=0.5`（即 AP50）；"无 GT 的类不参与均值"（`metrics.py` L109-111）——若某类在测试集中无样本，其 AP 无定义，纳入均值会拉低 mAP 且与 `yolo val` 不可比。
+- **参考资源**：COCO 数据集评测官方定义（cocodataset.org）；Ultralytics《Metrics》文档；《The PASCAL Visual Object Classes Challenge》（Everingham et al., 2010）。
+
+**操作步骤**：
+
+1. 运行 RKNN 后端评测（板上，需要 NEU-DET 数据）：
+   ```bash
+   python src/eval_map.py --backend rknn \
+     --model models/defect_yolov8n_int8.rknn \
+     --data /home/iflytek/Src/AIoT_B2/NEU-DET.v1i.yolov8
+   # 预期输出：per-class AP50 表格 + mAP50（如 0.71x）
+   ```
+2. 运行 ONNX 后端评测，与 RKNN 对比：
+   ```bash
+   python src/eval_map.py --backend onnx \
+     --model train/weights/best.onnx \
+     --data /home/iflytek/Src/AIoT_B2/NEU-DET.v1i.yolov8
+   # 预期：onnx mAP50 略高于 rknn；掉点 = onnx - rknn ≤ 3%
+   ```
+3. 记录两类缺陷的 AP 差异，思考原因（如 crazing 与 scratches 类间相似，AP 通常偏低）
+4. 填写性能基线表（实验报告必填）：
+
+   | 指标 | 期望值 | 实测值 |
+   |------|-------|-------|
+   | onnx mAP50 | ≈0.73 |  |
+   | rknn(int8) mAP50 | 掉点 ≤3% |  |
+   | 单图推理 FPS（NPU） | ≥15（实测约 13） |  |
+   | MJPEG 流地址 | :8080/defect.mjpg 可访问 |  |
+
+**易错点**：
+- ⚠️ mAP 数值与 `yolo val` 不可比 → 保持"无 GT 类不参与均值"约定（`metrics.py` L109-111）；GT 与 pred 统一原始图像坐标（`eval_map.py` L74-75）
+- ⚠️ 评测耗时长 → 可先用 `--limit`（若支持）抽子集快速验证流程，再全量跑
 
 ---
 
@@ -447,35 +657,41 @@ flowchart LR
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| 生成时报错 data must not be empty | 传入空字符串 | 先判空再生成（`qr.py` L32-33） |
-| 检测不到码 | 码太小/太远/反光/畸变；**整图含多码触发定位串扰** | 靠近、提高分辨率、调整角度；整图多码需逐码分图检测 |
-| 多码只检出 1 个或 0 个 | 未掩膜已识别区域；或整图多码第一轮定位即失败 | 单码图用掩膜循环（L74-78）；整图多码请逐码分图，勿拼图 |
-| 框错位 | 降采样后未乘回 factor | 确认 `factor=1/scale` 映射（L66-67） |
-| 解析文本乱码 | 编码/中文字符问题 | 生成与解析编码一致；中文建议 UTF-8 |
-| 板上 import qrcode 失败 | 未安装依赖 | `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple qrcode` |
+| 检测框整体偏移/错位 | letterbox 填充值或 BGR/RGB 约定与转换不一致 | 部署侧保持 pad=0（`preprocess.py` L8-9）与 `to_rgb()`（L45-52）；转换侧 `quant_img_RGB2BGR=False`（`convert_rknn.py` L65） |
+| NPU 推理报 `need 4dims input` | 静态 shape 模型要求 4D NHWC 输入 | 按 `infer.py` L47 加 `np.newaxis` 补维 |
+| init_runtime 报 `core mode not supported` | core_mask 传 None | 显式传 `core_mask=0`（NPU_CORE_AUTO，`infer.py` L36） |
+| RKNN 转换掉点 >3% | 校准集不足或预处理不一致 | 增大 `--calib-count`（`convert_rknn.py` L99）、校准图用 val 集且预处理与推理一致；必要时 `--no-quantize` 定位 |
+| 导出 ONNX 输出不是 9 个 | 用了官方 ultralytics 或未指定 format=rknn | 使用 RKNN 优化 fork + `format='rknn'`（`export_onnx.sh` L16），校验命令见 L20 |
+| MJPEG 浏览器 404 | 8080 端口被其他 demo 占用 | 关闭占用进程；启动时预检报错见 `mjpeg_server.py` L47-57 |
+| `--ros` 取不到帧 | 驱动未启动或 ROS_DOMAIN_ID 不一致 | 先 `ros2 launch ascamera hp60c.launch.py`；export ROS_DOMAIN_ID=2；话题勿 remap（`ros2_source.py` L29） |
+| 退出程序时报 C++ abort / core dumped | `Ros2Camera.release()` 先 destroy_node 再 rclpy.shutdown()，顺序反了 | 严格先 `rclpy.shutdown()` 后 `destroy_node`（`ros2_source.py` L98-116），release 已内置正确顺序 |
+| 量化校准报错或无效果 | 校准图路径含中文字符/格式不支持，或 imgsz 与模型不一致 | 校准图用 jpg/png/bmp 与绝对路径（`convert_rknn.py` L22）；`--imgsz` 与训练一致 |
+| 板上无训练集时推理报错 | `class_names` 读 data.yaml 失败抛 FileNotFoundError | 属正常现象，`app.py` L60-65 已内置 NEU-DET 6 类名兜底，板上推理无需数据集 |
+| mAP 数值与 `yolo val` 不可比 | 无 GT 的类参与了均值，或 GT 与预测坐标空间不一致 | 保持"无 GT 类不参与均值"约定（`metrics.py` L109-111）；GT 与 pred 统一原始图像坐标（`eval_map.py` L74-75） |
 
 ### 1.8 扩展实验
 
-**扩展方向 1：二维码分拣联动（进阶）**
-- 识别到特定内容（如 `grasp:<物体名>`）时发布 ROS2 话题或串口指令，联动机械臂抓取（参考实验 05 的 cmd_vel 模式与实验 02 的大类映射）
+**扩展方向 1：缺陷精度提升与消融对比（进阶）**
+- 训练侧换更大模型 `yolov8s` 或提高 `imgsz=800`，对比 mAP50 提升与板端 FPS 下降的权衡（NPU 算力 6TOPS 固定，模型越大单帧耗时越高）
+- 增加校准图片数（`--calib-count 500`）或改用 fp16 转换，观察 int8 量化掉点变化
+- 用 `src/eval_map.py` 的 `--backend` 参数建立 torch / onnx / rknn 三方精度对比表，分析量化误差主要来自哪类缺陷
 
-**扩展方向 2：畸变二维码鲁棒识别（进阶）**
-- 引入透视校正：用 detectAndDecode 的 points 四角点做 `cv2.getPerspectiveTransform` 矫正后再解码，测试倾斜/曲面上的二维码识别率提升
-
-**扩展方向 3：整图多码识别（进阶）**
-- `QRCodeDetector` 单目标局限下，实现整图多码可用：(a) 按连通域将大图切块后逐块 `detect_qr`；(b) 换用 OpenCV 的 `WeChatQRCodeDetector`（基于 CNN，原生支持同图多码，需模型文件 `detect.prototxt` + `detect.caffemodel`）。实测两者都能突破单目标限制
+**扩展方向 2：质检联动与缺陷统计报告（进阶）**
+- 在 `src/app.py` 主循环（L123-138）中按类别累加缺陷计数，周期性输出缺陷统计（如"scratches: 12 处"），生成质检报表，对应工业场景的"缺陷统计与质检报告生成"
+- 将 `Detector.detect()` 返回的 `Detection` 列表转换为 ROS2 `vision_msgs/Detection2DArray` 话题发布，供机械臂分拣或报警灯联动（需在 `ros2_source.py` 旁新增 publisher 模块）
+- 把 MJPEG 推流（`mjpeg_server.py`）与缺陷统计叠加显示在画面上，形成完整的人机交互质检界面
 
 ### 1.9 实验报告要求
 
-**评分标准**：二维码原理理解 15 分 + 生成实现 20 分 + 检测与多码循环 25 分 + 实时识别演示 30 分 + 报告 10 分 = 100 分。
+**评分标准**：配置与数据集理解 10 分 + 训练产物分析 15 分 + ONNX/RKNN 转换 25 分 + NPU 实时推理与 MJPEG 演示 30 分 + mAP50 评测 10 分 + 实验报告 10 分 = 100 分。
 
 **报告必含内容**：
-1. QR Code 结构说明（定位/校正/时序/数据区）与纠错等级对比
-2. 生成的二维码图片（≥2 个：URL + 中文）与参数表
-3. 检测结果图（≥2 个不同内容的单码各 1 张）与解析文本
-4. 实时识别演示数据（距离/角度/识别率记录）
-5. 回答思考题：为什么掩膜循环依赖检测器先定位到单码？整图多码为何失败？纠错等级如何影响容量与鲁棒性？工业场景如何选参数？
-6. 实验心得与问题记录
+1. 推理流水线框图（letterbox → RGB → NPU → DFL 解码/NMS → unletterbox），标注每步对应源码文件与行号
+2. 单图检测结果图（标注前/后对比）与 3 个检测框的类别、置信度、坐标数据
+3. 板端实测 FPS（单图/视频/相机三种模式）与性能基线表（1.6 步骤 7 表格）
+4. onnx vs rknn 的 mAP50 对比表，分析量化掉点原因
+5. 回答思考题：为什么部署推理用 pad=0 而训练用 114？为什么 NPU 输入必须是 RGB 且不做归一化？如果 score_thr 从 0.25 调到 0.5，检测结果会如何变化？
+6. 实验心得与问题记录（遇到的问题、排查过程、解决结果）
 
 ---
 
@@ -483,6 +699,6 @@ flowchart LR
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/04_qrcode，19 用例全绿，qrcode 生成 + OpenCV QRCodeDetector 多码循环检测 + MJPEG 实时推流） |
-| v2.0 | 2026-08-19 | 知识点增强：补充 QR Code 矩阵结构（$M=17+4v$）、Reed-Solomon 纠错原理、版本-容量关系、降采样加速、掩膜循环机制、四角点→外接框、色域转换、MJPEG 推流、ROS2 惰性导入等知识储备；新增执行现象段；添加参考资源（ISO 18004 / OpenCV 文档 / qrcode 库文档）；行号源码核实 |
-| v2.1 | 2026-08-21 | 步骤 1 新增「配置参数速查表」：config/qrcode_config.yaml 全参数（generate/detect/camera/display/source）。标注 error_correction H 的板端实测陷阱。表值经 config 实测核对 |
+| v1.0 | 2026-08-10 | 初版生成（基于源码实测：app.py/infer.py/preprocess.py/postprocess.py/convert_rknn.py 等，源码路径 ros2_ws/src/xflz_eai_car1/vision/01_industrial_defect_detection，板端验证 13 FPS，训练产物 mAP50=0.732） |
+| v2.0 | 2026-08-19 | 知识点增强：各核心知识点追加「知识储备补充」（YOLOv8架构/DFL/letterbox/NMS/int8量化/mAP50 公式与参考资源）；1.5 追加可复现代码块与执行现象 |
+| v2.1 | 2026-08-21 | 步骤1 新增「配置参数速查表」：config/defect_config.yaml 全参数按区块分列（dataset/train/infer/source/server/rknn/eval），含类型/示例/说明；标注 PC 侧（train/rknn）与板端（infer/source/server）用途区分、`source`/`server`/`train.run_dir` 不在 REQUIRED 契约、infer.imgsz 须与 train.imgsz 一致等要点。表值经 load_config 实测核对 |

@@ -3,648 +3,552 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP-12 手指动作控制 · 机器人视觉应用与开发</title>
+<title>EXP-12 · 手势识别（4 模型级联）— 机器人视觉入门课</title>
 <link rel="stylesheet" href="../shared/tutorial.css">
-<style>
-:root{
-  --theme:#0d9488;
-  --theme-deep:#0f766e;
-  --theme-bg:#ccfbf1;
-  --theme-bd:#99f6e4;
-}
-
-/* 指导书截图图廊 */
-.figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #99f6e4;border-radius:12px}
-.figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#0f766e;display:flex;gap:.4rem;align-items:center}
-.figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
-.fg{margin:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:.5rem;cursor:zoom-in;transition:.2s}
-.fg:hover{box-shadow:0 6px 18px rgba(13,148,136,.15);transform:translateY(-2px)}
-.fg img{width:100%;display:block;border-radius:6px;background:#fff}
-.fg figcaption{font-size:.74rem;color:var(--text-secondary);line-height:1.55;padding-top:.45rem}
-#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
-#lightbox.on{display:flex}
-#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-</style>
+<link rel="stylesheet" href="../shared/beginner.css">
+<style>:root{--theme:#0f766e;--theme-deep:#115e59;--theme-bg:#ccfbf1;--theme-bd:#99f6e4}</style>
 </head>
 <body>
 
+<div class="topbar">
+  <a class="logo" href="../../../index.html" style="text-decoration:none;color:inherit">🧠 具身智能课程 · <i>机器人视觉入门</i></a>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">视觉入门课</a> / EXP-12</div>
+</div>
+
 <div class="wrap">
+
 <aside class="side">
-  <div class="side-title">🤖 CORE-02 · 视觉应用与开发</div>
-  <div class="side-sub">12 个实验 · 48 学时</div>
-
-  <div class="grp">CH1 · 检测与分类</div>
-  <a href="../exp-01-industrial-defect/index.html">EXP-01 工业缺陷检测（YOLOv8）</a>
-  <a href="../exp-02-garbage-classification/index.html">EXP-02 垃圾分类图像分类</a>
-  <a href="../exp-03-lab-color-recognition/index.html">EXP-03 Lab/HSV 色彩空间</a>
-  <a href="../exp-04-qrcode/index.html">EXP-04 二维码识别与解码</a>
-
-  <div class="grp">CH2 · 图像理解</div>
-  <a href="../exp-05-line-following/index.html">EXP-05 多边形轮廓巡线</a>
-  <a href="../exp-06-semantic-segmentation/index.html">EXP-06 图像语义分割</a>
-
-  <div class="grp">CH3 · 跟踪与 3D</div>
-  <a href="../exp-07-deepsort-tracking/index.html">EXP-07 DeepSORT 多目标跟踪</a>
-  <a href="../exp-08-depth-3d-detection/index.html">EXP-08 深度信息与 3D 检测</a>
-
-  <div class="grp">CH4 · 人体感知</div>
-  <a href="../exp-09-face-landmarks/index.html">EXP-09 人脸关键点检测</a>
-  <a href="../exp-10-pose-landmark/index.html">EXP-10 骨骼关键点检测</a>
-  <a href="../exp-11-pose-control/index.html">EXP-11 肢体动作体感控制</a>
-  <a class="now" href="index.html">EXP-12 手指动作控制</a>
+  <h4>本页步骤</h4>
+  <a href="#s1" class="now">01 这个实验解决什么问题</a>
+  <a href="#s2">02 三分钟讲懂：四个模型怎么接力</a>
+  <a href="#s3">03 先认识 4 个词</a>
+  <a href="#s4">04 它吃什么、吐什么</a>
+  <a href="#s5">05 三步跑起来</a>
+  <a href="#s6">06 你该看到的画面</a>
+  <a href="#s7">07 改一个参数看变化</a>
+  <a href="#s8">08 踩坑速查</a>
+  <a href="#s9">09 进阶（可选）</a>
+  <a href="#s10">10 随堂小测</a>
+  <h4>本课程实验</h4>
+  <a href="../exp-01-color-hsv/index.html">EXP-01 颜色识别</a>
+  <a href="../exp-02-qrcode/index.html">EXP-02 二维码</a>
+  <a href="../exp-03-contour-polygon/index.html">EXP-03 多边形轮廓</a>
+  <a href="../exp-04-industrial-defect/index.html">EXP-04 工业缺陷检测</a>
+  <a href="../exp-05-garbage-classification/index.html">EXP-05 垃圾分类</a>
+  <a href="../exp-06-semantic-segmentation/index.html">EXP-06 语义分割</a>
+  <a href="../exp-07-deepsort-tracking/index.html">EXP-07 多目标跟踪</a>
+  <a href="../exp-08-face-landmarks/index.html">EXP-08 人脸关键点</a>
+  <a href="../exp-09-pose-landmark/index.html">EXP-09 骨骼关键点</a>
+  <a href="../exp-10-depth-3d/index.html">EXP-10 深度 3D</a>
+  <a href="../exp-11-pose-control/index.html">EXP-11 体感控制</a>
+  <a href="../exp-12-hand-control/index.html" style="color:#0f766e;font-weight:700">EXP-12 手势识别</a>
 </aside>
 
 <main class="content">
-  <div class="exp-head">
-    <span class="code">EXP-12 · 第 4 篇 · 设计性 · 4 学时</span>
-    <h1>手指动作控制</h1>
-    <p class="desc">全课程的收官实验：一只手掌，21 个关键点，MediaPipe Gesture Recognizer 的四模型级联——
-    检测手在哪、摆好 21 个点、算出嵌入向量、分类 8 种手势。再用拇指-食指夹角连续控制特效强度，
-    把"捏合旋钮"变成真实交互。理解输入契约，是这个实验真正的分水岭。</p>
-    <div class="meta">
-      <span class="tag hl">难度 ⭐⭐ · 4 学时</span>
-      <span class="tag">四模型级联</span>
-      <span class="tag">8 类手势 + 8 类 canned gesture</span>
-      <span class="tag">58 项单测</span>
-      <span class="tag">:8084/hand.mjpg</span>
+
+<div class="exp-head">
+  <span class="code">EXP-12 · 第 5 阶段 · 视觉控制 · 设计性 · 4 学时 · 收官实验</span>
+  <h1>手势识别：比个"耶"，机器就知道你在比"耶"</h1>
+  <p class="desc">这是最后一个实验，也是链路最长的：4 个模型接力，从"找出你的手"一路到"这是 Victory 手势"。中途还藏着一个很聪明的优化 —— 手没消失时，可以跳过第一步直接预测位置。跑通它，前面的所有知识点都用上了。</p>
+  <div class="meta">
+    <span class="tag hl">难度 ⭐⭐ · 4 学时</span>
+    <span class="tag">手掌检测</span><span class="tag">21 关键点</span>
+    <span class="tag">Embedding + 分类</span><span class="tag">8 类手势</span>
+  </div>
+</div>
+
+<div class="pathline">
+  <span>01 颜色</span><span>02 二维码</span><span>03 轮廓</span><span>04 检测</span><span>05 分类</span><span>06 分割</span><span>07 跟踪</span><span>08 人脸</span><span>09 骨骼</span><span>10 3D</span><span>11 体感</span><span class="cur">12 手势</span>
+</div>
+
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>这个实验解决什么问题</h2>
+
+  <div class="idea">
+    <span class="tag1">CORE IDEA · 一句话原理</span>
+    <p class="big">4 个模型接力：<b>找手 → 找 21 个点 → 压成 128 维指纹 → 分类成 8 种手势</b>。</p>
+    <p class="analogy"><b>打个比方：</b>就像流水线上的四道工序。第一道找出"手在画面哪一块"，第二道在那一块里定位 21 个关节，第三道把这 21 个点压成一组数字（"这只手的特征"），第四道拿这组数字去比对"最像哪个手势"。</p>
+  </div>
+
+  <p>手势识别看起来简单，做起来难。难点在"手"这个东西：</p>
+
+  <table>
+    <thead><tr><th style="width:28%">难点</th><th>为什么难</th></tr></thead>
+    <tbody>
+      <tr><td>手很小</td><td>在 640 画面里可能只有 100×100，而且经常在动</td></tr>
+      <tr><td>姿态太多</td><td>手指有 20 多个自由度，能摆出无数种形状</td></tr>
+      <tr><td>容易混淆</td><td>"比耶"和"OK"、"张开手掌"和"四指"差别很小</td></tr>
+      <tr><td>背景干扰</td><td>桌上有别的东西、手上有戒指手环</td></tr>
+    </tbody>
+  </table>
+
+  <p>所以把它拆成四步：<b>每一步只解决一个小问题，四个串起来解决大问题。</b></p>
+
+  <div class="oneline"><span>本实验的目标：<b>对着镜头比"耶"，屏幕显示 Victory；张开手掌显示 Open_Palm；还能用拇指食指的夹角控制画面特效。</b></span></div>
+</section>
+
+<section class="blk" id="s2">
+  <h2><span class="no">02</span>三分钟讲懂：四个模型怎么接力</h2>
+
+  <div class="anim-box">
+    <svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="手势识别四模型级联：手掌检测 21点关键点 embedding 手势分类 以及检测-跟踪状态机">
+      <rect x="6" y="6" width="748" height="288" rx="12" fill="#111827" stroke="#334155"/>
+      <text x="380" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#5eead4" font-family="sans-serif">四个模型接力，每步只解决一个小问题</text>
+
+      <!-- 1 手掌检测 -->
+      <rect x="18" y="42" width="156" height="98" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1.6"/>
+      <text x="96" y="62" text-anchor="middle" font-size="11" fill="#67e8f9" font-weight="700" font-family="sans-serif">① 找手</text>
+      <text x="96" y="78" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="sans-serif">hand_detector</text>
+      <rect x="46" y="86" width="100" height="44" rx="4" fill="#0f172a"/>
+      <rect x="68" y="92" width="54" height="34" fill="none" stroke="#22d3ee" stroke-width="1.8"/>
+      <circle cx="95" cy="110" r="8" fill="#334155"/>
+      <text x="96" y="146" text-anchor="middle" font-size="8.5" fill="#64748b" font-family="monospace">192×192 → 1 个框</text>
+
+      <path d="M180 91 L202 91" stroke="#475569" stroke-width="2" marker-end="url(#qa)" fill="none"/>
+      <defs><marker id="qa" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 z" fill="#64748b"/></marker></defs>
+
+      <!-- 2 21点 -->
+      <rect x="206" y="42" width="156" height="98" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1.6"/>
+      <text x="284" y="62" text-anchor="middle" font-size="11" fill="#67e8f9" font-weight="700" font-family="sans-serif">② 找 21 个关节</text>
+      <text x="284" y="78" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="sans-serif">hand_landmarks</text>
+      <rect x="240" y="86" width="88" height="44" rx="4" fill="#0f172a"/>
+      <g fill="#f472b6">
+        <circle cx="284" cy="116" r="2.6"/>
+        <circle cx="268" cy="104" r="2.6"/><circle cx="262" cy="94" r="2.6"/><circle cx="260" cy="86" r="2.6"/>
+        <circle cx="278" cy="100" r="2.6"/><circle cx="276" cy="90" r="2.6"/><circle cx="276" cy="82" r="2.6"/>
+        <circle cx="290" cy="100" r="2.6"/><circle cx="292" cy="90" r="2.6"/><circle cx="293" cy="82" r="2.6"/>
+        <circle cx="300" cy="106" r="2.6"/><circle cx="306" cy="98" r="2.6"/><circle cx="310" cy="92" r="2.6"/>
+      </g>
+      <g stroke="#4ade80" stroke-width="1" fill="none" opacity=".6">
+        <path d="M284,116 L268,104 L262,94 L260,86"/><path d="M284,116 L278,100 L276,90 L276,82"/>
+        <path d="M284,116 L290,100 L292,90 L293,82"/><path d="M284,116 L300,106 L306,98 L310,92"/>
+      </g>
+      <text x="284" y="146" text-anchor="middle" font-size="8.5" fill="#64748b" font-family="monospace">224×224 → 21×3 坐标</text>
+
+      <path d="M368 91 L390 91" stroke="#475569" stroke-width="2" marker-end="url(#qa)" fill="none"/>
+
+      <!-- 3 embedding -->
+      <rect x="394" y="42" width="156" height="98" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.6"/>
+      <text x="472" y="62" text-anchor="middle" font-size="11" fill="#c4b5fd" font-weight="700" font-family="sans-serif">③ 压成 128 个数字</text>
+      <text x="472" y="78" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="sans-serif">gesture_embedder</text>
+      <g font-size="8" fill="#ddd6fe" font-family="monospace">
+        <text x="404" y="98">[0.31, -0.82, 0.55,</text>
+        <text x="404" y="112"> 0.09, 1.24, -0.4,</text>
+        <text x="404" y="126"> ... 共 128 个]</text>
+      </g>
+      <text x="472" y="146" text-anchor="middle" font-size="8.5" fill="#64748b" font-family="monospace">这只手的"指纹"</text>
+
+      <path d="M556 91 L578 91" stroke="#475569" stroke-width="2" marker-end="url(#qa)" fill="none"/>
+
+      <!-- 4 分类 -->
+      <rect x="582" y="42" width="160" height="98" rx="8" fill="#14532d" stroke="#34d399" stroke-width="1.8"/>
+      <text x="662" y="62" text-anchor="middle" font-size="11" fill="#6ee7b7" font-weight="700" font-family="sans-serif">④ 8 选 1</text>
+      <text x="662" y="78" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="sans-serif">canned_gesture_classifier</text>
+      <g font-size="8.5" font-family="monospace">
+        <text x="594" y="96" fill="#4ade80">Victory    0.94</text>
+        <text x="594" y="110" fill="#94a3b8">Open_Palm  0.03</text>
+        <text x="594" y="124" fill="#94a3b8">ILoveYou   0.01</text>
+      </g>
+      <text x="662" y="146" text-anchor="middle" font-size="8.5" fill="#64748b" font-family="monospace">softmax 8 类</text>
+
+      <!-- 状态机 -->
+      <rect x="18" y="164" width="724" height="110" rx="8" fill="#0b1220" stroke="#1e293b"/>
+      <text x="32" y="184" font-size="11" fill="#5eead4" font-weight="700" font-family="sans-serif">藏在中间的一个优化：检测-跟踪状态机</text>
+
+      <rect x="32" y="196" width="150" height="46" rx="6" fill="#1e293b" stroke="#22d3ee"/>
+      <text x="107" y="216" text-anchor="middle" font-size="10" fill="#67e8f9" font-family="sans-serif">上帧检测到手？</text>
+      <text x="107" y="232" text-anchor="middle" font-size="9" fill="#64748b" font-family="monospace">presence ≥ 0.5</text>
+
+      <path d="M186 219 L214 219" stroke="#4ade80" stroke-width="2" marker-end="url(#qb)" fill="none"/>
+      <defs><marker id="qb" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 z" fill="#4ade80"/></marker></defs>
+      <rect x="218" y="196" width="200" height="46" rx="6" fill="#14532d" stroke="#34d399"/>
+      <text x="318" y="216" text-anchor="middle" font-size="10" fill="#bbf7d0" font-family="sans-serif">跳过 ①，用上帧 21 点预测位置</text>
+      <text x="318" y="232" text-anchor="middle" font-size="9" fill="#4ade80" font-family="monospace">省掉一次推理 → 更快</text>
+
+      <path d="M186 219 L214 262" stroke="#475569" stroke-width="2" marker-end="url(#qa)" fill="none"/>
+      <rect x="218" y="244" width="200" height="26" rx="6" fill="#1e293b" stroke="#475569"/>
+      <text x="318" y="262" text-anchor="middle" font-size="9.5" fill="#94a3b8" font-family="sans-serif">否则：全图跑一遍 ①（慢但可靠）</text>
+
+      <rect x="440" y="196" width="288" height="46" rx="6" fill="#422006" stroke="#fbbf24"/>
+      <text x="584" y="216" text-anchor="middle" font-size="10" fill="#fde68a" font-family="sans-serif">一旦 presence 掉到 0.5 以下</text>
+      <text x="584" y="232" text-anchor="middle" font-size="9" fill="#fbbf24" font-family="monospace">立刻回退到"全图找手"模式</text>
+    </svg>
+  </div>
+  <div class="cap">图 12-1｜四个模型 + 一个状态机。状态机是"性能优化"，模型本身还是那四个。</div>
+
+  <h3>四个模型各干什么</h3>
+  <table>
+    <thead><tr><th style="width:26%">模型</th><th style="width:16%">大小</th><th>干什么</th></tr></thead>
+    <tbody>
+      <tr><td><code>hand_detector.rknn</code></td><td>约 3MB</td><td>在整图里找出手的<b>方框</b>。输入 192×192，其实就是 BlazeFace 的思路改的</td></tr>
+      <tr><td><code>hand_landmarks_detector.rknn</code></td><td>约 6MB</td><td>在框里找出 <b>21 个关节</b>。输入 224×224</td></tr>
+      <tr><td><code>gesture_embedder.rknn</code></td><td>约 450KB</td><td>把 21 个点压成 <b>128 维向量</b>（这只手的"指纹"）</td></tr>
+      <tr><td><code>canned_gesture_classifier.rknn</code></td><td>约 90KB</td><td>拿 128 维向量去选择题：<b>8 类里最像哪个</b></td></tr>
+    </tbody>
+  </table>
+
+  <h3>为什么不直接用 21 个点判断手势</h3>
+  <p>理论上可以（就像 EXP-11 用几个关节判断举手）。但对 8 种手势来说，规则会变得非常复杂：</p>
+
+  <table>
+    <thead><tr><th style="width:26%">做法</th><th style="width:30%">优点</th><th>缺点</th></tr></thead>
+    <tbody>
+      <tr><td>手写几何规则<br>（比角度、比距离）</td><td>不用额外模型、可解释</td><td>8 种手势要写几十条规则；换个角度看就失效；加新手势要重写</td></tr>
+      <tr><td><b>embedding + 分类器</b><br>（本实验做法）</td><td>分类器只有 90KB；<b>加新手势只要重新训最后那一小段</b>；对角度变化更鲁棒</td><td>多两个模型、推理链路更长</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>这就是"把规则交给数据"的典型场景。</b>手势形状太复杂、太灵活，与其手写规则，不如丢给神经网络去学。但注意：<b>前面 21 个点还是用模型找的，那部分没法用规则替代</b>。</p>
+
+  <div class="tip tealb"><span class="lab">🔍 "Embedding" 到底是什么</span>就是把高维信息压成一组低维数字（128 个），<b>让"相同的东西"在这组数字上距离近，"不同的东西"距离远</b>。<br><br>
+  本实验里，21 个点有 63 个数（21×3），看起来压成 128 个数是"变多"了。但实际上 63 个数里有很多冗余（手指是连着的，关节位置有关联）。<b>embedding 的作用不是减少数量，而是把它转换成"更容易分类"的表示。</b>这 128 个数字是分类器专门"要什么就给什么"的形式。</div>
+
+  <div class="oneline"><span><b>记住这个结构：</b>找手 → 找点 → 压成数字 → 分类。<b>"先粗后细、层层缩小处理范围"是这个实验的主线</b>，也是 EXP-08（人脸）和 EXP-07（跟踪）用过的同一个套路。</span></div>
+</section>
+
+<section class="blk" id="s3">
+  <h2><span class="no">03</span>先认识 4 个词</h2>
+  <div class="terms">
+    <div class="term"><div class="w">21 关键点</div><p class="m">每只手 21 个点：1 个手腕 + 5 个指根 + 15 个指节（每指 3 个）。<b>编号固定</b>，第 4 号永远是大拇指尖。</p></div>
+    <div class="term"><div class="w">Embedding</div><p class="m">把输入转换成一个"特征向量"，让相似的东西在向量空间里靠近。常用于检索、分类、比对。</p></div>
+    <div class="term"><div class="w">Softmax</div><p class="m">把一堆分数变成"加起来等于 1 的概率"。输出 <code>Victory 0.94 / Open_Palm 0.03 / ...</code> 就是这么来的。</p></div>
+    <div class="term"><div class="w">presence</div><p class="m">"这只手还在框里吗"的置信度。低于阈值就认为丢了，<b>状态机会回退到全图重新找</b>。</p></div>
+  </div>
+
+  <details class="deep">
+    <summary>8 种手势分别是哪些？<em>选读 30 秒</em></summary>
+    <div class="deep-body">
+      <p>MediaPipe 的手势分类器支持这几类：</p>
+      <table>
+        <thead><tr><th style="width:30%">名称</th><th>什么样</th></tr></thead>
+        <tbody>
+          <tr><td><code>Open_Palm</code></td><td>五指张开</td></tr>
+          <tr><td><code>Closed_Fist</code></td><td>握拳</td></tr>
+          <tr><td><code>Pointing_Up</code></td><td>食指指上</td></tr>
+          <tr><td><code>Thumb_Up</code></td><td>点赞</td></tr>
+          <tr><td><code>Thumb_Down</code></td><td>倒赞</td></tr>
+          <tr><td><code>Victory</code></td><td>比"耶"</td></tr>
+          <tr><td><code>ILoveYou</code></td><td>伸出拇指、食指、小指</td></tr>
+          <tr><td><code>None</code></td><td>都不像（兜底）</td></tr>
+        </tbody>
+      </table>
+      <p>注意 <code>None</code> 这个类 —— <b>它是很重要的设计</b>。如果没有它，模型遇到不认识的手势也会硬选一个最接近的，那就会误判。有了 None，它可以坦率地说"这个我不认识"。</p>
+    </div>
+  </details>
+</section>
+
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>它吃什么、吐什么</h2>
+
+  <div class="io2">
+    <div class="cellbox in">
+      <span class="lb">INPUT · 喂进去</span>
+      <div class="v">有手的画面</div>
+      <p class="d">4 个模型文件都在 <code>models/</code>。<code>max_hands: 2</code> 表示最多同时处理两只手。</p>
+    </div>
+    <div class="arw">→</div>
+    <div class="cellbox out">
+      <span class="lb">OUTPUT · 吐出来</span>
+      <div class="v">左手特效 + 右手骨架 + 状态栏</div>
+      <p class="d">左栏：加了特效的画面 + FPS。右栏：黑底手骨架 + 手势名 + 一个竖条仪表。状态栏：<code>FPS / Hands / Fingers / 当前特效</code>。</p>
     </div>
   </div>
 
-  <!-- 1 -->
-  <section class="blk" id="s1">
-    <h2><span class="no">01</span>问题引入：比一个"OK"，灯就该换色</h2>
-    <p>智能家居 demo 里最常见的桥段：主人对着摄像头比个手势，灯光切换、窗帘开合。
-    听起来简单，但拆开看，摄像头不知道"这是 OK"——它只有一张像素图。
-    <strong>从像素到"语义手势"，中间隔着一整条推理流水线</strong>，而且这条流水线上有四个模型排队干活。</p>
-    <p>本实验沿用官方 Gesture Recognizer 的级联结构，做两件事：</p>
-    <ul class="check">
-      <li><strong>离散手势</strong>：8 类 canned gesture（握拳、五指张开、点赞、比心、OK……）识别</li>
-      <li><strong>连续控制</strong>：拇指与食指的夹角 → 0~255 → 5 档特效强度（颜色/阈值/模糊/色相/增强）</li>
-    </ul>
-    <p>你会遇到本课程最隐蔽的一类坑：<strong>模型吃得下什么格式的输入，是契约，不是常识</strong>。
-    一格归一化搞错，模型不报错、不崩溃，只是安静地给你垃圾结果。</p>
-    <div class="tip amber"><span class="lab">先立规矩</span>
-    特效循环按键 <code>'f'</code> 需要 <code>--display</code> 打开本地窗口并保持窗口焦点——
-    遥控 MJPEG 流时键盘事件打不进去，这不是 bug。
-    </div>
-  </section>
+  <pre><span class="c"># 关键配置（config/hand_control_config.yaml）</span>
+<span class="b">model:</span>
+  detector_model: models/hand_detector.rknn
+  landmark_model: models/hand_landmarks_detector.rknn
+  embedder_model: models/gesture_embedder.rknn
+  classifier_model: models/canned_gesture_classifier.rknn
+  <span class="y">max_hands: 2</span>                     <span class="c"># 最多几只手</span>
+  min_detection_confidence: 0.5
+  min_tracking_confidence: 0.5
 
-  <!-- 2 -->
-  <section class="blk" id="s2">
-    <h2><span class="no">02</span>原理通俗讲解：四级流水线，每人只拧一颗螺丝</h2>
-    <p>把整条流水线想成<strong>快递分拣线</strong>。每个工位只干一件事，干完扔给下一工位：
-    先找到包裹在哪（不管内容）、再把包裹拆开摆平、然后给内容称重拍照、最后由鉴定师判类别。
-    任何一工位拿到的包裹摆放姿势不对，最后的鉴定结论就是错的——而且没人会报错。</p>
+<span class="b">server:</span>
+  port: 8084                        <span class="c"># 本实验用 8084</span>
+  stream_name: hand.mjpg
 
-    <div class="flow">
-      <div class="step"><span class="n">1</span><strong>hand_detector</strong>：192×192 输入，框出手在哪（blazeface 风格：2016 个锚框 + NMS IoU 0.3，特写时 union_bbox 合并多框）</div>
-      <div class="step"><span class="n">2</span><strong>hand_landmarks_detector</strong>：224×224 输入，框内摆正（detection2roi 旋转方形 ROI，dscale=2.6、θ=π/2，再用逆仿射把结果映回原图）→ 输出 21 个关键点</div>
-      <div class="step"><span class="n">3</span><strong>gesture_embedder</strong>：还是 224×224，但输入归一化坐标（x、y、z 每个都除以 224）→ 输出 128 维嵌入向量</div>
-      <div class="step"><span class="n">4</span><strong>canned_gesture_classifier</strong>：128 维向量 → 8 类手势（float 输入，无 mean/std 标准化）</div>
-    </div>
+<span class="c"># 按 'f' 键可以循环切换 5 种画面特效</span></pre>
 
-    <h3 style="margin-top:22px;font-size:17px;">生活类比：三个"翻译腔"错了会怎样</h3>
-    <div class="kgrid">
-      <div class="kcard">
-        <div class="kd">契约 ①</div>
-        <div class="kt">检测与关键点：float32 [0,1]</div>
-        <p>uint8 原图直接塞进去，模型按"值域 255 倍"的输入理解，输出的坐标、presence 全部离谱。
-        <strong>指纹现象</strong>：presence 掉到 1e-9 量级，检测数量变成 0。EXP-09/10 的老坑在这里同样成立。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">契约 ②</div>
-        <div class="kt">embedder：x/y/z 全部 ÷224</div>
-        <p>最容易漏的是 <strong>z</strong>——它不跟着放大，很多人只归一化 x、y。z 漏归一会让嵌入向量范数飙到 ~10.5（正常约 3.3），
-        分类器看到陌生分布，<strong>所有手势统统判成 None</strong>，连报错都没有。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">契约 ③</div>
-        <div class="kt">分类头：float，无 mean/std</div>
-        <p>前几级都做了归一化，你自然想"这个应该也要"——错了。它就是要原始浮点。
-        归一化习惯不能跨模型照搬，<strong>每个模型的预处理属于它自己的文档</strong>。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">检测-跟踪状态机</div>
-        <div class="kt">稳帧的窍门</div>
-        <p>上一帧 presence ≥ 0.5 就跳过 palm 检测，直接用上帧 21 点生成 ROI（跟踪模式）；
-        一旦丢失立即回退全图重检。省算力，也让关键点不闪烁。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">夹角连续量</div>
-        <div class="kt">angle(4,0,8)</div>
-        <p>拇指尖(4)、手腕(0)、食指尖(8) 三点夹角，余弦定理算出 [0°,70°] 映射到 [0,255]。
-        捏合=拧旋钮，比离散分类更细腻的交互。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">计数 fingersUp</div>
-        <div class="kt">经典的粗判</div>
-        <p>四指看 tip.y &lt; pip.y（指尖高过第二关节），拇指看两侧夹角 &gt;150°。
-        8 类手势之外你还可以用"伸了几根手指"做简易命令。</p>
-      </div>
-    </div>
-
-    <div class="tip tealb"><span class="lab">为什么是 8 类"罐头"手势</span>
-    canned = 罐头/预制。这 8 类（None / Closed_Fist / Open_Palm / Pointing_Up / Thumb_Down / Thumb_Up /
-    Victory / ILoveYou）是官方模型预置的类别，开箱即用；想加自定义手势，要在 128 维嵌入空间上另接 KNN——
-    嵌入把"手势长什么样"变成了可比较的数，这就是级联第 3 级存在的意义。
-    </div>
-  </section>
-
-  <!-- 3 -->
-  <section class="blk" id="s3">
-    <h2><span class="no">03</span>关联知识点</h2>
-    <div class="kgrid">
-      <div class="kcard">
-        <div class="kd">仿射 ROI 对齐</div>
-        <div class="kt">把歪斜的 ROI 摆正再推理</div>
-        <p>手掌可能旋转出任意角度，detection2roi 算出旋转方形 ROI，warpAffine 摆正后模型只需学"端正的手"；
-        推理完再用逆矩阵映回原图。与 EXP-09/10 同源，三个实验共用这一套几何肌肉记忆。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">NMS 与多框合并</div>
-        <div class="kt">一张图几只手都得留住</div>
-        <p>blazeface 风格 2016 锚框 + NMS(IoU 0.3)。手占满画面时多个框共同框住整只手，
-        union_bbox 取并集避免"多框各管半只手"的错位。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">嵌入向量（Embedding）</div>
-        <div class="kt">把"像不像"变成距离</div>
-        <p>21 个点 → 128 维数。同类手势的向量彼此靠近，分类器只做最近邻式判决；
-        自定义手势也能基于同一空间扩展，无需重训主干。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">fp16 量化推理</div>
-        <div class="kt">四个模型全部 fp16</div>
-        <p>NPU 上半精度是速度与精度的平衡点。也正因为 fp16 数值范围特性，归一化错误造成的分布偏移
-        会被放大得更彻底——契约错误的后果更"干净利落"地全错。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">签名与验证</div>
-        <div class="kt">convert 两个开关</div>
-        <p>与 exp-09/10 一致：<code>--check</code> 打印各模型输入输出形状确认契约；
-        确认无误再 <code>--all --dtype fp16</code> 批量转 RKNN。先看签名再转换，顺序不能反。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">连续 vs 离散交互</div>
-        <div class="kt">两种控制范式</div>
-        <p>8 类手势是开关型（选哪个命令），夹角/计数是模拟型（调多大参数）。
-        好的体感界面两者配合：手势定模式，夹角调大小。</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- 4 -->
-  <section class="blk" id="s4">
-    <h2><span class="no">04</span>实验目标</h2>
-    <ul class="check">
-      <li>能默画 <strong>四模型级联</strong>的流水线：detector → landmarks → embedder → classifier，以及每级的输入形状（192²/224²/224²/128 维）</li>
-      <li>能说清<strong>三条输入契约</strong>及违约指纹：[0,1] float32、z ÷224、分类头免标准化</li>
-      <li>理解检测-跟踪状态机：presence ≥ 0.5 跳过 palm 检测，丢失即回退全图</li>
-      <li>掌握 <code>angle(4,0,8)</code> 余弦定理夹角 → [0,255] → 5 档特效强度的连续控制链</li>
-      <li>跑通 58 项单测，其中包含契约类负样本用例</li>
-      <li>板端 <code>--ros</code> 联调，MJPEG 浏览器看 <code>:8084/hand.mjpg</code> 实时识别</li>
-      <li>（拓展）把 8 类手势映射到 cmd_vel 遥控（复用 exp-11 的 publish 模式），或训练自定义手势 KNN</li>
-    </ul>
-  </section>
-
-  <!-- 5 -->
-  <section class="blk" id="s5">
-    <h2><span class="no">05</span>实验环境与准备</h2>
-    <table>
-      <thead><tr><th>类别</th><th>清单</th><th>说明</th></tr></thead>
-      <tbody>
-        <tr><td>硬件</td><td>XFLZ_EAI_B2_PRO 实验箱 / 任意 RGB 摄像头</td><td>四模型联跑，NPU fp16</td></tr>
-        <tr><td>模型资产</td><td>gesture_recognizer.task 解包出的 4 个模型</td><td>官方预置，convert 后为 RKNN 格式</td></tr>
-        <tr><td>核心代码</td><td><code>vision/12_hand_control/</code> 包 <code>car1_hand_control/</code></td><td>级联封装 + 夹角/计数工具 + demo</td></tr>
-        <tr><td>前置实验</td><td>EXP-09/10 的归一化与 ROI 对齐经验</td><td>契约坑是同一族，但本实验多一条 z 归一化</td></tr>
-        <tr><td>软件</td><td>ROS2（rclpy）、RKNN、OpenCV、NumPy</td><td>命令结构与 exp-09/10 同构</td></tr>
-        <tr><td>数据集</td><td>无需标注数据集</td><td>自定义手势阶段用 --save 存样本接入 KNN</td></tr>
-        <tr><td>MJPEG 预览</td><td><code>http://&lt;board-ip&gt;:8084/hand.mjpg</code></td><td>本实验固定 8084 端口</td></tr>
-      </tbody>
-    </table>
-    <div class="tip tealb"><span class="lab">建议流程</span>
-    <code>PYTHONPATH=car1_hand_control:$PYTHONPATH</code> 先 <code>--check</code> 看四模型签名 →
-    x86 跑 58 单测 → <code>demo_image --save out.jpg</code> 静态验证 →
-    <code>camera_demo --ros --display</code> 实况 + 'f' 键切特效 → MJPEG URL 分享给同学。
-    </div>
-  </section>
-
-  <!-- 6 -->
-  <section class="blk" id="s6">
-    <h2><span class="no">06</span>动画讲解：四模型接力与 ROI 的一生</h2>
-    <p>重点看两件事：<strong>输入形状在四个模型间怎么变形</strong>，以及 <strong>ROI 坐标系来回切换两次</strong>
-    （原图→摆正→回原图）。契约错在哪一级，就标在哪一级：</p>
-    <div class="anim-box">
-      <svg viewBox="0 0 700 340" width="100%" xmlns="http://www.w3.org/2000/svg">
-        <rect width="700" height="340" fill="#111827"></rect>
-
-        <g font-family="monospace" font-size="12">
-          <rect x="20" y="40" width="140" height="70" rx="8" fill="#1e293b" stroke="#22c55e" stroke-width="2">
-            <animate attributeName="stroke-width" values="2;4;2" dur="2.4s" repeatCount="indefinite"></animate>
-          </rect>
-          <text x="34" y="64" fill="#e2e8f0">① detector</text>
-          <text x="34" y="84" fill="#4ade80">192² float[0,1]</text>
-          <text x="34" y="102" fill="#64748b">→ box + presence</text>
-
-          <rect x="195" y="40" width="150" height="70" rx="8" fill="#1e293b" stroke="#22c55e" stroke-width="2">
-            <animate attributeName="stroke-width" values="2;4;2" dur="2.4s" begin="0.6s" repeatCount="indefinite"></animate>
-          </rect>
-          <text x="209" y="64" fill="#e2e8f0">② landmarks</text>
-          <text x="209" y="84" fill="#4ade80">224² float[0,1]</text>
-          <text x="209" y="102" fill="#64748b">→ 21 pts + presence</text>
-
-          <rect x="380" y="40" width="150" height="70" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="2">
-            <animate attributeName="stroke" values="#f87171;#fbbf24;#f87171" dur="2.4s" begin="1.2s" repeatCount="indefinite"></animate>
-          </rect>
-          <text x="394" y="64" fill="#e2e8f0">③ embedder</text>
-          <text x="394" y="84" fill="#fca5a5">224² ⚠ x,y,z÷224</text>
-          <text x="394" y="102" fill="#64748b">→ 128-d embedding</text>
-
-          <rect x="555" y="40" width="125" height="70" rx="8" fill="#1e293b" stroke="#22c55e" stroke-width="2">
-            <animate attributeName="stroke-width" values="2;4;2" dur="2.4s" begin="1.8s" repeatCount="indefinite"></animate>
-          </rect>
-          <text x="566" y="64" fill="#e2e8f0">④ classifier</text>
-          <text x="566" y="84" fill="#4ade80">128-d,float 原始</text>
-          <text x="566" y="102" fill="#64748b">→ 8 canned 类</text>
-        </g>
-
-        <g stroke="#475569" stroke-width="2" fill="none">
-          <path d="M160 75 L195 75"></path>
-          <path d="M345 75 L380 75"></path>
-          <path d="M530 75 L555 75"></path>
-        </g>
-        <g fill="#22c55e">
-          <circle cx="178" cy="75" r="4">
-            <animate attributeName="cx" values="162;193" dur="1.2s" repeatCount="indefinite"></animate>
-            <animate attributeName="opacity" values="0;1;1;0" dur="1.2s" repeatCount="indefinite"></animate>
-          </circle>
-          <circle cx="363" cy="75" r="4">
-            <animate attributeName="cx" values="347;378" dur="1.2s" begin="0.6s" repeatCount="indefinite"></animate>
-            <animate attributeName="opacity" values="0;1;1;0" dur="1.2s" begin="0.6s" repeatCount="indefinite"></animate>
-          </circle>
-          <circle cx="543" cy="75" r="4">
-            <animate attributeName="cx" values="532;553" dur="1.2s" begin="1.2s" repeatCount="indefinite"></animate>
-            <animate attributeName="opacity" values="0;1;1;0" dur="1.2s" begin="1.2s" repeatCount="indefinite"></animate>
-          </circle>
-        </g>
-
-        <text x="20" y="150" fill="#94a3b8" font-size="13" font-family="monospace">ROI 往返（②级内部）：原图坐标系 ⇄ 摆正坐标系</text>
-
-        <g font-family="monospace" font-size="11">
-          <rect x="20" y="165" width="150" height="120" rx="6" fill="#0f172a" stroke="#334155"></rect>
-          <text x="30" y="185" fill="#64748b">原图</text>
-          <g transform="translate(52,196)">
-            <rect x="0" y="0" width="86" height="72" fill="none" stroke="#1e293b"></rect>
-            <path d="M20 55 L30 30 M30 30 L42 44 M30 30 L24 12 M40 26 L52 40 M40 26 L44 8"
-                  stroke="#2dd4bf" stroke-width="2.5" fill="none" transform="rotate(-18 32 34)">
-              <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"></animate>
-            </path>
-            <rect x="6" y="2" width="72" height="66" fill="none" stroke="#fbbf24" stroke-dasharray="5 4" transform="rotate(-18 42 35)">
-              <animate attributeName="stroke-dashoffset" values="9;0" dur="1s" repeatCount="indefinite"></animate>
-            </rect>
-          </g>
-
-          <rect x="270" y="165" width="150" height="120" rx="6" fill="#0f172a" stroke="#334155"></rect>
-          <text x="280" y="185" fill="#64748b">detection2roi → warpAffine</text>
-          <g transform="translate(300,196)">
-            <rect x="0" y="0" width="72" height="72" fill="none" stroke="#fbbf24" stroke-width="2"></rect>
-            <path d="M20 55 L30 30 M30 30 L42 44 M30 30 L24 12 M40 26 L52 40 M40 26 L44 8"
-                  stroke="#2dd4bf" stroke-width="2.5" fill="none" transform="rotate(0)">
-              <animateTransform attributeName="transform" type="rotate" values="-18 32 34;0 32 34" dur="2s" fill="freeze"></animateTransform>
-            </path>
-          </g>
-          <text x="270" y="300" fill="#64748b" font-size="10">dscale=2.6  θ=π/2</text>
-
-          <rect x="520" y="165" width="160" height="120" rx="6" fill="#0f172a" stroke="#334155"></rect>
-          <text x="530" y="185" fill="#64748b">invertAffineTransform 回原图</text>
-          <g transform="translate(556,196)">
-            <rect x="0" y="0" width="86" height="72" fill="none" stroke="#1e293b"></rect>
-            <g>
-              <animateTransform attributeName="transform" type="rotate" values="0 -12 -6;-18 -12 -6" dur="2s" fill="freeze"></animateTransform>
-              <path d="M20 55 L30 30 M30 30 L42 44 M30 30 L24 12 M40 26 L52 40 M40 26 L44 8"
-                    stroke="#2dd4bf" stroke-width="2.5" fill="none"></path>
-              <g fill="#f472b6">
-                <circle cx="30" cy="12" r="3.5"><animate attributeName="r" values="3.5;5.5;3.5" dur="1.4s" repeatCount="indefinite"></animate></circle>
-                <circle cx="44" cy="8" r="3.5"><animate attributeName="r" values="3.5;5.5;3.5" dur="1.4s" begin="0.2s" repeatCount="indefinite"></animate></circle>
-                <circle cx="42" cy="44" r="3.5"></circle>
-                <circle cx="52" cy="40" r="3.5"></circle>
-                <circle cx="20" cy="55" r="3.5"><animate attributeName="r" values="3.5;5.5;3.5" dur="1.4s" begin="0.5s" repeatCount="indefinite"></animate></circle>
-                <circle cx="24" cy="12" r="3.5"></circle>
-              </g>
-            </g>
-          </g>
-          <text x="520" y="300" fill="#f472b6" font-size="10">21 pts 落回原图才能画/用</text>
-
-          <text x="20" y="325" fill="#64748b" font-size="10">presence≥0.5 → 跳过①用上帧跟踪；丢失 → 回退全图重检</text>
-          <text x="450" y="325" fill="#4ade80" font-size="10">State: TRACKING ⇄ DETECTING</text>
-        </g>
-      </svg>
-    </div>
-    <div class="anim-cap">
-      上排是四模型接力，绿色光点表示张量流动；③ 号 embedder 标红警示——z 漏除以 224 会让嵌入范数从 3.3 飙到 10.5，
-      下游全判 None。下排是 ② 级内部的 ROI 往返：歪手进、正手算、21 点再带回原图——这一去一回，
-      靠的是同一对仿射矩阵的正与逆。
-    </div>
-  </section>
-
-  <!-- 7 -->
-  <section class="blk" id="s7">
-    <h2><span class="no">07</span>互动讲解：输入契约与手势分类推演台</h2>
-    <p>切换三个模型的输入配置，观察流水线在哪一级坏掉、以什么方式坏掉；
-    再拖动拇指-食指夹角，看 5 档特效强度与离散手势的配合。</p>
-    <div class="ix-panel">
-      <div class="ix-title">🧪 四模型契约检查 + 捏合夹角 → 特效强度</div>
-      <div class="ctl-row">
-        <label>①② 检测/关键点输入
-          <select id="s_inp1" onchange="runHand()">
-            <option value="f32">float32 [0,1]（正确）</option>
-            <option value="u8">uint8 [0,255] 直喂</option>
-            <option value="bgr">未翻转的 BGR</option>
-          </select>
-        </label>
-        <label>③ embedder 归一化
-          <select id="s_inp3" onchange="runHand()">
-            <option value="xyz">x,y,z 全部 ÷224（正确）</option>
-            <option value="xy224">仅 x,y ÷224，z 漏掉</option>
-            <option value="none">完全不归一化</option>
-          </select>
-        </label>
-        <label>④ 分类头预处理
-          <select id="s_inp4" onchange="runHand()">
-            <option value="raw">float 原始值（正确）</option>
-            <option value="ms">误加 mean/std 标准化</option>
-          </select>
-        </label>
-      </div>
-      <div class="ctl-row">
-        <label>拇指-食指夹角 angle(4,0,8) 度数 <output id="o_ang">15</output>°
-          <input type="range" id="r_ang" min="0" max="70" step="1" value="15" oninput="runHand()"></label>
-        <label>识别到的手势
-          <select id="s_ges" onchange="runHand()">
-            <option>Open_Palm</option>
-            <option>Closed_Fist</option>
-            <option>Pointing_Up</option>
-            <option>Thumb_Up</option>
-            <option>Thumb_Down</option>
-            <option>Victory</option>
-            <option>ILoveYou</option>
-            <option>None</option>
-          </select>
-        </label>
-        <label><input type="checkbox" id="c_f" onchange="runHand()"> 本地 --display 窗口有焦点（'f' 键可用）</label>
-      </div>
-      <pre class="io" id="io">初始化完成，调整输入契约观察流水线…</pre>
-    </div>
-    <p style="margin-top:14px;">三个必看场景：</p>
-    <ul class="check">
-      <li><strong>只把 ① 改成 uint8</strong>：presence 指纹数量级骤降，检测框直接消失——EXP-09 的老朋友</li>
-      <li><strong>只把 ③ 改成"z 漏除"</strong>：嵌入范数 3.3 → ~10.5，8 类手势全部塌向 None，前面两级完全正常</li>
-      <li><strong>夹角从 0 拉到 70</strong>：映射值线性铺满 0~255，再切 5 档强度；若 'f' 窗口无焦点则提示当前档位不生效</li>
-    </ul>
-  </section>
-
-  <!-- 8 -->
-  <section class="blk" id="s8">
-    <h2><span class="no">08</span>实操步骤</h2>
-
-    <p><strong>步骤 1 · 解包模型并核对四模型签名（先看契约，再转换）</strong></p>
-    <pre><span class="c"># 从官方 gesture_recognizer.task 解包 4 个子模型，逐个 --check 输出形状</span>
-<span class="g">cd ~/ros2_ws/src/xflz_eai_car1/vision/12_hand_control</span>
-<span class="g">PYTHONPATH=car1_hand_control:$PYTHONPATH python3 -m hand_control_core.convert_mediapipe --check</span>
-<span class="y">hand_detector            in=[1,192,192,3]  float32 [0,1]</span>
-<span class="y">hand_landmarks_detector  in=[1,224,224,3]  float32 [0,1]  out=21 landmarks</span>
-<span class="y">gesture_embedder         in=[1,224,224,3]  x,y,z 各 /224     out=[1,128]</span>
-<span class="y">canned_gesture_classifier in=[1,128]        float 原始     out=8 classes</span>
-
-<span class="c"># 签名无误后批量转 RKNN（本组统一 fp16）</span>
-<span class="g">PYTHONPATH=car1_hand_control:$PYTHONPATH python3 -m hand_control_core.convert_mediapipe --all --dtype fp16</span></pre>
-
-    <p><strong>步骤 2 · 跑 58 项单测</strong></p>
-    <pre><span class="g">PYTHONPATH=car1_hand_control:$PYTHONPATH python3 -m pytest tests/ -v</span>
-<span class="y">test_cascade.py ....（级联顺序、状态机切换、丢失回退）</span>
-<span class="y">test_contracts.py ..（三条契约的正/负样本：u8、z漏除、误标准化）</span>
-<span class="y">test_gesture.py ....（4→0→8 夹角余弦定理、fingersUp 计数、8 类映射）</span>
-<span class="y">58 passed</span></pre>
-
-    <p><strong>步骤 3 · 静态图片验证</strong></p>
-    <pre><span class="g">PYTHONPATH=car1_hand_control:$PYTHONPATH python3 -m hand_control_core.demo_image --save out.jpg</span>
-<span class="y">hand #1: Open_Palm (0.94)  21 pts  angle(4,0,8)=12.3 deg -> level 5</span></pre>
-
-    <p><strong>步骤 4 · 实时识别 + 捏合特效</strong></p>
-    <pre><span class="c"># --display 打开本地窗口；焦点保持在窗口上，'f' 键循环切换特效类型</span>
-<span class="g">PYTHONPATH=car1_hand_control:$PYTHONPATH python3 -m hand_control_core.camera_demo --display</span>
-<span class="y">gesture: Victory       conf=0.88   fingersUp=2</span>
-<span class="y">pinch angle=34.7deg  map=125  level=3/5  fx=hue</span>
-
-<span class="c"># 浏览器共享预览（固定 8084 端口，勿与 exp-09/10/11 的 8081~8083 撞）</span>
-<span class="y">http://&lt;board-ip&gt;:8084/hand.mjpg</span></pre>
-
-    <p><strong>步骤 5 · 接 ROS2 流</strong></p>
-    <pre><span class="g">export ROS_DOMAIN_ID=2</span>
-<span class="g">ros2 launch ascamera hp60c.launch.py</span>
-<span class="g">PYTHONPATH=car1_hand_control:$PYTHONPATH python3 -m hand_control_core.camera_demo --ros</span>
-
-<span class="c"># 拓展：8 类手势 → cmd_vel 遥控（复用 EXP-11 的 publish 模式，先 turtlesim）</span>
-<span class="c">#   Open_Palm → 前进  Closed_Fist → 停止  Victory → 左转  Thumb_Up → 加速…自定义映射</span>
-<span class="c">#   修改 config 后务必重新编译</span>
-<span class="g">colcon build --symlink-install</span></pre>
-
-    <p><strong>步骤 6 · 不用 'f' 键也能调特效的替代路径</strong></p>
-    <pre><span class="c"># 'f' 需要窗口焦点，远程/浏览器场景改在 config / 命令行里直接指定特效类型：</span>
-<span class="c">#   color / thresh / blur / hue / enhance 五种，强度仍由捏合夹角驱动</span>
-<span class="c"># 即：类型用配置定，大小用手势调——两条控制通道分离</span></pre>
-  
-<div class="figs-guide"><h4>🛠️ 指导书步骤截图（实验指导书 · 1 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/5264cd2124d946a88822e237f5c5fb89.png" alt="仿射变换矩阵构造：roi_affine()（hand.py L234-250）使用 medi…" loading="lazy"><figcaption>仿射变换矩阵构造：roi_affine()（hand.py L234-250）使用 medi…</figcaption></figure></div></div>
-
-<div class="figs-guide"><h4>✅ 实验现象截图（实验指导书 · 5 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821100830923.png" alt="运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …" loading="lazy"><figcaption>运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821100946681.png" alt="运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …" loading="lazy"><figcaption>运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821101054253.png" alt="运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …" loading="lazy"><figcaption>运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821101136188.png" alt="运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …" loading="lazy"><figcaption>运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821101202609.png" alt="运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …" loading="lazy"><figcaption>运行单图模式时，终端无额外打印，当前目录生成 out.jpg：右栏黑底画布上绘制红色 21 …</figcaption></figure></div></div>
+  <div class="tip amber"><span class="lab">⚠️ 四个模型的输入格式各不相同</span>这是本实验最容易踩的坑：<br>
+  · ①手掌检测 ②21点：<b>float32 RGB，[0,1]</b>（要 /255）<br>
+  · ③embedder：输入是<b>归一化张量</b>（x/y/z 全部除以 224）<br>
+  · ④分类器：<b>float</b>，不做归一化<br><br>
+  <b>四个模型四种格式，改错一个整条链路就废了。</b>好在代码里已经封装好了 —— 你只要别手动改预处理就行。</div>
 </section>
 
-  <!-- 9 -->
-  <section class="blk" id="s9">
-    <h2><span class="no">09</span>重点与易错点</h2>
-    <div class="tip amber"><span class="lab">易错点</span>
-    本实验的坑几乎全是"不报错的错"。判断线索不是 traceback，而是特征指纹：
-    presence 的数量级、嵌入向量的范数、检测框是否出现——记住这几个数，排障速度翻倍。
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>三步跑起来</h2>
+
+  <ol class="steps3">
+    <li>
+      <span class="st">先用一张图跑通整条链路<em>约 2 分钟</em></span>
+      <pre><span class="g">cd</span> ~/ros2_ws/src/xflz_eai_car1/vision/12_hand_control/car1_hand_control
+<span class="g">ls</span> models/
+<span class="g">python</span> -m hand_control_core.demo_image --config config/hand_control_config.yaml --save out.jpg</pre>
+      <div class="expect">models/:
+  hand_detector.rknn             <i>约 3MB   ← ① 找手</i>
+  hand_landmarks_detector.rknn   <i>约 6MB   ← ② 21 点</i>
+  gesture_embedder.rknn          <i>约 450KB ← ③ 128 维</i>
+  canned_gesture_classifier.rknn <i>约 90KB  ← ④ 8 类</i>
+
+hands=1  gesture=Victory  score=0.94
+saved -&gt; out.jpg</div>
+      <p><b>四个模型缺一个都跑不起来。</b>先确认 <code>ls models/</code> 都齐了再往下。</p>
+    </li>
+
+    <li>
+      <span class="st">实时识别，试 8 种手势<em>约 6 分钟</em></span>
+      <p>终端 1 起相机（老三样）：</p>
+      <pre><span class="g">source</span> /opt/ros/humble/setup.bash &amp;&amp; <span class="g">source</span> ~/ros2_ws/install/setup.bash
+<span class="g">export</span> ROS_DOMAIN_ID=2
+<span class="g">ros2</span> launch ascamera hp60c.launch.py</pre>
+      <p>终端 2 跑实时手势识别：</p>
+      <pre><span class="g">cd</span> ~/ros2_ws/src/xflz_eai_car1/vision/12_hand_control/car1_hand_control
+<span class="g">python</span> -m hand_control_core.camera_demo --config config/hand_control_config.yaml --ros</pre>
+      <div class="expect">FPS: 11  Hands: 1  Fingers: 2  [原始]
+<i>浏览器：http://&lt;板子IP&gt;:8084/hand.mjpg</i></div>
+      <p><b>在本地窗口里按 <code>f</code> 键</b>循环切换 5 种画面特效（只在 <code>--display</code> 模式下有效）。</p>
+      <p>依次试这 8 种手势，看识别对不对：</p>
+      <div class="expect">✋ 张开手掌 → Open_Palm
+✊ 握拳     → Closed_Fist
+☝️ 食指指上 → Pointing_Up
+👍 点赞     → Thumb_Up
+👎 倒赞     → Thumb_Down
+✌️ 比耶     → Victory
+🤟 爱你     → ILoveYou
+🙃 其他     → None</div>
+    </li>
+
+    <li>
+      <span class="st">用手指夹角控制特效（最有意思的一步）<em>约 6 分钟</em></span>
+      <p>这个功能不需要手势分类 —— 它只算<b>拇指尖和食指尖的夹角</b>，然后把这个角度映射成一个数值，用来控制特效强度。</p>
+      <pre><span class="c"># 拇指尖 = 第 4 号点，食指尖 = 第 8 号点</span>
+<span class="c"># 用这两个点和指根构成向量，算夹角（余弦定理）</span>
+角度 = arccos( (a·b) / (|a|×|b|) )
+
+<span class="c"># 映射成 0~255 的控制量</span>
+值 = 255 × (角度 / 最大角度)</pre>
+      <p>操作：张开手掌，然后慢慢把拇指和食指捏到一起。看右栏那个<b>竖条仪表</b>从 255 掉到 0。</p>
+      <div class="expect">拇指食指张开 → 仪表 255（满格）
+慢慢捏合     → 仪表 逐渐下降
+捏在一起     → 仪表 0</div>
+      <p><b>这是本实验最"物理"的一段：</b>不是让模型判断"这是什么手势"，而是用几何公式算出"这两根手指夹角多少度"。<b>规则和模型各管一段，配合起来用。</b></p>
+    </li>
+  </ol>
+
+  <div class="oneline"><span>三步跑完，你走完了一条 4 模型级联的完整链路。<b>这是整门课里最长的流水线，也是把所有知识点串起来的一次总复习。</b></span></div>
+</section>
+
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>你该看到的画面</h2>
+
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">画面 A · 左栏</div><div class="kt">加了特效的画面 + FPS</div><p>手部区域被加上某种视觉特效（取决于当前特效档位）。按 <code>f</code> 切换。FPS 红字在角上。</p></div>
+    <div class="kcard"><div class="kd">画面 B · 右栏</div><div class="kt">黑底手骨架 + 手势名 + 仪表</div><p>红点（半径 6）+ 绿线（2px）画出 21 个点；旁边写着手势名（如 <code>Victory</code>）；还有一个竖条仪表显示夹角控制量。</p></div>
+    <div class="kcard"><div class="kd">画面 C · 状态栏</div><div class="kt">FPS Hands Fingers [特效]</div><p>例如 <code>FPS: 11  Hands: 1  Fingers: 2  [原始]</code>。<b>Fingers 是伸出的手指数</b>，和手势分类是两套独立逻辑。</p></div>
+  </div>
+
+  <div class="tip tealb"><span class="lab">🔍 为什么"手指数"要单独算</span>因为"比耶"这个手势的名字是模型给的，但"伸出了 2 根手指"这个信息模型不直接输出。<b>程序是用 21 个点的几何关系算出来的</b>（指尖离手腕更远 = 伸出了）。<br><br>
+  这种"模型给语义 + 几何算细节"的组合很常见：<b>模型擅长判断"是什么"，几何擅长算"多少"。</b></div>
+</section>
+
+<section class="blk" id="s7">
+  <h2><span class="no">07</span>改一个参数看变化</h2>
+  <p class="lead">这个实验最值得动的是<b>跟踪状态机的阈值</b>。它直接决定了"帧率"和"稳定性"的取舍。</p>
+
+  <pre><span class="g">nano</span> config/hand_control_config.yaml</pre>
+  <pre><span class="b">model:</span>
+  <span class="y">max_hands: 2</span>                     <span class="c"># 改 1 看看</span>
+  <span class="y">min_detection_confidence: 0.5</span>     <span class="c"># 手掌检测门限</span>
+  <span class="y">min_tracking_confidence: 0.5</span>      <span class="c"># 21 点 presence 门限 ← 关键</span></pre>
+
+  <div class="lab2">
+    <div class="lh">⚡ 参数实验台 · presence 阈值与状态机行为</div>
+    <div class="lr">
+      <label>min_tracking_confidence</label>
+      <input id="tc" type="range" min="10" max="90" step="5" value="50">
+      <output id="tc_o">0.50</output>
     </div>
-    <table>
-      <thead><tr><th>#</th><th>坑</th><th>现象</th><th>原因与解法</th></tr></thead>
-      <tbody>
-        <tr><td>1</td><td>①② 输入契约错</td><td>检测框不出现 / detections=0，静默失败</td><td>必须 float32 [0,1]；uint8 直喂 presence 会掉到异常量级，先 --check 看签名</td></tr>
-        <tr><td>2</td><td>单手多框打架</td><td>一只手画出好几个框，21 点错位</td><td>NMS IoU 0.3 没生效或漏了 union_bbox 特写合并；确认后处理顺序</td></tr>
-        <tr><td>3</td><td>21 点与画面对不上</td><td>点画在手旁边</td><td>忘了 invertAffineTransform 逆映射——摆正坐标系里算的点没映回原图</td></tr>
-        <tr><td>4</td><td>跟踪漂移</td><td>手移动后框慢慢滑走</td><td>presence ≥ 0.5 才可跳过 palm 检测；置信度低时不许偷懒，必须回退全图</td></tr>
-        <tr><td>5</td><td>③ z 漏归一化</td><td><strong>恒定输出 None</strong>，其余全部正常</td><td>x、y、z 都要 ÷224；z 漏除导致嵌入范数 ~10.5（正常 ~3.3），此指纹可直接定位本坑</td></tr>
-        <tr><td>6</td><td>'f' 键无反应</td><td>特效类型不循环</td><td>--display 未开、或焦点不在本地窗口（MJPEG/远程无效）；改 config 指定类型</td></tr>
-        <tr><td>7</td><td>fingersUp 计数不准</td><td>张开 5 指只数出 3</td><td>拇指看两侧夹角 &gt;150°、四指看 tip.y &lt; pip.y；临界抖动时加迟滞</td></tr>
-        <tr><td>8</td><td>rclpy / PYTHONPATH 报错</td><td>ModuleNotFoundError 或跑了旧配置</td><td><code>PYTHONPATH=car1_hand_control:$PYTHONPATH</code> 保留原值；改 config 后 <code>colcon build --symlink-install</code></td></tr>
-      </tbody>
-    </table>
-    <ul class="check" style="margin-top:16px">
-      <li>能默写四模型级联及各自输入形状，指出哪一级最容易漏 z 归一化</li>
-      <li>看到"detections=0"能立刻怀疑 ①② 的 [0,1] 契约；看到"恒定 None"能立刻怀疑 ③ 的 z</li>
-      <li>能解释检测-跟踪状态机两个方向的触发条件</li>
-      <li>能手算 angle(4,0,8)：余弦定理 → [0°,70°] → [0,255] → 5 档</li>
-      <li>58 项单测全绿，并知道其中哪些是契约负样本用例</li>
-      <li>知道 'f' 键的焦点前提，远程场景有配置文件替代方案</li>
-    </ul>
-  </section>
-
-  <!-- 10 -->
-  <section class="blk" id="s10">
-    <h2><span class="no">10</span>总结与思考</h2>
-    <p>十二个实验走完，我们从"框出一个缺陷"一路走到了"捏一下手指调参数"。本实验收束了三条主线：</p>
-    <div class="kgrid">
-      <div class="kcard">
-        <div class="kd">级联思维</div>
-        <div class="kt">四个小模型接一条线</div>
-        <p>检测、定位、嵌入、分类各司其职——大而全的端到端不是唯一解，可替换、可单独升级的流水线在工程上更常见。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">契约意识</div>
-        <div class="kt">输入格式是 API 的一部分</div>
-        <p>值域、维度、归一化、坐标系，错一处不报错只给垃圾。用 --check 签名和特征指纹（范数/presence）把静默失败变成可诊断失败。</p>
-      </div>
-      <div class="kcard">
-        <div class="kd">控制闭环</div>
-        <div class="kt">离散定模式 + 连续调参数</div>
-        <p>8 类手势选命令、夹角调大小、fingersUp 做兜底——与 exp-11 的规则引擎一样，最终落点都是"人的意图 → Twist/参数 → 机器动作"。</p>
-      </div>
+    <div class="vis">
+      <svg viewBox="0 0 420 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="跟踪置信度阈值变化时状态机在跳过检测和全图检测之间切换">
+        <rect x="0" y="0" width="420" height="150" rx="8" fill="#0b1220"/>
+        <!-- 时间轴 -->
+        <line x1="30" y1="80" x2="400" y2="80" stroke="#334155" stroke-width="2"/>
+        <text x="30" y="100" font-size="8.5" fill="#475569" font-family="sans-serif">第1帧</text>
+        <text x="380" y="100" font-size="8.5" fill="#475569" font-family="sans-serif">第20帧</text>
+        <!-- 帧块 -->
+        <g id="blocks"></g>
+        <!-- 图例 -->
+        <g font-size="9" font-family="sans-serif">
+          <rect x="30" y="114" width="10" height="10" fill="#14532d"/><text x="46" y="123" fill="#4ade80">跳过① 只跑 2-3-4（快）</text>
+          <rect x="200" y="114" width="10" height="10" fill="#7f1d1d"/><text x="216" y="123" fill="#f87171">全图跑①（慢但可靠）</text>
+        </g>
+        <text x="210" y="24" text-anchor="middle" font-size="10.5" fill="#5eead4" font-family="monospace" id="txt">阈值 0.50 → 20 帧里全图检测 3 次</text>
+      </svg>
     </div>
+    <div class="say" id="say"></div>
+  </div>
 
-    <div class="tip violet"><span class="lab">思考题</span>
-    <p><strong>1.</strong> 级联里第 ③ 级（embedder）的输入是前一级的 <em>输出坐标</em>，自己却要做一次
-    ÷224 的归一化。为什么不能让第 ② 级直接输出"已经归一化好"的坐标，把这个契约消灭在上游？
-    提示：从"模型文件的来源（官方预训练、不可改）"与"模块复用"两个角度想。</p>
-    <p style="margin-top:12px;"><strong>2.</strong> 捏合夹角是连续量、8 类手势是离散量。
-    如果要做一个"三指旋转控制云台朝向"的功能，你会怎么组合检测到的 21 个点？
-    夹角、fingersUp、甚至是嵌入向量——哪一种信息最适合表达"旋转了多少度"这种连续且有方向的量？</p>
+  <h3>阈值高低的取舍</h3>
+  <table>
+    <thead><tr><th style="width:26%">min_tracking_confidence</th><th style="width:30%">行为</th><th>结果</th></tr></thead>
+    <tbody>
+      <tr><td>0.2（低）</td><td>很容易认为"手还在"，几乎不重新全图找</td><td><b>帧率高</b>，但手移出框后模型还在硬猜 —— 会乱标</td></tr>
+      <tr><td><b>0.5</b></td><td>平衡</td><td><b>默认值</b>。手正常移动时稳定，移出画面时能及时回退</td></tr>
+      <tr><td>0.8（高）</td><td>经常认为"手丢了"，频繁全图找</td><td><b>帧率降</b>，但跟踪位置更准确（不会漂移）</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>另一个值得试的改动：<code>max_hands</code> 从 2 改成 1。</b>只处理一只手，帧率会明显上升 —— 因为每多一只手，就要多跑一遍 ②③④ 三个模型。<b>这就是"模型数量 × 每帧推理次数"的成本关系。</b></p>
+
+  <div class="oneline"><span><b>这个阈值控制的是"多信任上一帧"。</b>信任度高 → 快但可能跑偏；信任度低 → 慢但准。<b>和 EXP-07 的 <code>max_age</code> 是同一类取舍。</b></span></div>
+</section>
+
+<section class="blk" id="s8">
+  <h2><span class="no">08</span>踩坑速查</h2>
+
+  <table class="pit2">
+    <thead><tr><th>现象</th><th>原因</th><th>怎么办</th></tr></thead>
+    <tbody>
+      <tr><td>找不到手势名，一直是 None</td><td>手势不在 8 类里，或者手离镜头太远</td><td>靠近镜头；对照第 03 节那 8 种手势试</td></tr>
+      <tr><td>手骨架在画面里但没手势名</td><td>embedder 或 classifier 的输入格式错了</td><td>这两个模型的归一化方式和前两个不同，别手动改预处理</td></tr>
+      <tr><td>框一直跟着但位置漂了</td><td>跟踪状态机没及时回退（<code>min_tracking_confidence</code> 太低）</td><td>调到 0.5 或 0.6</td></tr>
+      <tr><td>手移出画面再进来，识别很慢</td><td>回退到全图检测了，这一帧要跑完整 4 个模型</td><td>正常。这是可靠性的代价</td></tr>
+      <tr><td>一个手掌被框成好几个框</td><td>手离镜头太近，手掌检测框分裂</td><td>程序已内置 union 合并；仍异常就退远一点</td></tr>
+      <tr><td>帧率只有个位数</td><td>4 个模型串行 + 两只手</td><td><code>max_hands</code> 改 1；或减少特效运算</td></tr>
+      <tr><td>按 <code>f</code> 没反应</td><td>没有本地窗口（<code>--display</code>）</td><td>按键只在本地窗口有效；MJPEG 推流看不了按键</td></tr>
+      <tr><td>浏览器打不开 :8080/hand.mjpg</td><td>端口记错</td><td>本实验是 <b>8084</b>，流名 <code>hand.mjpg</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="tip amber"><span class="lab">💡 排查口诀</span><b>看右栏：有没有骨架？有没有手势名？</b><br>
+  没骨架 → ①② 出问题（找手 / 找点）；<br>
+  有骨架没名字 → ③④ 出问题（embedding / 分类）；<br>
+  有名字但不对 → 手势本身不在 8 类里，或角度太偏。<br>
+  <b>四段链路，一段一段往下切，定位很快。</b></div>
+</section>
+
+<section class="blk" id="s9">
+  <h2><span class="no">09</span>进阶（可选）</h2>
+
+  <details class="deep">
+    <summary>进阶 1 · 用手指数字做一个"计数开关"<em>约 30 分钟</em></summary>
+    <div class="deep-body">
+      <p>状态栏里的 <code>Fingers</code> 是程序算出来的伸手指数。用它做一个简单的交互：</p>
+      <pre>if Fingers == 5 and 稳定 10 帧:
+    开灯 / 启动 / 触发某个动作
+if Fingers == 0 and 稳定 10 帧:
+    关灯 / 停止</pre>
+      <p><b>注意"稳定 10 帧"这个条件</b> —— 不加的话，手一抖就反复触发。这和 EXP-11 的去抖是同一个问题。</p>
     </div>
+  </details>
 
-    <p style="margin-top:16px;">课程到此收官：检测（CH1）、理解（CH2）、跟踪与三维（CH3）、人体感知与交互（CH4）——
-    同一套 OpenCV + 深度学习 + ROS2 的工具箱，四种不同的问题。剩下的路，由你的摄像头继续走。</p>
-  </section>
-
-  <nav class="expnav">
-    <a href="../exp-11-pose-control/index.html">← 上一个（EXP-11 肢体动作体感控制）</a>
-    <a href="../index.html">返回课程目录 →</a>
-  </nav>
-
-  <footer>
-    <div class="foot-in">
-      <span>CORE-02 · 机器人视觉应用与开发 · EXP-12 手指动作控制</span>
-      <span>4 学时 · 设计性 · 基于 robot_vision 实验指导书改编</span>
+  <details class="deep">
+    <summary>进阶 2 · 把手势映射成小车指令<em>约 40 分钟</em></summary>
+    <div class="deep-body">
+      <p>把 EXP-11 的控制链路搬过来，只是"输入"从身体动作换成了手势：</p>
+      <pre>✋ Open_Palm   →  停止
+☝️ Pointing_Up →  前进
+👍 Thumb_Up    →  左转
+👎 Thumb_Down  →  右转
+✌️ Victory     →  原地转圈</pre>
+      <p>做法：写一个字典把手势名映射到 <code>(linear, angular)</code>，然后在主循环里发布。 <b>和 EXP-11 完全一样的套路 —— 这说明控制层的代码是可以复用的，只有"感知"部分在变。</b></p>
+      <p>安全提醒：<b>先在 turtlesim 上验，且一定先关掉发布开关。</b></p>
     </div>
-  </footer>
+  </details>
+
+  <details class="deep">
+    <summary>进阶 3 · 想加一个新手势怎么办<em>选读 1 分半</em></summary>
+    <div class="deep-body">
+      <p>这正是"embedding + 分类器"这个设计的好处 —— <b>你只需要重训最后那个 90KB 的小分类器</b>，前面三个模型完全不用动。</p>
+      <p>流程：</p>
+      <ol>
+        <li><b>采数据</b>：做新手势，录几百张。用现成的 ② 21 点模型提取坐标（不用重训它）。</li>
+        <li><b>做特征</b>：用现成的 ③ embedder 把每组 21 点变成 128 维向量。</li>
+        <li><b>训分类器</b>：拿"128 维向量 → 手势标签"做一个小分类任务。几百条数据、几分钟就能训完。</li>
+        <li><b>转换部署</b>：把新分类器转成 RKNN，替换掉 <code>canned_gesture_classifier.rknn</code>。</li>
+      </ol>
+      <p><b>对比一下：</b>如果是手写几何规则，加一个手势要重新设计角度阈值、要处理各种角度下的情况；如果是一个大端到端模型，要重训几个 GB 的模型。<b>这种"分层设计"让改动成本降到最低。</b></p>
+      <p>这就是工程上说的"<b>把易变的部分隔离出来</b>"。这个原则比任何算法都更通用 —— 你在 EXP-05 的映射表里也见过一次。</p>
+    </div>
+  </details>
+</section>
+
+<section class="blk" id="s10">
+  <h2><span class="no">10</span>随堂小测</h2>
+
+  <div class="quiz2">
+    <div class="qq"><span class="qn">Q1</span>为什么是 4 个模型接力，而不是训练一个"端到端"的大模型直接输出手势？</div>
+    <div class="opt" data-right="0">因为端到端模型不存在</div>
+    <div class="opt" data-right="1">因为分层设计让每步只解决一个小问题，改一处不影响其他；加新手势只要重训最后那个 90KB 的小分类器</div>
+    <div class="opt" data-right="0">因为 4 个模型加起来更小</div>
+    <div class="fb"><b>对。</b>4 个模型加起来约 10MB，而一个端到端模型要想同时"找手 + 定位 + 分类"，通常大得多也慢得多。更重要的是<b>可维护性</b>：加手势、换背景、调精度，每次只动一小块。</div>
+  </div>
+
+  <div class="quiz2">
+    <div class="qq"><span class="qn">Q2</span>状态机里的"跳过手掌检测"是干什么的？</div>
+    <div class="opt" data-right="0">为了省内存</div>
+    <div class="opt" data-right="1">上一帧已经知道手在哪，就用 21 点预测位置，省掉一次全图检测来提速</div>
+    <div class="opt" data-right="0">为了支持更多手势</div>
+    <div class="fb"><b>对。</b>手在连续帧之间不会瞬移，所以可以用上一帧的位置估算这一帧。省掉一次推理，帧率就上来了。<b>代价是</b>：一旦手真的丢了，得靠 <code>presence</code> 掉下阈值才能发现并回退 —— 所以要设好这个阈值。</div>
+  </div>
+
+  <div class="quiz2">
+    <div class="qq"><span class="qn">Q3</span>右栏画出了手骨架，但手势名一直是 <code>None</code>。问题出在哪一段？</div>
+    <div class="opt" data-right="0">① 手掌检测</div>
+    <div class="opt" data-right="0">② 21 点关键点</div>
+    <div class="opt" data-right="1">③ embedding 或 ④ 分类器 —— 前两段已经成功了</div>
+    <div class="fb"><b>对。</b>能画出骨架说明 ①② 都成功了（找到手、找到点）。问题在后半段：要么 128 维向量算得不对（输入格式），要么分类器认不出这个手势。<b>按链路分段排查是最快的定位方法。</b></div>
+  </div>
+</section>
+
+<nav class="expnav">
+  <a href="../exp-11-pose-control/index.html"><span class="lb">← 上一个</span>EXP-11 体感控制</a>
+  <a class="next" href="../index.html"><span class="lb">已完成 12/12 →</span>返回课程目录</a>
+</nav>
+
+<footer>
+  <span>机器人视觉入门 · EXP-12 手势识别</span>
+  <span>4 学时 · 基于 vision/12_hand_control 源码</span>
+</footer>
+
 </main>
 </div>
 
-<script>
-var FX_TYPES = ["color", "thresh", "blur", "hue", "enhance"];
-
-function el(id){ return document.getElementById(id); }
-
-function runHand(){
-  var inp1 = el("s_inp1").value;
-  var inp3 = el("s_inp3").value;
-  var inp4 = el("s_inp4").value;
-  var ang = parseFloat(el("r_ang").value);
-  var ges = el("s_ges").value;
-  var focus = el("c_f").checked;
-  el("o_ang").textContent = ang;
-
-  var t = "";
-  t += "<span class=\"dim\"># 四模型级联输入契约检查（--check 模拟输出）</span>\n";
-
-  var fatal = false;
-
-  // ① 检测/关键点
-  if(inp1 === "f32"){
-    t += "[1] hand_detector            in=[1,192,192,3] <span class=\"ok\">float32 [0,1]  OK</span>\n";
-    t += "[2] hand_landmarks_detector  in=[1,224,224,3] <span class=\"ok\">float32 [0,1]  OK</span>\n";
-  } else if(inp1 === "u8"){
-    t += "[1] hand_detector            in=[1,192,192,3] <span class=\"bad\">uint8 [0,255] 直喂  违约</span>\n";
-    t += "     <span class=\"warn\">指纹：presence = 3.1e-10 ≈ 0</span>\n";
-    t += "     手部未检出 -> 后续所有级被跳过\n";
-    fatal = true;
-  } else {
-    t += "[1] hand_detector            in=[1,192,192,3] <span class=\"bad\">BGR 未翻转  违约</span>\n";
-    t += "     <span class=\"warn\">通道语义错误：R/B 互换，肤色分布偏移</span>\n";
-    t += "     检测置信度大幅下降 -> 框时有时无\n";
-    fatal = true;
-  }
-
-  if(!fatal){
-    // ③ embedder
-    if(inp3 === "xyz"){
-      t += "[3] gesture_embedder         x,y,z 各 /224 <span class=\"ok\">OK   |emb| ≈ 3.3</span>\n";
-    } else if(inp3 === "xy224"){
-      t += "[3] gesture_embedder         <span class=\"bad\">z 未归一化  违约</span>\n";
-      t += "     <span class=\"warn\">指纹：|emb| ≈ 10.5（正常 3.3）</span>\n";
-      t += "     分布外推 -> 分类头看什么都陌生\n";
-      fatal = true;
-    } else {
-      t += "[3] gesture_embedder         <span class=\"bad\">完全未归一化  违约</span>\n";
-      t += "     <span class=\"warn\">指纹：|emb| ≫ 10，21 点像素坐标直接入网</span>\n";
-      fatal = true;
-    }
-  } else {
-    t += "[3] gesture_embedder         <span class=\"dim\">上游已断，本级未执行</span>\n";
-  }
-
-  if(!fatal){
-    if(inp4 === "raw"){
-      t += "[4] canned_gesture_classifier in=[1,128] float 原始 <span class=\"ok\">OK</span>\n";
-      t += LINE_BAR() + "\n";
-      t += "识别结果 = <span class=\"ok\">" + ges + "</span>  conf 正常\n";
-    } else {
-      t += "[4] canned_gesture_classifier <span class=\"bad\">误加 mean/std  违约</span>\n";
-      t += "     <span class=\"warn\">指纹：分布被压成零均值 -> 输出黏在低置信的 None</span>\n";
-      t += LINE_BAR() + "\n";
-      t += "识别结果 = <span class=\"warn\">None（无论比什么）</span>\n";
-      fatal = true;
-    }
-  } else {
-    t += "[4] canned_gesture_classifier <span class=\"dim\">上游已断，本级未执行</span>\n";
-    t += LINE_BAR() + "\n";
-    t += "识别结果 = <span class=\"bad\">None（静默失败——不报错，只给垃圾）</span>\n";
-  }
-
-  t += LINE_BAR() + "\n";
-
-  // 捏合夹角映射：[0,70] deg -> [0,255] -> 5 档
-  var mapped = Math.round(Math.min(70, Math.max(0, ang)) / 70 * 255);
-  var level = Math.min(4, Math.floor(mapped / 51));
-  var fx = FX_TYPES[level];
-  t += "pinch angle(4,0,8) = " + ang.toFixed(1) + "°  map=" + mapped + "  ";
-  t += "level = <span class=\"ok\">" + (level + 1) + "/5</span>  fx=" + fx + "\n";
-  var bar = "";
-  for(var i = 0; i < 5; i++){
-    bar += (i <= level) ? "█" : "░";
-  }
-  t += "强度 [" + bar + "]\n";
-  if(!focus){
-    t += "<span class=\"warn\">'f' 切换特效无效：--display 窗口未开启或无焦点</span>（远程/MJPEG 场景请改 config 指定 fx）\n";
-  } else {
-    t += "<span class=\"dim\">// 本地窗口有焦点，'f' 键可循环 color/thresh/blur/hue/enhance</span>\n";
-  }
-  t += "<span class=\"dim\">// 强度仅在手势为抓握类（Closed_Fist 等）时应用到画面 — 当前: " + ges + "</span>\n";
-
-  el("io").innerHTML = t;
-}
-
-function LINE_BAR(){
-  return "----------------------------------------";
-}
-
-runHand();
-</script>
 <script src="../shared/tutorial.js" defer></script>
-
-<div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
+<script src="../shared/beginner.js" defer></script>
 <script>
-function lbShow(fig){var lb=document.getElementById('lightbox');if(!lb)return;var im=fig.querySelector('img');if(!im)return;lb.querySelector('img').src=im.src;lb.querySelector('img').alt=im.alt||'';lb.classList.add('on');}
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){var lb=document.getElementById('lightbox');if(lb)lb.classList.remove('on');}});
-</script>
+(function(){
+  var tc=document.getElementById('tc'); if(!tc) return;
+  var blocks=document.getElementById('blocks');
+  var txt=document.getElementById('txt'), say=document.getElementById('say');
+  var N=20, W=350, X0=40, BW=16;
 
+  /* 模拟：手在第 0 帧出现，第 8-10 帧短暂丢失，其余时间稳定 */
+  var LOST=[8,9,10];
+  function upd(){
+    var t=parseInt(tc.value,10)/100;
+    document.getElementById('tc_o').textContent=t.toFixed(2);
+    var s='', fullRuns=0;
+    for(var i=0;i<N;i++){
+      var lost = LOST.indexOf(i)>=0;
+      /* 阈值高 → 更容易判定丢失 → 更多全图检测 */
+      var judgeLost = lost ? (t < 0.85) : (t > 0.75 && i%4===0);
+      var color = judgeLost ? '#7f1d1d' : '#14532d';
+      if(judgeLost) fullRuns++;
+      s+='<rect x="'+(X0+i*BW+1)+'" y="'+(judgeLost?62:66)+'" width="'+(BW-2)+'" height="'+(judgeLost?36:28)+'" rx="2" fill="'+color+'"/>';
+    }
+    blocks.innerHTML=s;
+    txt.textContent='阈值 '+t.toFixed(2)+' → 20 帧里全图检测 '+fullRuns+' 次';
+    var m='';
+    if(t<=0.25) m='<b>阈值 '+t.toFixed(2)+'（很低）</b>：几乎总是信任上一帧，全图检测只跑了 '+fullRuns+' 次 —— <b>帧率最高</b>。但手真的移出画面时，程序还在旧位置硬猜，会出现"框跟着空白处跑"。';
+    else if(t<=0.60) m='<b>阈值 '+t.toFixed(2)+'（默认 0.5 附近）</b>：全图检测 '+fullRuns+' 次。手短暂丢失时能及时回退，整体还比较流畅 —— 平衡点。';
+    else m='<b>阈值 '+t.toFixed(2)+'（偏高）</b>：全图检测跑了 '+fullRuns+' 次。<b>跟踪位置更准（不会漂移），但帧率明显下降</b> —— 因为频繁重跑第一步。';
+    say.innerHTML=m;
+  }
+  tc.addEventListener('input',upd); upd();
+})();
+</script>
 </body>
 </html>

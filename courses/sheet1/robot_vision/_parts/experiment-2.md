@@ -1,91 +1,86 @@
-## 实验2：基于图像分类的垃圾分类实验（4h）
+## 实验2：二维码生成与识别检测实验（4h）
 
-> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification/`。基于 `garbage_yolov5_20cls.rknn`（20 类垃圾分类模型，YOLOv5 式检测头：3 尺度 × 75 通道 = 3 anchors × (4+1+20)），改造 `rknn-python-Multithreading` 火焰检测例程为**多线程 RKNN 推理 + 逐目标分类 + 4 大类映射 + MJPEG 实时流**。单测 62/62 全绿（WSL rknn23 实测）。
+> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/04_qrcode/`。生成用 `qrcode` 库（纯 Python），检测用 **OpenCV 内置 `QRCodeDetector`**（零新增、无需模型权重，替代参考的 pyzbar——后者需系统库 libzbar0）。唯一新增依赖：`qrcode 7.4.2 + pypng`（板上需 `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple qrcode`）。单测 19/19 全绿。
 
 ### 1.1 关联知识点
 
-- 1.1.1 图像分类原理 > 原理 > 垃圾分类采用 YOLOv5 式检测头（3 尺度 × 75 通道 = 3 anchors × (4+1+20)）同时输出类别与位置，区别于纯分类网络的整图单标签输出
-- 1.2.1 数据集搭建 > 概念 > 20 细类标签（bailuobo…zhuankuai，`config/labels.txt` 行号=类别 ID）与 4 大类映射（1=recyclable 2=kitchen_waste 3=hazardous_waste 4=other_waste，`config/category_map.txt`）
-- 1.3.1 多线程推理 > 流程 > RKNNPool 多线程推理池：NPU 核轮转 + 任务队列，最大化 6TOPS NPU 利用率
-- 1.3.2 模型部署 > 原理 > 模型输入 `[1,3,640,640]` float32，mean/std 0/255，**rgb2bgr=False（须喂 RGB）**；输出 3 尺度 `[1,75,80,80]/[1,75,40,40]/[1,75,20,20]`
-- 1.3.3 实时分类与分拣联动 > 流程 > letterbox 640(pad 0) + BGR→RGB → YOLOv5 解码（anchors/obj/逐类 NMS）→ 4 大类映射 → 原图坐标输出 → MJPEG 推流
+- 1.1.1 二维码编码原理 > 原理 > 二维码（QR Code）通过矩阵码元编码数据，含功能图形（定位/校正/时序）与数据区；支持版本 1-40、4 级纠错（L/M/Q/H）
+- 1.2.1 QRCode 库生成 > 流程 > `qrcode.QRCode(version, error_correction, box_size, border)` + `add_data` + `make_image`，生成图片保存
+- 1.3.1 OpenCV 实时检测 > 流程 > `cv2.QRCodeDetector.detectAndDecode` 返回数据与四角点坐标；单码图可掩掉已识别区域循环检测，但**整图多码会触发单目标检测器定位串扰而失败**（需逐码分图）
+- 1.3.2 实时识别与解析 > 流程 > 摄像头取流 → 逐帧 detectAndDecode → 框选识别区域 + 打印解析文本 → MJPEG 推流
 
 ### 1.2 实验目标
 
-1. 掌握图像分类数据集搭建与 YOLOv5 式检测头模型部署方法 — 原理理解
-2. 实现基于视觉的垃圾分类（20 细类 + 4 大类映射）与 MJPEG 实时可视化 — 独立完成
-3. 理解多线程推理池如何提升 NPU 利用率，为机械臂分拣联动打基础 — 迁移应用
+1. 掌握二维码的编码生成原理（版本/纠错/尺寸参数语义）— 原理理解
+2. 使用 OpenCV 内置检测器实现摄像头实时检测并解析二维码内容 — 独立完成
+3. 理解"生成-检测-解析"闭环在物联网/工业场景的应用（设备标识、信息传递）— 迁移应用
 
 ### 1.3 实验环境
 
 | 类别 | 配置 |
 |------|------|
 | 硬件 | 具身智能实验箱 B2（XFLZ_EAI_B2_PRO，RK3576 SoC，6TOPS NPU，含 HP60C 深度相机） |
-| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv，rknnlite 2.3.2） |
-| 核心库 | OpenCV、NumPy、rknnlite、PyYAML（标准库 MJPEG，替代外部 mjpeg_streamer） |
-| 模型 | `garbage_yolov5_20cls.rknn`（20 类垃圾分类，YOLOv5 检测头，640×640 输入） |
-| 主入口 | `src/app.py`（单图/视频/相机/ROS 模式 + MJPEG + FPS） |
+| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv） |
+| 核心库 | OpenCV（内置 QRCodeDetector）、qrcode 7.4.2 + pypng（需安装）、NumPy |
+| 模型 | 无需模型权重（QRCodeDetector 为 OpenCV 内置算法） |
+| 主入口 | `src/app.py`（--generate 生成 / --detect 检测，支持图像/视频/相机/ROS 模式） |
 
 ### 1.4 实验难度
 
-- 难度: ⭐⭐ 设计性
-- 重点: YOLOv5 检测头解码（anchors + obj + 逐类 NMS）与 4 大类业务映射
-- 难点: 多线程推理池设计（核轮转 + 队列）与 RGB/float 输入约定
+- 难度: ⭐ 验证性
+- 重点: 二维码生成参数语义 + OpenCV 实时检测解析
+- 难点: 理解 `QRCodeDetector` 单目标检测局限（整图多码定位串扰失败，需逐码分图）；低分辨率/远距离二维码的识别率
 
 ### 1.5 实验现象
 
 **快速验证流程**：
 
-1. 进入项目目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification`
-2. 单元测试：`pytest tests/ -v`（62 用例全绿，从不加载真模型）
-3. 单图检测：`python src/app.py --image x.jpg --save out.jpg`
-   - 终端打印每个目标的「大类 细类 score」与坐标
-4. 视频检测 + MJPEG：`python src/app.py --video test.mp4`
-   - 浏览器访问 `http://<板IP>:8080/garbage_cam.mjpg` 查看标注流
-5. 相机实时（板上标准）：先起 ascamera 驱动，再 `python src/app.py --ros`
+1. 进入项目目录：`cd ros2_ws/src/xflz_eai_car1/vision/04_qrcode`
+2. 安装依赖（板上）：`pip install -i https://pypi.tuna.tsinghua.edu.cn/simple qrcode`
+3. 单元测试：`pytest tests/ -v`（19 用例全绿）
+4. 生成二维码：`python src/app.py --generate "https://example.com" --save my_qr.png`
+   - 手机/电脑扫码可打开对应内容
+5. 识别：`python src/app.py --detect --image my_qr.png`
+   - 终端打印解析文本，输出框选标注图
+6. 相机实时（板上标准）：先起 ascamera 驱动，再 `python src/app.py --detect --ros`
+   - MJPEG：`http://<板IP>:8080/qrcode.mjpg`，手机屏幕/打印码实时识别
 
 ```bash
-# 进入实验02
-cd ~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification
+# 进入实验2
+cd ~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
 
 # 可选
 /home/iflytek/ros2_venv/bin/python -m pytest -v
 
-# 执行单图片推理（图片都在02_garbage_classification/images）
-python src/app.py --model models/garbage_yolov5_20cls.rknn --image images/1.jpg --save out.jpg
+# 生成二维码
+python src/app.py --generate "https://example.com" --save my_qr.png
+
+# 识别刚刚生成的二维码
+python src/app.py --detect --image my_qr.png
 ```
 
 **预期效果描述**：
 
-- 单图：水瓶 → `recyclable shuiping 0.xx`，胡萝卜→ `huluobo 鸡蛋...`，电池 → `hazardous_waste dianchi 0.xx`
-- 实时：检测框逐帧跟随，avg_fps ≥ 15（验收门），MJPEG 流可见「大类 细类 score」标注
-- 多线程：`--tpes 6` 时 NPU 多核轮转，帧率显著高于单线程
+- 生成：指定数据、版本、纠错等级、尺寸的二维码图片正确保存
+- 识别：图像中二维码被绿框框选，框上方打印解析文本（≤40 字符截断）
+- 多码说明：`cv2.QRCodeDetector` 为单目标检测器，**整图含多码时第一轮定位即失败**（详见步骤3 限说明）；多码需逐码分图检测
+- 实时：摄像头对准手机屏幕/打印的二维码即时解析，MJPEG 流实时更新
 
 **执行现象**：
-
-- `pytest tests/ -v` 运行约 30-50 秒，62 个用例全部 passed（含 test_config / test_preprocess / test_postprocess / test_detector / test_rknnpool / test_app / test_mjpeg_server / test_ros2_source）；从不加载真模型，全用 FakeBackend 预设输出
-- 单图推理 `python src/app.py --image images/1.jpg --save out.jpg` 约 0.1-0.3 秒返回，终端打印每个目标的 `大类 细类 score (x1,y1,x2,y2)`，当前目录生成 `out.jpg`（红框标注图）
-- 视频 + MJPEG 模式下终端每 30 帧打印一次 30 帧平均帧率，板端实测 tpes=2 时 avg_fps ≈ 15-18，tpes=6 时显著提升至 20+ FPS；浏览器 `http://<板IP>:8080/garbage_cam.mjpg` 可见实时标注流
-- 标注格式：`recyclable shuiping 0.87`（大类英文名 + 细类拼音 + 置信度），红框 2px 宽，文本位于框上方
+- 单元测试：`pytest tests/ -v` 运行约 3-5 秒，输出 19 个用例全部 passed，覆盖 generate（版本/纠错/空数据）、detect（单码 roundtrip / 噪声空 / 降采样坐标映射）、draw（截断标注）、config（schema 校验/色域检查）四组（注意：单测的 detect 均为**单码**用例——与整图多码不可行的实测一致）
+- 生成命令：`python src/app.py --generate "https://example.com" --save my_qr.png` 立即返回，终端输出 `已保存: my_qr.png`，文件大小约 3-4 KB（版本 1 + 纠错 M + box_size 5）
+- 识别命令：`python src/app.py --detect --image my_qr.png --save out.png` 立即返回，终端打印 `[QR] https://example.com`，`out.png` 中二维码区域被绿框框选、框上方显示完整文本
+- 多码说明：`detect_qr` 的掩膜循环**依赖检测器先定位到单码**。同一张图内含多个二维码时，OpenCV `QRCodeDetector` 定位阶段会把不同码的 finder pattern 交叉误配成伪码，第一轮 `detectAndDecode` 即返回空串（`data=''`），循环不触发——**整图并行识别多码实测不可行**（x86 4.8.1 与板端 ROS OpenCV 一致）。多码场景应逐码分图检测（见步骤3）
+- 实时流：板上启动后 MJPEG 流地址 `http://<板IP>:8080/qrcode.mjpg` 可在浏览器打开，对准手机屏幕上的二维码时文本即时刷新，延迟 < 0.5 秒
 
 ```bash
-(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification$ python src/app.py --model models/garbage_yolov5_20cls.rknn --image images/1.jpg --save out.jpg
-/home/iflytek/ros2_venv/lib/python3.10/site-packages/rknnlite/api/rknn_lite.py:41: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
-  import pkg_resources
-W rknn-toolkit-lite2 version: 2.3.2
-I RKNN: [17:20:51.340] RKNN Runtime Information, librknnrt version: 2.3.2 (429f97ae6b@2025-04-09T09:09:27)
-I RKNN: [17:20:51.340] RKNN Driver Information, version: 0.9.8
-I RKNN: [17:20:51.340] RKNN Model Information, version: 6, toolkit version: 2.3.0(compiler version: 2.3.0 (c949ad889d@2024-11-07T11:39:30)), target: RKNPU f2, target platform: rk3576, framework name: ONNX, framework layout: NCHW, model inference type: static_shape
-W RKNN: [17:20:51.365] query RKNN_QUERY_INPUT_DYNAMIC_RANGE error, rknn model is static shape type, please export rknn with dynamic_shapes
-W Query dynamic range failed. Ret code: RKNN_ERR_MODEL_INVALID. (If it is a static shape RKNN model, please ignore the above warning message.)
-saved -> out.jpg
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode$ python src/app.py --generate "https://example.com" --save my_qr.png
+QR 已保存: /home/iflytek/ros2_ws/src/xflz_eai_car1/vision/04_qrcode/my_qr.png
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode$ python src/app.py --detect --image my_qr.png
+[QR] https://example.com
 ```
 
-<img src="assets/image-20260819172223216.png" alt="image-20260819172223216" style="zoom: 67%;" /><img src="assets/image-20260819172236760.png" alt="image-20260819172236760" style="zoom:67%;" />
-
-下面是对应部分训练集图片内容
-
-<img src="assets/image-20260820091701693.png" alt="image-20260820091701693" style="zoom: 50%;" /><img src="assets/image-20260820091716936.png" alt="image-20260820091716936" style="zoom: 50%;" />
+![image-20260820112500424](assets/image-20260820112500424.png)
 
 ### 1.6 实验步骤
 
@@ -93,367 +88,358 @@ saved -> out.jpg
 
 ```mermaid
 graph LR
-    A[步骤1: 模型与配置认知] --> B[步骤2: 预处理 letterbox+RGB]
-    B --> C[步骤3: YOLOv5解码与NMS]
-    C --> D[步骤4: 4大类映射]
-    D --> E[步骤5: 多线程推理池]
-    E --> F[步骤6: 实时推理与MJPEG]
-    F --> G[完成]
-```
-
-```mermaid
-graph TD
-    subgraph 端到端数据流
-        A1[输入 BGR 帧] --> B1[letterbox 640 pad 0]
-        B1 --> C1[BGR→RGB 通道交换]
-        C1 --> D1[NPU 推理 3尺度输出]
-        D1 --> E1[YOLOv5 anchor解码]
-        E1 --> F1[置信度过滤 score_thr]
-        F1 --> G1[逐类 NMS iou_thr]
-        G1 --> H1[unletterbox 映射回原图]
-        H1 --> I1[20细类→4大类映射]
-        I1 --> J1[画框标注 大类 细类 score]
-        J1 --> K1[MJPEG推流 :8080]
-    end
+    A[步骤1：二维码原理认知] --> B[步骤2：qrcode库生成]
+    B --> C[步骤3：OpenCV检测与多码循环]
+    C --> D[步骤4：标注与解析]
+    D --> E[步骤5：实时相机识别]
+    E --> F[完成]
 ```
 
 ---
 
-#### 步骤1：模型与配置认知（阶段一：能运行，20min）
+#### 步骤1：二维码原理认知（阶段一：能运行，20min）
 
-> 📌 本步骤对应源码：`config/garbage_config.yaml`、`config/labels.txt`、`src/config.py`
+> 📌 本步骤对应源码：`src/config.py` error_correction_level
 
 **知识点讲解**：
 
-**模型元数据与业务映射（1.1.1、1.2.1）**
-- **原理**：`garbage_yolov5_20cls.rknn` 是 20 类垃圾分类检测模型，检测头为 **YOLOv5 式**：每个尺度输出 `[1, 75, h, w]`，75 = 3 anchors × (4 坐标 + 1 目标置信度 + 20 类)。模型事实（元数据核实）：输入 `[1,3,640,640]` float32，mean/std 0/255，**rgb2bgr=False（必须喂 RGB）**；anchors 为 YOLOv5 默认 9 组（`config/anchors.txt`）。业务层把 20 细类映射为 4 大类：1=recyclable（可回收）2=kitchen_waste（厨余）3=hazardous_waste（有害）4=other_waste（其他），映射关系在 `config/category_map.txt`（英文名）。`src/config.py` 负责加载 labels/category_map/anchors，**路径相对配置文件解析**——模型换位置时只需改 `model.path`。
-- **源码对应**：`config/garbage_config.yaml`（model.path / infer.sigmoid / pool.tpes）；`config/labels.txt`（20 细类，行号=类别 ID）；`config/category_map.txt`（4 大类）；`config/anchors.txt`（YOLOv5 默认 anchors）
+**QR Code 结构与纠错原理（1.1.1）**
+- **原理**：QR Code（Quick Response Code）是矩阵式二维条码，结构含：**定位图形**（三个角的回字方块，用于检测与旋转校正）、**校正图形**（版本≥2 时的小方块，用于畸变校正）、**时序图形**（定位图形间黑白交替线）、数据区与纠错码区。**版本**（1-40）决定尺寸与容量，版本越高容量越大；**纠错等级**（L≈7%/M≈15%/Q≈25%/H≈30% 恢复能力）决定污损/遮挡容忍度——等级越高纠错越强但数据容量越小。`error_correction_level()` 把配置中的 L/M/Q/H 字符串映射为 qrcode 库常量。
+- **源码对应**：`src/config.py` error_correction_level；`config/qr_config.yaml`（generate.version / error_correction / box_size / border）
 
 **知识储备补充**：
 
-- **分类 vs 检测的本质区别**：纯分类网络（如 ResNet）对整张图输出一个标签，而检测网络（如 YOLO）输出多个带坐标的框+类别。垃圾分类需要同时知道"是什么"和"在哪里"——同一帧可能有水瓶、电池、果皮三个目标，纯分类只能输出一个，检测网络则逐目标输出。YOLOv5 式检测头是"anchor-based"：预设不同尺度的先验框（anchor），网络只需预测偏移量，比纯回归更稳定。
-- **anchors 的数学含义**：9 组 anchor 分配到 3 个尺度（80×80 / 40×40 / 20×20），每尺度 3 组。小尺度特征图（20×20）锚定大物体（如 373×326 的大包装箱），大尺度特征图（80×80）锚定小物体（如 10×13 的胶囊）。解码时 anchor 参与宽高还原：
-
+- **QR Code 矩阵结构**：QR Code 是由方形模块（module）组成的二维矩阵。每个模块为 1 bit（黑=1，白=0）。矩阵尺寸由版本号决定——版本 $v$ 的矩阵边长 $M$ 满足：
   $$
-  w_{pred} = (2 \cdot t_w)^2 \times a_w, \quad h_{pred} = (2 \cdot t_h)^2 \times a_h
+  M = 17 + 4v
   $$
+  
+  例如版本 1 为 21×21 模块，版本 10 为 57×57，版本 40 为 177×177。功能图形（定位、校正、时序）固定占位，剩余面积容纳数据与纠错码。
+  
+- **Reed-Solomon 纠错原理**：QR Code 使用 Reed-Solomon（RS）纠错码，属于多项式纠错码。编码过程：将数据视为 GF(256) 域上的多项式 $d(x)$，生成 $t$ 个校验符号——$t$ 由纠错等级决定（L: $t \approx 7\% \cdot n$，M: 15%，Q: 25%，H: 30%，$n$ 为总符号数）。解码时可纠正 $\lfloor t/2 \rfloor$ 个符号错误或 $t$ 个擦除（位置已知的错误）。本项目配置纠错等级为 M（`config/qr_config.yaml` L4），可恢复约 15% 的码元污损——工业场景（污损多、距离远）应选 Q 或 H 等级。
 
-  其中 $t_w, t_h$ 为网络输出的归一化偏移，$a_w, a_h$ 为 anchor 宽高。$(2t)^2$ 的平方设计使宽高始终为正，且对小偏移敏感（中心偏移用 sigmoid，宽高用此方式）。
-- **sigmoid 配置的由来**：`infer.sigmoid: false` 表示后处理手动应用 sigmoid；若模型导出时图内已含 sigmoid，则手动再做一次只是单调压缩分数（$0 \to 0.5$, $1 \to 0.73$），结果不变但效率略降。配置的灵活性让同一后处理代码适配不同导出版本。
-- **路径解析设计**：`config.py` 中 `load_config()` 将 `model.path`、`model.labels` 等相对路径基于**配置文件所在目录**解析为绝对路径（`config/` 目录下），而非当前工作目录。这意味着无论从项目根还是 `src/` 启动，路径都能正确解析，保证跨目录运行不报错。
-- **参考资源**：Ultralytics YOLOv5 官方文档《Train Custom Data》锚框部分；RKNN Toolkit2 用户指南《Model Zoo》RK3576 平台量化说明。
+- **版本与容量关系**：每个版本的每个纠错等级有固定数据容量（字节）。版本 1-L 约 17 字节，版本 10-M 约 395 字节，版本 40-H 约 1852 字节。`qrcode.QRCode(version=1, ...)` 设定版本 1，若数据超出该版本容量，`make(fit=True)` 会自动升版至足够大的版本。这也是本项目配置注释"勿用 H——板端实测 cv2.QRCodeDetector 解不了 H+中文 UTF-8"的原因：H 等级纠错码占比最高（约 30%），留给数据的空间最小，中文 UTF-8 编码体积大，版本 1+H 无法容纳。
 
-下面是YOLOv5网络框架图
+- **参考资源**：ISO/IEC 18004:2015 标准（QR Code 符号规范）；`qrcode` 库官方文档 `https://pypi.org/project/qrcode/`；Thonky QR Code 教程 `https://www.thonky.com/qr-code-tutorial/`
 
-![YOLOv5_structure_v3.4](https://img-transfer.gitcode.com/?p=https%3A%2F%2Fuser-images.githubusercontent.com%2F27466624%2F200000324-70ae078f-cea7-4189-8baa-440656797dad.jpg&projectId=datawhalechina/thorough-pytorch&pageUrl=https%3A%2F%2Fgitcode.com%2Fdatawhalechina%2Fthorough-pytorch%2Fblob%2Fmain%2Fsource%2F%25E7%25AC%25AC%25E5%258D%2581%25E7%25AB%25A0%2FYOLO%25E7%25B3%25BB%25E5%2588%2597%25E8%25A7%25A3%25E8%25AF%25BB%2FMMYOLO%25E5%25AE%259E%25E7%258E%25B0%2Fyolov5_description.md)
+<img src="assets/image-20260820133314253.png" alt="image-20260820133314253" style="zoom: 67%;" />
 
-**配置参数速查表**（`config/garbage_config.yaml`，按区块分列）：
+**配置参数速查表**（`config/qrcode_config.yaml`，按区块分列）：
 
 | 区块 | 参数 | 类型 | 默认/示例 | 说明 |
 |------|------|------|-----------|------|
-| `model` | `path` | str | `../models/garbage_yolov5_20cls.rknn` | 模型路径（相对配置文件目录解析，模型在项目根 models/） |
-| `model` | `labels` | str | `labels.txt` | 20 细类标签文件（行号=类别 ID） |
-| `model` | `category_map` | str | `category_map.txt` | 细类→大类映射文件（每行 1-4） |
-| `model` | `category_names` | dict | `{"1":"recyclable",...}` | 4 大类 ID→英文名 |
-| `infer` | `imgsz` | int | `640` | 模型输入边长（元数据核实） |
-| `infer` | `preprocess` | str | `letterbox` | 预处理方式（letterbox 640 pad 0） |
-| `infer` | `score_thr` | float | `0.25` | 置信度过滤阈值 |
-| `infer` | `nms_thr` | float | `0.45` | NMS 交并比阈值 |
-| `infer` | `sigmoid` | bool | `False` | 后处理是否手动 sigmoid（图内已含则单调不变） |
-| `infer` | `anchors` | str | `anchors.txt` | YOLOv5 默认 9 组 anchors |
-| `pool` | `tpes` | int | `2` | 推理线程数（多核利用率；板端 2 核实测用 2） |
-| `pool` | `core_mask` | str | `auto` | NPU 核分配（round_robin 在 2 核板会卡死，勿用 [1,2,4]） |
-| `server` | `host` | str | `0.0.0.0` | MJPEG 监听地址 |
-| `server` | `port` | int | `8080` | MJPEG 端口 |
-| `server` | `stream_name` | str | `garbage_cam` | MJPEG 流名（库自动补 `.mjpg`） |
-| `server` | `quality` | int | `80` | JPEG 压缩质量 |
-| `server` | `fps` | int | `30` | MJPEG 推流帧率上限 |
-| `source` | `ros.rgb_topic` | str | `/ascamera_hp60c/.../rgb0/image` | ROS2 相机话题（严禁 remap） |
+| `generate` | `version` | int | `1` | 二维码版本 1-40（fit=True 自动扩版） |
+| `generate` | `error_correction` | str | `M` | 纠错级 L/M/Q/H；**勿用 H**（板载 cv2 解不了 H+中文） |
+| `generate` | `box_size` | int | `5` | 每格像素数 |
+| `generate` | `border` | int | `4` | 边框格数 |
+| `generate` | `fill_color`/`back_color` | list | `[0,0,0]`/`[255,255,255]` | 前后景色 RGB |
+| `detect` | `scale` | float | `0.5` | 检测前缩放（大图提速） |
+| `camera` | `index` | int | `0` | VideoCapture 索引 |
+| `camera` | `width`/`height` | int | `640`/`480` | 取流分辨率 |
+| `display` | `show` | bool | `false` | 本地窗口（板上置 false） |
+| `display` | `window_name` | str | `qrcode` | 窗口名 |
+| `source` | `ros.rgb_topic` | str | `/ascara_hp60c/.../rgb0/image` | 相机话题（勿 remap） |
 | `source` | `ros.timeout` | float | `5.0` | 首帧等待秒数 |
-
-> **说明**：`model.*` `infer.*` 为本实验核心（模型元数据 + 解码参数）；`pool.tpes`/`core_mask` 调多线程性能；`server.*` 管 MJPEG 推流；`source.ros.*` 相机取流。`stream_name` 不带 `.mjpg`（库自动补），与 exp01/09+ 的"已含 .mjpg"约定不同——勿混用。
+> **说明**：`generate`/`detect` 为本实验核心；`error_correction H` 为已知板端陷阱。`camera`/`source`/`display` 运行环境。
 
 **操作步骤**：
 
-1. 查看标签与映射文件，理解"细类 → 大类"的两级业务：
-   ```bash
-   cat config/labels.txt          # 20 细类（拼音命名：shuiping 水瓶、dianchi 电池…）
-   cat config/category_map.txt    # 每行: 细类ID 大类ID 大类英文名
-   ```
-2. 阅读 `config/garbage_config.yaml`，重点关注 `infer.sigmoid`（obj 分支是否已 sigmoid）与 `pool.tpes`（线程数）
-3. 用 Python 验证配置加载：
-   ```bash
-   PYTHONPATH=./src python -c "from config import load_labels, load_category_map, load_anchors; \
-   labels = load_labels('config/labels.txt'); \
-   print(len(labels), '细类'); \
-   cat_map = load_category_map('config/category_map.txt', n_labels=len(labels)); \
-   print(len(cat_map), '大类映射')"
-   ```
+1. 查看 `config/qr_config.yaml` 生成参数，理解 version/error_correction/box_size/border 语义
+2. 阅读 `src/config.py` error_correction_level 实现
+3. 思考：工业场景（污损多、距离远）应选什么纠错等级？为什么？
 
 **易错点**：
+- ⚠️ 纠错等级与容量互斥：等级越高单码容量越小，长文本需版本+等级权衡
 
-- ⚠️ 若框偏移 → 调整 `config/anchors.txt`（核对导出配置）；若分数异常 → 切换 `infer.sigmoid: false`
+**流程图**：
 
----
+```mermaid
+flowchart LR
+    A[QR Code 矩阵结构<br/>定位/校正/时序图形<br/>数据区 + 纠错码区] --> B[版本 1-40<br/>矩阵边长 M = 17 + 4v]
+    B --> C[纠错等级 L/M/Q/H<br/>L≈7% M≈15% Q≈25% H≈30%<br/>等级越高 纠错越强 容量越小]
+    C --> D[error_correction_level<br/>字符串映射 qrcode 常量]
+    C --> E[选型权衡<br/>污损多远距离选 Q/H<br/>长文本需版本+等级权衡]
 
-#### 步骤2：预处理 letterbox + RGB（阶段一：能运行，20min）
-
-> 📌 本步骤对应源码：`src/preprocess.py`
-
-**知识点讲解**：
-
-**输入对齐（1.3.2）**
-- **原理**：模型输入为 640×640 RGB float，而摄像头/图片是任意尺寸 BGR uint8。`prepare_input()` 完成三步对齐：(1) **letterbox 等比缩放 + pad 0 填充**到 640×640（pad 必须 0，与模型 zoo 对齐，避免填充色干扰检测）；(2) **BGR→RGB 通道交换**（模型 rgb2bgr=False 约定）；(3) **归一化约定**：模型要求 mean/std 0/255，即输入直接是 0-255 的 uint8 转 float，不做额外 /255（量化模型内部处理）。输出经 `unletterbox()` 把检测框映射回原始图像坐标。
-- **源码对应**：`src/preprocess.py`（prepare_input / unletterbox）
-
-**知识储备补充**：
-
-- **letterbox 为什么 pad=0**：模型训练时用黑色（0）填充，推理时也必须用黑色填充——否则填充区域的颜色值会参与特征提取，导致边缘目标出现伪检测。pad=0 是与模型训练时的数据增强约定对齐的关键约束。
-
-- **letterbox 等比缩放的数学**：给定输入图 $(H, W)$ 和目标尺寸 $S=640$，缩放因子为：
-
-  $$
-  s = \min\left(\frac{S}{H}, \frac{S}{W}\right)
-  $$
-
-  缩放后尺寸为 $(sH, sW)$，填充量为 $pad_x = \frac{S - sW}{2}$, $pad_y = \frac{S - sH}{2}$。letterbox 保持宽高比不变形，padding 居中对称——这是目标检测的标准预处理范式，与分类网络的 resize 拉伸不同。
-  
-- **BGR vs RGB 的工程背景**：OpenCV 默认以 BGR 读取图像（源于早期 Windows BMP 格式），而大多数深度学习模型训练时用 RGB。通道顺序错误是"检测框位置正确但分类全错"的最常见原因——因为 RGB 三通道的语义位置颠倒，模型看到的"红色"其实是蓝色。`to_rgb()`（`preprocess.py` L40-42）通过 `bgr_img[..., ::-1].copy()` 实现通道交换并返回拷贝，避免修改原帧。
-
-- **unletterbox 坐标逆映射**：检测框在 letterbox 空间输出后，需减去 padding 偏移再除以缩放因子映射回原图坐标：
-
-  $$
-  x_{orig} = \frac{x_{letterbox} - pad_x}{s}, \quad y_{orig} = \frac{y_{letterbox} - pad_y}{s}
-  $$
-
-  `unletterbox()`（`preprocess.py` L35-37）一行实现：`(boxes - pad_offset) / scale`。这是检测结果可视化的核心步骤——没有逆映射，框会偏到填充区域。
-  
-- **参考资源**：Ultralytics YOLOv5 `letterbox` 函数实现；OpenCV 官方文档 `cv2.resize` 插值方法选择。
-
-下面就是letterbox的具体实现图
-
-![image-20260819173701539](assets/image-20260819173701539.png)
-
-**操作步骤**：
-
-1. 用测试图验证预处理输出形状：
-   ```bash
-   PYTHONPATH=./src python -c "
-   import cv2, numpy as np
-   from preprocess import prepare_input
-   img = cv2.imread('images/1.jpg')
-   rgb, meta = prepare_input(img, 640)
-   print('输入形状:', rgb.shape, 'dtype:', rgb.dtype)   # 预期 (640,640,3) uint8 RGB
-   print('scale:', meta.scale, 'pad:', (meta.pad_x, meta.pad_y))"
-   ```
-
-```bash
-(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification$ PYTHONPATH=./src python -c "
-import cv2, numpy as np
-from preprocess import prepare_input
-img = cv2.imread('images/1.jpg')
-rgb, meta = prepare_input(img, 640)
-print('输入形状:', rgb.shape, 'dtype:', rgb.dtype)   # 预期 (640,640,3) uint8 RGB
-print('scale:', meta.scale, 'pad:', (meta.pad_x, meta.pad_y))"
-输入形状: (640, 640, 3) dtype: uint8
-scale: 1.0 pad: (0, 0)
+    style C fill:#fff3d6,stroke:#b90,stroke-width:1px
 ```
 
-2. 理解 letterbox 的 scale 计算（`min(640/h, 640/w)`），思考为什么 pad 必须是 0
-
-**易错点**：
-
-- ⚠️ RGB 与 BGR 混用是"检测框对但分类错"的头号原因——务必先 `to_rgb` 再喂模型
-
 ---
 
-#### 步骤3：YOLOv5 解码与逐类 NMS（阶段二：能理解，30min）
+#### 步骤2：qrcode 库生成二维码（阶段一：能运行，25min）
 
-> 📌 本步骤对应源码：`src/postprocess.py`
+> 📌 本步骤对应源码：`src/qr.py` generate_qr
 
 **知识点讲解**：
 
-**YOLOv5 检测头解码（1.1.1）**
-- **原理**：YOLOv5 检测头输出为 anchor-based：每尺度 `[1,75,h,w]`，reshape 为 `[3, 25, h, w]`（3 anchors × 25 = 4 坐标 + 1 obj + 20 类）。解码步骤：
-
-  (1) 对每个 anchor 位置，用**预设 anchors** 将归一化偏移还原为 cx/cy/w/h（`decode_rknn_outputs`）；
-
-  (2) 目标置信度与类别分数结合（或直接取类最大分）；
-
-  (3) 按 `score_thr` 过滤；(4) **逐类 NMS**——同类别重叠框只保留最高分，跨类别不抑制。输出 `Detection` 列表（原图坐标，经 unletterbox），再由 `map_categories()` 完成 20 细类 → 4 大类映射。
-
-- **源码对应**：`src/postprocess.py`（Detection / decode_rknn_outputs / map_categories / NMS）
+**生成流程（1.2.1）**
+- **原理**：`generate_qr()`（L30-45）完整演示生成四步：(1) 构造 `qrcode.QRCode(version, error_correction, box_size, border)`——version 指定固定版本（1-40），`make(fit=True)` 时若数据超出该版本会自动升版；(2) `add_data(data)` 填充用户数据；(3) `make(fit=True)` 计算编码矩阵；(4) `make_image(fill_color, back_color)` 渲染为 PIL 图像，`.convert("RGB")` 后经 OpenCV 转 BGR 输出。`box_size` 控制每模块像素数（清晰度），`border` 控制四周留白（标准为 4 模块）。空数据直接抛 `ValueError`（L32-33）。
+- **源码对应**：`src/qr.py` L30-45（generate_qr：参数 L35-40 / add_data L41 / make L42 / 渲染转 BGR L43-45）
 
 **知识储备补充**：
 
-- **解码坐标还原的完整数学**：`decode_scale()`（`postprocess.py` L54-85）对单尺度 `(1,75,h,w)` 执行以下变换——首先 reshape 为 `(h, w, 3, 25)`（3 anchors × 25 维），25 维拆分为：$t_{xy}$（前 2 维，中心偏移）、$t_{wh}$（2-4 维，宽高偏移）、$t_{obj}$（第 4 维，目标置信度）、$t_{cls}$（5-24 维，20 类分数）。中心点坐标还原：
+- **生成参数语义详解**：`qrcode.QRCode` 的四个构造参数各有明确语义——`version`（int 1-40 或 None）：固定版本号，None 时由 `make(fit=True)` 自动选择最小版本；`error_correction`：纠错等级常量（`ERROR_CORRECT_L/M/Q/H`），`config.py` L28-33 的 `EC_LEVELS` 字典完成字符串→常量映射；`box_size`（int）：每个模块渲染为多少像素的正方形，值越大生成图越大越清晰但文件越大；`border`（int）：四周静区（quiet zone）模块数，ISO 标准要求最少 4 模块，低于此值可能被扫描器忽略。
 
-  $$
-  c_x = (\sigma(t_{cx}) + g_x) \times stride, \quad c_y = (\sigma(t_{cy}) + g_y) \times stride
-  $$
+- **`fit=True` 自动升版机制**：当指定版本的数据容量不足以容纳输入数据时，`make(fit=True)` 会自动选择能容纳该数据的最小版本。这意味着 `generate_qr` 中 `version=1`（`config/qr_config.yaml` L3）配合 `fit=True` 是"从版本 1 开始，按需升版"——短 URL（如 `https://example.com`）保持版本 1，较长文本可能升至版本 2-5。
 
-  其中 $\sigma$ 为 sigmoid 函数（把偏移约束到 0-1），$g_x, g_y$ 为网格左上角坐标（0, 1, 2, ..., h-1），$stride$ 为下采样倍数（80×80 → stride=8, 40×40 → stride=16, 20×20 → stride=32）。
+- **色域转换**：`qrcode` 库基于 PIL/Pillow 渲染，输出为 RGB 格式（`qr.py` L43：`.convert("RGB")`）。OpenCV 内部使用 BGR 格式，因此必须经 `cv2.cvtColor(..., cv2.COLOR_RGB2BGR)` 转换（L45），否则颜色通道错位导致前景/背景反转。
 
-![image-20260820100141487](assets/image-20260820100141487.png)
-
-- **置信度与类别分数的组合**：最终分数 = $obj\_score \times cls\_score_{max}$。`decode_scale` 中 `keep = np.where((conf >= score_thr) & (cls_max >= score_thr))` 要求 obj 和 cls 同时超过阈值——这是 YOLOv5 的设计：obj 分支负责"这里有没有东西"，cls 分支负责"是什么"，二者共同过滤噪声。
-- **逐类 NMS vs 全局 NMS**：`classwise_nms()`（`postprocess.py` L88-110）对每个类别独立执行 NMS。全局 NMS 会抑制所有重叠框（跨类），但在垃圾分类场景中，一个水瓶可能同时被检为"recyclable"和"other"——逐类 NMS 允许不同类别的重叠框共存，符合业务需求。NMS 的核心 IoU 计算：
-  $$
-  IoU = \frac{Area(A \cap B)}{Area(A) + Area(B) - Area(A \cap B)}
-  $$
-
-  代码中 `+0.00001` 容差（`postprocess.py` L100）防止浮点精度导致的边界 case。
-
-下面是nms抑制的具体现象就是将多个重复框筛选出最好的
-
-![image-20260820094534557](assets/image-20260820094534557.png)
-
-- **xywh → xyxy 转换**：`decode_rknn_outputs()`（`postprocess.py` L130-140）在 NMS 前将中心点格式 `(cx, cy, w, h)` 转为角点格式 `(x1, y1, x2, y2)`：$x_1 = cx - w/2$, $y_1 = cy - h/2$, $x_2 = cx + w/2$, $y_2 = cy + h/2$。NMS 的 IoU 计算需要角点格式。
-- **参考资源**：YOLOv5 官方 `utils/general.py` `non_max_suppression` 函数；Joseph Redmon《YOLOv3: An Incremental Improvement》检测头设计。
+- **参考资源**：Pillow 文档 `Image.convert`；OpenCV 色彩空间转换 `cv2.cvtColor`；`qrcode` 源码 `qrcode.image.pil` 模块
 
 **操作步骤**：
 
-1. 阅读 `postprocess.py` 的解码主函数，理解 anchors 如何参与坐标还原
-2. 单元测试理解解码契约：
+1. 生成并保存二维码：
    ```bash
-   pytest tests/test_postprocess.py -v
-   # 预期：decode/NMS/map_categories 用例全绿
+   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
+   
+   # 生成二维码内容为 "https://example.com"
+   python src/app.py --generate "https://example.com" --save my_qr.png
+   # my_qr.png 生成成功
    ```
-3. 思考：为什么逐类 NMS 而非全局 NMS？（不同类目标可以重叠，如"瓶中水"场景）
-
-**易错点**：
-- ⚠️ anchors 与模型导出配置不一致 → 框整体偏移，调整 `config/anchors.txt`
-
----
-
-#### 步骤4：4 大类业务映射（阶段二：能理解，15min）
-
-> 📌 本步骤对应源码：`src/postprocess.py` map_categories、`config/category_map.txt`
-
-**知识点讲解**：
-
-**细类到大类的业务抽象（1.2.1）**
-- **原理**：20 细类过于细粒度（如 yaogao 牙膏、yaopian 药片），面向分拣业务需要 4 大类。`map_categories()` 依据 `category_map.txt` 把每个检测的 `class_id` 映射为 `(大类ID, 大类英文名)`，同时保留细类名用于标注显示。这种"模型输出细类、业务消费大类"的两级设计，使模型更换（如新增细类）不破坏下游分拣逻辑。
-- **源码对应**：`src/postprocess.py` map_categories；`src/app.py` L31-33（标注格式 `大类 细类 score`）
-
-**知识储备补充**：
-
-- **两级标签设计的工程价值**：20 细类是模型的"原子能力"——模型训练时学习每个细类的视觉特征；4 大类是业务的"消费单位"——分拣机械臂只关心四大类（可回收/厨余/有害/其他）。两级解耦的好处是：新增一个细类（如"纸杯"→recyclable）只需改 `category_map.txt`，不动模型和分拣代码。`map_categories()`（`postprocess.py` L158-165）一行映射：`cat = cat_map[d.class_id]`，`CategoryDetection.from_detection(d, cat, cat_names[str(cat)])`。
-- **category_map.txt 的行号契约**：`config/category_map.txt` 每行一个数字（1-4），行号与 `labels.txt` 严格对应——第 1 行对应 labels.txt 第 1 行的 `bailuobo`（细类 ID=0），值为 2 表示 `kitchen_waste`。错一行会导致全部映射偏移（如 shuiping 从 recyclable 变成 hazardous）。`load_category_map()`（`config.py` L78-85）读取并校验值域 ∈ {1,2,3,4}。
-- **标注格式的业务含义**：`app.py` L31 构造标注文本 `f"{d.category_name} {labels[d.class_id]} {d.score:.2f}"`——大类英文名在前（分拣指令依据），细类拼音在中间（调试定位），置信度在后（质检门控）。分拣系统只需解析第一个单词即可路由到对应仓位。
-- **参考资源**：《垃圾分类标志》GB/T 19095-2019 国家标准（四分类体系）；YOLOv5 自定义数据集训练文档。
-
-| ID   | 细类名称    | 大类编码 | 大类名称 | ID   | 细类名称         | 大类编码 | 大类名称 |
-| ---- | ----------- | -------- | -------- | ---- | ---------------- | -------- | -------- |
-| 0    | bailuobo    | 2        | 厨余垃圾 | 10   | shuiping         | 1        | 可回收物 |
-| 1    | caiye       | 2        | 厨余垃圾 | 11   | tizi             | 2        | 厨余垃圾 |
-| 2    | chuangkotie | 3        | 有害垃圾 | 12   | tudo             | 2        | 厨余垃圾 |
-| 3    | cipian      | 4        | 其他垃圾 | 13   | yaogao           | 3        | 有害垃圾 |
-| 4    | dianchi     | 3        | 有害垃圾 | 14   | yaopian          | 3        | 有害垃圾 |
-| 5    | eluanshi    | 4        | 其他垃圾 | 15   | yaopianbaozhuang | 3        | 有害垃圾 |
-| 6    | fanqie      | 2        | 厨余垃圾 | 16   | yaoping          | 3        | 有害垃圾 |
-| 7    | huluobo     | 2        | 厨余垃圾 | 17   | yilaguan         | 1        | 可回收物 |
-| 8    | jiaonang    | 3        | 有害垃圾 | 18   | zhibei           | 1        | 可回收物 |
-| 9    | lajiao      | 2        | 厨余垃圾 | 19   | zhuankuai        | 4        | 其他垃圾 |
-
-**操作步骤**：
-
-1. 查看 category_map.txt，找出 recyclable 包含哪些细类（shuiping 水瓶、yilaguan 易拉罐…）
-2. 运行单测验证映射正确性：`pytest tests/test_postprocess.py -k category -v`
-
-**易错点**：
-
-- ⚠️ category_map 行序必须与 labels.txt 行号严格对应，错一行全错
-
----
-
-#### 步骤5：多线程推理池 RKNNPool（阶段三：能改造，30min）
-
-> 📌 本步骤对应源码：`src/rknnpool.py`
-
-**知识点讲解**：
-
-**多线程推理池原理（1.3.1）**
-- **原理**：RK3576 NPU 支持多核（core_mask），单线程推理时 NPU 有核空闲。RKNNPool 用**生产者-消费者模型**：主线程读取帧放入任务队列，`--tpes N` 个工作线程从队列取帧，各自持有 RKNNLite 实例并**轮转绑定不同 NPU 核**（core_mask 0/1/2/3）并行推理，结果按序返回。这比单线程串行推理能显著提升 FPS（多核并行 + 取帧与推理重叠）。`rknn_backend_factory()` 为每个线程创建后端实例，`Detector` 注入后端完成检测。
-- **源码对应**：`src/rknnpool.py`（RKNNPool：入队 L58 / 工作线程 L62-76 / 结果回收 L79-81）；`src/detector.py` L126-128（make_rknn_backend）
-
-**知识储备补充**：
-
-- **生产者-消费者模型的线程安全**：`RKNNPool.__init__()`（`rknnpool.py` L47-56）创建两个 `queue.Queue`（`self.inputs` / `self.outputs`），Python `Queue` 内部用 `threading.Condition` 实现线程安全——`put()` 阻塞直到队列有空间，`get(timeout=1)` 超时返回空队列异常。工作线程（`_worker`，L62-76）循环取帧、处理、放结果，异常时 `(None, False)` 入队保证下游不死锁。
-- **核轮转（round_robin）**：`rknn_backend_factory('round_robin')`（`rknnpool.py` L30-33）按 `tid % 3` 绑定 `NPU_CORE_0/1/2`——RK3576 有 3 个 NPU 核，每个核独立运行推理任务。`core_mask` 参数传给 `RKNNBackend(core_mask=masks[tid % 3])`（`detector.py` L46），rknnlite 在 `init_runtime(core_mask=...)` 时绑定对应核。实测 `core_mask=auto`（L34-35）让 rknnlite 自动分配核更稳定，round_robin 在某些固件版本会卡死。
-- **为什么每个线程必须独立 RKNNLite 实例**：RKNNLite 的 `init_runtime()` 绑定 NPU 核并分配推理上下文——同一个实例不能被多线程共享（NPU 上下文非线程安全），会导致段错误或结果错乱。`RKNNPool`（L52-55）为每个线程调用 `backend_factory(i)` 创建独立后端，这是正确的做法。
-- **预填帧设计**：`app.py` L125-130 在主循环前预填 `tpes+1` 帧到队列，保证所有工作线程同时启动推理——消除首帧冷启动延迟，使 FPS 统计更准确。
-- **参考资源**：Python 标准库 `queue.Queue` 线程安全文档；RKNN Toolkit2 用户指南《RKNNLite API》`init_runtime` core_mask 参数说明。
-
-大致流程如下
-
-![生产者消费者模型详解以及实现_生产者消费者模型实现-CSDN博客](assets/format,png.png)
-
-**操作步骤**：
-
-1. 单线程 vs 多线程对比（验证池的价值）：
+2. 验证扫码：手机/电脑摄像头扫 my_qr.png，可打开 example.com
+3. 中文字符测试：
    ```bash
-   python src/app.py --video test.mp4 --tpes 1
-   python src/app.py --video test.mp4 --tpes 6
-   # 对比 avg_fps：tpes 6 应明显更高
+   python src/app.py --generate "你好，具身智能" --save cn_qr.png
    ```
-2. 阅读 rknnpool.py 的队列实现，理解线程安全（queue.Queue / 锁）
-3. 思考：线程数不是越多越好？——NPU 核数与内存限制决定最优 tpes（本板实测 6 左右）
+4. 对比不同纠错等级/版本的二维码密度差异（改 config 后重新生成，观察码图复杂度）
 
 **易错点**：
-- ⚠️ 每个线程必须独立 RKNNLite 实例（NPU 上下文非线程共享），复用同一实例会崩溃
-- ⚠️ tpes 超过 NPU 核数不提升反而增加内存压力
+
+- ⚠️ 数据为空 → ValueError（L32-33），先判空
+- ⚠️ 生成图片色域：qrcode 库输出 RGB，OpenCV 显示需转 BGR（L45）
+
+**流程图**：
+
+```mermaid
+flowchart LR
+    S[数据 data<br/>判空检查] --> A["qrcode.QRCode<br/>version / error_correction<br/>box_size / border"]
+    A --> B[add_data 填充数据]
+    B --> C[make fit=True<br/>按需自动升版 计算编码矩阵]
+    C --> D[make_image 渲染<br/>fill_color 前景 / back_color 背景<br/>PIL 输出 RGB]
+    D --> E[convert RGB<br/>→ cvtColor 转 BGR]
+    E --> F[保存二维码图片]
+
+    style A fill:#e8f0ff,stroke:#448,stroke-width:1px
+```
 
 ---
 
-#### 步骤6：实时推理与 MJPEG 推流（阶段三：能改造，35min）
+#### 步骤3：OpenCV 检测与多码循环（阶段二：能理解，30min）
 
-> 📌 本步骤对应源码：`src/app.py`、`src/mjpeg_server.py`、`src/ros2_source.py`
+> 📌 本步骤对应源码：`src/qr.py` detect_qr
 
 **知识点讲解**：
 
-**端到端实时链路（1.3.3）**
-- **原理**：`app.py` 组织完整链路：输入源（单图/视频/`--camera N` UVC/`--ros` ROS2 话题）→ 帧交给 `make_process_fn` 构造的 pool 处理函数 → 每个工作线程内 `Detector.detect()`（prepare_input → NPU 推理 → 解码 → 4 大类映射 → unletterbox）→ 画框标注（`大类 细类 score`）→ MJPEG 推流。`mjpeg_server.py` 用**标准库**实现 MJPEG（multipart/x-mixed-replace），替代外部 mjpeg_streamer，零额外依赖。板上相机标准路径是 HP60C 深度相机经 ascamera 话题取流（`ros2_source.py` Ros2Camera，DEFAULT_TOPIC `/ascamera_hp60c/camera_publisher/rgb0/image`），OpenCV 直连读不了（未编 libv4l）。
-- **源码对应**：`src/app.py` L24-35（make_process_fn 标注逻辑）、L38-150（main：参数 L40-50 / 单图 L70-82 / 视频相机 L85-150）；`src/mjpeg_server.py`（MjpegServer）；`src/ros2_source.py`（Ros2Camera：DEFAULT_TOPIC / open / read / release）
+**QRCodeDetector 与掩膜循环（1.3.1）**
+- **原理**：`cv2.QRCodeDetector.detectAndDecode(img)` 返回 `(data, points, straight_qrcode)`——data 为解析文本（失败时空串），points 为二维码四角点坐标。单次调用只检出一个码，`detect_qr()`（L48-79）在 `MAX_DETECT_PASSES=8` 上限内反复调用，每次检出后**把已识别区域涂白**（L74-78，`work[y1:y2,x1:x2]=255`）再继续找下一个，直到无新码或达到上限（防死循环）。此外支持 `scale=0.5` 降采样加速（L53-55）：大图先缩一半再检测，坐标用 `factor=1/scale` 映射回原图。points 四角点取 min/max 得到外接框（L66-71）。
+
+> ⚠️ **单目标检测器局限（x86 + 板端实测一致）**：`QRCodeDetector` 是**单目标**检测器。同一张图内含**多个**二维码时，定位阶段（找 3 个 finder pattern 并匹配）会把**来自不同码的 finder 交叉组合**成伪码，透视矫正后解码失败返回空串——第一轮 `detectAndDecode` 就得不到任何码，掩膜循环无从触发。因此掩膜循环**只在检测器能先定位并解出第一个码时才有意义**（如单码图、或码间有足够间距使检测器不串扰）。整图并行识别多码实测**不可行**（`multi_qr.png` 3 码一行 → `detect_qr` 返回空表）；多码请逐码分图检测。
+- **源码对应**：`src/qr.py` L48-79（detect_qr：降采样 L52-55 / 循环检测 L59-78 / 掩膜 L74-78）
 
 **知识储备补充**：
 
-- **MJPEG 协议原理**：MJPEG（Motion JPEG）是 `multipart/x-mixed-replace` HTTP 响应——服务器以流式方式持续发送 JPEG 帧，浏览器原生支持实时刷新。相比 WebSocket + H.264 方案，MJPEG 零延迟（无解码缓冲区）、兼容性好（任何浏览器直接访问 URL），代价是带宽利用率低（每帧独立 JPEG 压缩，无帧间预测）。对于 640×480 垃圾分类场景，带宽完全够用。
-- **ROS2 话题取流的惰性导入设计**：`Ros2Camera`（`ros2_source.py` L30-35）在构造函数中不导入 rclpy——`open()` 方法才惰性导入并调用 `rclpy.init()`。这是关键设计：x86 开发机无 ROS 环境，单元测试用 FakeBackend + MockCamera 即可覆盖全链路；板上 `--ros` 模式才真正依赖 rclpy。`read(timeout)` 方法（L80-90）阻塞等待首帧或超时，返回 `(True, frame)` 或 `(False, None)`。
-- **Detector.detect() 的完整链路**：`detector.py` L93-110 的 `detect()` 方法串联了全部后处理——`prepare_input()`（预处理）→ `backend.predict()`（NPU 推理）→ `decode_rknn_outputs()`（YOLOv5 解码+逐类 NMS）→ `unletterbox()`（坐标逆映射）→ `map_categories()`（4 大类映射）。返回 `list[CategoryDetection]`（原图坐标 + 大类 + 细类名 + 分数），直接供 `make_process_fn` 画框。
-- **FPS 统计设计**：`app.py` L143-147 每 30 帧打印一次滑动窗口帧率 `30 / (time.time() - loop_t)`，L149 打印全程总平均帧率。滑动窗口帧率反映当前处理速度（受场景复杂度影响），总平均帧率反映整体性能——验收以总平均 ≥ 15 FPS 为门控。
-- **参考资源**：MJPEG Wikipedia 条目；ROS2 `sensor_msgs/Image` 消息定义；mjpeg_streamer PyPI 文档。
+- **降采样加速原理**：`detect_qr` 在检测前将输入图像按 `scale`（默认 0.5）缩放（L52-55），处理的是缩小后的图像。QRCodeDetector 的检测复杂度与像素数近似线性相关，半分辨率图像像素数降至 25%，检测速度提升约 3-4 倍。检测后坐标需乘以 $factor = 1/scale$ 映射回原图坐标（L66-67），否则标注框会错位——这是多码循环中最常见的 bug。
 
-大致流程如下
+- **掩膜循环机制**：`detectAndDecode` 单次调用只返回第一个检测到的码——**前提是它先定位到了那一个码**。掩膜方式是将已识别区域涂为白色（`work[y1:y2,x1:x2]=255`，L78），白色背景对该区域等同于"无码"，随后下一次调用可在图中其余位置找下一个。`MAX_DETECT_PASSES=8`（L21）是硬上限，防止某些异常图像（如噪声模式反复被误检为码）导致死循环。**注意**：该循环无法克服上面的单目标定位局限——若第一轮 `detectAndDecode` 因多码串扰返回空，循环一次都不会进入。因此"多码检测"的可靠做法是逐码分图（每图一个码），而非依赖整图的掩膜循环。
+
+- **四角点→外接框**：`detectAndDecode` 返回的 `points` 形状为 `(1, 4, 2)`——4 个顶点的 $(x, y)$ 坐标（可能因透视畸变不是矩形）。代码取所有 $x$ 的 min/max 和所有 $y$ 的 min/max 得到轴对齐外接框（L66-71），这是最简化的框提取方式，适用于检测标注但不精确匹配透视形状。
+
+- **参考资源**：OpenCV `QRCodeDetector` 文档 `https://docs.opencv.org/4.x/d5/d54/classcv_1_1QRCodeDetector.html`；QR Code ISO/IEC 18004 检测算法章节
+
+**操作步骤**：
+
+1. 生成多个单码图（每张一个码）：
+   ```bash
+   python src/app.py --generate "https://example.com" --save q1.png
+   python src/app.py --generate "你好，具身智能"     --save q2.png
+   python src/app.py --generate "grasp:apple"       --save q3.png
+   ```
+
+   ![image-20260820133830333](assets/image-20260820133853554.png)![image-20260820133843520](assets/image-20260820133843520.png)![image-20260820133900996](assets/image-20260820133900996.png)
+
+2. 逐码检测（**不要拼成一张图**——整图多码会触发检测器定位串扰失败，见上）：
+
+   ```bash
+   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
+   
+   python src/app.py --detect --image q1.png --save out1.png
+   python src/app.py --detect --image q2.png --save out2.png
+   python src/app.py --detect --image q3.png --save out3.png
+   # 预期：每个码各自检出，框选 + 文本标注
+   ```
+
+   ![image-20260820133805085](assets/image-20260820133805085.png)
+
+3. 单测理解循环逻辑：`pytest tests/test_qr.py -v`
+
+4. 思考：MAX_DETECT_PASSES=8 的作用？为什么同一张图放多个码会检出失败？
+
+**易错点**：
+- ⚠️ 不掩掉已识别区域会死循环检出同一码——掩膜是必须步骤（L74-78）
+- ⚠️ 降采样后坐标必须乘回 factor（L66-67），否则框错位
+- ⚠️ **整图含多码会检出失败**（OpenCV 单目标检测器定位串扰，第一轮即空）——多码请逐码分图检测
+- ⚠️ 显示乱码“？？？？？”是因为Opencv渲染的中文字体不存在
+
+**流程图**（注：此掩膜循环**仅适用于检测器能先定位到单码的图**——整图多码时第一轮即失败，见上）：
+
+```mermaid
+flowchart LR
+    A[输入图 单码为佳] --> B[降采样 scale=0.5<br/>像素减至25% 提速3-4倍]
+    B --> C{"detectAndDecode<br/>检出 + 解析"}
+
+    C -- 检出 data 非空 --> D[取四角点 points<br/>min/max 得外接框<br/>坐标 × factor 映射回原图]
+    D --> E[记录 QRResult 文本+坐标]
+    E --> F[将已识别区域涂白<br/>work 局部 = 255]
+    F --> C
+
+    C -- 无新码 或达上限 --> G[结束<br/>MAX_DETECT_PASSES=8 防死循环]
+    D --> H[框错位元凶<br/>若未乘回 factor]
+
+    style F fill:#ffe0e0,stroke:#c00,stroke-width:2px
+    style C fill:#e8f0ff,stroke:#448,stroke-width:1px
+    style H fill:#fff3d6,stroke:#b90,stroke-width:1px
+```
+
+---
+
+#### 步骤4：标注与解析文本（阶段二：能理解，20min）
+
+> 📌 本步骤对应源码：`src/qr.py` draw_qr
+
+**知识点讲解**：
+
+**结果可视化（1.3.2）**
+- **原理**：`draw_qr()`（L82-90）在检测结果上绘制：绿框（L86）+ 解析文本（L87-89）。文本超 40 字符截断为 37 字符 + "..."（L87），避免超长 URL 撑爆画面；文本绘制在框上方（y1-6，最小 16 防止越界）。`QRResult` 数据类（L21-27）承载 text + 四角坐标，是检测与绘制间的数据契约。
+- **源码对应**：`src/qr.py` L82-90（draw_qr：画框 L86 / 文本截断 L87 / putText L88-89）
+
+**知识储备补充**：
+
+- **文本截断策略**：`draw_qr` 将超过 40 字符的解析文本截断为前 37 字符加 "..."（L87），防止长 URL（如含 token 的 IoT 设备注册链接）超出图像边界。截断阈值 40 是经验值——`FONT_HERSHEY_SIMPLEX` 0.6 缩放下，40 个字符约 240 像素宽，适配 640 宽度画面且留出框宽余量。`putText` 的 $y$ 坐标取 `max(16, y1-6)`（L88），确保框紧贴图像顶部时文本不越界。
+
+- **QRResult 数据契约**：`QRResult`（L24-29）是 `dataclass(frozen=True)`，包含 `text`（str）和 `x1/y1/x2/y2`（int）四个坐标。`detect_qr` 产出 `list[QRResult]`，`draw_qr` 消费它——解耦了检测与绘制逻辑。这种"中间数据类"模式在 CV pipeline 中很常见，便于单元测试（可构造 `QRResult` 测试 `draw_qr`）和扩展（新增字段如置信度、旋转角度不影响现有调用者）。
+
+- **参考资源**：OpenCV `cv2.putText` 文档；Python `dataclasses` 模块
+
+**操作步骤**：
+
+1. 检测 + 标注：
+   ```bash
+   # 执行目录：ros2_ws/src/xflz_eai_car1/vision/04_qrcode
+   cd ros2_ws/src/xflz_eai_car1/vision/04_qrcode
+   
+   python src/app.py --detect --image my_qr.png --save out.png
+   # out.png：绿框 + 文本标注
+   ```
+2. 生成超长文本二维码（>40 字符），观察截断显示效果
+3. 动手改造：把标注文本改为显示在框下方，或改框色
+
+![image-20260820133805085](assets/image-20260820133805085.png)
+
+**易错点**：
+- ⚠️ 文本超长溢出画面 → 40 字符截断（L87）已处理
+
+**流程图**：
+
+```mermaid
+flowchart LR
+    A["QRResult<br/>text + x1/y1/x2/y2<br/>检测与绘制数据契约"] --> B{文本长度}
+    B -->|"≤40 字符"| C["完整标注<br/>label = text"]
+    B -->|">40 字符"| D["截断为前37字符 + ...<br/>label = text[:37] + ..."]
+    C --> E[draw_qr 绘制]
+    D --> E
+    E --> F[绿框 cv2.rectangle]
+    E --> G["文本 putText<br/>框上方 y1-6<br/>max(16,y1-6) 防越界"]
+    F --> H[标注图输出]
+    G --> H
+
+    style D fill:#fff3d6,stroke:#b90,stroke-width:1px
+```
+
+---
+
+#### 步骤5：实时相机识别与 MJPEG 推流（阶段三：能改造，35min）
+
+> 📌 本步骤对应源码：`src/app.py`、`src/ros2_source.py`
+
+**知识点讲解**：
+
+**实时识别链路（1.3.2）**
+- **原理**：`app.py` 的 `--detect` 模式组织实时链路：取流（--image/--video/--camera/--ros）→ 逐帧 `detect_qr` → `draw_qr` 标注 → 本地窗口（--display）或 MJPEG 推流（`http://<板IP>:8080/qrcode.mjpg`）。板上相机标准路径是 HP60C 深度相机经 ascamera 话题取流（`ros2_source.py` Ros2Camera，话题 `/ascamera_hp60c/camera_publisher/rgb0/image`），OpenCV 直连读不了（未编 libv4l）。识别速度取决于图像分辨率与码大小——降采样参数在检测前生效。
+- **源码对应**：`src/app.py`（main：--detect 分支 / 取流 / 推流）；`src/ros2_source.py`（Ros2Camera：DEFAULT_TOPIC / open / read / release）
+
+**知识储备补充**：
+
+- **MJPEG 推流原理**：`MjpegServer`（`mjpeg_server.py`）在端口 8080 启动 HTTP 服务，提供 `/qrcode.mjpg` 流地址。MJPEG（Motion JPEG）将每帧 JPEG 图像以 multipart 流式传输——浏览器打开流地址即可实时查看，无需额外播放器。相比 RTSP/WebRTC，MJPEG 实现简单（纯 HTTP）、延迟极低（帧级），适合嵌入式设备调试。代价是带宽较高（未做帧间压缩），但局域网场景足够。
+
+- **ROS2 话题取流适配**：`Ros2Camera`（`ros2_source.py`）封装了 rclpy 惰性导入——构造时不依赖 ROS 环境，`open()` 时才导入 rclpy + cv_bridge 并建节点订阅。这是关键设计：x86 PC 无 ROS 环境时可跑单元测试（mock 回调逻辑），板上 `open()` 后自动切换为真实 ROS2 话题订阅。默认话题 `/ascamera_hp60c/camera_publisher/rgb0/image`（`ros2_source.py` L17）必须与 ascamera 驱动输出一致，`ROS_DOMAIN_ID` 也须匹配（本板 =2）。
+
+- **实时性能瓶颈**：检测延迟 = 降采样耗时 + `detectAndDecode` 耗时 + 标注耗时。对于 640×480 输入（scale=0.5 → 320×240），QRCodeDetector 单帧检测约 5-15 ms（取决于码复杂度与数量），总帧率可达 30-60 FPS。瓶颈通常在取流端（ROS2 回调延迟）或网络带宽（MJPEG 编码），而非检测算法本身。
+
+- **参考资源**：ROS2 `sensor_msgs/Image` 消息类型；`cv_bridge` 官方文档；MJPEG over HTTP RFC（草案）
 
 ![image-20260820101126152](assets/image-20260820101126152.png)
 
 **操作步骤**：
 
-1. 单图检测（最简验证）：
+1. 相机实时（板上标准）：
    ```bash
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification
-   python src/app.py --image images/1.jpg --save out.jpg
-   # 预期：终端打印 大类 细类 score (x1,y1,x2,y2)
-   ```
-2. 视频 + MJPEG：
-   ```bash
-   python src/app.py --video test.mp4 --tpes 2 --port 8080
-   # 浏览器访问 http://<板IP>:8080/garbage_cam.mjpg
-   ```
-3. 相机实时（板上标准）：
-   ```bash
+   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode
    source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
    export ROS_DOMAIN_ID=2
    ros2 launch ascamera hp60c.launch.py        # 终端 1
-   python src/app.py --ros                      # 终端 2，同一 ROS_DOMAIN_ID
-   # 预期：avg_fps ≥ 15，MJPEG 可见实时标注
+   python src/app.py --detect --ros             # 终端 2
+   # MJPEG: http://<板IP>:8080/qrcode.mjpg
    ```
-4. 动手改造：修改 `src/app.py` L31 标注逻辑，把大类换成中文名（如 `可回收 水瓶 0.87`），重新运行
+2. 用手机屏幕显示二维码对准相机，观察实时识别（文本即时更新）
+3. 打印二维码贴在工件/卡片上，测试不同距离/角度的识别率
+4. 动手改造：在识别到特定内容（如含 "grasp"）时打印触发消息，为分拣联动打基础
+
+```bash
+(ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/04_qrcode$ python src/app.py --detect --ros
+
+Streams index: http://127.0.0.1:8080
+Available streams:
+
+http://127.0.0.1:8080/qrcode.mjpg
+--------------------------------
+
+
+Streams index: http://10.1.134.58:8080
+Available streams:
+
+http://10.1.134.58:8080/qrcode.mjpg
+--------------------------------
+
+
+Press Ctrl+C to stop the server
+
+30帧平均帧率: 31.1
+[QR] https://example.com
+[QR] https://example.com
+[QR] https://example.com
+```
+
+<img src="assets/image-20260820134309004.png" alt="image-20260820134309004" style="zoom: 50%;" />
 
 **易错点**：
-- ⚠️ `--ros` 取不到帧 → ascamera 驱动先起、ROS_DOMAIN_ID 一致、话题勿 remap
-- ⚠️ MJPEG 404 → 8080 被占，`--port` 换端口或关占用进程
+
+- ⚠️ --ros 取不到帧 → ascamera 先起、ROS_DOMAIN_ID 一致、话题勿 remap
+- ⚠️ 远距离/小码识别率低 → 靠近或提高分辨率；反光表面可调整角度
+
+**流程图**：
+
+```mermaid
+flowchart LR
+    A[取流 --image/--video/--camera/--ros<br/>Ros2Camera 惰性导入 rclpy] --> B[逐帧 detect_qr<br/>降采样 => 掩膜循环<br/>单码图识别]
+    B --> C[draw_qr 标注<br/>绿框 + 解析文本]
+    C --> D{MJPEG 推流<br/>MjpegServer :8080<br/>qrcode.mjpg}
+    D -->|浏览器访问| E[实时查看二维码解析]
+    D -->|--display| F[本地窗口]
+
+    style A fill:#e8f0ff,stroke:#448,stroke-width:1px
+```
 
 ---
 
@@ -461,33 +447,34 @@ scale: 1.0 pad: (0, 0)
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| 检测框整体偏移 | anchors 与导出配置不一致 | 调整 `config/anchors.txt`（核对导出配置） |
-| 分数异常（全 0 或全 1） | obj 分支已/未 sigmoid 与配置不符 | 切换 `infer.sigmoid: false/true` |
-| 分类全错但框对 | RGB/BGR 约定错误 | 确认 `prepare_input` 先 BGR→RGB（模型 rgb2bgr=False） |
-| 多线程崩溃 | 线程共享同一 RKNNLite 实例 | 每线程独立实例（RKNNPool 已实现） |
-| MJPEG 404 | 8080 端口占用 | `--port` 换端口或关闭占用进程 |
-| --ros 取不到帧 | 驱动未启动/ROS_DOMAIN_ID 不一致 | ascamera 先起；export ROS_DOMAIN_ID=2；话题勿 remap |
-| 板上模型加载失败 | model.path 未改为板载路径 | 修改 `config/garbage_config.yaml` 的 `model.path` |
+| 生成时报错 data must not be empty | 传入空字符串 | 先判空再生成（`qr.py` L32-33） |
+| 检测不到码 | 码太小/太远/反光/畸变；**整图含多码触发定位串扰** | 靠近、提高分辨率、调整角度；整图多码需逐码分图检测 |
+| 多码只检出 1 个或 0 个 | 未掩膜已识别区域；或整图多码第一轮定位即失败 | 单码图用掩膜循环（L74-78）；整图多码请逐码分图，勿拼图 |
+| 框错位 | 降采样后未乘回 factor | 确认 `factor=1/scale` 映射（L66-67） |
+| 解析文本乱码 | 编码/中文字符问题 | 生成与解析编码一致；中文建议 UTF-8 |
+| 板上 import qrcode 失败 | 未安装依赖 | `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple qrcode` |
 
 ### 1.8 扩展实验
 
-**扩展方向 1：机械臂分拣联动（进阶）**
-- 在 `app.py` 处理函数中，把 4 大类结果转换为分拣指令（如 recyclable → 机械臂抓取到 1 号仓），通过串口或 ROS2 话题发布（参考实验 05 的 cmd_vel 模式）
+**扩展方向 1：二维码分拣联动（进阶）**
+- 识别到特定内容（如 `grasp:<物体名>`）时发布 ROS2 话题或串口指令，联动机械臂抓取（参考实验 05 的 cmd_vel 模式与实验 02 的大类映射）
 
-**扩展方向 2：识别置信度优化（进阶）**
-- 在标注中加入细类置信度直方图；对不同大类设置不同 score_thr（有害垃圾从严），观察误检率变化
-- 把 `--tpes` 做成运行时动态调节，绘制"线程数 vs FPS"曲线，找出最优配置
+**扩展方向 2：畸变二维码鲁棒识别（进阶）**
+- 引入透视校正：用 detectAndDecode 的 points 四角点做 `cv2.getPerspectiveTransform` 矫正后再解码，测试倾斜/曲面上的二维码识别率提升
+
+**扩展方向 3：整图多码识别（进阶）**
+- `QRCodeDetector` 单目标局限下，实现整图多码可用：(a) 按连通域将大图切块后逐块 `detect_qr`；(b) 换用 OpenCV 的 `WeChatQRCodeDetector`（基于 CNN，原生支持同图多码，需模型文件 `detect.prototxt` + `detect.caffemodel`）。实测两者都能突破单目标限制
 
 ### 1.9 实验报告要求
 
-**评分标准**：模型元数据理解 15 分 + 预处理 15 分 + YOLOv5 解码 25 分 + 4 大类映射 15 分 + 实时演示 20 分 + 报告 10 分 = 100 分。
+**评分标准**：二维码原理理解 15 分 + 生成实现 20 分 + 检测与多码循环 25 分 + 实时识别演示 30 分 + 报告 10 分 = 100 分。
 
 **报告必含内容**：
-1. 模型输入输出规格表（形状/类型/通道顺序/anchors），标注对应的 config 文件
-2. 解码流程图（anchors → cx/cy/w/h → NMS → 大类映射），标注源码行号
-3. 单图检测结果图（≥3 个不同大类目标）与「大类 细类 score」数据
-4. tpes=1 vs tpes=6 的 FPS 对比数据与结论
-5. 回答思考题：为什么模型要求 RGB 而 OpenCV 默认 BGR？为什么逐类 NMS 允许跨类重叠？多线程池为什么比单线程快？
+1. QR Code 结构说明（定位/校正/时序/数据区）与纠错等级对比
+2. 生成的二维码图片（≥2 个：URL + 中文）与参数表
+3. 检测结果图（≥2 个不同内容的单码各 1 张）与解析文本
+4. 实时识别演示数据（距离/角度/识别率记录）
+5. 回答思考题：为什么掩膜循环依赖检测器先定位到单码？整图多码为何失败？纠错等级如何影响容量与鲁棒性？工业场景如何选参数？
 6. 实验心得与问题记录
 
 ---
@@ -496,7 +483,6 @@ scale: 1.0 pad: (0, 0)
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/02_garbage_classification，62 用例全绿，YOLOv5 检测头 20 细类 + 4 大类映射 + RKNNPool 多线程） |
-| v1.1 | 2026-08-19 | 模型名同步：rubbish_2_7.rknn → garbage_yolov5_20cls.rknn（config/garbage_config.yaml + models/ 目录核实） |
-| v2.0 | 2026-08-19 | 知识点增强：6 步骤均添加「知识储备补充」（含 anchors 数学公式、letterbox 缩放公式、解码坐标还原公式、IoU 公式、sigmoid 公式）；新增端到端 Mermaid 数据流图；1.5 追加「执行现象」段（pytest 62 用例、单图推理、视频 FPS、标注格式）；行号基于源码 real line numbers 重新核对（app.py L24-35 / L40-150、postprocess.py L54-85 / L88-110 / L130-140 / L158-165、rknnpool.py L30-33 / L47-56 / L62-76、detector.py L93-110）；5 个「参考资源」条目 |
-| v2.1 | 2026-08-21 | 步骤1 新增「配置参数速查表」：config/garbage_config.yaml 全参数按区块分列（model/infer/pool/server/source），含类型/默认值/说明；标注 pool.core_mask 两核板勿用 round_robin、`stream_name` 不带 `.mjpg`（与 exp01/09+ 约定不同）等要点。表值经 load_config 实测核对 |
+| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/04_qrcode，19 用例全绿，qrcode 生成 + OpenCV QRCodeDetector 多码循环检测 + MJPEG 实时推流） |
+| v2.0 | 2026-08-19 | 知识点增强：补充 QR Code 矩阵结构（$M=17+4v$）、Reed-Solomon 纠错原理、版本-容量关系、降采样加速、掩膜循环机制、四角点→外接框、色域转换、MJPEG 推流、ROS2 惰性导入等知识储备；新增执行现象段；添加参考资源（ISO 18004 / OpenCV 文档 / qrcode 库文档）；行号源码核实 |
+| v2.1 | 2026-08-21 | 步骤 1 新增「配置参数速查表」：config/qrcode_config.yaml 全参数（generate/detect/camera/display/source）。标注 error_correction H 的板端实测陷阱。表值经 config 实测核对 |

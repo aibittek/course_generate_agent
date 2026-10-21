@@ -1,79 +1,82 @@
-## 实验10：基于骨骼关键点的肢体检测实验（4h）
+## 实验10：基于深度信息的3D物体检测实验（4h）
 
-> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark/`。**方案 = mediapipe `pose_landmark_full` tflite 转 RKNN（fp16/rk3576），板上 RKNNLite NPU 推理 33 点骨架**（vendor 10_姿态检测 视觉对齐：左=原图+FPS 红字，右=黑底红点绿线骨架）。单模型整图推理（256×256 输入，无独立检测器）。测试 45 项 x86 全绿，模型已转换入库（用户，pose_landmark_full.rknn）。
+> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection/`。⚠️ **内容说明**：按 `depth_viewer_guide.md` 移植规格实现——**深度相机双栏显示（左 RGB | 右 Depth 伪彩）+ 点击读深度（mm/m + 相机坐标反投影）**，规格明确「无检测」（visual_grasp 最小子集）。vendor 参考课用 MediaPipe Objectron（mediapipe 无 aarch64 wheel，弃用）。单测 24/24 全绿，板端验证通过（深度合成）。
 
 ### 1.1 关联知识点
 
-- 1.1.1 姿态估计原理 > 原理 > 人体姿态估计（Pose Estimation）定位人体关键点（关节/肢体端点），区别于检测的框与分割的掩码；BlazePose 单模型整图输出 33 点 [x,y,z,vis]
-- 1.2.1 输入契约与预处理 > 流程 > 整图 letterbox 256×256（resize_pad）→ RGB → **mean 127.5/std 128 + uint8 输入**（rknn 内部归一化，手动 /127.5−1 破坏输入）
-- 1.2.2 关键点解码 > 流程 > 33×4 解析（x,y,z,vis）→ 逆映射 `px=(norm×256−pad)/scale` 还原原图坐标；vis<0.5 跳过绘制
-- 1.3.1 骨架拓扑绘制 > 概念 > `POSE_CONNECTIONS` 35 边拓扑（头颈/躯干/四肢连接），红点 r6 + 绿线 2px，黑底双栏显示
-- 1.3.2 实时姿态可视化 > 流程 > 摄像头取流 → 整图推理 → 33 点解码 → 双栏（原图+FPS | 黑底骨架）→ MJPEG 推流 :8082
+- 1.1.1 深度相机原理 > 原理 > HP60C 深度相机（RGB 镜头 + 深度传感器）输出 uint16 深度图（单位 mm），0 表示无效像素；区别于普通 RGB 相机的 2D 信息，深度提供"距离"维度
+- 1.2.1 深度图处理 > 流程 > uint16 PNG 加载（mm）→ 有效像素 min-max 归一化 → jet 伪彩映射（`applyColorMap`），灰度近远可视化
+- 1.2.2 点击读深度 > 流程 > 窗口坐标 (u,v) 除以 display_scale 还原原图坐标 → 读 depth[v,u]（mm）→ ×0.001 转米
+- 1.3.1 相机坐标反投影 > 公式 > x=(u-cx)·z/fx, y=(v-cy)·z/fy（相机内参 fx/fy/cx/cy 来自 ascam.yaml 标定），把像素+深度映射为 3D 坐标
+- 1.3.2 实时深度可视化 > 流程 > 板上 ROS2 话题取流（严禁 remap）→ 双栏合成（RGB|Depth）→ MJPEG 推流 + 窗口点击交互
 
 ### 1.2 实验目标
 
-1. 掌握人体姿态估计的原理与 BlazePose 模型架构（单模型整图 33 点）— 原理理解
-2. 实现关键点解码、逆映射与骨架拓扑绘制，完成实时姿态可视化 — 独立完成
-3. 理解 BlazePose 的输入归一化契约（mean/std + uint8）与 vendor 方案差异 — 迁移应用
+1. 掌握深度相机的成像原理与深度图数据格式（uint16 mm、无效值语义）— 原理理解
+2. 实现深度图加载、伪彩可视化与点击读深度功能 — 独立完成
+3. 理解相机内参反投影原理，实现像素坐标 → 3D 相机坐标的换算 — 迁移应用
 
 ### 1.3 实验环境
 
 | 类别 | 配置 |
 |------|------|
 | 硬件 | 具身智能实验箱 B2（XFLZ_EAI_B2_PRO，RK3576 SoC，6TOPS NPU，含 HP60C 深度相机） |
-| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv，rknnlite 2.3.2 / rknn-toolkit-lite2） |
-| 核心库 | OpenCV、NumPy、rknnlite（RKNNLite）、PyYAML；mjpeg_streamer（不装则内置回退） |
-| 模型 | `models/pose_landmark_full.rknn`（fp16，256×256 整图输入，33 关键点 + presence + 分割/world 输出） |
-| 主入口 | `python -m pose_landmark_core.camera_demo --config config/pose_config.yaml --ros [--display]` |
+| OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv） |
+| 核心库 | OpenCV、NumPy（纯 CPU，无需 NPU） |
+| 数据源 | 文件模式（uint16 PNG）+ ROS 模式（ascamera 话题，板载 rclpy） |
+| 主入口 | `src/app.py`（--display 窗口点击 / MJPEG 推流 / --ros 板上模式） |
 
 ### 1.4 实验难度
 
 - 难度: ⭐⭐ 设计性
-- 重点: 33 点解码与逆映射 + 35 边骨架拓扑绘制 + 实时可视化
-- 难点: mean 127.5/std 128 + uint8 输入契约（手动归一化会破坏输入）；vis 可见度过滤
+- 重点: 深度图可视化 + 点击读深度 + 内参反投影
+- 难点: 相机内参理解与反投影公式；无效像素处理（0 值）；窗口坐标缩放还原
 
 ### 1.5 实验现象
 
 **快速验证流程**：
 
-1. 进入项目目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark`
-2. 单图模式：`PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.demo_image --config config/pose_config.yaml --display --save out.jpg`
-   - 右栏黑底骨架贴合人体（33 点红点 + 绿线，站姿可辨）
-3. 相机实时（板上标准）：
-4. 无显示器：浏览器 `http://<板IP>:8082/pose.mjpg`
+1. 进入项目目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection`
 
-```bash
-cd ~/ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark
+2. 单元测试：`pytest tests/ -v`（24 用例全绿）
 
-# 单张图片推理
-PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.demo_image \
-  --config 	config/pose_config.yaml --save out.jpg
-  
-# 视频流推理
-source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
-ros2 launch ascamera hp60c.launch.py        # 终端 1
-PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.camera_demo \
-  --config config/pose_config.yaml --ros    # 终端 2
-```
+3. 文件模式（需 config 填 rgb_path/depth_path，depth 为 uint16 PNG）：
 
-**预期效果描述**：
+4. 点击深度图任一点 → 终端 `Click (u, v): z = XXXX mm (X.XXX m)`；有内参时附加 `xyz=(x, y, z) m`
 
-- 单图：右栏黑底骨架贴合人体（33 点红点 + 绿线，站姿可辨），左栏原图 + FPS 红字
-- 实时：骨架实时跟随动作，左栏 FPS 红字；MJPEG `:8082/pose.mjpg` 流畅
-- 无脸/无人时不崩，状态栏 `Pose: --`
+5. 板上 ROS 模式：先起相机驱动，再 `python src/app.py --config config/depth3d_config.yaml --ros`
+   - MJPEG：`http://<板IP>:8080/depth.mjpg`
+   
+   ```bash
+   # 进入实验00
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   
+   # 可选
+   /home/iflytek/ros2_venv/bin/python -m pytest -v
+   
+   # 相机实时，修改config配置detect.classes为0（人）
+   ros2 launch ascamera hp60c.launch.py        										# 终端 1
+   python src/app.py --config config/depth3d_config.yaml --display                     # 终端 2
+   ```
 
 **执行现象**：
 
-- 单图推理命令约 0.3-0.8 秒返回，终端无额外输出（静默成功），当前目录生成 `out.jpg` 双栏图
-- 板端实时模式下，终端每帧更新 FPS（红字叠加在左栏），状态栏显示 `FPS: N Pose: OK`；无人体时显示 `Pose: --`
-- 浏览器打开 `http://<板IP>:8082/pose.mjpg` 可看到实时骨架流，延迟 < 100ms
-- 站立姿态：33 点红点覆盖头（鼻/眼/耳 6 点）、肩/髋（4 点）、肘/腕/膝/踝（12 点），绿线连接 35 条边形成完整骨架
-- 部分遮挡场景：被遮挡关节的 vis 降低，对应点和连线被跳过绘制，骨架局部断裂但不崩溃
-- pytest 验证：`PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pytest tests/ -v` 45 项全绿（x86 fake 注入）
+1. 单元测试 `pytest tests/ -v` 输出 24 个用例全部 passed（约 10-20 秒完成），覆盖 depth.py / view.py / app.py / config.py 四个模块
+2. 文件模式窗口打开后，左侧显示 RGB 彩色图像（正常拍照色彩），右侧显示深度伪彩图（jet 色带：近处物体偏红色/暖色调，远处背景偏蓝色/冷色调），顶部黄色状态栏文字 "Click depth image to read depth" 清晰可见
+3. 点击近处物体（如桌面物体）→ 终端输出类似 `Click (320, 240): z = 523 mm (0.523 m) xyz=(0.012, -0.005, 0.523) m`；点击远处背景 → z 值显著增大（如 1500 mm 以上）；点击无效区域（无深度处）→ 输出 `invalid`
+4. 板上 ROS 模式启动后，MJPEG 推流画面实时刷新，移动相机或物体时深度数值连续变化，左 RGB 右 Depth 双栏同步更新
 
-<img src="assets/image-20260820173535847.png" alt="image-20260820173535847" style="zoom:67%;" />
+**预期效果描述**：
+- 双栏图：左 RGB、右 Depth 伪彩（jet，近红远蓝或按映射），状态栏文字可见
+- 点击物体 vs 背景数值差异明显（物体近、背景远）；无效区（0）提示 invalid
+- 有内参时输出相机坐标 `xyz=(x, y, z) m`——为 3D 定位/抓取打基础
+- 板上：`ros2 topic hz .../rgb0/image` ≈ 25Hz；深度单位 mm（数值勿 ×1000 误解）
 
-<img src="assets/image-20260820173756242.png" alt="image-20260820173756242" style="zoom: 50%;" />
+```bash
+Click (269, 324): z = 309 mm (0.309 m)  xyz=(-0.039, 0.046, 0.309) m
+```
+
+![image-20260820163436128](assets/image-20260820163436128.png)
 
 ### 1.6 实验步骤
 
@@ -81,415 +84,367 @@ PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.camera_d
 
 ```mermaid
 graph LR
-    A[步骤1：姿态估计与BlazePose认知] --> B[步骤2：输入契约与letterbox]
-    B --> C[步骤3：33点解码与逆映射]
-    C --> D[步骤4：骨架拓扑绘制]
-    D --> E[步骤5：双栏可视化与推流]
-    E --> F[步骤6：RKNNLite部署]
-    F --> G[步骤7：实时演示]
-    G --> H[完成]
+    A[步骤1：深度相机原理认知] --> B[步骤2：深度图加载与归一化]
+    B --> C[步骤3：伪彩可视化]
+    C --> D[步骤4：点击读深度]
+    D --> E[步骤5：内参反投影3D坐标]
+    E --> F[步骤6：实时双栏可视化]
+    F --> G[完成]
 ```
 
 ---
 
-#### 步骤1：姿态估计与 BlazePose 认知（阶段一：能运行，20min）
+#### 步骤1：深度相机原理认知（阶段一：能运行，20min）
 
-> 📌 本步骤对应源码：`pose_landmark_core/pose.py`、`engine.py`
+> 📌 本步骤对应源码：`config/depth3d_config.yaml`
 
 **知识点讲解**：
 
-**姿态估计问题与 BlazePose 方案（1.1.1）**
-
-- **原理**：人体姿态估计（Pose Estimation）定位**人体关键点**——33 个点覆盖头（鼻/眼/耳）、躯干（肩/髋）、四肢（肘/腕/膝/踝），每点含 `[x, y, z, visibility]`（z 为相对深度，vis 为可见度）。BlazePose 采用**单模型整图推理**（256×256，无独立检测器——mediapipe-rknn 参考即此形态），区别于实验9 人脸的双模型级联。33 点骨架是动作识别（实验11）、体感控制、康复评估的基础。vendor 用 mediapipe solutions（板上 aarch64 不可装），本实验用 RKNN BlazePose → RKNNLite NPU。
-- **源码对应**：`pose.py`（POSE_CONNECTIONS 35 边拓扑、decode_pose 33×4 解析）；`engine.py`（PoseEngine 单模型引擎，presence<阈值 → 空结果）
+**深度相机与深度图格式（1.1.1）**
+- **原理**：HP60C 深度相机由 RGB 镜头 + 深度传感器（结构光/ToF 类）构成，深度传感器输出**逐像素距离图**。深度图格式约定：**uint16 存储，单位毫米（mm）**，0 值表示该像素无效（未测到/太近/太远）。为什么用 uint16？——深度范围可达 0-65535mm（65 米），uint8 只有 0-255mm 不够用。深度图与 RGB 图经标定对齐（同一视角），是后续 3D 感知（点云、抓取定位）的基础数据。
+- **源码对应**：`config/depth3d_config.yaml`（depth.scale=0.001 mm→m / invalid=0 / display_scale / camera 内参）
 
 **知识储备补充**：
 
-- **姿态估计分类体系**：人体姿态估计按人数分为**单人姿态估计**（Single-Person）和**多人姿态估计**（Multi-Person）。多人方法又分为自顶向下（top-down：先检测人体框，再逐框估姿态）和自底向上（bottom-up：先检测所有关键点，再分组到各人）。BlazePose 属于**单人姿态估计**——整图推理，假设画面中最多一个主体人体（presence 置信度控制）。相比 top-down 方案（如 Faster-RCNN + HRNet 的两阶段），BlazePose 省去检测器，单模型端到端输出 33 点，延迟更低（RKNN fp16 板端实测 < 50ms/帧）。
-- **33 点索引约定**：BlazePose 的 33 个关键点遵循 MediaPipe 官方索引——0 鼻、1 左眼内角、2 左眼、3 左眼外角、4 右眼内角、5 右眼、6 右眼外角、7 左耳、8 右耳、9 嘴左、10 嘴右、11 左肩、12 右肩、13 左肘、14 右肘、15 左腕、16 右腕、17 左小指、18 右小指、19 左食指、20 右食指、21 左拇指、22 右拇指、23 左髋、24 右髋、25 左膝、26 右膝、27 左踝、28 右踝、29 左脚跟、30 右脚跟、31 左脚尖、32 右脚尖。每个关键点携带 4 个值 $[x, y, z, \text{vis}]$，其中 $x, y$ 为归一化坐标（0-1），$z$ 为相对深度，$\text{vis}$ 为可见度置信度（0-1）。
+- **深度传感器工作原理**：HP60C 采用主动红外深度传感技术（结构光或 ToF），发射红外散斑或调制光，经物体反射后由红外接收器采集。深度传感器通过三角测量或飞行时间（ToF）计算每个像素到相机的物理距离，输出与 RGB 图像分辨率一致的逐像素深度矩阵。结构光方案在近距（0.2-1.5m）精度较高但受环境光干扰大；ToF 方案抗环境光强但近距离精度略低。HP60C 两种技术融合，适用于室内机器人场景。
 
-<img src="assets/image-20260821090257502.png" alt="image-20260821090257502" style="zoom: 67%;" />
+![深度相机介绍-CSDN博客](assets/1157643a6d094c2589f57e1c7aaed5a6.png)
 
-- **BlazePose 架构对比**：BlazePose 与实验9 的 BlazeFace 人脸关键点检测有三点核心差异：
+- **深度图数据结构**：深度图本质是一个二维矩阵，每个元素存储该像素位置的物理距离。OpenCV 中深度图通常以单通道 `uint16` 格式存储在 PNG 文件中，0 值约定为"无效像素"（无反射信号/超出量程/遮挡）。实际深度值范围 1mm-65535mm，uint16 的 16bit 位宽恰好覆盖机器人常用的 0.1-6m 测距范围。
+- **RGB-D 对齐意义**：深度图与 RGB 图像在空间上逐像素对齐（同一视角、同一时刻采集），意味着 RGB 图像的每个像素 $(u,v)$ 都对应一个深度值 $d(u,v)$，形成 **RGB-D 数据对**。这是后续 3D 感知（点云生成、物体 6DoF 位姿估计、机械臂抓取定位）的基础——没有深度，2D 图像无法直接提供物体在三维空间中的位置信息。
 
-  (1) 输入分辨率——256×256（pose）vs 128×128（face）；
+- **参考资源**：HP60C 深度相机技术规格书（厂商文档）；Intel RealSense 深度相机原理（同类技术对比）；OpenCV `cv2.IMREAD_UNCHANGED` 官方文档。
 
-  (2) 关键点数量——33 点（全身）vs 468 点（面部细粒度）；
-
-  (3) 模型架构——BlazePose 用单模型整图回归所有关键点（无独立检测器），BlazeFace 用双模型级联（检测器定位人脸 + 关键点回归器）。BlazePose 的单模型设计牺牲了多人支持，但显著降低延迟，适合嵌入式实时场景。
-
-- **参考资源**：MediaPipe 官方文档 Pose Landmark Model；Bazarevsky et al., *BlazePose: On-device Real-time Body Pose Tracking*, CVPRW 2020；MediaPipe GitHub 33-point Pose Landmark。
-
-**配置参数速查表**（`config/pose_config.yaml`，按区块分列）：
+**配置参数速查表**（`config/depth3d_config.yaml`，按区块分列）：
 
 | 区块 | 参数 | 类型 | 默认/示例 | 说明 |
 |------|------|------|-----------|------|
-| `model` | `pose_model` | str | `models/pose_landmark_full.rknn` | pose 模型（fp16/rk3576，256²） |
-| `model` | `min_detection_confidence` | float | `0.5` | pose presence 阈值 |
-| `backend` | `core_mask` | int | `0` | NPU 核：0=AUTO, 1/2/4 单核, 3/7 多核 |
-| `backend` | `verbose` | bool | `false` | RKNNLite 调试输出 |
-| `source` | `mode` | str | `image` | image/ros/camera（板上标准=ros） |
-| `source` | `rgb_path` | str | `images/pose_demo.jpg` | mode=image 时必填 |
-| `source` | `ros.rgb_topic` | str | `/ascamera_hp60c/.../rgb0/image` | 相机话题（严禁 remap） |
-| `source` | `ros.timeout` | float | `5.0` | 首帧等待秒数 |
-| `display` | `show` | bool | `false` | 本地窗口（SSH 无显示默认关） |
-| `display` | `window_name` | str | `Pose Detection` | 窗口名 |
-| `server` | `port` | int | `8082` | MJPEG 端口（09=8081 后） |
-| `server` | `stream_name` | str | `pose.mjpg` | MJPEG 流名（已含 `.mjpg` 勿再追加） |
+| `depth` | `scale` | float | `0.001` | uint16 mm→米（÷1000） |
+| `depth` | `invalid_value` | int | `0` | 无效深度值（0=无效，平台事实） |
+| `depth` | `colormap` | str | `jet` | 深度伪彩（jet/gray） |
+| `depth` | `display_scale` | float | `0.666` | 显示缩放（点击坐标 ÷scale 还原 640×480） |
+| `cam3d` | `fx`/`fy` | float | `608.39958`/`611.20714` | 相机内参（HP60C 标定，ascam.yaml 来源） |
+| `cam3d` | `cx`/`cy` | float | `328.30096`/`226.46483` | 主点坐标 |
+| `cam3d` | `width`/`height` | int | `640`/`480` | 分辨率 |
+| `source` | `mode` | str | `ros` | image（文件对）/ros（板上 rclpy 订阅；板上标准） |
+| `source` | `rgb_path` | str | `""` | image 模式 RGB 图路径（BGR png/jpg） |
+| `source` | `depth_path` | str | `""` | image 模式深度图路径（uint16 png） |
+| `display` | `show`/`window_name` | bool/str | `false`/`RGB | Depth` | 本地窗口 |
+| `server` | `port` | int | `8080` | MJPEG 端口 |
+| `server` | `stream_name` | str | `depth.mjpg` | MJPEG 流名 |
 
-> **说明**：`backend.core_mask=0`（板上 2 核 NPU 用 auto 最稳）；`source.mode=ros` 与 ascamera 配合；`stream_name` 已含 `.mjpg` 勿重复。
+> **说明**：`depth.scale`/`invalid_value` 是深度读数关键（uint16 mm + 0 无效）；`cam3d` 内参仅点击反投影用（HP60C 标定值，勿随意改）；`source.mode=ros` 为板上标准（image 需提供 rgb+depth 文件对）。
 
 **操作步骤**：
 
-1. 查看 33 点索引表与 POSE_CONNECTIONS（头颈/躯干/四肢连线），理解骨架语义
-2. 单测理解引擎契约：`pytest tests/`（x86 全绿，fake 注入）
-3. 思考：33 点姿态与 468 点人脸的关键点检测异同？（单模型 vs 双模型、点密度、z 语义）
+1. 查看 `config/depth3d_config.yaml`，理解 depth.scale（0.001 = mm→m）、invalid（0）、display_scale（显示缩放）、camera（fx/fy/cx/cy 内参）
+2. 查看内参来源（`ascam.yaml`，HP60C RGB 标定）
+3. 思考：深度为 0 的像素代表什么？为什么不能当真实距离 0mm？
 
-**流程图（姿态估计问题）**：
+**流程图（深度数据链路）**：
 
 ```mermaid
 graph LR
-    A[输入图像] --> B[BlazePose 单模型]
-    B --> C["33 关键点 [x,y,z,vis]"]
-    C --> D[presence 置信度]
-    D --> E[骨架结果]
+    A[RGB uint8 图] --> B[深度 uint16 mm 图]
+    B --> C[像素对齐 RGB-D 对]
+    C --> D[逐像素物理距离]
+    D --> E[3D 感知基础]
 ```
 
 **易错点**：
-- ⚠️ 不得跨实验合跑 pytest——共享模块名（config/preprocess 等）
+
+- ⚠️ 深度单位 mm：数值勿 ×1000 误解（z_mm → z_m 用 ×0.001，不是 ×1000）
 
 ---
 
-#### 步骤2：输入契约与 letterbox（阶段一：能运行，20min）
+#### 步骤2：深度图加载与归一化（阶段一：能运行，25min）
 
-> 📌 本步骤对应源码：`pose_landmark_core/pose.py` prepare / resize_pad
+> 📌 本步骤对应源码：`src/depth.py` load_depth / normalize_depth
 
 **知识点讲解**：
 
-**BlazePose 输入契约（1.2.1）**
-- **原理**：BlazePose 输入契约与 BlazeFace 不同：**mean 127.5/std 128 + uint8 输入**——rknn 模型内部做归一化（`(x-127.5)/128`），调用方**只做 BGR→RGB 转 uint8 即可，手动 /127.5−1 会破坏输入**（板端实测结论）。`resize_pad` 做 letterbox：等比缩放 + 填充到 256×256（保持宽高比）。这一契约是转换脚本 `convert_mediapipe.py`（对齐 mediapipe-rknn/models/pose_landmark/convert.py）与推理侧必须一致的关键。
-- **源码对应**：`pose.py` prepare（RGB uint8 契约）/ resize_pad（letterbox）；`convert_mediapipe.py`（tflite→rknn，127.5/128 契约）
+**uint16 加载与归一化（1.2.1）**
+
+- **原理**：`load_depth()`（L22-27）用 `cv2.imread(path, IMREAD_UNCHANGED)` **保留 16bit** 读取（不带 UNCHANGED 会被截断成 8bit，深度全毁），返回 mm 数组。`normalize_depth()`（L30-41）把有效像素 min-max 线性拉伸到 0-255：先屏蔽无效值（`depth != invalid`），对有效像素求 min/max 后线性映射；单值深度（hi==lo）直接置 255 全亮。归一化是伪彩可视化的前置——深度范围大（0.3m-10m），直接 8bit 显示会糊成一片。
+- **源码对应**：`src/depth.py` L22-27（load_depth）、L30-41（normalize_depth：有效掩膜 L33 / min-max 映射 L35-40）
 
 **知识储备补充**：
 
-- **mean/std 归一化与 uint8 契约**：模型转换时配置 `mean=[127.5]`、`std=[128]`，RKNN 推理引擎在 NPU 内部对 uint8 输入执行归一化：
+- **IMREAD_UNCHANGED 机制**：OpenCV 的 `cv2.imread()` 默认行为是将图像转换为 `uint8`（8bit），无论原文件是 16bit 还是 32bit。`IMREAD_UNCHANGED` 标志禁止这种截断转换，保留原始数据类型。对于深度图（uint16 PNG），截断意味着所有 >255mm 的深度值被 mod 256 截断——例如 500mm 变成 244mm，完全失去物理意义。这是深度图处理中最常见的初学者陷阱。
+- **min-max 归一化原理**：将深度值从原始范围 $[d_{\min}, d_{\max}]$ 线性映射到 $[0, 255]$：
+
+  $$
+  d_{\text{norm}}(u,v) = \frac{d(u,v) - d_{\min}}{d_{\max} - d_{\min}} \times 255
+  $$
+
+  其中 $d_{\min}, d_{\max}$ 仅在有效像素（$d \neq 0$）中统计。屏蔽无效值（0）避免将"无深度"误判为"最近"——若不屏蔽，0 值会使 $d_{\min}=0$，有效深度的对比度大幅压缩（例如 1m-5m 的物体被映射到 51-255，细节丢失）。
+- **单值深度处理**：当所有有效像素深度值相同（$d_{\max} = d_{\min}$），归一化公式分母为 0，直接置 255 全亮（`normalize_depth` L38-39）。这在近距离平面物体（如桌面）拍摄时常见——整个物体处于同一深度，伪彩图呈现均匀颜色。
+- **参考资源**：OpenCV `cv2.imread` 官方文档（IMREAD_UNCHANGED 说明）；NumPy `ndarray.astype` 类型转换文档。
+
+**操作步骤**：
+
+1. 验证深度图读取与归一化（16bit 保留；无真实深度图时用合成数组演示）：
+   ```bash
+   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   
+   PYTHONPATH=./src python -c "
+   import numpy as np
+   from depth import load_depth, normalize_depth
+   d = np.zeros((20, 20), np.uint16); d[5:15, 5:15] = 500   # 合成：中央 500mm 物体
+   print('dtype:', d.dtype, '范围:', d.min(), '-', d.max())
+   print('无效像素占比:', float((d == 0).mean()))            # 0 = 无效
+   norm = normalize_depth(d)
+   print('归一化后 0-255:', norm.min(), '-', norm.max(), '(无效区=0)')"
+   # 真图：d = load_depth('depth.png')   # uint16 PNG，IMREAD_UNCHANGED 保留 16bit
+   # 预期：dtype uint16；范围 0-500；无效占比 0.75；归一化中央 255、无效区 0
+   ```
+
+   ```bash
+   dtype: uint16 范围: 0 - 500
+   无效像素占比: 0.75
+   归一化后 0-255: 0 - 255 (无效区=0)
+   ```
+
+2. 用普通 imread（不带 UNCHANGED）对照读取，观察深度数据是否被截断破坏
+
+3. 打印无效像素占比：`float((d==0).mean())`
+
+**流程图（加载与归一化）**：
+
+```mermaid
+graph LR
+    A[IMREAD_UNCHANGED] --> B[uint16 深度图]
+    B --> C[屏蔽无效值 0]
+    C --> D[有效像素 min-max]
+    D --> E[0-255 归一化]
+```
+**易错点**：
+- ⚠️ 不带 IMREAD_UNCHANGED → 16bit 截断成 8bit，深度数据毁坏
+- ⚠️ 归一化必须屏蔽无效值，否则 0 值拉低 min 使有效深度对比度受损
+
+---
+
+#### 步骤3：伪彩可视化（阶段二：能理解，20min）
+
+> 📌 本步骤对应源码：`src/depth.py` pseudocolor
+
+**知识点讲解**：
+
+**伪彩映射原理（1.2.1）**
+- **原理**：人眼对灰度梯度不敏感，深度图用**伪彩**（colormap）增强可读性。`pseudocolor()`（L44-48）：`cv2.applyColorMap(depth_norm, COLORMAP_JET)` 把 8bit 灰度映射为 jet 彩色（低值蓝→高值红，或按映射表）；`gray` 模式退化为三通道灰阶。jet 的优势：相邻深度差异用色相区分，肉眼可快速判断远近层次。双栏右侧即此伪彩图。
+- **源码对应**：`src/depth.py` L44-48（pseudocolor：gray L46-47 / jet L48）
+
+**知识储备补充**：
+
+- **伪彩映射原理**：伪彩（pseudocolor）是一种将单通道灰度图像映射为三通道彩色图像的技术，目的是增强人眼对数值差异的感知能力。人眼视网膜约有 100 万个视杆细胞（感知亮度）但有 600 万个视锥细胞（感知颜色），对色相差异的分辨力远高于灰度差异。对于深度图，伪彩将连续的深度值映射为从蓝（远）到红（近）的连续色带，使操作者一眼即可区分远近层次。
+- **COLORMAP_JET 色带**：OpenCV 的 `COLORMAP_JET` 是最常用的深度伪彩方案，色带从低值到高值依次为：深蓝 → 浅蓝 → 青 → 绿 → 黄 → 橙 → 红。低值（0）对应深蓝（近处/最近），高值（255）对应红色（远处/最远）。注意：归一化后的 0 值像素（无效区）也被映射为深蓝，这与"近处深蓝"的语义存在冲突——实际应用中需区分"有效深蓝（近处）"与"无效深蓝（无深度）"。
+- **gray 模式退化**：`gray` 模式将 8bit 灰度直接复制为三通道（`COLOR_GRAY2BGR`），等效于显示原始灰度图。适用于对比伪彩与灰度的可读性差异——灰度模式下近处（高值，亮灰）与远处（低值，暗灰）的对比度远低于伪彩模式。
+
+- **参考资源**：OpenCV `cv2.applyColorMap` 官方文档（COLORMAP_JET 色带说明）；matplotlib `imshow` colormap 选项（伪彩方案对比）。
+
+**操作步骤**：
+
+1. 生成伪彩图并保存（无真实深度图时用合成数组演示）：
+   ```bash
+   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   
+   PYTHONPATH=./src python -c "
+   import numpy as np, cv2
+   from depth import load_depth, normalize_depth, pseudocolor
+   d = np.zeros((20, 20), np.uint16); d[5:15, 5:15] = 500
+   norm = normalize_depth(d)
+   jet = pseudocolor(norm, 'jet')
+   print('jet 形状:', jet.shape, jet.dtype)      # (20,20,3) uint8 BGR 伪彩
+   cv2.imwrite('depth_jet.png', jet)           # 真图：d = load_depth('depth.png')
+   print('伪彩图已保存 depth_jet.png')"
+   # 预期：jet (20,20,3) uint8；gray 模式输出三通道灰阶
+   ```
+2. 对比 jet / gray 两种模式的可读性差异
+3. 思考：为什么深度可视化用伪彩而非灰度？工业应用（如避障调试）中哪种更直观？
+
+**流程图（伪彩映射）**：
+
+```mermaid
+graph LR
+    A[8bit 深度图] --> B[applyColorMap jet]
+    B --> C["(H,W,3) 伪彩"]
+    C --> D[近红远蓝]
+```
+**易错点**：
+- ⚠️ applyColorMap 要求 8bit 输入——必须先 normalize_depth 再伪彩
+
+---
+
+#### 步骤4：点击读深度（阶段二：能理解，25min）
+
+> 📌 本步骤对应源码：`src/depth.py` read_depth、`src/app.py` 点击事件
+
+**知识点讲解**：
+
+**窗口坐标还原（1.2.2）**
+- **原理**：`read_depth()`（L51-66）实现点击读深度：先做**边界检查**（u/v 越界返回无效，L55-56），再读 `depth[v,u]`（L57），0 值返回无效（L58-59），有效则 `z_m = z_mm * 0.001` 转米（L60）。**关键细节**：窗口显示有缩放（display_scale），点击坐标 (u,v) 必须**除以 display_scale** 还原为原图坐标再读深度——否则读错像素（README 验证要点明确要求）。`ClickResult`（L15-19）承载 z_mm/z_m/xyz 三态结果。
+- **源码对应**：`src/depth.py` L51-66（read_depth：边界检查 L55-56 / 读深度 L57 / 无效值 L58-59 / 米转换 L60）；`src/app.py`（鼠标回调：坐标 ÷ display_scale）
+
+**知识储备补充**：
+
+- **坐标缩放还原原理**：显示窗口将原始图像（640×480）按 `display_scale=0.666` 缩放后显示（实际显示约 426×320 像素）。用户点击的是显示窗口坐标，而深度数组索引需要原始图像坐标。坐标转换公式：
+
+  $$
+  u_{\text{原图}} = \frac{x_{\text{窗口}}}{\text{display\_scale}}, \quad v_{\text{原图}} = \frac{y_{\text{窗口}}}{\text{display\_scale}}
+  $$
+
+  `view.py` 的 `click_to_pixel()`（L30-35）处理双栏视图的特殊逻辑：当点击位置在右栏（深度栏）时，需先减去左栏宽度（`left_w = img_w × scale`）再除以 scale。`screen_to_pixel()`（L24-27）执行通用的 ÷scale 还原。
+- **ClickResult 三态**：`ClickResult`（L15-19）是深度读取的结构化结果——`z_mm`（整数毫米）、`z_m`（浮点米）、`xyz`（相机坐标系 3D 坐标或 None）。当 `cam` 参数为 None 时（未配置内参），`xyz` 为 None；配置内参后附加反投影坐标。这种"可选增强"设计使同一函数适配有无内参两种场景。
+- **边界检查防御**：`read_depth()` 先检查 `0 <= u < w and 0 <= v < h`（L55-56），越界直接返回 `ClickResult(0, 0.0, None)`。这是防御性编程——防止用户点击窗口边缘（缩放后边界可能对不齐）导致数组越界崩溃。
+
+- **参考资源**：NumPy 数组索引文档（`array[v, u]` 行列顺序说明）；OpenCV 鼠标回调 `cv2.setMouseCallback` 官方文档。
+
+**操作步骤**：
+
+1. 文件模式窗口点击（板上：x86 无 mjpeg_streamer，`app.py` 的 `require()` 会提示安装并退出）：
+   ```bash
+   # 进入实验目录
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   
+   ros2 launch ascamera hp60c.launch.py        										# 终端 1
+   python src/app.py --config config/depth3d_config.yaml --display                     # 终端 2
+   # 点击深度图任一点，终端输出 Click (u,v): z = XXXX mm (X.XXX m)
+   ```
+2. 分别点击近处物体与远处背景，对比深度数值差异（物体近、背景远）
+3. 点击无效区域（无深度处），观察 invalid 提示
+4. 验证坐标还原（板上窗口）：窗口缩放后点击同一物理点，确认读出深度一致（÷ display_scale 生效）
+
+![image-20260820163436128](assets/image-20260820163436128.png)
+
+**流程图（点击读深度）**：
+
+```mermaid
+graph LR
+    A[窗口点击 x,y] --> B[除以 display_scale]
+    B --> C[原图 u,v]
+    C --> D["读depth[v,u]"]
+    D --> E{深度 = 0?}
+    E -->|是| F[无效]
+    E -->|否| G[mm → m]
+```
+**易错点**：
+- ⚠️ 点击坐标不除 display_scale → 读错像素（缩放窗口时尤其明显）
+
+---
+
+#### 步骤5：相机内参反投影（阶段三：能改造，30min）
+
+> 📌 本步骤对应源码：`src/depth.py` read_depth 反投影段
+
+**知识点讲解**：
+
+**针孔模型与反投影公式（1.3.1）**
+- **原理**：相机把 3D 点投影到 2D 像素遵循**针孔模型**：`u = fx·x/z + cx`，`v = fy·y/z + cy`（fx/fy 焦距像素、cx/cy 光心偏移，来自标定）。**反投影**（2D+深度 → 3D）即逆运算：`x = (u-cx)·z/fx`，`y = (v-cy)·z/fy`（L63-64），z 为深度（米）。这一公式把"像素 + 距离"换算为**相机坐标系下的 3D 坐标**——是机械臂抓取定位、点云生成、避障的核心数学。内参默认取 `ascam.yaml`（HP60C RGB 标定），驱动配置加密，深度内参以实测微调。
+- **源码对应**：`src/depth.py` L62-65（反投影：x L63 / y L64 / xyz 元组 L65）；`config/depth3d_config.yaml` camera 内参
+
+**知识储备补充**：
+
+- **针孔相机模型（Pinhole Camera Model）**：针孔模型是最基本的相机几何模型，假设光线通过一个无穷小的针孔投影到成像平面。3D 空间点 $(x, y, z)$（相机坐标系，z 为光轴方向即深度）投影到 2D 像素 $(u, v)$ 的正向公式：
 $$
-  x_{\text{norm}} = \frac{x - 127.5}{128}, \quad x_{\text{norm}} \in [-1, 1]
+  u = f_x \cdot \frac{x}{z} + c_x, \quad v = f_y \cdot \frac{y}{z} + c_y
   $$
   
-调用方只需确保输入为 RGB 格式、uint8 数据类型、shape `(1, 256, 256, 3)` 的 NHWC 张量。**手动除以 127.5 再减 1 会导致双重归一化**——板端实测 presence 从 0.998 暴跌至 0.055，骨架完全不输出。这与实验1 YOLOv8 的"不做归一化、直喂 uint8"是同一类设计思路：量化模型内部已含 scale/zero_point，外部归一化会破坏输入分布。
-- **letterbox 策略对比**：本实验的 `resize_pad`（`pose.py` L42-53）采用灰边填充（`np.full((size, size, 3), 114, dtype=np.uint8)`），而实验1 YOLOv8 的 letterbox 默认用黑边填充（`pad_value=0`）。填充颜色不影响推理精度（模型对 padding 区域不敏感），但影响逆映射——灰边 114 是 mediapipe-rknn 参考实现的约定，保持与训练时一致。
+其中 $f_x, f_y$ 为焦距（单位：像素），$c_x, c_y$ 为主点（光轴与成像平面交点的像素坐标）。这四个参数 $(f_x, f_y, c_x, c_y)$ 统称为**相机内参**（intrinsic parameters），由相机标定（calibration）获得。HP60C 的标定结果存储在 `ascam.yaml` 中。
 
-- **参考资源**：RKNN Toolkit2 User Guide 归一化配置文档；MediaPipe Pose Landmark 模型规格；mediapipe-rknn GitHub 项目 pose_landmark 转换脚本。
+<img src="assets/image-20260820164529174.png" alt="image-20260820164529174" style="zoom:67%;" />
 
-**操作步骤**：
-
-1. 手工验证预处理（合成 BGR 帧，无需真实图片；`prepare`/`resize_pad` 纯 cv2，x86 可跑）：
-   ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark
-   
-   PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -c "
-   import numpy as np
-   from pose_landmark_core.pose import resize_pad, prepare
-   bgr = np.zeros((100, 80, 3), np.uint8)        # 合成 BGR 帧
-   padded, scale, pad = resize_pad(bgr)          # letterbox → 256×256 灰边
-   inp = prepare(padded)                         # BGR→RGB uint8 NHWC
-   print('padded:', padded.shape, padded.dtype, 'scale', round(float(scale),3), 'pad', pad)
-   print('输入契约:', inp.shape, inp.dtype, '（uint8 直喂，勿手动 /127.5−1）')
-   # 真图：img = cv2.imread('images/pose_demo.jpg')
-   "
-   # 预期：padded (256,256,3) uint8 scale 2.56 pad (26, 0)；输入契约 (1,256,256,3) uint8
-   ```
-2. 单测理解 resize_pad 的 scale/pad 计算（`px=(norm×256−pad)/scale` 逆映射依赖）
-3. 思考：为什么 fp16 人脸模型要 [0,1] 归一化，而 pose 模型用 127.5/128 + uint8？——模型转换时量化/归一化方式不同
-
-**流程图（输入契约）**：
-
-```mermaid
-graph LR
-    A[BGR uint8] --> B[RGB 转换]
-    B --> C[resize_pad letterbox 256]
-    C --> D["mean 127.5/std 128 + uint8"]
-    D --> E[NHWC 输入]
-    E --> F[BlazePose 推理]
-```
-
-**易错点**：
-- ⚠️ 手动 /127.5−1 归一化 → 输入破坏（板端实测）；必须 uint8 直喂
-
----
-
-#### 步骤3：33 点解码与逆映射（阶段二：能理解，30min）
-
-> 📌 本步骤对应源码：`pose_landmark_core/pose.py` decode_pose
-
-**知识点讲解**：
-
-**解码与坐标还原（1.2.2）**
-
-- **原理**：模型输出 33 关键点（每点 [x,y,z,vis]，模型坐标系为归一化 [0,1]），`decode_pose`（33×4 解析）把归一化坐标**逆映射回原图**：`px = (norm × 256 − pad) / scale`——即先乘回 256（letterbox 尺寸），减去 pad（填充偏移），除以 scale（缩放比例），得到原始图像像素坐标。`vis`（可见度）是关键点质量指标：`vis < 0.5` 的点（被遮挡/出画）跳过绘制。presence（整帧是否有人的置信度）低于阈值时引擎返回空结果（engine.py），避免无人体时输出垃圾骨架。
-- **源码对应**：`pose.py` decode_pose（33×4 解析 + 逆映射公式）；`engine.py`（presence 阈值 → 空结果）
-
-**知识储备补充**：
-
-- **逆映射数学推导**：`resize_pad` 将原图 $(H_0, W_0)$ 等比缩放到 $(H_s, W_s)$，再 pad 到 256×256。设缩放因子 $s = \min(256/W_0, 256/H_0)$，则 $W_s = \lfloor W_0 \cdot s \rfloor$，$H_s = \lfloor H_0 \cdot s \rfloor$，pad 偏移 $pad_x = (256 - W_s) / 2$，$pad_y = (256 - H_s) / 2$。模型输出的归一化坐标 $x_{\text{norm}}, y_{\text{norm}} \in [0, 1]$ 对应 256×256 空间中的像素位置 $x_{256} = x_{\text{norm}} \times 256$，$y_{256} = y_{\text{norm}} \times 256$。逆映射公式为：
-
+- **反投影公式推导**：由正向投影公式反解 $(x, y)$：
   $$
-  px = \frac{x_{\text{norm}} \times 256 - pad_x}{s}, \quad py = \frac{y_{\text{norm}} \times 256 - pad_y}{s}
+  x = (u - c_x) \cdot \frac{z}{f_x}, \quad y = (v - c_y) \cdot \frac{z}{f_y}
   $$
 
-  其中 $px, py$ 为原图像素坐标。$z$ 坐标的逆映射为 $z' = z / s$（相对深度按相同比例缩放）。源码 `pose.py` decode_pose 中 `lm[:, 0] = (lm[:, 0] - pad_w) / scale` 正是此公式的实现。该逆映射是后续骨架绘制、关节角度计算、动作分类（实验11）的基础。
-- **vis 可见度与 presence 语义**：`vis`（visibility）是每个关键点的可见度置信度，取值 $[0, 1]$，由模型对关键点遮挡/出画面情况的判断输出。`vis < 0.5` 表示该点不可靠（被遮挡或超出画面），绘制时跳过该点及其相连的边。`presence`（`outputs[1]`）是整帧是否包含人体的全局置信度，低于 `min_detection_confidence`（默认 0.5）时引擎返回空结果（`PoseResult(landmarks=None)`），避免无人时输出随机噪声骨架。两者配合实现了"无人不崩、遮挡不断"的鲁棒行为。
-- **参考资源**：MediaPipe Pose Landmark Model 输出格式文档；BlazePose 论文（Bazarevsky et al., 2020）坐标系说明。
+  其中 $z$ 为该像素的深度值（单位：米）。代码实现（`src/depth.py` L63-64）：`x = (u - cam["cx"]) * z_m / cam["fx"]`。反投影要求 $z$ 为米（与 $f_x$ 的像素/米标度一致），这也是为什么深度值需先从 mm 转换为 m（$\times 0.001$）。得到的 $(x, y, z)$ 是**相机坐标系**下的 3D 坐标——原点在相机光心，z 轴沿光轴指向场景。
+
+- **内参标定与误差传递**：相机内参通过棋盘格标定（张正友标定法）获得，标定精度直接影响反投影的 3D 坐标质量。内参误差（焦距偏差、主点偏移）会随深度 $z$ 线性放大到 3D 坐标：$x$ 的误差 $\Delta x = \Delta c_x \cdot z / f_x + (u - c_x) \cdot \Delta z / f_x$。对于远距离目标（$z$ 大），内参偏差的影响更显著。HP60C 的 RGB 内参来自 `ascam.yaml` 标定，深度内参需以实测微调（`config/depth3d_config.yaml` 的 `cam3d` 区块）。
+
+- **参考资源**：张正友相机标定法论文（Z. Zhang, *A Flexible New Technique for Camera Calibration*, 2000）；OpenCV `cv2.calibrateCamera` 官方文档；Intel RealSense 内参说明（同类深度相机参考）。
 
 **操作步骤**：
 
-1. 单图运行，打印某帧 33 点的 x/y/vis 值，理解逆映射效果
-2. 部分遮挡测试：用手遮挡半边身体，观察 vis<0.5 的点是否被跳过绘制
-3. 手工验证逆映射：对已知点手算 `px=(norm×256−pad)/scale`，与输出对比
-4. 思考：z 坐标（相对深度）的语义与限制？vis 过滤的意义？
-
-```bash
-cd ~/ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark
-
-# 单张图片推理
-PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.demo_image \
-  --config 	config/pose_config.yaml --save out.jpg
-```
-
-**流程图（解码与逆映射）**：
-
-```mermaid
-graph LR
-    A["输出 (1,195) 39×5"] --> B[取前 33 点]
-    B --> C["解析 [x,y,z,vis]"]
-    C --> D["px=(norm×256−pad)/scale"]
-    D --> E["vis < 0.5 过滤"]
-    E --> F[原图 33 关键点]
-```
-
-**易错点**：
-- ⚠️ 逆映射公式与 resize_pad 的 scale/pad 必须配对使用（引擎已封装）
-
----
-
-#### 步骤4：骨架拓扑绘制（阶段二：能理解，25min）
-
-> 📌 本步骤对应源码：`pose_landmark_core/engine.py` draw_skeleton、`pose.py` POSE_CONNECTIONS
-
-**知识点讲解**：
-
-**35 边骨架拓扑（1.3.1）**
-
-- **原理**：33 个孤立点要变成"人体骨架"，靠 `POSE_CONNECTIONS` **35 边拓扑**定义连接关系（头颈、躯干、双臂、双腿、手部骨架等）。`draw_skeleton`（engine.py）按拓扑逐边连线：红点 r6（半径 6 像素）+ 绿线 2px，`vis < 0.5` 的点跳过（不画其相连的边）。黑底右栏让骨架对比度最高，vendor 视觉对齐（右=黑底红点绿线骨架）。
-- **源码对应**：`pose.py` POSE_CONNECTIONS（35 边）；`engine.py` draw_skeleton（vis 过滤 + 红点绿线绘制）
-
-**知识储备补充**：
-
-- **POSE_CONNECTIONS 拓扑结构**：35 条连接边覆盖五个区域——
-
-  (1) **头部**：鼻→左眼内角→左眼→左眼外角（0-1-2-3），鼻→右眼内角→右眼→右眼外角（0-4-5-6），左眼外角→左耳（3-7），右眼外角→右耳（6-8）；
-
-  (2) **颈部**：左耳→左肩（未直接连接，通过面部链路间接覆盖），左肩→右肩（11-12）；
-
-  (3) **躯干**：左肩→左髋（11-23），右肩→右髋（12-24），左髋→右髋（23-24）；
-
-  (4) **上肢**：左肩→左肘→左腕（11-13-15），左腕→左小指/食指/拇指（15-17/19/21），右臂同理；
-
-  (5) **下肢**：左髋→左膝→左踝（23-25-27），左踝→左脚跟/脚尖（27-29/31），右腿同理。拓扑定义在 `pose.py` L13-19 的 `frozenset` 中，共 35 个元组。
-
-<img src="assets/image-20260821090257502.png" alt="image-20260821090257502" style="zoom: 67%;" />
-
-- **骨架绘制的 vis 过滤逻辑**：`draw_skeleton`（`engine.py`）遍历每条边 `(a, b)`，若 `landmarks[a, 3] < VIS_THRESHOLD` 或 `landmarks[b, 3] < VIS_THRESHOLD`（任一端点不可见），则跳过该边的绘制。同时，vis 低于阈值的点本身也不绘制红点。这实现了"遮挡区域骨架局部断裂"的自然行为——用户看到的是"可见部分的骨架"，而非强行连线导致的穿帮。
-- **参考资源**：MediaPipe Pose Landmark Connection 拓扑定义（Apache-2.0）；OpenCV `cv2.circle` / `cv2.line` 绘制 API。
-
-**操作步骤**：
-
-1. 单图输出双栏，观察骨架（红点绿线）是否贴合人体姿态
-2. 动手改造：改点的半径/颜色、线的粗细，或只绘制上半身拓扑
-3. 思考：35 边拓扑如何定义？手部/足部的细粒度连接作用？
-
-```bash
-cd ~/ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark
-
-# 单张图片推理
-PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.demo_image \
-  --config 	config/pose_config.yaml --save out.jpg
-```
-
-**流程图（骨架拓扑绘制）**：
-
-```mermaid
-graph LR
-    A["33 关键点"] --> B["POSE_CONNECTIONS 35 边"]
-    B --> C[红点 r6]
-    C --> D[绿线 2px]
-    D --> E["vis<0.5 跳过边"]
-    E --> F[黑底骨架]
-```
-
-**易错点**：
-- ⚠️ 连线两端点任一 vis<0.5 即跳过该边（绘制逻辑）
-
----
-
-#### 步骤5：双栏可视化与推流（阶段三：能改造，25min）
-
-> 📌 本步骤对应源码：`pose_landmark_core/view.py`、`mjpeg_server.py`
-
-**知识点讲解**：
-
-**双栏合成与状态栏（1.3.2）**
-
-- **原理**：`view.py` 双栏合成：左栏原图 + FPS 红字，右栏黑底 33 点骨架，底部状态栏（`FPS: N  Pose: OK/--`）。`mjpeg_server.py` 提供 MJPEG 流 `:8082/pose.mjpg`（09=8081 之后，避免端口冲突）。双栏设计让学习者同时看到"原始画面"与"姿态理解结果"，FPS 红字实时反馈性能。
-- **源码对应**：`view.py`（双栏 + 状态栏 + FPS 红字）；`mjpeg_server.py`（:8082 推流）
-
-**知识储备补充**：
-
-- **MJPEG 推流架构**：`mjpeg_server.py` 使用 `mjpeg_streamer` 库（pip 安装），`MjpegServer` 类封装了 HTTP 服务器 + JPEG 编码流。核心接口：`set_frame(bgr)` 接收 BGR numpy 数组，库内部编码为 JPEG 并通过 HTTP chunked transfer 推送到订阅者。流地址格式 `http://<host>:<port>/<stream_name>.mjpg`，本实验使用 `:8082/pose.mjpg`（区别于实验9 的 `:8081/face.mjpg`）。`start()` 方法含端口预检——若端口已被占用（上个 demo 未关），立即报错退出，避免静默 404。
-- **状态栏设计**：`put_status`（`view.py`）在双栏底部绘制 24px 高黑条，白字显示 `FPS: N Pose: OK/--`。`Pose: OK` 表示当前帧检测到人体（`result.detected = True`），`Pose: --` 表示无人或 presence 低于阈值。`add_fps` 在左栏左上角叠加红字 `FPS : N`，字体大小 0.9、红色 `(0,0,255)`，与 vendor 视觉风格对齐。
-- **参考资源**：mjpeg_streamer PyPI 文档；OpenCV `cv2.putText` API。
-
-**操作步骤**：
-
-1. 单图保存双栏：`PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.demo_image --config config/pose_config.yaml --save out.jpg`
-2. 无显示器查看 MJPEG 流（浏览器 :8082/pose.mjpg）
-3. 动手改造：在左栏叠加"站立/举手"文字（用肩-肘-腕角度判断），为实验11 铺垫
-
-```bash
-cd ~/ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark
-
-# 单张图片推理
-PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.demo_image \
-  --config 	config/pose_config.yaml --save out.jpg
-```
-
-**流程图（双栏可视化）**：
-
-```mermaid
-graph LR
-    A[左栏原图+FPS] --> B[右栏黑底骨架]
-    B --> C[compose 双栏]
-    C --> D[put_status 状态栏]
-    D --> E[MJPEG :8082]
-```
-
-**易错点**：
-- ⚠️ 端口 :8082 与其他实验错开（09=8081）；占用时改 config
-
----
-
-#### 步骤6：RKNNLite 部署（阶段三：能改造，20min）
-
-> 📌 本步骤对应源码：`pose_landmark_core/backend.py`、`convert_mediapipe.py`
-
-**知识点讲解**：
-
-**转换与部署（1.3.2）**
-- **原理**：`convert_mediapipe.py` 在 x86 转换环境把 `pose_landmark_full.tflite` 转 RKNN（fp16 默认，`--dtype fp|i8`），`--check` 自检输出契约。板上用 `RKNNLiteBackend`（rknn-toolkit-lite2 2.3.2，core_mask 默认 0=AUTO）NPU 推理。fp16 对姿态回归（连续坐标）精度优于 int8；如需 int8 需校准集。产物 `models/pose_landmark_full.rknn` 已入库。
-- **源码对应**：`convert_mediapipe.py`（tflite→rknn + --check）；`backend.py`（RKNNLiteBackend：load / init_runtime(core_mask) / predict）
-
-**知识储备补充**：
-
-- **fp16 vs int8 量化选择**：姿态估计是**回归任务**（输出连续坐标 $x, y, z$），对量化噪声敏感——int8 的量化步长 $\Delta = (x_{\max} - x_{\min}) / 255$ 在关键点密集区域（如面部 6 点）可能引入 > 1px 的坐标误差，而 fp16 保留 10 位尾数，精度损失可忽略。本实验选择 fp16（`--dtype fp` 默认），实测 256×256 输入在 RK3576 NPU 上推理延迟 < 50ms，满足实时要求。若需进一步压缩模型体积或提升推理速度，可考虑 int8 + 校准集（`--dtype i8 --dataset calib.txt`），但需验证关键点精度下降在可接受范围内。
-- **RKNNLite core_mask 语义**：`core_mask` 参数控制 NPU 核分配——`0` = NPU_CORE_AUTO（自动选择最优核），`1` = NPU_CORE_0，`2` = NPU_CORE_1，`4` = NPU_CORE_2，`3` = NPU_CORE_0_1（双核并行），`7` = NPU_CORE_0_1_2（三核并行）。RK3576 有 3 个 NPU 核（共 6TOPS），单模型默认用 AUTO 即可；多模型并行时需手动绑定不同核避免竞争。`init_runtime(core_mask=None)` 在 rknnlite 2.3.2 会报 `core mode not supported` 错误——必须显式传整数值。
-- **参考资源**：RKNN Toolkit2 User Guide 量化精度对比；RKNN Toolkit Lite2 API 文档 core_mask 参数说明；MediaPipe Pose Landmark tflite 模型规格。
-
-**操作步骤**：
-
-1. 模型契约自检
-2. 查看 `config/pose_config.yaml` 的 backend.core_mask（默认 0=AUTO）
-3. （可选）x86 转换环境重转 fp16：`PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.convert_mediapipe --all`
-
-```bash
-# 执行目录：ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark
-# PYTHONPATH 保留原值
-cd ~/ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark
-
-# 模型契约自检
-PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.convert_mediapipe --check
-
-# fp16
-PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.convert_mediapipe --all
-
-# int8 自己准备量化数据集
-PYTHONPATH=car1_pose_landmark:$PYTHONPATH python -m pose_landmark_core.convert_mediapipe --dtype i8 --dataset calib.txt
-```
-
-**流程图（RKNNLite 部署）**：
-
-```mermaid
-graph LR
-    A[tflite] --> B[convert_mediapipe]
-    B --> C[--check 契约自检]
-    C --> D[.rknn 入库]
-    D --> E[RKNNLite load]
-    E --> F[NPU 推理]
-```
-
-**易错点**：
-- ⚠️ 转换环境需 tensorflow≤2.14 + ml-dtypes 0.2.0（README 说明）
-- ⚠️ 板上必须 RKNNLite；core_mask 按 RK3576 三核配置
-
----
-
-#### 步骤7：实时摄像头演示（阶段三：能改造，30min）
-
-> 📌 本步骤对应源码：`pose_landmark_core/camera_demo.py`、`pose_landmark_node.py`
-
-**知识点讲解**：
-
-**实时链路（1.3.2）**
-- **原理**：`camera_demo.py` 循环：取流（--ros ascamera 话题标准 / --camera N V4L2 回退，NOVATEK 相机强制 YUYV）→ PoseEngine.process → 双栏合成 → FPS 统计 → MJPEG 推流（:8082）→ q 退出。ROS 节点模式可选（colcon 编译后 launch）。**PYTHONPATH 必须保留 $PYTHONPATH**（覆盖丢 Humble 路径 → venv PyPI rclpy → ModuleNotFoundError）。
-- **源码对应**：`camera_demo.py`（实时循环 / cap/engine 注入）；`pose_landmark_node.py`（ROS 节点，remove_ros_args 已修）；`ros2_source.py`（ascamera 取流）
-
-**知识储备补充**：
-
-- **实时管线时序分析**：单帧处理包含四个阶段
-
-  (1) 取流：ROS 模式从 `/ascamera_hp60c/camera_publisher/rgb0/image` 话题获取 BGR 帧（延迟取决于相机帧率，HP60C 默认 30fps）；V4L2 模式直接 `cap.read()`；
-
-  (2) 预处理：`resize_pad` letterbox + `prepare` BGR→RGB uint8（< 1ms）；
-
-  (3) NPU 推理：`RKNNLiteBackend.predict` 执行整图推理（256×256 fp16，< 50ms）；
-
-  (4) 后处理：`decode_pose` 逆映射 + `draw_skeleton` 绘制 + `compose` 双栏合成（< 5ms）。总延迟 < 60ms/帧，理论帧率 > 15 FPS。FPS 红字每帧更新，状态栏每帧刷新。
-
-- **ROS 话题取流约束**：`ros2_source.py` 的 `Ros2Camera` 订阅 `/ascamera_hp60c/camera_publisher/rgb0/image`（sensor_msgs/Image），回调中将 ROS Image 消息转为 OpenCV BGR numpy 数组。**话题名严禁 remap**——HP60C 驱动硬编码发布该话题。`--ros` 模式要求先启动 `ros2 launch ascamera hp60c.launch.py`（终端 1），否则回调永不触发，超时后报错退出。`PYTHONPATH=car1_pose_landmark:$PYTHONPATH` 中的 `:$PYTHONPATH` 保留原路径——覆盖会导致 venv 中的 rclpy 不可达，报 `ModuleNotFoundError: No module named 'rclpy'`。
-
-- **参考资源**：ROS2 Topic QoS 文档；V4L2 YUYV/MJPG 格式说明；NOVATEK NT99141 相机 MJPG 兼容性问题。
-
-**操作步骤**：
-
-1. 相机实时（板上标准）：
+1. 配置内参后点击读深度，观察附加输出（板上窗口：x86 无 mjpeg_streamer，`app.py` 的 `require()` 会直接退出）：
    ```bash
-   # 执行目录：ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark
-   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
+   # 进入实验目录
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
    
-   ros2 launch ascamera hp60c.launch.py        # 终端 1
-   PYTHONPATH=car1_pose_landmark:$PYTHONPATH python3 -m pose_landmark_core.camera_demo \
-     --config config/pose_config.yaml --ros    # 终端 2
+   ros2 launch ascamera hp60c.launch.py        										# 终端 1
+   python src/app.py --config config/depth3d_config.yaml --display                     # 终端 2
+   # 点击深度图任一点，终端预期：Click (u, v): z = XXXX mm (X.XXX m) xyz=(x, y, z) m
    ```
-2. 动作测试：站立/举手/下蹲，观察骨架实时跟随
-3. 无脸测试：画面无人，观察状态栏 `Pose: --` 且不崩溃
-4. 动手改造：计算肩-肘-腕夹角并在状态栏显示，为动作分类（实验11）铺垫
+2. 验证反投影合理性：同一物体不同像素点击，z 相近但 x/y 随像素位置变化（近大远小）
+3. 手工验证公式：给定 u,v,z 手算 x,y，与程序输出对比
+4. 思考：fx/fy/cx/cy 的物理意义？为什么标定误差会放大到 3D 坐标？
 
-**流程图（实时演示）**：
+**流程图（内参反投影）**：
 
 ```mermaid
 graph LR
-    A[ros2_source 取流] --> B[PoseEngine.process]
-    B --> C[双栏合成]
-    C --> D[FPS 统计]
-    D --> E[MJPEG :8082]
-    E --> F[q 退出]
+    A[像素 u,v + 深度 z] --> B["x=(u-cx)×z/fx"]
+    B --> C[相机坐标系 3D]
+    C --> D[机械臂抓取]
 ```
-
 **易错点**：
-- ⚠️ PYTHONPATH 保留 $PYTHONPATH；--ros 需 ascamera 先起、话题严禁 remap
-- ⚠️ UVC 回退强制 YUYV（NOVATEK 相机 MJPG 损坏）
+- ⚠️ 反投影要求 z 为**米**（公式中 z 单位须与 fx 的像素/米标度一致，L63-64 用 z_m）
+- ⚠️ 内参不准 → 3D 坐标系统性偏移（深度内参以实测微调）
+
+---
+
+#### 步骤6：实时双栏可视化（阶段三：能改造，30min）
+
+> 📌 本步骤对应源码：`src/app.py`、`src/ros2_source.py`（或 ROS 模式取流）
+
+**知识点讲解**：
+
+**实时深度链路（1.3.2）**
+- **原理**：板上 ROS 模式：ascamera 驱动发布 RGB（`.../rgb0/image`）与深度（`.../depth0/image`）话题，`app.py` 订阅（**严禁 remap**——话题名与驱动约定一致）→ 深度图经 load/normalize/pseudocolor 处理 → 与 RGB 合成双栏 → MJPEG 推流（`http://<板IP>:8080/depth.mjpg`）。`view.py` 负责双栏合成 + 状态栏 + 点击坐标还原/标注。已知坑：首帧黑帧（`rgb.mean() < 5` 跳过，已内置）；深度 0 = 无效。
+- **源码对应**：`src/app.py`（main：文件/ROS 模式 / 双栏合成 / MJPEG / 鼠标回调）；`src/view.py`（双栏合成 + 状态栏）；`src/depth.py`（处理管线）
+
+**知识储备补充**：
+
+- **ROS2 话题订阅与帧缓存**：`ros2_source.py` 的 `Ros2Camera` 类封装了 ROS2 话题订阅逻辑——`open()` 惰性导入 `rclpy`，创建节点订阅 `/ascamera_hp60c/camera_publisher/rgb0/image`（`sensor_msgs/Image`，BGR8 编码），回调 `_on_image()` 将 `cv_bridge` 转换后的 BGR 帧存入 `_frame` 缓冲区。`read()` 方法阻塞等待首帧或超时（默认 5s），返回 `(True, frame)` 或 `(False, None)`。这种"VideoCapture 兼容接口"设计使文件模式与 ROS 模式的主循环代码完全一致——切换模式只需替换数据源。
+- **双栏合成逻辑**：`view.py` 的 `compose_rgbd()`（L11-22）将 RGB 与伪彩深度图水平拼接：左栏 RGB、右栏深度伪彩，均按 `display_scale` 缩放（L15-17），顶部叠加黄色状态栏文字（L19-20）。`np.hstack()` 执行水平拼接，输出形状为 `(H', 2W', 3)`。
+- **MJPEG 推流**：`mjpeg_server.py` 启动 HTTP 服务器监听 `:8080`，`set_frame()` 方法将最新合成帧编码为 JPEG 并通过 multipart 流推送给浏览器客户端。客户端通过 `http://<板IP>:8080/depth.mjpg` 访问实时画面，无需安装任何客户端软件。
+- **参考资源**：ROS2 `sensor_msgs/Image` 消息定义；cv_bridge 官方文档（ROS Image ↔ OpenCV 转换）；MJPEG streaming HTTP 协议说明。
+
+**操作步骤**：
+
+1. 板上 ROS 模式：
+   ```bash
+   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection
+   # 终端 1：起相机驱动（HP60C，话题名不可 remap）
+   source ~/ros2_ws/install/setup.bash
+   ros2 launch car1_peripherals depth_camera.launch.py
+   # 终端 2：运行深度查看器
+   source ~/ros2_ws/install/setup.bash
+   python src/app.py --config config/depth3d_config.yaml --ros --display
+   # MJPEG: http://<板IP>:8080/depth.mjpg
+   ```
+2. 验证话题频率：`ros2 topic hz .../rgb0/image`（≈ 25Hz）
+3. 实时点击读深度：对准物体移动，观察深度数值连续变化
+4. 动手改造：在双栏图中叠加"中心点深度"实时显示（十字光标 + 深度数值），实现简易测距仪
+
+![image-20260820163436128](assets/image-20260820163436128.png)
+
+**流程图（实时双栏可视化）**：
+
+```mermaid
+graph LR
+    A[ROS2 rgb0/image] --> B[RGB 帧]
+    C[ROS2 depth0/image] --> D[深度图处理]
+    B --> E[双栏合成]
+    D --> E
+    E --> F[MJPEG 推流]
+```
+**易错点**：
+- ⚠️ 话题严禁 remap——与驱动约定不一致取不到帧
+- ⚠️ 首帧黑帧（rgb.mean()<5）已内置跳过；深度 0 = 无效勿当 0mm
 
 ---
 
@@ -497,34 +452,34 @@ graph LR
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| 骨架乱飞/无输出 | 手动归一化破坏了输入 | 契约是 mean 127.5/std 128 + uint8，勿 /127.5−1（板端实测） |
-| 骨架错位 | 逆映射公式与 letterbox 不配对 | `px=(norm×256−pad)/scale`（resize_pad 同一参数） |
-| 遮挡后骨架残缺 | vis<0.5 的点被跳过 | 属正常行为（vis 过滤）；确认遮挡恢复 |
-| 无人时输出垃圾骨架 | presence 阈值未生效 | engine.py presence<阈值 → 空结果（已内置） |
-| rclpy ModuleNotFoundError | PYTHONPATH 覆盖丢 Humble 路径 | `PYTHONPATH=car1_pose_landmark:$PYTHONPATH` |
-| 帧率低 | fp16 未生效 / core_mask 不当 | 确认 fp16 模型；core_mask 0=AUTO |
-| pytest 冲突 | 跨实验合跑共享模块名 | 各实验目录单独跑 pytest |
-| UVC 雪花 | 相机 MJPG 损坏（NOVATEK） | `--camera N` 强制 YUYV |
+| 深度数值偏大 1000 倍 | mm 与 m 单位误解 | mm→m 用 ×0.001（`depth.scale`），勿 ×1000 |
+| 深度图全黑/花屏 | 读取时未保留 16bit | `cv2.imread(path, IMREAD_UNCHANGED)` |
+| 点击读出深度与画面不符 | 窗口缩放未还原坐标 | 点击坐标 ÷ display_scale 再读 |
+| 无效区读出 0 | 该像素无深度（正常） | 识别 0 为 invalid（L58-59），勿当 0mm |
+| 3D 坐标偏移 | 内参不准 | 深度内参以实测微调（config camera） |
+| 首帧黑帧 | 相机首帧未就绪 | 已内置 `rgb.mean()<5` 跳过 |
+| ROS 取不到帧 | 话题 remap 或驱动未起 | 严禁 remap；确认驱动话题与 config 一致 |
+| --ros 帧率低 | 话题频率不足 | `ros2 topic hz` 验证 ≈25Hz |
 
 ### 1.8 扩展实验
 
-**扩展方向 1：动作分类（进阶）**
-- 用关键点计算关节角度（肩-肘-腕、髋-膝-踝）与相对位置特征，实现举手/下蹲/站立分类——直接衔接实验11 体感控制
+**扩展方向 1：简易测距与越界报警（进阶）**
+- 在双栏图中叠加中心点深度实时显示；设定安全距离阈值（如 <0.5m 报警），实现避障原型
 
-**扩展方向 2：姿态评分（进阶）**
-- 与标准姿势模板（如瑜伽体式）对比关键点距离，输出"姿态相似度"评分，实现动作纠正/训练辅助
+**扩展方向 2：点云生成（进阶）**
+- 遍历有效深度像素批量反投影为 3D 点，用 Open3D 或 matplotlib 生成稀疏点云可视化，体验"深度图 → 点云"的完整 3D 感知链路
 
 ### 1.9 实验报告要求
 
-**评分标准**：姿态估计原理 15 分 + 输入契约 15 分 + 解码与逆映射 25 分 + 骨架绘制 20 分 + 实时演示 15 分 + 报告 10 分 = 100 分。
+**评分标准**：深度相机原理 15 分 + 深度图处理 20 分 + 伪彩可视化 15 分 + 点击读深度 20 分 + 反投影 20 分 + 报告 10 分 = 100 分。
 
 **报告必含内容**：
-1. BlazePose 单模型整图架构说明（33 点 [x,y,z,vis] + presence）
-2. 输入契约验证（uint8 直喂 vs 手动归一化对比——板端实测结论）
-3. 33 点解码与逆映射手算验证
-4. 双栏结果图（左原图+FPS | 右黑底骨架）与 35 边拓扑说明
-5. 遮挡场景的 vis 过滤效果图
-6. 回答思考题：为什么 pose 用 127.5/128 而人脸用 [0,1]？z 坐标的语义？vis 过滤的意义？
+1. 深度图格式说明（uint16/mm/0 无效）与加载对比（UNCHANGED vs 默认）
+2. 归一化前后深度直方图或对比图
+3. 双栏可视化截图（左 RGB | 右 Depth 伪彩）
+4. 点击读深度记录表（≥5 个点：物体/背景/无效区）
+5. 反投影验证：手算 vs 程序输出对比
+6. 回答思考题：为什么深度用 uint16？反投影公式的物理意义？标定误差如何影响 3D 坐标？
 7. 实验心得与问题记录
 
 ---
@@ -533,6 +488,6 @@ graph LR
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/10_pose_landmark，45 项测试全绿，BlazePose 单模型 33 点 + 127.5/128 uint8 契约 + 35 边骨架 + RKNNLite NPU，模型已入库） |
-| v2.0 | 2026-08-19 | 知识点增强：4 个知识储备补充（姿态估计分类体系/33点索引/BlazePose架构对比、mean/std归一化契约/letterbox策略对比、逆映射数学推导/vis与presence语义、POSE_CONNECTIONS拓扑结构/vis过滤逻辑/MJPEG推流架构/fp16 vs int8量化/RKNNLite core_mask语义/实时管线时序/ROS话题约束）、6 个参考资源、2 个公式块（逆映射归一化坐标还原、letterbox缩放因子计算）、执行现象段、源码行号核实 |
-| v2.1 | 2026-08-21 | 步骤1 新增「配置参数速查表」：config/pose_config.yaml 全参数（model/backend/source/display/server）；标注 core_mask=0（板上 2 核 auto 最稳）、stream_name 已含 .mjpg 勿追加。表值经 load_config 实测核对 |
+| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/08_depth_3d_detection，24 用例全绿，uint16 深度加载 + jet 伪彩 + 点击读深度 + 内参反投影 + 双栏 MJPEG，板端验证通过） |
+| v2.0 | 2026-08-19 | 知识点增强：6 个「知识储备补充」小节（深度传感器原理与 RGB-D 对齐、IMREAD_UNCHANGED 与 min-max 归一化原理、伪彩映射原理与 JET 色带、坐标缩放还原与 ClickResult、针孔模型反投影公式推导与内参标定误差传递、ROS2 话题订阅与双栏合成）；4 个公式块（min-max 归一化、针孔正向投影、反投影公式、深度归一化）；Mermaid 流程图；执行现象段；行号基于源码核实 |
+| v2.1 | 2026-08-21 | 步骤 1 新增「配置参数速查表」：config/depth3d_config.yaml 全参数（depth/cam3d/source/display/server）；标注 depth.scale=0.001（mm→m）、invalid_value=0、cam3d 内参（HP60C 标定，ascam.yaml 来源，勿随意改）。表值经 config 实测核对 |

@@ -1,21 +1,20 @@
-## 实验3：基于HSV色彩空间的颜色识别实验（4h）
+## 实验3：基于OpenCV的多边形轮廓拟合实验（4h）
 
-> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition/`。⚠️ **注意**：课程目录名 "lab" 指实验编号，本实验实际使用 **HSV 色彩空间**（非 Lab 色彩空间）。对应课程内容：BGR→HSV 阈值掩膜 → 形态学开/闭 → 圆形轮廓标识 → 颜色名标注；可视化对齐车端 `visual_grasp` 双栏（左 RGB 栏 | 右 HSV Mask 栏）推流。单测 24/24 全绿，板端验证通过（约 50 FPS）。
+> ✅ **源码已核实** 本实验源码位于 `ros2_ws/src/xflz_eai_car1/vision/05_line_following/`。⚠️ **内容说明**：课程名义为「自主巡线」，实际内容 = 亚博课程「OpenCV应用——多边形轮廓」：不规则轮廓 → 拟合规则几何形状（凸包/多边形）并标注顶点数。纯 OpenCV 方案（用户指示：不参考 car1_app/line_following.py）。单测 21/21 全绿，板端验证通过。
 
 ### 1.1 关联知识点
 
-- 1.1.1 HSV色彩空间 > 原理 > HSV（色相/饱和度/明度）将颜色信息与光照强度解耦，比 RGB 更适合阈值分割；OpenCV 约定 H∈0-179、S/V∈0-255
-- 1.1.2 色彩阈值掩膜 > 流程 > `cv2.inRange` 生成二值掩膜；红色在 0/180 交界需 h2 第二段（环形色相处理）
-- 1.2.1 形态学运算 > 概念 > 开运算（先腐蚀后膨胀）去孤立噪点，闭运算（先膨胀后腐蚀）填小孔洞；核须奇数
-- 1.2.2 轮廓检测 > 流程 > `cv2.findContours` → 最小外接圆 `minEnclosingCircle`，按 min_area/min_radius/max_radius 过滤后取最大
-- 1.3.1 实时颜色识别 > 流程 > 摄像头取流 → HSV 转换 → 阈值掩膜 → 形态学 → 圆形轮廓 → 颜色名标注 → 双栏 MJPEG 推流
-- 1.3.2 阈值调参 > 流程 > `--tune` 模式提供 H/S/V 6 滑块实时调参，Ctrl+C 退出并打印当前阈值，直接写入 config
+- 1.1.1 图像二值化 > 流程 > 灰度 → 阈值（binary/adaptive）→ 反相 → 形态学开运算；`invert` 区分暗物亮底/亮物暗底
+- 1.2.1 轮廓提取 > 概念 > `cv2.findContours(RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)` 提取外部轮廓，按面积过滤（min_area=2000）
+- 1.2.2 凸包检测 > 原理 > `cv2.convexHull` 求点集最小凸包：填平凹槽，得到包围目标的最简外凸多边形
+- 1.3.1 多边形逼近 > 流程 > `cv2.approxPolyDP` 用 Douglas-Peucker 算法按 epsilon 简化多边形顶点数
+- 1.3.2 顶点标注 > 流程 > 检测结果按面积降序，绘制凸包多边形 + 黄点顶点标记 + 「n边形」标签
 
 ### 1.2 实验目标
 
-1. 掌握 HSV 色彩空间与 RGB 的转换原理，理解阈值分割的适用范围与局限 — 原理理解
-2. 实现摄像头实时采集、多色目标检测（红/蓝/绿）与颜色名标注 — 独立完成
-3. 掌握形态学运算与轮廓分析在目标提取中的作用，学会用 --tune 调参应对光照变化 — 迁移应用
+1. 掌握二值化、轮廓提取、凸包检测与多边形逼近的原理与方法 — 原理理解
+2. 实现不规则物体轮廓的规则几何拟合（凸包/多边形）与顶点数标注 — 独立完成
+3. 理解多边形拟合在机器人视觉中的应用（形状识别、抓取定位、导航避障）— 迁移应用
 
 ### 1.3 实验环境
 
@@ -23,51 +22,62 @@
 |------|------|
 | 硬件 | 具身智能实验箱 B2（XFLZ_EAI_B2_PRO，RK3576 SoC，6TOPS NPU，含 HP60C 深度相机） |
 | OS | Ubuntu 22.04 + ROS2 Humble（板载 ros2_venv） |
-| 核心库 | OpenCV、NumPy、PyYAML（纯 CPU 视觉管线，无需 NPU） |
-| 主入口 | `src/app.py`（图像/视频/相机 CLI + MJPEG 双栏流 + `--tune` 调参） |
+| 核心库 | OpenCV、NumPy（纯 CPU 视觉管线，无需 NPU） |
+| 主入口 | `src/app.py`（图像/视频/相机 CLI + MJPEG 流 + 每帧打印顶点数/面积） |
 
 ### 1.4 实验难度
 
-- 难度: ⭐ 验证性
-- 重点: HSV 阈值掩膜 + 形态学开/闭 + 圆形轮廓标识 + 颜色名标注
-- 难点: 红色跨 0/180 边界的 h2 环形处理；光照变化下的阈值鲁棒性
+- 难度: ⭐⭐ 设计性
+- 重点: 凸包检测 + approxPolyDP 多边形逼近 + 「n边形」标注
+- 难点: epsilon 参数对拟合精细度的影响；复杂背景下的二值化稳定性
 
 ### 1.5 实验现象
 
 **快速验证流程**：
 
-1. 进入项目目录：`cd ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition`
-2. 单元测试：`pytest tests/ -v`（24 用例全绿）
+1. 进入项目目录：`cd ~/ros2_ws/src/xflz_eai_car1/vision/05_line_following`
+2. 单元测试：`pytest tests/ -v`（21 用例全绿）
 3. 单图检测：`python src/app.py --image x.jpg --save out.jpg`
-   - 输出双栏图：左 RGB 栏（绿轮廓+黄框+红质心十字+颜色名）| 右 HSV Mask 栏（白匹配区）
+   - 输出：凸包多边形轮廓 + 黄点顶点 + 「n边形」标签；终端打印每轮廓顶点数/面积
 4. 相机实时（板上标准）：先起 ascamera 驱动，再 `python src/app.py --ros`
-   - MJPEG：`http://<板IP>:8080/lab_color.mjpg`（同双栏）
-5. 调参：`python src/app.py --tune 红色 --ros`，6 滑块实时调 H/S/V
-
-**执行现象**：
-- `pytest tests/ -v` 约 10-20 秒完成，终端输出 24 个用例全部 passed（涵盖 config 加载/校验、bgr_to_hsv 转换、range_mask 双段、morph_open/morph_close 核、largest_circle 过滤、detect_colors 管线、draw_detection 绘制、mask_view 渲染、auto_hsv_range 自动估计、app.py 主流程等）
-- `python src/app.py --image x.jpg --save out.jpg` 约 0.1 秒返回，终端无报错，当前目录生成 `out.jpg`（双栏拼接图）；若图中含红/蓝/绿球，左栏可见绿轮廓+黄框+红十字+颜色名，右栏白色掩膜覆盖对应区域
-- 板端 `--ros` 模式启动后，终端每帧打印 frame 编号，MJPEG 流 `http://<板IP>:8080/lab_color.mjpg` 可访问，双栏实时刷新，实测约 **50 FPS**（纯 CPU 管线）
-- `--tune 红色 --ros` 启动后弹出 `lab_tune` 窗口（6 滑块）和 `lab_view` 窗口（双栏预览），首帧自动估计阈值并预置滑块位置；Ctrl+C 退出终端打印当前 H/S/V 阈值
+   - MJPEG：`http://<板IP>:8080/polygon.mjpg`
+5. 黑底彩色模式：`python src/app.py --image x.jpg --save out_dark.jpg`（由 `config/line_config.yaml` 的 `display.colored_mode` 控制：`true`=黑底彩色轮廓+质心，`false`=原图叠加；默认 `true`，单图命令即输出黑底双栏图）
 
 ```bash
-# 进入实验03
-cd ~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
+# 进入实验3
+cd ~/ros2_ws/src/xflz_eai_car1/vision/05_line_following
 
 # 可选
 /home/iflytek/ros2_venv/bin/python -m pytest -v
 
-# 执行单图片推理（图片都在02_garbage_classification/images）
-python src/app.py --image image.jpg --save out.jpg
+# 运行程序 修改display.colored_mode中的配置再重新运行一次
+python src/app.py --image image.png --save out.jpg
+
+# 相机实时 需要结合实际config配置修改才能达到好的效果
+ros2 launch ascamera hp60c.launch.py        # 终端 1
+python src/app.py --detect --ros             # 终端 2
 ```
 
-**预期效果描述**：
-- 红/蓝/绿三种目标均能检出：圆形轮廓 + 窗口左下角颜色名正确
-- 右栏 Mask 图实时显示匹配区域（白色），与左栏轮廓对应
-- 板端实测约 50 FPS（纯 CPU 管线，无需 NPU）
-- 光照变化导致误检/漏检时，`--tune` 可实时修正阈值
+**执行现象**：
 
-![image-20260820102754705](assets/image-20260820102754705.png)
+- `pytest tests/ -v` 运行约 10-20 秒，输出 21 个用例全部 passed，覆盖 to_binary、find_contours、fit_polygon、detect_polygons、draw_polygons_dark 等函数的单元测试与集成测试
+- 黑底彩色模式（`display.colored_mode: true` 默认生效）：`out_dark.jpg` 显示纯黑背景上彩色多边形轮廓线 + 质心实心圆点，与其它实验的黑底风格一致
+
+**预期效果描述**：
+- 纸盒/水瓶/卡片等物体轮廓正确拟合成多边形，标注「四边形」「八边形」等正确
+- 调参影响：epsilon 越小顶点越多（拟合更精细）；use_hull=true 填平凹槽
+
+display.colored_mode: true
+
+<img src="assets/image-20260820135450778.png" alt="image-20260820135450778" style="zoom:50%;" />
+
+display.colored_mode: false
+
+<img src="assets/image-20260820135550076.png" alt="image-20260820135550076" style="zoom:50%;" />
+
+实时视频检测
+
+<img src="assets/image-20260820141003711.png" alt="image-20260820141003711" style="zoom: 50%;" />
 
 ### 1.6 实验步骤
 
@@ -75,444 +85,363 @@ python src/app.py --image image.jpg --save out.jpg
 
 ```mermaid
 graph LR
-    A[步骤1：HSV色彩空间认知] --> B[步骤2：阈值掩膜与红色环形处理]
-    B --> C[步骤3：形态学开闭运算]
-    C --> D[步骤4：圆形轮廓检测]
-    D --> E[步骤5：双栏可视化与推流]
-    E --> F[步骤6：--tune 调参]
-    F --> G[完成]
+    A[步骤1：二值化预处理] --> B[步骤2：轮廓提取与过滤]
+    B --> C[步骤3：凸包检测]
+    C --> D[步骤4：approxPolyDP逼近]
+    D --> E[步骤5：顶点标注与可视化]
+    E --> F[完成]
 ```
 
 ---
 
-#### 步骤1：HSV 色彩空间认知（阶段一：能运行，20min）
+#### 步骤1：二值化预处理（阶段一：能运行，20min）
 
-> 📌 本步骤对应源码：`src/preprocess.py` bgr_to_hsv（L36-38）
+> 📌 本步骤对应源码：`src/pipeline.py` to_binary
 
 **知识点讲解**：
 
-**HSV 与 RGB 的差异（1.1.1）**
-- **原理**：RGB 将颜色编码为三通道强度，受光照影响大（同一红色在明/暗处 R/G/B 值差异巨大）。HSV 把颜色拆为色相 H（0-179°，决定"是什么颜色"）、饱和度 S（0-255，颜色纯净度）、明度 V（0-255，亮度），**颜色信息与光照强度解耦**——阈值分割时只需限定 H 范围 + 适当放宽 S/V，即可在光照变化下稳定识别。`bgr_to_hsv()`（L36-38）一行 `cv2.cvtColor(BGR2HSV)` 完成转换。注意 OpenCV 的 H 范围是 0-179（非 0-360），这是与教科书最常混淆的点。
-- **源码对应**：`src/preprocess.py` L36-38（bgr_to_hsv）
+**二值化策略（1.1.1）**
+
+- **原理**：`to_binary()`（L25-38）把 BGR 图转为二值掩膜：灰度化 → 阈值分割 → 反相 → 形态学开运算。(1) 阈值方式可选 `binary`（全局固定阈值）或 `adaptive`（局部自适应——光照不均时更稳）；(2) `invert` 参数区分**暗物亮底**（true，默认：黑色物体在白底上，反相后物体为白）与**亮物暗底**（false）；(3) 形态学开运算去噪点。二值化质量直接决定后续轮廓提取的成败——阈值选错，背景噪声全变成"轮廓"。
+- **源码对应**：`src/pipeline.py` L25-38（to_binary：灰度 L26-28 / 阈值 L29-34 / 反相 L35 / 开运算 L37-38）
 
 **知识储备补充**：
 
-- **色彩空间背景**：RGB 是面向显示设备的加色混合模型——三个通道直接对应显示器的红/绿/蓝子像素亮度。在光照变化场景下，同一物体的 RGB 三通道值会同时漂移（变暗时 R/G/B 都下降），导致"同一颜色在不同光照下 RGB 值差异巨大"，阈值分割极不稳定。HSV 将颜色信息（H）与光照强度（V）分离：H 只取决于色相角度（与亮度无关），V 只反映明暗，S 反映颜色纯净度。这种分离使 HSV 成为颜色分割的首选空间——只需固定 H 范围，S/V 允许较大浮动，即可在光照变化下稳定识别。
-- **转换公式**：BGR→HSV 的数学定义。设 $R,G,B \in [0,1]$ 为归一化 BGR 三通道值，$V' = \max(R,G,B)$、$m = \min(R,G,B)$：
-$$
-  H = \begin{cases} 0 & \text{if } V' = m \\ 60 \times \left( \frac{G - B}{V' - m} \right) \bmod 360 & \text{if } V' = R \\ 60 \times \left( \frac{B - R}{V' - m} + 2 \right) \bmod 360 & \text{if } V' = G \\ 60 \times \left( \frac{R - G}{V' - m} + 4 \right) \bmod 360 & \text{if } V' = B \end{cases}
-$$
+- **背景与动机**：二值化是几乎所有传统计算机视觉管线的起点——将 256 级灰度图压缩为 0/1 二值掩膜，使后续轮廓提取只需处理连通域边界，计算复杂度从 O(W×H) 降至 O(N)（N=轮廓点数）。实验 05 与实验 03（HSV 颜色识别）的区别在于：实验 03 用 `cv2.inRange` 在 HSV 空间做颜色掩膜，而实验 05 用灰度阈值做通用二值化——前者针对特定颜色目标，后者适用于任意前景/背景分离场景。
+- **HSV 掩膜公式**：实验 03 中 `cv2.inRange(hsv, lower, upper)` 生成的二值掩膜可表示为：
 
-$$
-  S = \begin{cases} 0 & \text{if } V' = 0 \\ \frac{V' - m}{V'} & \text{if } V' > 0 \end{cases}
-$$
+  $$
+  \text{mask}(x,y) = \begin{cases} 255 & \text{if } H_l \le H(x,y) \le H_u \land S_l \le S(x,y) \le S_u \land V_l \le V(x,y) \le V_u \\ 0 & \text{otherwise} \end{cases}
+  $$
 
-$$
-  V = V'
-$$
+  其中 $H, S, V$ 分别为色调、饱和度、明度通道，$H_l, H_u$ 等为上下界。实验 05 的灰度阈值掩膜是其退化形式——仅约束单一亮度通道 $V$（灰度等价于 $V$）。
+- **形态学开运算语义**：开运算 = 先腐蚀后膨胀（`cv2.MORPH_OPEN`），其几何含义是"去掉比核小的亮区域"。椭圆核（`MORPH_ELLIPSE`）比矩形核更自然地保留圆形轮廓，是轮廓检测的推荐选择。核大小 `morph_kernel` 必须为奇数——偶数核会导致锚点偏移，腐蚀/膨胀不对称。
+- **参考资源**：OpenCV 官方文档 `cv2.threshold`、`cv2.adaptiveThreshold`；冈萨雷斯《数字图像处理》第 3 章（形态学处理）。
 
-OpenCV 内部将 $H$ 从 $[0°,360°)$ 映射到 $[0,179]$（uint8 存储，每个单位 = 2°），$S,V$ 从 $[0,1]$ 映射到 $[0,255]$。验证：纯红 $(R,G,B)=(255,0,0)$ → $V'=255,m=0$ → $H=60\times(0-0)/255=0$ → 映射后 $H=0$；$S=255/255=1$ → 映射后 $S=255$；$V=255$。即纯红 HSV = $(0,255,255)$，与实验中单像素验证一致。
-- **通道语义**：H（Hue，色相）决定"是什么颜色"——0°/179° 红色、60° 黄色、120° 绿色、180° 青色（OpenCV 中 180° 即 H=90）、240° 蓝色、300° 品红。S（Saturation，饱和度）决定颜色纯净度——0 为灰（无彩色），255 为纯色。V（Value，明度）决定亮度——0 为全黑，255 为最亮。三通道语义独立，使阈值分割直观："红球 H∈[0,15]∪[160,180] + S>100 + V>80"即可框定红色目标。
-- **参考资源**：OpenCV 官方文档 `cv2.cvtColor` COLOR_BGR2HSV 说明；Wikipedia "HSL and HSV" 条目（https://en.wikipedia.org/wiki/HSL_and_HSV）；《Digital Image Processing》（Gonzalez & Woods）第 6 章色彩空间。
+**配置参数速查表**（`config/line_config.yaml`，按区块分列）：
 
-![Conversion of BGR image to RGB image and HSV image Representation ...](assets/OIP.webp)
-
-**配置参数速查表**（`config/lab_config.yaml`，按区块分列）：
-
-| 区块 | 参数 | 类型 | 默认/示例 | 说明 |
-|------|------|------|-----------|------|
-| `colors` | 列表 | list | 红/绿/蓝 3 项 | 颜色定义表（每项 name+h/s/v，红色含 h2 环形第二段） |
-|`colors[]`|`name`|str|`红色`|显示名（窗口左下角）|
-|`colors[]`|`h`|list|`[0,15]`|H 通道 [min,max]（H∈0-179）|
-|`colors[]`|`s`/`v`|list|`[100,255]`/`[80,255]`|S 饱和度/V 明度范围|
-|`colors[]`|`h2`|list|`[160,180]`|H 环形第二段（红色在 0/180 交口；仅红色用）|
-|`morph`|`open_kernel`|int|`5`|开运算核（去噪点），奇数|
-|`morph`|`close_kernel`|int|`9`|闭运算核（填孔洞），奇数|
-|`morph`|`open_iter`/`close_iter`|int|`1`|形态学迭代次数|
-|`contour`|`min_area`|int|`500`|最小轮廓面积（滤噪）|
-|`contour`|`min_radius`/`max_radius`|int|`10`/`400`|外接圆半径范围|
-|`camera`|`index`|int|`0`|VideoCapture 索引（V4L2 回退用）|
-|`camera`|`width`/`height`|int|`640`/`480`|取流分辨率|
-|`source`|`ros.rgb_topic`|str|`/ascamera_hp60c/.../rgb0/image`|相机话题（勿 remap）|
+|块行|参数|类型|默认/示例|说明|
+|---|---|---|---|---|
+|`preprocess`|`threshold_mode`|str|`adaptive`|binary/adaptive 阈值模式|
+|`preprocess`|`threshold_value`|int|`50`|阈值（adaptive 为基值）|
+|`preprocess`|`invert`|bool|`false`|**亮物暗底 false；暗物亮底改 true**（板上实测）|
+|`preprocess`|`morph_kernel`|int|`3`|形态学核（去噪，奇数；过大侵蚀小轮廓）|
+|`contour`|`min_area`|int|`100`|最小轮廓面积（滤噪）|
+|`polygon`|`approx_epsilon`|float|`0.02`|approxPolyDP 精度（×弧长）|
+|`polygon`|`use_hull`|bool|`true`|先凸包再近似|
+|`camera`|`index`/`width`/`height`|int|`0`/`640`/`480`|相机源配置|
+|`source`|`ros.rgb_topic`|str|`/ascara_hp60c/.../rgb0/image`|相机话题（勿 remap）|
 |`source`|`ros.timeout`|float|`5.0`|首帧等待秒数|
-|`display`|`show`|bool|`false`|本地窗口（板上置 false 走 MJPEG）|
-|`display`|`window_name`|str|`lab_color`|窗口名|
-
-> **说明**：`colors`+`morph`+`contour` 为核心（颜色阈值与形态学）；`camera`/`source`/`display` 为运行环境（同 exp01/02 模板）。HSV 阈值须按环境光照实标定。
-
-**操作步骤**：
-
-1. 单像素验证 RGB→HSV 转换：
-   ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   PYTHONPATH=./src python -c "
-   import cv2, numpy as np
-   red = np.uint8([[[0, 0, 255]]])          # BGR 纯红
-   hsv = cv2.cvtColor(red, cv2.COLOR_BGR2HSV)
-   print('纯红 HSV:', hsv[0][0])             # 预期 H≈0, S≈255, V≈255"
-   ```
-2. 用一张彩色图可视化 HSV 三通道（H/S/V 分别显示），理解各通道语义
-
-<img src="assets/image-20260820103851330.png" alt="image-20260820103851330" style="zoom: 67%;" />
-
-**易错点**：
-
-- ⚠️ H 范围 0-179（OpenCV）≠ 0-360（教科书），阈值写错直接全黑
-
-**流程图**：
-
-```mermaid
-flowchart LR
-    A[输入 BGR 帧] --> B[bgr_to_hsv<br/>cv2.cvtColor BGR2HSV]
-    B --> C[HSV 三通道<br/>H 色相 / S 饱和度 / V 明度<br/>颜色与光照强度解耦]
-    C --> D{单像素验证纯红}
-    D --> E["(255,0,0) BGR<br/>→ HSV = [0 255 255]"]
-    C --> F[阈值分割只需限定 H 范围<br/>S/V 适当放宽]
-```
-
----
-
-#### 步骤2：阈值掩膜与红色环形处理（阶段一：能运行，25min）
-
-> 📌 本步骤对应源码：`src/preprocess.py` range_mask（L41-51）、`src/config.py` ColorSpec
-
-**知识点讲解**：
-
-**inRange 阈值掩膜（1.1.2）**
-- **原理**：`cv2.inRange(hsv, lower, upper)` 对每个像素判断是否落在阈值区间，生成二值掩膜（匹配=255，不匹配=0），是颜色分割的核心。**红色特殊**：红色在 H 环形色相中位于 0 附近，跨越 0/180 边界（H≈0 和 H≈179 都是红），单一区间 `[0,10]` 会漏掉 H≈179 的偏紫红。`ColorSpec` 支持 `h2` 第二段（如 `h=[0,10], h2=[170,179]`），`range_mask()`（L41-51）把两段掩膜**按位或**合并，解决红色环形问题——车端 visual_grasp 同款方案。阈值配置集中管理：`config/lab_config.yaml` 中每种颜色一组 HSV 范围 + 形态学核 + 轮廓过滤参数。
-- **源码对应**：`src/preprocess.py` L41-51（range_mask，h2 并入 L46-49）；`src/config.py` ColorSpec（h/s/v/h2/过滤参数）
-
-**知识储备补充**：
-
-- **inRange 掩膜数学定义**：`cv2.inRange` 对每个像素位置 $(u,v)$ 执行逐通道范围判断：
-$$
-  M(u,v) = \begin{cases} 255 & \text{if } L_h \leq H(u,v) \leq U_h \;\wedge\; L_s \leq S(u,v) \leq U_s \;\wedge\; L_v \leq V(u,v) \leq U_v \\ 0 & \text{otherwise} \end{cases}
-$$
-
-其中 $(L_h, U_h)$、$(L_s, U_s)$、$(L_v, U_v)$ 分别为 H/S/V 的上下限阈值。输出为单通道 uint8 图像（255 = 匹配，0 = 不匹配），后续形态学运算基于此二值图。
-- **红色环形处理**：色相 H 是角度量，0° 与 360°（OpenCV 中 180）重合。红色占据色相环两端：$H \in [0°,10°]$ 和 $H \in [340°,360°]$，对应 OpenCV 的 $H \in [0,5]$ 和 $H \in [170,179]$。单一区间 $[0,5]$ 只覆盖色相环的一端，偏紫红（$H \approx 170$）的目标会漏检。`range_mask`（L46-49）的 h2 并入逻辑：
-
-  $$
-  M_{\text{red}} = M_{\text{seg1}} \lor M_{\text{seg2}} = \text{inRange}(\text{seg1}) \;\texttt{bitwise\_or}\; \text{inRange}(\text{seg2})
-  $$
-
-  两段掩膜按位或合并后，红色目标的两个 H 段均被覆盖。`lab_config.yaml` 中红色配置为 `h: [0,15], h2: [160,180]`。
-- **阈值配置管理**：`config/lab_config.yaml` 把每种颜色的 HSV 阈值、形态学核、轮廓过滤参数集中管理，代码侧通过 `load_config` + `load_colors` 读取。这使"调参"只需改 YAML 文件，无需触碰代码——是配置驱动设计的标准实践。
-- **参考资源**：OpenCV 官方文档 `cv2.inRange`；《Learning OpenCV 3》第 10 章阈值与分割；车端 visual_grasp 方案参考（同款 h2 环形处理）。
+|`display`|`show`|bool|`false`|本地窗口|
+|`display`|`window_name`|str|`polygon_contour`|窗口名|
+|`display`|`colored_mode`|bool|`true`|true=黑底彩色轮廓+质心；false=原图红轮廓|
+> **说明**：`preprocess.invert` 与 `polygon.use_hull` 为不同视觉场景关键开关；`colored_mode` 决定画布风格。
 
 **操作步骤**：
 
-1. 查看 `config/lab_config.yaml` 中红/蓝/绿三色的 HSV 阈值，找出红色的 h2 第二段
-2. 用测试图验证单色掩膜效果：
+1. 查看 `config/line_config.yaml` 的 threshold 配置（invert / threshold_mode / morphology kernel）
+2. 用单图验证二值化效果：
    ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/05_line_following
+   
    PYTHONPATH=./src python -c "
    import cv2
-   from preprocess import bgr_to_hsv, range_mask
-   from config import load_config, load_colors
-   cfg = load_config('config/lab_config.yaml')
-   colors = load_colors(cfg)
-   img = cv2.imread('image.jpg')
-   hsv = bgr_to_hsv(img)
-   for c in colors:
-       mask = range_mask(hsv, c)
-       print(c.name, '匹配像素:', int(mask.sum()/255))"
+   from pipeline import to_binary
+   from config import load_config
+   cfg = load_config('config/line_config.yaml')
+   img = cv2.imread('image.png')
+   mask = to_binary(img, cfg)
+   cv2.imwrite('mask_debug.jpg', mask)
+   print(f'白像素占比: {mask.mean()/255:.3f}')
+   "
    ```
-3. 尝试删除红色 h2 第二段，观察偏红目标是否漏检
+3. 切换 invert / threshold_mode，观察掩膜变化
+
+```bash
+白像素占比: 0.673
+```
+
+<img src="assets/image-20260820141504801.png" alt="image-20260820141504801" style="zoom: 50%;" />
 
 **易错点**：
 
-- ⚠️ 红色不用 h2 会漏检偏紫红目标——红色必须双段处理
+- ⚠️ invert 设反 → 背景变前景，轮廓全错（暗物亮底=true 默认）
+- ⚠️ 光照不均用 adaptive；强反光需先预处理
 
 **流程图**：
 
 ```mermaid
 flowchart LR
-    A[输入 HSV 帧<br/>bgr_to_hsv] --> B{配置 h2?<br/>红色跨 H=0/180 环形}
-
-    B -- 否 普通颜色 --> C["inRange 整段 [h,s,v] 区间<br/>二值掩膜 M 255/0"]
-    B -- 是 红色段1 --> D["inRange h=[0,15]<br/>掩膜 M_seg1"]
-    B -- 是 红色段2 --> E["inRange h2=[160,180]<br/>掩膜 M_seg2"]
-    D --> F[按位或合并<br/>M_red = M_seg1 OR M_seg2]
+    A[输入 BGR 帧] --> B[灰度化]
+    B --> C{threshold_mode}
+    C -->|binary 全局固定阈值| D[threshold 二值化]
+    C -->|adaptive 局部自适应| E[adaptiveThreshold<br/>光照不均更稳]
+    D --> F{invert 反相}
     E --> F
+    F -->|true 暗物亮底| G[前景转白]
+    F -->|false 亮物暗底| H[保持原二值]
+    G --> I[形态学开运算<br/>morph_kernel 去噪点]
+    H --> I
+    I --> J[二值掩膜<br/>供轮廓提取]
 
-    C --> G[阈值配置集中管理<br/>config lab_config.yaml<br/>ColorSpec via load_colors]
-    F --> G
-
-    style F fill:#ffe0e0,stroke:#c00,stroke-width:2px
-    style B fill:#e8f0ff,stroke:#448,stroke-width:1px
-    style G fill:#fff3d6,stroke:#b90,stroke-width:1px
+    style C fill:#e8f0ff,stroke:#448,stroke-width:1px
 ```
 
 ---
 
-#### 步骤3：形态学开/闭运算（阶段二：能理解，25min）
+#### 步骤2：轮廓提取与面积过滤（阶段一：能运行，20min）
 
-> 📌 本步骤对应源码：`src/preprocess.py` morph_open（L53-56）/ morph_close（L59-62）
+> 📌 本步骤对应源码：`src/pipeline.py` find_contours
 
 **知识点讲解**：
 
-**形态学运算原理（1.2.1）**
-
-- **原理**：二值掩膜常含噪点（误检像素）与孔洞（目标内部漏检）。**开运算** = 先腐蚀后膨胀：腐蚀先"吃掉"孤立小噪点，膨胀再恢复目标尺寸，结果**去噪点**；**闭运算** = 先膨胀后腐蚀：膨胀先"填平"目标内部小孔洞，腐蚀恢复尺寸，结果**填孔洞**。核用 `cv2.MORPH_ELLIPSE` 椭圆核（对圆形目标最友好），核尺寸须为奇数（`open_kernel=5` 去噪点、`close_kernel=9` 填孔洞，L53-62）。形态学处理显著提升后续轮廓检测的稳定性——噪点不除会干扰"最大圆"判定，孔洞不填会低估目标面积。
-- **源码对应**：`src/preprocess.py` L53-56（morph_open）、L59-62（morph_close）
+**轮廓提取（1.2.1）**
+- **原理**：`cv2.findContours(mask, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)` 提取二值掩膜的连通域边界。`RETR_EXTERNAL` 只取**最外层轮廓**（跳过内孔），`CHAIN_APPROX_SIMPLE` 压缩轮廓点（只保留端点，减少存储）。`find_contours()`（L41-44）随后按 `min_area=2000` 过滤小噪点轮廓，**按面积降序**返回——面积是区分"目标"与"噪声"的第一道闸门。
+- **源码对应**：`src/pipeline.py` L41-44（find_contours：findContours L43 / 面积过滤 L44）
 
 **知识储备补充**：
 
-- **腐蚀与膨胀的数学定义**：设二值图像 $A$、结构元素（核）$B$，腐蚀和膨胀分别为：
-
-  $$
-  A \ominus B = \{ x \mid B_x \subseteq A \} \qquad \text{（腐蚀：核内所有像素均为前景才保留）}
-  $$
-
-  $$
-  A \oplus B = \{ x \mid B_x \cap A \neq \varnothing \} \qquad \text{（膨胀：核内任一像素为前景即置为前景）}
-  $$
-
-  其中 $B_x$ 为核 $B$ 平移到位置 $x$ 的集合。腐蚀"收缩"前景区域，膨胀"扩张"前景区域。开运算 $A \circ B = (A \ominus B) \oplus B$ 先腐蚀后膨胀——腐蚀消除面积小于核的小噪点，膨胀恢复剩余前景的原始尺寸；闭运算 $A \bullet B = (A \oplus B) \ominus B$ 先膨胀后腐蚀——膨胀填平面积小于核的小孔洞，腐蚀恢复轮廓。
-- **结构元素选择**：`cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k,k))` 生成 $k \times k$ 椭圆核（近似圆形），对本实验的圆形目标最友好。矩形核易在对角方向引入方块效应，十字核只处理 4-连通方向。核尺寸须为奇数——偶数核会导致锚点（anchor）不对称，OpenCV 行为未定义（实际可能报错或产生偏移）。默认 `open_kernel=5`（约 2 像素半径的噪点可去）、`close_kernel=9`（约 4 像素半径的孔洞可填）。
-- **形态学参数对检测的影响**：`open_kernel` 过小去不掉稍大的噪点，过大吞掉小目标（面积小于核的前景全被腐蚀）；`close_kernel` 过小填不了稍大的孔洞，过大将相邻目标误连。`open_iter`/`close_iter` 控制迭代次数——多次迭代等价于使用更大的核（开运算多次迭代 = 腐蚀后膨胀交替重复，每次扩大效果范围）。
-- **参考资源**：OpenCV 官方文档 `cv2.morphologyEx` / `cv2.getStructuringElement`；《Digital Image Processing》（Gonzalez & Woods）第 9 章形态学图像处理。
-
-![图像形态学运算之图像开闭运算 含python实现_开闭运算图片-CSDN博客](assets/format,png-1787193812094-8.png)
+- **轮廓检索模式**：`RETR_EXTERNAL`（实验所用）只返回最外层轮廓，忽略内孔（如甜甜圈的中间洞）。若需同时检测内外轮廓，可换 `RETR_TREE`（保留层级树）或 `RETR_CCOMP`（两级结构）。实验 05 只关心物体外边界，`RETR_EXTERNAL` 足够且效率最高。
+- **CHAIN_APPROX_SIMPLE 压缩**：该模式对水平/垂直/对角线段只保留端点——一条水平边 100 个连续点被压缩为 2 个端点，轮廓存储量降低 90%+。后续 `approxPolyDP` 只需处理端点，计算更高效。对比 `CHAIN_APPROX_NONE`（保留所有点）在大轮廓下无信息增益但占内存。
+- **面积过滤语义**：`min_area` 是面积阈值（像素²），而非轮廓点数。面积 = 轮廓围成区域的像素计数（`cv2.contourArea` 用叉积公式）。实验 05 默认 `min_area=100`（`line_config.yaml`），而实验 01 的 2000 是因为工业缺陷框本身较大。`min_area` 需按实际目标尺度标定——设太小会混入噪点轮廓，设太大会丢失小目标。
+- **参考资源**：OpenCV 官方文档 `cv2.findContours`（检索模式与近似方法对比）；Suzuki et al., *Topological structural analysis of digitized binary images by border following*（1985，findContours 算法原型）。
 
 **操作步骤**：
 
-1. 对比形态学处理前后的掩膜：
+1. 打印检测到的轮廓数量与面积：
    ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/05_line_following
+   
    PYTHONPATH=./src python -c "
-   import cv2, numpy as np
-   from preprocess import bgr_to_hsv, range_mask, morph_open, morph_close
-   from config import load_config, load_colors
-   cfg = load_config('config/lab_config.yaml')
-   colors = load_colors(cfg)
-   hsv = bgr_to_hsv(cv2.imread('image.jpg'))
-   raw = range_mask(hsv, colors[0])
-   opened = morph_open(raw)
-   closed = morph_close(opened)
-   print('原始像素:', int(raw.sum()/255), '→ 开运算后:', int(opened.sum()/255), '→ 闭运算后:', int(closed.sum()/255))"
+   import cv2
+   from pipeline import to_binary, find_contours
+   from config import load_config
+   cfg = load_config('config/line_config.yaml')
+   mask = to_binary(cv2.imread('image.png'), cfg)
+   conts = find_contours(mask, cfg['contour']['min_area'])
+   for i, c in enumerate(conts):
+       print(f'轮廓{i}: 面积={cv2.contourArea(c):.0f} 点数={len(c)}')"
    ```
-2. 修改 config 中的 kernel 尺寸（改为偶数），观察报错或行为异常——理解"核须奇数"约束
-3. 思考：开运算先腐蚀后膨胀，为什么能去噪点而不是扩大空洞？
+2. 调整 min_area，观察小噪点是否被过滤
+
+```bash
+轮廓0: 面积=136 点数=28
+轮廓1: 面积=134 点数=42
+轮廓2: 面积=193 点数=28
+轮廓3: 面积=339 点数=19
+轮廓4: 面积=417 点数=39
+轮廓5: 面积=2438 点数=309
+......后续省略
+```
 
 **易错点**：
-
-- ⚠️ 核尺寸必须奇数（偶数核 OpenCV 报错或行为未定义）
-- ⚠️ 核过大过小都影响效果：过大吞掉小目标，过小去不掉噪点
+- ⚠️ min_area 过小 → 噪声轮廓混入；过大 → 小目标丢失
 
 **流程图**：
 
 ```mermaid
 flowchart LR
-    A[二值掩膜<br/>含噪点 + 孔洞] --> B[开运算 morph_open<br/>先腐蚀后膨胀<br/>open_kernel=5 去孤立噪点]
-    B --> C[闭运算 morph_close<br/>先膨胀后腐蚀<br/>close_kernel=9 填小孔洞]
-    C --> D[干净掩膜<br/>供轮廓检测]
+    A[二值掩膜] --> B["findContours<br/>RETR_EXTERNAL 最外层<br/>CHAIN_APPROX_SIMPLE 压缩端点"]
+    B --> C["面积过滤 min_area<br/>contourArea 叉积公式"]
+    C --> D{面积 ≥ min_area?}
+    D -->|否| X[丢弃 噪声轮廓]
+    D -->|是| E[按面积降序排列<br/>目标优先]
+    E --> F[轮廓列表<br/>供多边形拟合]
 
-    style B fill:#e8ffe8,stroke:#282,stroke-width:1px
-    style C fill:#e8ffe8,stroke:#282,stroke-width:1px
+    style B fill:#e8f0ff,stroke:#448,stroke-width:1px
 ```
 
 ---
 
-#### 步骤4：圆形轮廓检测（阶段二：能理解，25min）
+#### 步骤3：凸包检测（阶段二：能理解，25min）
 
-> 📌 本步骤对应源码：`src/preprocess.py` largest_circle（L65-79）
+> 📌 本步骤对应源码：`src/pipeline.py` fit_polygon
 
 **知识点讲解**：
 
-**轮廓分析提取目标（1.2.2）**
-
-- **原理**：形态学处理后的掩膜包含目标区域，`cv2.findContours` 提取所有连通域轮廓，对每个轮廓 `cv2.minEnclosingCircle` 求最小外接圆（圆心+半径）。`largest_circle()`（L65-79）按 `min_area`（面积过滤噪点）、`min_radius/max_radius`（限目标尺寸范围）过滤后**取面积最大的圆**作为该颜色的目标。`detect_colors()`（L93-107）对每种颜色执行完整管线：掩膜 → 开/闭 → 最大圆，输出携带该色掩膜的 `ColorDetect`（供双栏绘制）。这是"阈值分割 + 形态学 + 几何分析"的经典目标提取链路。
-- **源码对应**：`src/preprocess.py` L65-79（largest_circle）、L93-107（detect_colors）
+**凸包原理（1.2.2）**
+- **原理**：凸包（convex hull）是包围点集的最小凸多边形——所有点都在其内部或边界上。对不规则轮廓（如带凹槽的纸盒、缺角卡片），`cv2.convexHull(contour)` 返回**填平凹槽**的外凸边界。这在形状识别中有特殊价值：判断轮廓是否凸（`cv2.isContourConvex` 可辅助分类），以及把不规则目标规整为可匹配的凸形状。`use_hull=true`（默认）启用凸包——vendor 语义；`false` 保留凹形细节。
+- **源码对应**：`src/pipeline.py` fit_polygon（convexHull 调用，use_hull 分支）
 
 **知识储备补充**：
 
-- **findContours 原理**：`cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)` 提取二值掩膜的外轮廓。`RETR_EXTERNAL` 只检索最外层轮廓（忽略嵌套），`CHAIN_APPROX_SIMPLE` 压缩水平/垂直/对角线段为端点，减少存储。输出为轮廓点集列表，每个轮廓是 $N \times 1 \times 2$ 的坐标数组。
-- **最小外接圆**：`cv2.minEnclosingCircle(cnt)` 基于 Welzl 算法在 $O(n)$ 期望时间内求解最小包围圆——给定轮廓点集，找到面积最小的圆包含所有点。返回 `(圆心(cx,cy), 半径radius)`。相比最小外接矩形（`boundingRect`），最小外接圆对圆形目标更紧凑，不受旋转影响，是本实验"圆球检测"的自然选择。
-- **轮廓过滤参数语义**：`min_area=500`（`lab_config.yaml`）过滤面积 < 500 像素的连通域——这些通常是噪点或极远距离的小目标；`min_radius=10` / `max_radius=400` 限制外接圆半径范围——太小（<10px）为噪点，太大（>400px）可能是误检的大片背景。三个参数需按实际摄像头分辨率和目标距离标定，是"阈值分割 + 几何约束"双重过滤的核心。
-- **取最大圆的策略**：`largest_circle`（L65-79）遍历所有满足过滤条件的轮廓，保留面积最大的圆。这假设画面中每种颜色只有一个主目标——若需多目标计数，可修改为返回全部满足条件的圆列表（扩展方向 1）。
-- **参考资源**：OpenCV 官方文档 `cv2.findContours` / `cv2.minEnclosingCircle`；Welzl 算法论文 "Smallest enclosing disks (balls and ellipsoids)"（Welzl, 1991）。
+- **凸包数学定义**：给定点集 $P = \{p_1, p_2, \ldots, p_n\} \subset \mathbb{R}^2$，其凸包 $\text{conv}(P)$ 定义为包含 $P$ 的最小凸集：
+
+  $$
+  \text{conv}(P) = \left\{ \sum_{i=1}^{n} \lambda_i p_i \;\middle|\; \lambda_i \ge 0,\; \sum_{i=1}^{n} \lambda_i = 1 \right\}
+  $$
+
+  即所有点的凸组合（convex combination）构成的集合。几何上，凸包等价于"用橡皮筋围住所有点后自然收紧形成的多边形"。`cv2.convexHull` 返回的顶点按逆时针排列，保证后续 `arcLength` 和 `approxPolyDP` 的正确性。
+- **凸包 vs 原轮廓的信息损失**：凸包把凹槽"填平"——L 形物体被包成矩形，U 形物体被包成矩形或梯形。这意味着凸包丢失了凹形结构信息（如 U 形的"缺口"）。`use_hull=true` 是本项目 vendor 的默认语义（先凸包再逼近），适合"忽略凹槽、只关注整体外轮廓"的场景；若需保留凹形细节（如识别字母 "C"），应设 `use_hull=false`。
+- **参考资源**：OpenCV 官方文档 `cv2.convexHull`；Preparata & Shamos, *Computational Geometry: An Introduction*（凸包算法经典教材，Graham scan / Chan's algorithm）。
 
 **操作步骤**：
 
-1. 运行单测验证轮廓逻辑：
+1. 用带凹槽的物体（如 U 形纸片）测试：
    ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   PYTHONPATH=./src PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_preprocess.py -v
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/05_line_following
+   
+   # 图片需自带然后修改图片路径
+   PYTHONPATH=./src python -c "
+   import cv2
+   from pipeline import to_binary, find_contours, fit_polygon
+   from config import load_config
+   cfg = load_config('config/line_config.yaml')
+   mask = to_binary(cv2.imread('u_shape.jpg'), cfg)
+   c = find_contours(mask, cfg['contour']['min_area'])[0]
+   hull = fit_polygon(c, 0.02, use_hull=True)
+   raw = fit_polygon(c, 0.02, use_hull=False)
+   print('凸包顶点数:', len(hull), '| 原轮廓简化顶点数:', len(raw))"
    ```
-2. 修改 config 的 min_area/min_radius，观察小噪点目标是否被过滤、大目标是否被误滤
-3. 思考：为什么用"最小外接圆"而非"外接矩形"？对本实验的圆形目标哪个更稳？
+2. 对比 use_hull=true/false 的拟合差异（凹槽被填平 vs 保留）
+3. 思考：凸包在哪些场景有用？哪些场景反而有害？
 
 **易错点**：
-
-- ⚠️ min_area 过小 → 噪点被当目标；过大 → 小目标漏检——需按实际画面调
-- ⚠️ 掩膜残留小连通域时最大圆判定会错——形态学开运算必须前置
+- ⚠️ use_hull 语义与 vendor 对齐（true=填平凹槽）；需要凹形细节时设 false
 
 **流程图**：
 
 ```mermaid
 flowchart LR
-    A[干净掩膜] --> B[findContours<br/>RETR_EXTERNAL 提取外轮廓]
-    B --> C[逐轮廓 minEnclosingCircle<br/>最小外接圆 圆心+半径]
-    C --> D{min_area 面积<br/>min_radius/max_radius 过滤}
-    D -->|通过过滤| E[取面积最大圆<br/>largest_circle]
-    E --> F[ColorDetect<br/>中心+半径+面积+掩膜]
-    E --> G[携带该色掩膜 供双栏绘制]
+    A[原始轮廓<br/>可能带凹槽] --> B{use_hull 凸包?}
+    B -->|true 默认| C["cv2.convexHull<br/>最小外凸多边形 填平凹槽"]
+    B -->|false| D[保留凹形细节<br/>跳过凸包]
+    C --> E[简化形状<br/>如 U形→矩形]
+    D --> E
+    E --> F[凸多边形点集<br/>供 approxPolyDP 逼近]
+
+    style B fill:#e8f0ff,stroke:#448,stroke-width:1px
 ```
 
 ---
 
-#### 步骤5：双栏可视化与 MJPEG 推流（阶段三：能改造，30min）
+#### 步骤4：approxPolyDP 多边形逼近（阶段二：能理解，30min）
 
-> 📌 本步骤对应源码：`src/app.py` process_frame（L25-31）、dual_view（L34-37）；`src/preprocess.py` draw_detection（L109-125）/ mask_view（L127-135）
+> 📌 本步骤对应源码：`src/pipeline.py` fit_polygon
 
 **知识点讲解**：
 
-**visual_grasp 风格双栏显示（1.3.1）**
-- **原理**：车端 `visual_grasp` 采用**双栏布局**：左栏 RGB 原图上叠加检测结果（`draw_detection`，L109-125：绿轮廓 + 黄外接框 + 红质心十字 + 颜色名），右栏 HSV Mask 图（`mask_view`，L127-135：白=匹配区域 + 绿质心十字 + 青圆）。双栏并排让学习者**同时看到"原图结论"与"处理依据"**——掩膜栏直观展示阈值分割效果，是调参与排查误检的利器。`app.py` 组织取流（--image/--video/--camera/--ros）→ detect_colors → 双栏合成 → MJPEG 推流（`http://<板IP>:8080/lab_color.mjpg`）。
-- **源码对应**：`src/preprocess.py` L109-125（draw_detection）、L127-135（mask_view）；`src/app.py` L25-31（process_frame）、L34-37（dual_view）
+**Douglas-Peucker 算法（1.3.1）**
+- **原理**：`cv2.approxPolyDP(shape, epsilon_ratio * peri, True)` 用 **Douglas-Peucker 算法**简化多边形：从首尾两点连直线，找离直线最远的点，若距离 > epsilon 则递归细分，否则舍去中间点。`epsilon = epsilon_ratio × 周长` 使简化与尺寸无关——epsilon_ratio 越大简化越狠（顶点越少），越小越精细（顶点越多）。典型值 0.02：四边形→4 顶点、五边形→5 顶点、圆→8~16 顶点。拟合结果是「n边形」标注的依据——`n_vertices = len(approx)`。
+- **源码对应**：`src/pipeline.py` fit_polygon（approxPolyDP，epsilon_ratio 参数）
 
 **知识储备补充**：
 
-- **双栏合成逻辑**：`dual_view`（app.py L34-37）用 `np.hstack` 水平拼接左栏（RGB 原图+标注）和右栏（Mask 灰度→BGR），中间插入 2 像素宽的绿色分隔线（`gap[:,:,1]=255`）。输出为单张 BGR 图像，同时用于本地窗口显示（`cv2.imshow`）和 MJPEG 推流（`server.set_frame`）。这种"一张图两个视角"的设计让学习者一眼看到"检测结论（左）"与"分割依据（右）"的对应关系。
-- **MJPEG 推流原理**：MJPEG（Motion JPEG）将每帧编码为独立 JPEG 图像，通过 HTTP multipart 流式推送。浏览器访问 `http://<板IP>:8080/lab_color.mjpg` 即可实时查看——无需安装任何客户端，兼容所有现代浏览器。`MjpegServer`（mjpeg_server.py）在后台线程监听 8080 端口，`process_frame` 每帧调用 `server.set_frame(view)` 更新推送缓冲区。
-- **检测标注语义**：`draw_detection`（L109-125）的绘制元素——绿轮廓（`cv2.drawContours`，绿色=检测到的区域边界）、黄外接框（`cv2.rectangle`，黄色=boundingRect 矩形）、红质心十字（`cv2.drawMarker`，红色十字=外接圆圆心）、颜色名文字（`cv2.putText`，红色文字）——每种元素传递不同信息，便于学习者区分轮廓边界、矩形范围、质心位置。
-- **参考资源**：OpenCV 官方文档 `cv2.drawContours` / `cv2.rectangle` / `cv2.drawMarker` / `cv2.putText`；MJPEG 协议 RFC 2435（JPEG 格式）与 HTTP multipart 流模式。
+- **Douglas-Peucker 算法递归原理**：该算法（1973）的核心是自顶向下的递归细分——给定多边形的首尾两点 $p_s, p_e$，遍历所有中间点找到距离线段 $\overline{p_s p_e}$ 最远的点 $p_{\max}$：
+
+  $$
+  d(p_{\max}, \overline{p_s p_e}) = \max_{p_i} \frac{|(p_e - p_s) \times (p_s - p_i)|}{\|p_e - p_s\|}
+  $$
+
+  其中 $\times$ 为二维叉积（绝对值除以底边长即点到直线距离）。若 $d(p_{\max}) > \varepsilon$（epsilon = epsilon_ratio × 周长），则 $p_{\max}$ 保留为顶点，递归处理 $[p_s, p_{\max}]$ 和 $[p_{\max}, p_e]$ 两段；否则中间点全部丢弃。时间复杂度 $O(n \log n)$（平均），最坏 $O(n^2)$。
+- **epsilon 语义**：`epsilon = epsilon_ratio × 周长`（`fit_polygon` L55-56 中 `epsilon_ratio * peri`）。这意味着 epsilon 随轮廓尺寸等比缩放——同一 ratio 下，大物体和小物体的简化程度一致，调参不需按物体尺寸手动调整。典型 ratio 范围：0.005（精细，保留细节）→ 0.02（默认，适中）→ 0.05（粗糙，只留大特征）→ 0.1（极粗糙，圆→三角形）。
+- **圆的多边形逼近**：圆没有角点，Douglas-Peucker 会保留等间距的"伪角点"来近似弧线。epsilon_ratio=0.02 时圆通常被拟合为 8~16 边形——这正是实验中"≥8 近似圆"分类阈值的来源。顶点数随 ratio 变化的趋势：ratio 越小顶点越多（逼近圆弧），越大顶点越少（圆→三角形→直线）。
+- **参考资源**：Douglas & Peucker, *Algorithms for the reduction of the number of points required to represent a digitized line or its caricature*（1973，原始论文）；OpenCV 官方文档 `cv2.approxPolyDP`。
 
 **操作步骤**：
 
-1. 单图双栏输出：
+1. 对同一物体用不同 epsilon_ratio 测试：
    ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   python src/app.py --image image.jpg --save out.jpg
-   # out.jpg 为双栏：左原图标注 | 右 HSV Mask
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/05_line_following
+   
+   # 图片需自带然后修改图片路径
+   PYTHONPATH=./src python -c "
+   import cv2
+   from pipeline import to_binary, find_contours, fit_polygon
+   from config import load_config
+   cfg = load_config('config/line_config.yaml')
+   mask = to_binary(cv2.imread('card.jpg'), cfg)
+   c = find_contours(mask, cfg['contour']['min_area'])[0]
+   for eps in [0.005, 0.02, 0.05, 0.1]:
+       p = fit_polygon(c, eps)
+       print(f'epsilon_ratio={eps}: {len(p)}边形')"
    ```
+2. 观察 epsilon 从 0.005→0.1 的顶点数变化（4→4→4→3 或类似），理解"简化粒度"语义
+3. 用圆形物体测试，观察高 epsilon 下圆被拟合为多少边形
 
-   ![image-20260820102754705](assets/image-20260820102754705.png)
+**易错点**：
+- ⚠️ epsilon 过小 → 顶点冗余（噪声点被保留）；过大 → 形状失真（圆变三角形）
+- ⚠️ epsilon 与周长挂钩（比例式），改图尺寸不需重调
 
+**流程图**：
+
+```mermaid
+flowchart LR
+    A[凸多边形点集] --> B["arcLength 计算周长 peri"]
+    B --> C["epsilon = epsilon_ratio × peri<br/>0.02 默认"]
+    C --> D["approxPolyDP<br/>Douglas-Peucker 递归简化"]
+    D --> E{"点到直线距离 > epsilon?"}
+    E -->|是| F[保留该点为顶点<br/>递归细分两段]
+    E -->|否| G[舍去中间点]
+    F --> H[简化多边形<br/>n_vertices 顶点数]
+    G --> H
+    H --> I["n边形标注依据<br/>3=三角 4=四边 >=8=圆"]
+
+    style C fill:#fff3d6,stroke:#b90,stroke-width:1px
+    style E fill:#e8f0ff,stroke:#448,stroke-width:1px
+```
+
+---
+
+#### 步骤5：顶点标注与可视化（阶段三：能改造，25min）
+
+> 📌 本步骤对应源码：`src/pipeline.py` draw_polygons / draw_polygons_dark
+
+**知识点讲解**：
+
+**可视化与数据输出（1.3.2）**
+- **原理**：`detect_polygons()`（L61-73）编排全链路（二值化 → 轮廓 → 拟合），按面积降序返回 `PolygonResult(vertices, area, n_vertices)`。`draw_polygons()`（L76-87）在图上绘制凸包多边形 + 黄色顶点标记 + 「n边形」标签；`draw_polygons_dark()`（L90-119）提供黑底彩色多边形 + 质心圆点的 vendor 风格效果。顶点数 `n_vertices` 是形状分类的关键特征（3=三角形、4=四边形、≥8 近似圆）。
+- **源码对应**：`src/pipeline.py` L61-73（detect_polygons）、L76-87（draw_polygons）、L90-119（draw_polygons_dark）
+
+**知识储备补充**：
+
+- **质心计算与 Moments**：`draw_polygons_dark` 中 `cv2.moments(r.vertices)` 计算多边形的图像矩。零阶矩 $m_{00}$ = 面积，一阶矩 $m_{10}, m_{01}$ 用于求质心：
+
+  $$
+  c_x = \frac{m_{10}}{m_{00}}, \quad c_y = \frac{m_{01}}{m_{00}}
+  $$
+
+  质心是形状的"重心"——在巡线应用中，质心 x 坐标相对画面中心的偏移量可直接映射为转向指令（左/中/右），这是实验 08（自主巡线）的核心思路。
+- **双栏可视化设计**：`app.py` L30-36 的 `process_frame` 在 `colored_mode=true` 时将原图与黑底彩色轮廓水平拼接（`np.hstack`），形成双栏视图——左栏为原始 RGB，右栏为纯黑背景上的彩色多边形轮廓 + 质心圆点。这种设计便于对比：左栏确认检测目标正确，右栏观察拟合质量。MJPEG 推流地址为 `:8080/polygon.mjpg`，浏览器可实时查看。
+- **形状分类阈值**：顶点数 $n$ 的分类规则：$n=3$ 三角形，$n=4$ 四边形，$n=5$ 五边形，$n \ge 8$ 近似圆。该阈值并非绝对——epsilon_ratio 不同，同一物体的 $n$ 可能变化。实测标定是必要的：用标准形状（三角板、方块、圆盘）跑一遍，记录各 ratio 下的 $n$ 分布，确定稳定分类区间。
+- **参考资源**：OpenCV 官方文档 `cv2.moments`、`cv2.polylines`；MJPEG Streamer 项目（多实验共用的推流方案）。
+
+**操作步骤**：
+
+1. 单图检测：
+   ```bash
+   cd ~/ros2_ws/src/xflz_eai_car1/vision/05_line_following
+   
+   python src/app.py --image image.png --save out.jpg
+   ```
 2. 相机实时（板上标准）：
-
    ```bash
-   # 终端 1：启动相机驱动
    source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
    export ROS_DOMAIN_ID=2
-   ros2 launch ascamera hp60c.launch.py
    
-   # 终端 2：运行颜色识别
-   source /opt/ros/humble/setup.bash && source ~/ros2_ws/install/setup.bash
-   export ROS_DOMAIN_ID=2
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   python src/app.py --ros
-   # MJPEG: http://<板IP>:8080/lab_color.mjpg（双栏实时）
+   ros2 launch ascamera hp60c.launch.py        # 终端 1
+   python src/app.py --ros                      # 终端 2
+   # MJPEG: http://<板IP>:8080/polygon.mjpg，移动物体观察顶点数实时变化
    ```
-
-   ```bash
-   (ros2_venv) iflytek@localhost:~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition$ python src/app.py --ros
-   
-   Streams index: http://127.0.0.1:8080
-   Available streams:
-   
-   http://127.0.0.1:8080/lab_color.mjpg
-   --------------------------------
-   
-   
-   Streams index: http://10.1.134.58:8080
-   Available streams:
-   
-   http://10.1.134.58:8080/lab_color.mjpg
-   --------------------------------
-   
-   
-   Press Ctrl+C to stop the server
-   
-   30帧平均帧率: 33.0
-   30帧平均帧率: 33.9
-   ```
-
-   ![image-20260820111204789](assets/image-20260820111204789.png)
-
-3. 动手改造：修改 `draw_detection` 的绘制样式（如改颜色名位置、加 FPS 显示），重新运行
+3. 动手改造：按顶点数分类显示颜色（三角形红/四边形绿/圆形蓝），实现简单形状分类器
 
 **易错点**：
-
 - ⚠️ --ros 取不到帧 → ascamera 先起、ROS_DOMAIN_ID 一致、话题勿 remap
-- ⚠️ 双栏显示依赖显示器；无显示器时用 MJPEG 流查看
+- ⚠️ 形状分类阈值：圆 vs 多边形靠顶点数，需实测标定
 
 **流程图**：
 
 ```mermaid
 flowchart LR
-    A[取流 --image/--video/--camera/--ros] --> B[detect_colors<br/>掩膜→开/闭→最大圆]
-    B --> C[左栏 draw_detection<br/>绿轮廓+黄框+红质心十字+颜色名]
-    C --> D[np.hstack 水平拼接<br/>2px 绿色分隔线]
-    D --> E[双栏 BGR 图<br/>左原图结论 右掩膜依据]
-    E --> F[MjpegServer :8080<br/>lab_color.mjpg 推流]
+    A["detect_polygons 全链路<br/>二值化→轮廓→拟合<br/>按面积降序"] --> B{"colored_mode 黑底彩色?"}
+    B -->|true 默认| C["draw_polygons_dark<br/>黑底彩色多边形 + 质心圆点"]
+    B -->|false| D["draw_polygons<br/>原图叠加 + 红轮廓"]
+    C --> E[左栏原图 + 右栏黑底彩色<br/>np.hstack 双栏拼接]
+    D --> E
+    E --> F["本地窗口 --display<br/>或 MJPEG :8080/polygon.mjpg"]
+    E --> G["终端打印每轮廓<br/>顶点数 + 面积"]
 
-    B --> G3[右栏 mask_view<br/>白匹配区+绿质心十字+青圆] --> D
-```
-
----
-
-#### 步骤6：--tune 实时调参（阶段三：能改造，25min）
-
-> 📌 本步骤对应源码：`src/app.py` _tune_mode（L41-105）、`src/preprocess.py` auto_hsv_range（L138-166）
-
-**知识点讲解**：
-
-**调参模式与自动化（1.3.2）**
-- **原理**：光照变化是颜色分割的最大敌人。`--tune` 模式提供 6 个滑块（H_low/H_high/S_low/S_high/V_low/V_high）实时调整目标颜色的 HSV 阈值，画面即时反馈——看到掩膜栏变化即可判断阈值是否合适，Ctrl+C 退出时打印当前阈值。`auto_hsv_range()`（L138-166）更进一步：**从首帧自动估计目标色 HSV 范围**——在种子色域（先验 H 范围）内统计像素 min/max + 余量 margin，输出可直接写入 config 的阈值，减少手工调参工作量。
-- **源码对应**：`src/app.py` L41-105（_tune_mode）；`src/preprocess.py` L138-166（auto_hsv_range）
-
-**知识储备补充**：
-
-- **自动阈值估计原理**：`auto_hsv_range`（L138-166）的工作流程——(1) 对首帧做 BGR→HSV 转换；(2) 在种子色域（`spec.h` 和 `spec.h2` 两段 H 范围）内用 `cv2.inRange` 粗筛像素；(3) 若筛选到的像素数 ≥ `min_pixels=50`（场景中确实有该色目标），统计这些像素的 H/S/V min/max；(4) H 范围加 `margin=10` 余量，S/V 下限减 30（放宽低饱和度/暗区容差），上限保持 255。输出格式与 `lab_config.yaml` 中的 `h/s/v` 字段一致，可直接写入。对红色（有 h2），两段分别统计，取像素更多的那段做主区间。
-- **调参模式的实时反馈回路**：`_tune_mode`（app.py L41-105）构建了"滑块→掩膜→双栏→视觉反馈"的闭环——每次滑块移动触发 `on_trackbar` 回调更新阈值 dict，主循环用新阈值重新 `detect_colors`，右栏 Mask 实时反映分割效果。这种即时反馈让学习者直观理解"HSV 阈值如何影响分割结果"——比纯理论讲解有效得多。
-- **光照变化应对策略**：HSV 的 V 通道直接编码亮度，因此光照变暗时 V 值整体下降。应对方法：(1) 放宽 V 下限（如 `v: [60,255]` 而非 `[100,255]`）；(2) 用 `--tune` 实时调参适配当前光照；(3) 用 `auto_hsv_range` 自动标定。`auto_hsv_range` 的 `margin` 参数（默认 10）控制阈值宽松度——margin 越大对光照变化越鲁棒，但误检风险也增加。
-- **参考资源**：OpenCV 官方文档 `cv2.createTrackbar` / `cv2.getTrackbarPos`；自适应阈值方法参考《Automatic Threshold Selection for Color Image Segmentation》。
-
-**操作步骤**：
-
-1. 启动调参模式（板上走 --ros，PC 走 --camera/--video）：
-   ```bash
-   # 执行目录：~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   cd ~/ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition
-   python src/app.py --tune 红色 --ros
-   # 滑块窗口 lab_tune：6 滑块实时调 H/S/V
-   # 双栏窗口 lab_view 实时预览；Ctrl+C 退出并打印当前阈值
-   ```
-
-2. 把打印的阈值写入 `config/lab_config.yaml` 对应颜色，验证"调参结果落盘"
-
-3. 试用手动光照变化（遮挡/移动光源），观察误检与漏检，练习快速调参
-
-4. 进阶：调用 `auto_hsv_range` 自动估计阈值，与手动调参结果对比
-
-![image-20260820111609703](assets/image-20260820111609703.png)
-
-**易错点**：
-- ⚠️ 调参环境（光照）与实际运行环境必须一致，否则调好的阈值现场失效
-- ⚠️ tune 模式需显示器；板上用 MJPEG 流辅助观察
-
-**流程图**：
-
-```mermaid
-flowchart LR
-    A[--tune 红色 --ros] --> B[auto_hsv_range 首帧自动估计<br/>种子色域内 min/max + margin 余量]
-    B --> C[6 滑块预置<br/>H_low/H_high/S_low/S_high/V_low/V_high]
-    C --> D{on_trackbar 滑块移动}
-    D -->|更新阈值 dict| E[detect_colors 重新分割]
-    E --> F[双栏实时反馈<br/>右栏 Mask 即时反映]
-    F --> D
-    D -->|Ctrl+C 退出| G[打印当前 H/S/V 阈值<br/>写入 lab_config.yaml]
-
-    style D fill:#e8f0ff,stroke:#448,stroke-width:1px
-    style G fill:#fff3d6,stroke:#b90,stroke-width:1px
+    style B fill:#e8f0ff,stroke:#448,stroke-width:1px
 ```
 
 ---
@@ -521,32 +450,34 @@ flowchart LR
 
 | 问题 | 原因 | 解决方法 |
 |------|------|---------|
-| 红色目标漏检 | 未配置 h2 第二段（红色跨 0/180） | config 中加 h2（如 h=[0,10], h2=[170,179]） |
-| 噪点被当目标 | min_area 过小 / 未做开运算 | 增大 min_area；确认 morph_open 前置 |
-| 目标孔洞导致面积偏小 | 未做闭运算 | 增大 close_kernel（须奇数） |
-| 光照变化后误检/漏检 | 阈值不适应新光照 | 用 --tune 实时调参或 auto_hsv_range 自动估计 |
-| 核尺寸报错 | kernel 为偶数 | 改为奇数（open_kernel=5, close_kernel=9） |
-| 双栏显示异常 | --ros 取流失败或显示器缺失 | ascamera 先起、ROS_DOMAIN_ID 一致；无显示器用 MJPEG |
+| 轮廓全错 | invert 设反（暗物亮底 vs 亮物暗底） | 检查 `threshold.invert`（默认 true=暗物亮底） |
+| 噪声轮廓混入 | min_area 过小 / 二值化噪点多 | 增大 min_area；开运算去噪（morphology） |
+| 顶点数异常（过多） | epsilon_ratio 过小 | 增大 approx_epsilon（0.02 → 0.05） |
+| 形状失真（圆变三角） | epsilon_ratio 过大 | 减小 approx_epsilon |
+| 凹槽物体拟合异常 | use_hull 语义不匹配 | true=凸包填平凹槽；false=保留凹形细节 |
+| 光照变化后检测不稳 | binary 阈值不适应 | 换 `threshold_mode: adaptive` |
+| --ros 取不到帧 | 驱动未启动/ROS_DOMAIN_ID 不一致 | ascamera 先起；export ROS_DOMAIN_ID=2；话题勿 remap |
 
 ### 1.8 扩展实验
 
-**扩展方向 1：多目标多色计数（进阶）**
-- 修改 `detect_colors` 支持每种颜色检出多个目标（返回全部满足过滤的圆而非仅最大），实现"红球 3 个、蓝球 2 个"的计数功能
+**扩展方向 1：形状分类器（进阶）**
+- 用 `n_vertices` 分类：三角形（3）、四边形（4）、五边形（5）、圆（≥8），不同形状不同颜色标注，实现基础几何形状识别
 
-**扩展方向 2：自适应阈值（进阶）**
-- 用 `auto_hsv_range` 做首帧自动标定 + 周期性重标定，实现光照自适应；或引入直方图峰谷分析自动确定阈值
+**扩展方向 2：自主巡线（进阶）**
+- 用多边形质心 x 坐标相对画面中心的偏移量生成转向指令（左/中/右），通过 ROS2 cmd_vel 发布控制小车沿色块路径行驶（参考实验 11 的 cmd_vel 模式）
 
 ### 1.9 实验报告要求
 
-**评分标准**：HSV 原理理解 15 分 + 阈值掩膜与 h2 环形处理 20 分 + 形态学 20 分 + 轮廓检测 15 分 + 实时演示 20 分 + 报告 10 分 = 100 分。
+**评分标准**：二值化理解 15 分 + 轮廓提取 15 分 + 凸包原理 20 分 + approxPolyDP 25 分 + 实时演示 15 分 + 报告 10 分 = 100 分。
 
 **报告必含内容**：
-1. HSV 与 RGB 对比说明（含纯红 HSV 值验证截图）
-2. 三色阈值表（含红色 h2 双段）与掩膜效果图
-3. 形态学开/闭前后掩膜对比图，标注噪点/孔洞变化
-4. 双栏检测结果图（左 RGB | 右 Mask）与颜色名标注
-5. 回答思考题：为什么红色需要 h2 双段？开运算为什么能去噪点？光照变化下如何调参？
-6. 实验心得与问题记录
+1. 二值化流程图与参数说明（invert/threshold_mode 对比图）
+2. 轮廓提取结果图（含 min_area 过滤前后对比）
+3. 凸包 vs 原轮廓对比图（凹槽被填平的效果）
+4. epsilon_ratio 参数实验表（0.005~0.1 的顶点数变化）
+5. 3 种不同形状物体的「n边形」标注结果图
+6. 回答思考题：凸包与多边形的区别？epsilon 如何影响拟合？如何用顶点数分类形状？
+7. 实验心得与问题记录
 
 ---
 
@@ -554,6 +485,6 @@ flowchart LR
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/03_lab_color_recognition，24 用例全绿，板端 50 FPS，HSV 双段红色处理 + 形态学 + 圆形轮廓 + 双栏推流） |
-| v2.0 | 2026-08-19 | 知识点增强：各核心知识点追加「知识储备补充」（HSV转换公式/inRange掩膜数学定义/形态学腐蚀膨胀公式/findContours原理/最小外接圆/双栏合成/MJPEG推流/自动阈值估计/光照变化应对）；1.5 追加可复现代码块与执行现象 |
-| v2.1 | 2026-08-21 | 步骤 1 新增「配置参数速查表」：config/lab_config.yaml 全参数分列（colors/morph/contour/camera/source/display），含 H2 环形处理与阈值标定要点。表值经 load_config 实测核对 |
+| v1.0 | 2026-08-10 | 初版生成（源码路径 ros2_ws/src/xflz_eai_car1/vision/05_line_following，21 用例全绿，二值化+轮廓+凸包+approxPolyDP+顶点标注，板端验证通过） |
+| v2.0 | 2026-08-19 | 知识点增强：补充 5 个知识储备小节（HSV掩膜公式/形态学开运算语义/轮廓检索模式/凸包数学定义/Douglas-Peucker递归原理/质心Moments/形状分类阈值），追加执行现象段，新增 3 个公式块（HSV掩膜/凸包凸组合/D-P叉积距离），补充 6 个参考资源条目，源码行号复核对齐 |
+| v2.1 | 2026-08-21 | 步骤 1 新增「配置参数速查表」：config/line_config.yaml 全参数（preprocess/contour/polygon/camera/source/display）。标注 invert/use_hull/colored_mode。表值实测一致 |

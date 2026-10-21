@@ -156,7 +156,10 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
       <div class="dd-menu">
         <a href="../products/b2-box/index.html">📦 具身智能实验箱B2旗舰版<small>6 TOPS · 双核架构 · 6 门课 / 65 实验</small></a>
         <a href="../products/c1-car/index.html">🚗 具身智能机器人小车 C1<small>移动导航 · 机械臂作业 · 7 门课 / 59 实验</small></a>
+        <a href="../products/xlerobot/index.html">🤖 XLeRobot 开源双臂移动机器人<small>LeRobot 生态 · 双臂协同 · 3D 打印件</small></a>
         <a href="../products/ldt-01/index.html">🦾 具身智能实验平台 LDT-01<small>同构双臂遥操作 · 采训推一体 · 数据采集</small></a>
+        <a href="../products/unitree-g1/index.html">🧍 人形导览机器人<small>宇树 G1 · 讯飞语音背包 · 导览讲解</small></a>
+        <a href="../products/unitree-go2/index.html">🐕 四足巡检机器狗<small>宇树 Go2 Edu · MID-360 · D435i</small></a>
       </div>
     </div>
     <div class="dropdown">
@@ -177,7 +180,7 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
 <header class="hero">
   <span class="eyebrow">EMBODIED AI · TRAINING PROGRAM</span>
   <h1>具身智能课程 <span class="grad">教程首页</span></h1>
-  <p>一站渐进式学习方案，从核心课程到综合项目再到行业应用，15 门课程的渐进式学习地图，<br>设备适配（实验箱 B2 / 小车 C1 / 聆动 LDT-01 / LeRobot）。</p>
+  <p>一站渐进式学习方案，从核心课程到综合项目再到行业应用，15 门课程的渐进式学习地图，<br>设备适配（实验箱 B2 / 小车 C1 / 聆动 LDT-01 / XLeRobot / 人形导览 G1 / 巡检机器狗 Go2）。</p>
   <div class="badges">
     <span class="badge">🧭 3 大方案分类</span>
     <span class="badge">📚 15 门课程</span>
@@ -202,20 +205,23 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
   </div>
   <p class="desc">打牢地基的五门主干课：ROS2 通信 → 视觉感知 → 语音与大模型 → SLAM 导航 → 机械臂控制。除「SLAM 与自主导航」仅适配小车 C1 外，其余四门同时适配实验箱 B2 与小车 C1。</p>
   <div class="sect-summary">
-    <div class="ss">平均内容就绪度 <b>92%</b></div>
-    <div class="ss">平均资源完成度 <b>66%</b></div>
-    <div class="ss">状态：全部 <b>教程就绪</b></div>
+    <div class="ss">平均内容就绪度 <b>96%</b></div>
+    <div class="ss">平均资源完成度 <b>80%</b></div>
+    <div class="ss">状态：<b>全部 5 门就绪</b></div>
   </div>
+  <p class="desc" style="font-size:13px;color:var(--text-muted);margin-top:-6px">
+    口径说明：<b>内容就绪</b>按「教学指导书是否完整覆盖全部实验」计；<b>资源完成</b>按「源码 + 模型 + 单测」实际交付计。其中「SLAM 与自主导航」的视觉导航部分只讲原理，不涉及实机代码。
+  </p>
   <div class="grid">
 
     <article class="card reveal">
       <div class="top"><span class="code">CORE-01</span><span class="status ready">教程就绪</span></div>
       <h3>机器人 ROS2 应用与开发</h3>
-      <p>从话题/服务通信、坐标系到 ros_sensor 传感器实验（MQ5/指纹/RFID），打牢 ROS2 通信与分布式计算地基。</p>
+      <p>解决机器人"信息传递"的问题。从话题/服务、坐标系到传感器实验（MQ5/指纹/RFID），打牢各处信息互通与分布式计算的地基。</p>
       <div class="meta"><span class="tag">ROS2</span><span class="tag">话题/服务</span><span class="tag">实验箱 B2 · 小车 C1</span></div>
       <div class="progs">
-        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="95"></i></div><span class="pct">95%</span></div>
-        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="70"></i></div><span class="pct">70%</span></div>
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="96"></i></div><span class="pct">96%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="58"></i></div><span class="pct">58%</span></div>
       </div>
       <div class="foot"><span>48 学时 · 20 实验</span><a class="go" href="core/exp003-ros2-application/index.html" style="color:var(--accent-teal);font-weight:700;text-decoration:none">进入课程 →</a></div>
     </article>
@@ -223,11 +229,11 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
     <article class="card reveal">
       <div class="top"><span class="code">CORE-02</span><span class="status ready">教程就绪</span></div>
       <h3>机器人视觉应用与开发</h3>
-      <p>调用摄像头完成 HSV 颜色识别、YOLOv8 缺陷检测与 NPU 部署、DeepSORT 多目标跟踪与深度测距。</p>
+      <p>解决机器人"看得懂"的问题。从 OpenCV 颜色识别到 YOLOv8 缺陷检测、DeepSORT 跟踪和深度测距等，让相机输出能直接驱动决策。</p>
       <div class="meta"><span class="tag">OpenCV</span><span class="tag">YOLOv8</span><span class="tag amber">NPU 部署</span><span class="tag">实验箱 B2 · 小车 C1</span></div>
       <div class="progs">
-        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="95"></i></div><span class="pct">95%</span></div>
-        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="65"></i></div><span class="pct">65%</span></div>
+        <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="98"></i></div><span class="pct">98%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="92"></i></div><span class="pct">92%</span></div>
       </div>
       <div class="foot"><span>48 学时 · 12 实验</span><a class="go" href="core/exp001-robot-vision/index.html" style="color:var(--accent-teal);font-weight:700;text-decoration:none">进入课程 →</a></div>
     </article>
@@ -235,11 +241,11 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
     <article class="card reveal">
       <div class="top"><span class="code">CORE-03</span><span class="status ready">教程就绪</span></div>
       <h3>机器人自然语言交互应用</h3>
-      <p>六麦阵列唤醒、ASR 语音识别、TTS 合成，到端到端对话与 LLM/VLM 意图解析——让机器人"听懂人话"。</p>
+      <p>解决机器人"听得懂人话"的问题。从六麦阵列唤醒、ASR 语音识别、TTS 合成，到端到端对话与 LLM/VLM 意图解析，让语音指令变成可执行动作。</p>
       <div class="meta"><span class="tag violet">LLM/VLM</span><span class="tag">离线语音</span><span class="tag">意图解析</span><span class="tag">实验箱 B2 · 小车 C1</span></div>
       <div class="progs">
         <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="95"></i></div><span class="pct">95%</span></div>
-        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="60"></i></div><span class="pct">60%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="95"></i></div><span class="pct">95%</span></div>
       </div>
       <div class="foot"><span>32 学时 · 6 实验</span><a class="go" href="core/exp002-speech-interaction/index.html" style="color:var(--accent-teal);font-weight:700;text-decoration:none">进入课程 →</a></div>
     </article>
@@ -247,11 +253,11 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
     <article class="card reveal">
       <div class="top"><span class="code">CORE-04</span><span class="status ready">教程就绪</span></div>
       <h3>机器人 SLAM 与自主导航</h3>
-      <p>SLAM_Toolbox 激光建图、AMCL 粒子滤波定位、Nav2 路径规划，独立完成 A 点到 B 点自主导航与动态避障。</p>
+      <p>解决机器人"知道我在哪、走到哪"的问题。从 SLAM 激光建图、AMCL 粒子滤波定位到 Nav2 路径规划，独立完成 A 点到 B 点的自主导航与动态避障。</p>
       <div class="meta"><span class="tag teal">SLAM</span><span class="tag">Nav2</span><span class="tag">AMCL</span><span class="tag amber">仅小车 C1</span></div>
       <div class="progs">
         <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="95"></i></div><span class="pct">95%</span></div>
-        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="65"></i></div><span class="pct">65%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="95"></i></div><span class="pct">95%</span></div>
       </div>
       <div class="foot"><span>48 学时 · 7 实验</span><a class="go" href="core/exp004-slam-navigation/index.html" style="color:var(--accent-teal);font-weight:700;text-decoration:none">进入课程 →</a></div>
     </article>
@@ -259,11 +265,11 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
     <article class="card reveal">
       <div class="top"><span class="code">CORE-05</span><span class="status ready">教程就绪</span></div>
       <h3>机器人机械臂应用与开发</h3>
-      <p>URDF 仿真与 MoveIt2、1Mbps 串口底层协议、FK/IK 运动学，实现零位校准、实机 IK 解算与视觉动态抓取。</p>
+      <p>解决机器人"怎么把东西抓住"的问题。从 URDF 仿真与 MoveIt2、1Mbps 串口底层协议到 FK/IK 运动学，完成零位校准、实机 IK 解算与视觉动态抓取。</p>
       <div class="meta"><span class="tag">MoveIt2</span><span class="tag">IK 解算</span><span class="tag">串口协议</span><span class="tag">实验箱 B2 · 小车 C1</span></div>
       <div class="progs">
         <div class="prog"><span class="name">内容就绪</span><div class="bar"><i class="fill" data-p="95"></i></div><span class="pct">95%</span></div>
-        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="70"></i></div><span class="pct">70%</span></div>
+        <div class="prog thrade"><span class="name">资源完成</span><div class="bar"><i class="fill" data-p="62"></i></div><span class="pct">62%</span></div>
       </div>
       <div class="foot"><span>32 学时 · 7 实验</span><a class="go" href="core/exp005-robot-arm/index.html" style="color:var(--accent-teal);font-weight:700;text-decoration:none">进入课程 →</a></div>
     </article>
