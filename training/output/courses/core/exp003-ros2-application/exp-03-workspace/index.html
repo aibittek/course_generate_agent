@@ -47,6 +47,23 @@
   <div class="step"><div class="n">4</div>ROS2 的答案：<b>工作空间（Workspace）</b> + 构建工具 <b>colcon</b>。</div>
 </div>
 <div class="tip"><span class="lab">定义 Workspace</span>一个包含 <code>src/</code> 目录的文件夹，你所有的功能包源码都放进 src/，构建产物统一生成在其它三层目录里。ROS2 官方也称其为 workspace，ROS1 时代的 catkin_ws 概念一脉相承。</div>
+<p>具体长什么样？下面以本课实操用的 <code>~/ros2_ws</code> 为例，<b>src/ 内部</b>是以「一个文件夹 = 一个功能包」的方式组织的：</p>
+<pre><span class="c"># ~/ros2_ws —— 工作空间根目录</span>
+~/ros2_ws/
+├── src/                          <span class="c">← 源码层：唯一你手写、唯一进 git 的地方</span>
+│   └── my_test_pkg/              <span class="c">← 一个功能包 = 一个文件夹</span>
+│       ├── package.xml           <span class="c">← 包清单：包名、版本、依赖（缺它不算包）</span>
+│       ├── setup.py              <span class="c">← Python 包的安装/入口脚本（ament_python）</span>
+│       ├── setup.cfg             <span class="c">← 安装位置声明（install 到 lib/…）</span>
+│       ├── resource/
+│       │   └── my_test_pkg       <span class="c">← 索引触碰文件（空文件，文件名 = 包名）</span>
+│       └── my_test_pkg/          <span class="c">← 与包同名的 Python 包目录</span>
+│           ├── __init__.py
+│           └── hello_node.py     <span class="c">← 节点入口（ros2 run 执行的模块）</span>
+├── build/                        <span class="c">← colcon build 后才出现（中间产物）</span>
+├── install/                      <span class="c">← colcon build 后才出现（可执行 + setup.bash）</span>
+└── log/                          <span class="c">← colcon build 后才出现（构建日志）</span></pre>
+<div class="tip tealb"><span class="lab">先记住两句话</span>① <b>src 里只放包</b>——每个子目录都要有自己的 <code>package.xml</code>，否则 colcon 发现阶段会直接跳过它；② <b>build / install / log 不要手写、不要进 git</b>——它们是编译生成的，删了随时能重建（详见第 02 节四层结构）。</div>
 </section>
 
 <section class="blk" id="s2">
