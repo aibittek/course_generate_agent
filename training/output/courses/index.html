@@ -120,21 +120,53 @@ body{margin:0;background:var(--bg-base);color:var(--text-body);
 .ss{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:9px 16px;font-size:12.5px;color:var(--text-secondary)}
 .ss b{color:var(--accent-blue);font-family:var(--font-mono)}
 /* Technology */
-.tech{max-width:1200px;margin:0 auto;padding:48px 40px 8px;text-align:center}
-.tech h2{font-size:20px;color:var(--text-primary);margin:0 0 18px}
-.pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.tech{max-width:1200px;margin:0 auto;padding:52px 40px 8px}
+.tech h2{font-size:22px;color:var(--text-primary);margin:0 0 6px;display:flex;align-items:center;gap:10px}
+.tech h2 .idx{font-family:var(--font-mono);font-size:12px;font-weight:700;color:#fff;
+  background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));border-radius:7px;padding:3px 9px}
+.tech .tech-sub{font-size:13.5px;color:var(--text-muted);margin:0 0 26px}
+.layer{display:grid;grid-template-columns:132px 1fr;gap:20px;align-items:start;
+  padding:18px 0;border-top:1px solid var(--border)}
+.layer:first-of-type{border-top:none}
+.layer-name{display:flex;flex-direction:column;gap:3px;padding-top:6px}
+.layer-name b{font-size:14px;color:var(--text-primary);font-weight:700}
+.layer-name span{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;color:var(--text-muted)}
+.layer-name em{font-style:normal;font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:3px}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
 .pill{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-secondary);
   background:var(--bg-card);border:1px solid var(--border);border-radius:100px;padding:7px 15px;transition:.28s}
 .pill i{width:6px;height:6px;border-radius:50%;background:var(--accent-cyan);flex:none}
-.pill:hover{border-color:var(--accent-blue);color:var(--accent-blue)}
+.pill:hover{border-color:var(--accent-blue);color:var(--accent-blue);transform:translateY(-2px)}
+.pill.blue i{background:var(--accent-blue)}
+.pill.teal i{background:var(--accent-teal)}
+.pill.amber i{background:var(--accent-amber)}
+.pill.violet i{background:var(--accent-violet)}
+.pill.rose i{background:var(--accent-rose)}
+.pill.indigo i{background:#4f46e5}
+/* 产品线小条 */
+.lineup{max-width:1200px;margin:26px auto 0;padding:0 40px}
+.lineup-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:18px 22px;
+  display:flex;flex-wrap:wrap;gap:10px 26px;align-items:center;justify-content:center}
+.lineup-inner .lb{font-size:12.5px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:.06em}
+.lineup-inner a{font-size:13px;color:var(--text-secondary);text-decoration:none;transition:.24s;
+  display:inline-flex;align-items:center;gap:6px}
+.lineup-inner a:hover{color:var(--accent-blue)}
+.lineup-inner .dot{width:5px;height:5px;border-radius:50%;background:var(--accent-cyan);flex:none}
 footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px solid var(--border);
   text-align:center;font-size:12.5px;color:var(--text-muted)}
 .reveal{opacity:0;transform:translateY(16px);transition:opacity .5s,transform .5s}
 .reveal.visible{opacity:1;transform:none}
+@media (max-width:900px){
+  .layer{grid-template-columns:1fr;gap:10px}
+  .layer-name{flex-direction:row;align-items:baseline;gap:9px;padding-top:0;flex-wrap:wrap}
+  .layer-name em{flex-basis:100%;margin-top:0}
+}
 @media (max-width:760px){
-  .topbar,.hero,.stats,.section,.tech,footer{padding-left:20px;padding-right:20px}
+  .topbar,.hero,.stats,.section,.tech,.lineup,footer{padding-left:20px;padding-right:20px}
   .nav{display:none}.hero h1{font-size:29px}
   .stats-inner{flex-wrap:wrap}.stat{flex:1 1 50%;border-left:none!important}
+  .tech h2{font-size:19px}
+  .lineup-inner{padding:14px 16px;gap:8px 18px}
 }
 @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
 </style>
@@ -432,25 +464,132 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
 </section>
 
 <!-- 技术栈 -->
-<section class="tech reveal" id="tech">
-  <h2>技术栈总览</h2>
-  <div class="pills">
-    <span class="pill"><i></i>ROS 2 Humble</span><span class="pill"><i></i>SLAM Toolbox</span>
-    <span class="pill"><i></i>Nav2</span><span class="pill"><i></i>AMCL</span>
-    <span class="pill"><i></i>OpenCV</span><span class="pill"><i></i>YOLOv8</span>
-    <span class="pill"><i style="background:var(--accent-amber)"></i>RKNN / NPU</span>
-    <span class="pill"><i style="background:var(--accent-violet)"></i>LLM / VLM</span>
-    <span class="pill"><i style="background:var(--accent-teal)"></i>ACT / VLA</span>
-    <span class="pill"><i style="background:var(--accent-teal)"></i>LeRobot v3</span>
-    <span class="pill"><i style="background:var(--accent-amber)"></i>离线语音 KWS/ASR/TTS</span>
-    <span class="pill"><i></i>MoveIt2</span><span class="pill"><i></i>TF2</span>
-    <span class="pill"><i></i>Unitree SDK</span><span class="pill"><i></i>three.js</span>
-    <span class="pill"><i></i>Gazebo / RViz2</span>
+<section class="tech" id="tech">
+  <h2><span class="idx">TECH</span>技术栈总览</h2>
+  <p class="tech-sub">按「从底到上」六层梳理，15 门课程用到的技术都能在某一层里找到位置。</p>
+
+  <div class="layer reveal">
+    <div class="layer-name">
+      <b>硬件平台</b><span>HARDWARE</span>
+      <em>课程跑在哪些设备上</em>
+    </div>
+    <div class="pills">
+      <span class="pill blue"><i></i>RK3576 + 6TOPS NPU</span>
+      <span class="pill blue"><i></i>实验箱 B2</span>
+      <span class="pill blue"><i></i>小车 C1</span>
+      <span class="pill blue"><i></i>LDT-01 双臂平台</span>
+      <span class="pill blue"><i></i>LZ-XL01 主从臂</span>
+      <span class="pill blue"><i></i>宇树 G1 人形</span>
+      <span class="pill blue"><i></i>宇树 Go2 四足</span>
+      <span class="pill blue"><i></i>Livox MID-360</span>
+      <span class="pill blue"><i></i>RealSense D435i</span>
+    </div>
+  </div>
+
+  <div class="layer reveal">
+    <div class="layer-name">
+      <b>系统底座</b><span>FOUNDATION</span>
+      <em>整套课程的统一底座</em>
+    </div>
+    <div class="pills">
+      <span class="pill teal"><i></i>ROS 2 Humble</span>
+      <span class="pill teal"><i></i>DDS 通信</span>
+      <span class="pill teal"><i></i>话题 / 服务 / 动作</span>
+      <span class="pill teal"><i></i>TF2 坐标变换</span>
+      <span class="pill teal"><i></i>URDF / Xacro</span>
+      <span class="pill teal"><i></i>Gazebo / RViz2</span>
+      <span class="pill teal"><i></i>Linux / SSH 部署</span>
+    </div>
+  </div>
+
+  <div class="layer reveal">
+    <div class="layer-name">
+      <b>感知与定位</b><span>PERCEPTION</span>
+      <em>让机器人看得见、知道自己在哪</em>
+    </div>
+    <div class="pills">
+      <span class="pill amber"><i></i>OpenCV</span>
+      <span class="pill amber"><i></i>HSV 色彩空间</span>
+      <span class="pill amber"><i></i>轮廓拟合</span>
+      <span class="pill amber"><i></i>YOLOv8 检测 / 分割</span>
+      <span class="pill amber"><i></i>DeepSORT 跟踪</span>
+      <span class="pill amber"><i></i>MediaPipe</span>
+      <span class="pill amber"><i></i>SLAM Toolbox</span>
+      <span class="pill amber"><i></i>AMCL 粒子滤波</span>
+      <span class="pill amber"><i></i>LIO-SAM / FAST-LIO</span>
+      <span class="pill amber"><i></i>深度测距与点云</span>
+    </div>
+  </div>
+
+  <div class="layer reveal">
+    <div class="layer-name">
+      <b>决策与规划</b><span>DECISION</span>
+      <em>知道要做什么、怎么走过去</em>
+    </div>
+    <div class="pills">
+      <span class="pill rose"><i></i>Nav2 路径规划</span>
+      <span class="pill rose"><i></i>多点导航</span>
+      <span class="pill rose"><i></i>动态避障</span>
+      <span class="pill rose"><i></i>MoveIt2</span>
+      <span class="pill rose"><i></i>FK / IK 运动学</span>
+      <span class="pill rose"><i></i>抓取位姿规划</span>
+      <span class="pill rose"><i></i>安全联锁</span>
+      <span class="pill rose"><i></i>状态机与任务编排</span>
+    </div>
+  </div>
+
+  <div class="layer reveal">
+    <div class="layer-name">
+      <b>模型与算法</b><span>MODELS</span>
+      <em>AI 能力从哪来</em>
+    </div>
+    <div class="pills">
+      <span class="pill violet"><i></i>RKNN / NPU 部署</span>
+      <span class="pill violet"><i></i>YOLOv5 / v8 量化</span>
+      <span class="pill violet"><i></i>LLM 意图解析</span>
+      <span class="pill violet"><i></i>VLM 视觉问答</span>
+      <span class="pill violet"><i></i>RKLLM 本地推理</span>
+      <span class="pill violet"><i></i>离线语音 KWS / ASR / TTS</span>
+      <span class="pill violet"><i></i>ACT 模仿学习</span>
+      <span class="pill violet"><i></i>VLA 视觉语言动作</span>
+      <span class="pill violet"><i></i>Learning To Drive 一体策略</span>
+    </div>
+  </div>
+
+  <div class="layer reveal">
+    <div class="layer-name">
+      <b>训练与仿真</b><span>TRAINING</span>
+      <em>策略怎么练出来、怎么落到实机</em>
+    </div>
+    <div class="pills">
+      <span class="pill indigo"><i></i>LeRobot v3</span>
+      <span class="pill indigo"><i></i>数据采集与回放</span>
+      <span class="pill indigo"><i></i>ACT / Diffusion Policy</span>
+      <span class="pill indigo"><i></i>显存管理与批训练</span>
+      <span class="pill indigo"><i></i>AMASS 动作数据集</span>
+      <span class="pill indigo"><i></i>GMR 动作重定向</span>
+      <span class="pill indigo"><i></i>BeyondMimic</span>
+      <span class="pill indigo"><i></i>Isaac Sim / Isaac Lab</span>
+      <span class="pill indigo"><i></i>MuJoCo Sim2Real</span>
+      <span class="pill indigo"><i></i>Unitree SDK</span>
+    </div>
   </div>
 </section>
 
+<div class="lineup">
+  <div class="lineup-inner reveal">
+    <span class="lb">课程对应设备</span>
+    <a href="../products/b2-box/index.html"><span class="dot"></span>实验箱 B2</a>
+    <a href="../products/c1-car/index.html"><span class="dot"></span>小车 C1</a>
+    <a href="../products/ldt-01/index.html"><span class="dot"></span>LDT-01</a>
+    <a href="../products/xlerobot/index.html"><span class="dot"></span>XLeRobot</a>
+    <a href="../products/unitree-g1/index.html"><span class="dot"></span>人形导览 G1</a>
+    <a href="../products/unitree-go2/index.html"><span class="dot"></span>巡检机器狗 Go2</a>
+  </div>
+</div>
+
 <footer>
-  具身智能课程 · 3 方案 / 14 课程 / 建图导航样例教程已上线 · 数据源：培训计划.xlsx + sheet1 课程资源包 · 输出于 training/output
+  具身智能课程 · 3 大类 / 15 门课程 · 数据源：培训计划.xlsx + sheet1 课程资源包 · 输出于 training/output
 </footer>
 
 <script>
