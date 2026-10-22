@@ -31,18 +31,18 @@
 <div class="exp-head">
   <span class="code">EXP-03 · 第 1 章 · 验证性 · 2 学时</span>
   <h1>工作空间与 colcon：代码放在哪、怎么编</h1>
-  <p class="desc">看到这里，说明你后面肯定是要自己构建新的 ROS2 工程了，构建工程需要放到工作空间，其实就是一个目录。工作空间是 ROS2 的"工程边界"：src 放源码、build 编译、install 交付、log 留痕；colcon 负责编译，Overlay/Underlay 机制负责让新旧代码层层覆盖。本章节的目标即学会自己构建 ROS2 工程源码。</p>
+  <p class="desc">看到这里，说明后面你要自己构建 ROS2 工程了——别被"构建"两个字吓住，拆开看其实就两件事：<b>工作空间</b>，就是一个普通目录，人为约定好分工：<code>src</code> 放源码，<code>build</code>/<code>install</code>/<code>log</code> 是编译时自动生成的产物；<b>colcon</b>，站在工作空间根目录敲的一条编译命令，把 src 下所有带 <code>package.xml</code> 的工程包挨个编译，统一装进 install/。本章目标：<b>自己动手，把一份 ROS2 工程源码完整编译一遍</b>。用法也简单：代码在 src 下放好，执行 <code>colcon build</code>，整个工作空间的包就全编好了。万一第一次 build 报错也别担心——报错信息基本就是在告诉你缺什么、装什么，排查过程本身就是本章要练的。</p>
   <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 colcon · overlay · symlink</span></div>
 </div>
 
 <section class="blk" id="s1">
 <h2><span class="no">01</span>问题引入：上一章的 talker，是怎么编译出来的呢</h2>
 <p>上一章这两条命令，你已经敲得挺顺了：</p>
-<pre><span class="c"># 终端 1</span>
+<pre><span class="c"># 终端 1 —— ros2 run 是"运行"子命令：启动 demo_nodes_cpp 包下的 talker 可执行程序（一个节点）</span>
 ros2 run demo_nodes_cpp talker
-<span class="c"># 终端 2 —— 一秒钟收到一条 "Hello World: N"</span>
+<span class="c"># 终端 2 —— ros2 topic echo 是"打印话题"子命令：实时显示 /chatter 话题收到的消息，一秒钟一条 "Hello World: N"</span>
 ros2 topic echo /chatter</pre>
-<p>先想一个问题：<b>这个 <code>talker</code> 是谁编译出来的？编译好的文件存放在电脑的哪个目录？</b></p>
+<p>先想一个问题：<b>这个 <code>talker</code> 是谁编译出来的？编译好的文件存放在设备的哪个目录？</b></p>
 <p>其实它是 ROS2 官方提前编译好、随发行版装进 <code>/opt/ros/humble/</code> 的，就像在餐厅点菜，端上来就吃，你从没进过厨房。</p>
 <p>咱们就拿这个最熟悉的例子，从源码开始完整走一遍编译过程：源码在哪、目录里每个文件是干什么的、colcon 怎么把它变成能跑的程序、中间可能遇到哪些报错。走完之后，再把 Python 版和几个常用参数过一遍，后面自己新开发工程的时候就能游刃有余了。</p>
 <div class="flow">
