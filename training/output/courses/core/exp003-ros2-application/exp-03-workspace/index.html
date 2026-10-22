@@ -15,15 +15,13 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#s1" class="now">01 问题引入：代码到底放哪儿</a>
-  <a href="#s2">02 核心原理：四层目录结构</a>
-  <a href="#s3">03 colcon 构建四阶段动画</a>
-  <a href="#s4">04 Underlay / Overlay：叠层查找原理</a>
-  <a href="#s6">05 colcon 命令精讲</a>
-  <a href="#s7">06 实操 A：从零创建工作空间</a>
-  <a href="#s8">07 实操 B：Overlay 覆盖五连击</a>
-  <a href="#s9">08 注意事项与验收清单</a>
-  <a href="#s10">09 本课总结与思考题</a>
+  <a href="#s1" class="now">01 talker 是怎么编译出来的</a>
+  <a href="#s2">02 colcon 编译的基本流程</a>
+  <a href="#s6">03 colcon 命令精讲</a>
+  <a href="#s7">04 实操 A：从零创建工作空间</a>
+  <a href="#s8">05 实操 B：Overlay 覆盖五连击</a>
+  <a href="#s9">06 注意事项与验收清单</a>
+  <a href="#s10">07 本课总结与思考题</a>
   <h4>CH1 · ROS2 基础</h4>
   <a href="../exp-01-ros2-intro/index.html">EXP-01 ROS2 简介</a>
   <a href="../exp-02-cli-tools/index.html">EXP-02 命令工具</a>
@@ -34,40 +32,132 @@
 <div class="exp-head">
   <span class="code">EXP-03 · 第 1 章 · 验证性 · 2 学时</span>
   <h1>工作空间与 colcon：代码放在哪、怎么编</h1>
-  <p class="desc">工作空间是 ROS2 的"工程边界"：src 放源码、build 编译、install 交付、log 留痕；colcon 负责编译，Overlay/Underlay 机制负责让新旧代码层层覆盖。</p>
-  <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">纯软件 · 不接硬件</span><span class="tag">关键词 colcon · overlay · symlink</span></div>
+  <p class="desc">看到这里，说明你后面肯定是要自己构建新的 ROS2 工程了，构建工程需要放到工作空间，其实就是一个目录。工作空间是 ROS2 的"工程边界"：src 放源码、build 编译、install 交付、log 留痕；colcon 负责编译，Overlay/Underlay 机制负责让新旧代码层层覆盖。本章节的目标即学会自己构建 ROS2 工程源码。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 colcon · overlay · symlink</span></div>
 </div>
 
 <section class="blk" id="s1">
-<h2><span class="no">01</span>问题引入：代码到底放哪儿</h2>
+<h2><span class="no">01</span>问题引入：上一章的 talker，是怎么编译出来的呢</h2>
+<p>上一章这两条命令，你已经敲得挺顺了：</p>
+<pre><span class="c"># 终端 1</span>
+ros2 run demo_nodes_cpp talker
+<span class="c"># 终端 2 —— 一秒钟收到一条 "Hello World: N"</span>
+ros2 topic echo /chatter</pre>
+<p>先想一个问题：<b>这个 <code>talker</code> 是谁编译出来的？编译好的文件存放在电脑的哪个目录？</b></p>
+<p>其实它是 ROS2 官方提前编译好、随发行版装进 <code>/opt/ros/humble/</code> 的，就像在餐厅点菜，端上来就吃，你从没进过厨房。</p>
+<p>咱们就拿这个最熟悉的例子，从源码开始完整走一遍编译过程：源码在哪、目录里每个文件是干什么的、colcon 怎么把它变成能跑的程序、中间可能遇到哪些报错。走完之后，再把 Python 版和几个常用参数过一遍，后面自己新开发工程的时候就能游刃有余了。</p>
 <div class="flow">
-  <div class="step"><div class="n">1</div>新手把 Python 脚本随手丢在 <code>~/</code> 家目录，跑得好好的。</div>
-  <div class="step"><div class="n">2</div>一周后：脚本依赖别的包、别的包更新了、还要交付给同学——<b>找不到、编不了、删不掉</b>。</div>
-  <div class="step"><div class="n">3</div>结论：需要一个<b>约定好的工程边界</b>，把"我的代码"和"系统安装的 ROS2"分开。</div>
-  <div class="step"><div class="n">4</div>ROS2 的答案：<b>工作空间（Workspace）</b> + 构建工具 <b>colcon</b>。</div>
+  <div class="step"><div class="n">1</div>以前用的是别人编译好的成品，这次自己从头编一遍，弄清楚每一步是怎么来的。</div>
+  <div class="step"><div class="n">2</div>练手的例子就选最熟悉的 talker：命令你敲过，输出你也见过，就差自己编译这一环。</div>
+  <div class="step"><div class="n">3</div>C++ 版走通后，Python 版按同样的步骤再走一遍，最后介绍几个 colcon 常用参数。</div>
 </div>
-<div class="tip"><span class="lab">定义 Workspace</span>一个包含 <code>src/</code> 目录的文件夹，你所有的功能包源码都放进 src/，构建产物统一生成在其它三层目录里。ROS2 官方也称其为 workspace，ROS1 时代的 catkin_ws 概念一脉相承。</div>
-<p>具体长什么样？下面以本课实操用的 <code>~/ros2_ws</code> 为例，<b>src/ 内部</b>是以「一个文件夹 = 一个功能包」的方式组织的：</p>
-<pre><span class="c"># ~/ros2_ws —— 工作空间根目录</span>
-~/ros2_ws/
-├── src/                          <span class="c">← 源码层：唯一你手写、唯一进 git 的地方</span>
-│   └── my_test_pkg/              <span class="c">← 一个功能包 = 一个文件夹</span>
-│       ├── package.xml           <span class="c">← 包清单：包名、版本、依赖（缺它不算包）</span>
-│       ├── setup.py              <span class="c">← Python 包的安装/入口脚本（ament_python）</span>
-│       ├── setup.cfg             <span class="c">← 安装位置声明（install 到 lib/…）</span>
-│       ├── resource/
-│       │   └── my_test_pkg       <span class="c">← 索引触碰文件（空文件，文件名 = 包名）</span>
-│       └── my_test_pkg/          <span class="c">← 与包同名的 Python 包目录</span>
-│           ├── __init__.py
-│           └── hello_node.py     <span class="c">← 节点入口（ros2 run 执行的模块）</span>
-├── build/                        <span class="c">← colcon build 后才出现（中间产物）</span>
-├── install/                      <span class="c">← colcon build 后才出现（可执行 + setup.bash）</span>
-└── log/                          <span class="c">← colcon build 后才出现（构建日志）</span></pre>
-<div class="tip tealb"><span class="lab">先记住两句话</span>① <b>src 里只放包</b>——每个子目录都要有自己的 <code>package.xml</code>，否则 colcon 发现阶段会直接跳过它；② <b>build / install / log 不要手写、不要进 git</b>——它们是编译生成的，删了随时能重建（详见第 02 节四层结构）。</div>
+<p><b>源码在哪？</b>路径如下：</p>
+<pre>~/ros2_ws/src/xflz_eai_car1/ros2_demos/</pre>
+<p>不过先说清楚，这份源码和上一章跑的那个 talker 是什么关系：<b>上一章执行的是 apt 安装的成品</b>，可执行文件在 <code>/opt/ros/humble</code> 里（对应 ros-humble-demo-nodes-cpp 这个系统包），我们并没有碰过它的源码；而眼前这份是同一套 demo 的源码，放在你自己的工作空间里，专门供这一章练习编译。</p>
+<div class="tip"><span class="lab">那两个 talker 怎么区分？</span>一条命令：<code>ros2 pkg prefix demo_nodes_cpp</code>。还没编译、或者没 source 工作空间时，输出 <code>/opt/ros/humble</code>，说明现在跑的是 apt 装的系统版；执行过 <code>colcon build</code> 并 <code>source install/setup.bash</code> 之后，输出会变成 <code>~/ros2_ws/install</code>。原因就是 Overlay 盖住了 Underlay（第 02 节细讲），<b>命令一个字没变，背后运行的文件已经换成了你自己编出来的那个</b>。这一章的动手环节，要完成的正是这次"换人"。</div>
+<p>进去之后可以看到，ROS2 的目录组织规则很简单：<b>一个文件夹就是一个功能包</b>：</p>
+<pre><span class="c"># ~/ros2_ws/src/xflz_eai_car1/ros2_demos/</span>
+ros2_demos/
+├── demo_nodes_cpp/                <span class="c">← 功能包①：C++ 版，我们刚用的就是它，先拆它</span>
+│   ├── package.xml                <span class="c">← 包的"身份证"，缺它 colcon 就不认这个包</span>
+│   ├── CMakeLists.txt             <span class="c">← 构建说明书：怎么编、装哪、命令叫什么</span>
+│   ├── include/demo_nodes_cpp/    <span class="c">← 头文件目录，供源码 #include</span>
+│   └── src/
+│       └── topics/
+│           ├── talker.cpp         <span class="c">← 发布者节点的源码</span>
+│           └── listener.cpp       <span class="c">← 订阅者节点的源码</span>
+├── demo_nodes_py/                 <span class="c">← 功能包②：同一场景的 Python 版，后半段走一遍</span>
+└── example_interfaces/            <span class="c">← 功能包③：消息和服务接口，被上面两个包依赖</span></pre>
+<div class="tip"><span class="lab">挨个文件聊一聊</span>
+<b>package.xml</b>：每个功能包都配一份，写清包名、版本、依赖谁。里面还有一行 <code>build_type</code>，专门告诉 colcon 这个包该用哪套工具链（这里是 ament_cmake，也就是按 CMake 的路子来）。记一句话：<b>文件夹里没有 package.xml，colcon 扫过去连停都不会停</b>，目录长得再像包也不算数。<br><br>
+<b>CMakeLists.txt</b>：真正的施工图，你先盯两处就够。一处是 <code>add_executable</code>，它说"拿 talker.cpp 编出一个叫 talker 的可执行文件"；另一处是 <code>rclcpp_components_register_node</code>，负责把 talker 登记进安装清单。<b>你敲 <code>ros2 run demo_nodes_cpp talker</code> 时最后那个词，就是从这份清单来的。</b><br><br>
+<b>include/</b>：放头文件（比如 visibility_control），源码里 #include 它，自己不会单独跑。<br><br>
+<b>src/topics/talker.cpp</b>：真正的节点代码。一个继承 <code>rclcpp::Node</code> 的 Talker 类，创建了一个往 <code>chatter</code> 发消息的 publisher，再挂一个每秒执行一次的定时器。你上一章 echo 到的 "Hello World"，就是这几行产生的。旁边的 <code>listener.cpp</code> 负责订阅 chatter 并打印，一个发、一个收，配合起来就是你上一章看到的对讲效果。</div>
+<p><b>编译这一步，colcon 到底干了什么？</b>先澄清一个容易误会的点：colcon 自己不编译代码，真正干活的编译器是 CMake 和 g++。colcon 更像工地上的包工头，你在工作空间根目录（就是有 src/ 的那层）敲下 <code>colcon build</code>，它开始派活：</p>
+<div class="flow">
+  <div class="step"><div class="n">1</div><b>Discovery</b>：先在 src/ 里转一圈，见到 package.xml 就记一笔："这有个包，叫 demo_nodes_cpp"。没这个文件的目录，跳过。</div>
+  <div class="step"><div class="n">2</div><b>Topological</b>：把所有包的依赖关系排成队，谁被依赖谁先编，跟盖楼先打地基一个道理。</div>
+  <div class="step"><div class="n">3</div><b>Build</b>：活派给 CMake 和 g++，talker.cpp 在这一步被真正编译链接，中间产物落在 build/。四步里数它最慢。</div>
+  <div class="step"><div class="n">4</div><b>Install</b>：编好的可执行文件放进 install/lib/demo_nodes_cpp/，照着 CMakeLists 的登记生成命令入口，顺便写好 install/setup.bash。等一下 source 的就是它。</div>
+</div>
+<p>所以整个过程可以概括为：<b>src 进去，build 中转，install 出来；ros2 run 只认 install 里的东西，而 install 要 source 之后才找得到。</b>这句话先记下来，后面排查问题时会经常用到。</p>
+
+<p><b>好了，动手。</b>开两个窗口。第一个窗口编译并运行：</p>
+<pre><span class="c"># 窗口 1：工作空间根目录</span>
+<span class="b">cd</span> ~/ros2_ws
+<span class="g">colcon build</span> --packages-select demo_nodes_cpp   <span class="y"># 先只编这一个包，快</span>
+<span class="b">source</span> install/setup.bash
+<span class="g">ros2 run</span> demo_nodes_cpp talker             <span class="y"># 跑起来，这窗口先留着</span>
+
+<span class="c"># 窗口 2：拿上一章的工具来验收</span>
+ros2 topic list | grep chatter      <span class="y"># 话题在不在？</span>
+ros2 topic echo /chatter            <span class="y"># 能不能收到 "Hello World: N"？</span>
+ros2 topic hz /chatter              <span class="y"># 是不是约 1.0 Hz？</span></pre>
+<p>三个都有：install/ 里有产物、命令跑得起来、话题里有数据。到这儿，"改代码、编译、运行、验证"这个日后天天要转的圈，你已经亲手完整走过一圈了。</p>
+
+<p><b>第一次编译遇到报错很正常</b>，多数是下面这几种情况，对照排查即可：</p>
+<table>
+  <tr><th>你可能遇到</th><th>典型现象</th><th>原因和解法</th></tr>
+  <tr><td>命令根本不存在</td><td><code>colcon: command not found</code></td><td>新终端还没加载 ROS 环境，先 <code>source /opt/ros/humble/setup.bash</code></td></tr>
+  <tr><td>指定了包却 0 个包被编</td><td>Summary 显示 <code>0 packages finished</code></td><td>包名拼错了；或者那个目录里根本没有 package.xml，压根没被扫到</td></tr>
+  <tr><td>编译成功但 run 报错</td><td><code>Package '…' not found</code></td><td>编完忘了 <code>source install/setup.bash</code>。注意：<b>每开一个新终端都要重新 source</b>，它不会替你记住</td></tr>
+  <tr><td>Build 阶段 CMake 报错</td><td><code>Could not find … rclcpp</code></td><td>还是环境没加载全（回看上一条）；也可能是依赖没装，跑一句 <code>rosdep install --from-paths src -y</code></td></tr>
+  <tr><td>改了代码，行为却是旧的</td><td>改完跑起来一点没变</td><td>忘了重新 build；或者你跑的根本是系统里那个同名包。<code>ros2 pkg prefix demo_nodes_cpp</code> 应该指向 <code>~/ros2_ws/install</code></td></tr>
+  <tr><td>编译输出滚动太快</td><td>报错一闪而过看不清</td><td>加 <code>--event-handlers console_direct+</code> 实时打印编译过程；完整日志在 <code>log/latest_build/</code> 目录里</td></tr>
+</table>
+
+<p><b>C++ 版通了，Python 版就轻松多了</b>，因为三步一个字没变，只是换了个包名。同目录下的 <code>demo_nodes_py</code> 就是同一场景的 Python 写法，结构你看着会很眼熟，无非把 CMake 那套换成了 setuptools：</p>
+<pre><span class="c"># demo_nodes_py/：少了 CMakeLists.txt，多了个 setup.py 当"命令注册表"</span>
+demo_nodes_py/
+├── package.xml                <span class="c">← build_type 换成了 ament_python，工具链就切过去了</span>
+├── setup.py                   <span class="c">← entry_points：'talker = demo_nodes_py.topics.talker:main'</span>
+├── setup.cfg                  <span class="c">← 声明入口脚本装到 lib/demo_nodes_py/</span>
+├── resource/demo_nodes_py     <span class="c">← 一个空文件，文件名就是包名，给索引用</span>
+└── demo_nodes_py/
+    └── topics/
+        ├── talker.py          <span class="c">← 六十来行，Node 子类加个定时器</span>
+        └── listener.py</pre>
+<pre><span class="c"># 还是这三步，只换了包名</span>
+<span class="g">colcon build</span> --packages-select demo_nodes_py    <span class="y"># 应该秒级完成，不跑 g++</span>
+<span class="b">source</span> install/setup.bash
+<span class="g">ros2 run</span> demo_nodes_py talker              <span class="y"># 另一个窗口照旧 list / echo / hz</span></pre>
+<p>验证结果和 C++ 版一模一样：话题在、每秒一条、约 1.0 Hz。底下走的是同一套 DDS，所以命令行工具根本分不出你跑的是哪种语言，这一点可以放心。</p>
+
+<table>
+  <tr><th>对比一下</th><th>demo_nodes_cpp</th><th>demo_nodes_py</th></tr>
+  <tr><td>package.xml 里的构建类型</td><td><code>ament_cmake</code></td><td><code>ament_python</code></td></tr>
+  <tr><td>构建脚本</td><td><code>CMakeLists.txt</code>（CMake 语法）</td><td><code>setup.py</code> + <code>setup.cfg</code>（setuptools）</td></tr>
+  <tr><td>命令名登记在哪</td><td><code>rclcpp_components_register_node(… EXECUTABLE talker)</code></td><td><code>entry_points → console_scripts: 'talker = …:main'</code></td></tr>
+  <tr><td>Build 阶段实际在干嘛</td><td>跑 g++ 编译链接，产生中间产物，最花时间</td><td>整理模块、校验入口，基本等于拷贝，秒级</td></tr>
+  <tr><td>节点源码</td><td><code>src/topics/talker.cpp</code>，继承 <code>rclcpp::Node</code>，尾部有注册宏</td><td><code>demo_nodes_py/topics/talker.py</code>，继承 <code>Node</code>，自带 main()</td></tr>
+  <tr><td>从 ros2 run 看过去</td><td colspan="2" style="text-align:center">没区别。包名加命令名对得上就能跑，话题行为也一致</td></tr>
+  <tr><td>实际怎么选</td><td>性能敏感的地方：驱动、算法、控制环</td><td>快速验证想法、写工具脚本</td></tr>
+</table>
+
+<p><b>最后介绍几个 colcon 的常用参数。</b>不需要背下来，先过一遍，用到时回来查即可：</p>
+<pre><span class="c"># 1. 指定包编译。工作空间包多的时候，这个最常用</span>
+<span class="g">colcon build</span> --packages-select demo_nodes_cpp          <span class="y"># 只编指定的包</span>
+<span class="g">colcon build</span> --packages-up-to car1_navigation           <span class="y"># 编这个包，以及它依赖的所有包</span>
+<span class="g">colcon build</span> --packages-skip demo_nodes_py             <span class="y"># 跳过指定的包</span>
+
+<span class="c"># 2. 限制编译进程数。默认会占满 CPU 的全部核心</span>
+<span class="g">colcon build</span> --parallel-workers 2                      <span class="y"># 最多 2 个进程同时编译，机器卡的时候调低</span>
+<span class="g">colcon build</span> --executor sequential                     <span class="y"># 一个包一个包按顺序编，排查问题时日志更清楚</span>
+
+<span class="c"># 3. 符号链接安装。修改 Python 或 launch 文件后不用重新编译</span>
+<span class="g">colcon build</span> --symlink-install                         <span class="y"># 装的是链接而不是拷贝，改完直接再运行即可</span>
+
+<span class="c"># 常见搭配：边编译边打印，出错时不用另外去翻日志</span>
+<span class="g">colcon build</span> --packages-select demo_nodes_py --event-handlers console_direct+</pre>
+<div class="tip tealb"><span class="lab">使用时注意两点</span>① --symlink-install 链接的是代码本身，构建描述（setup.py、package.xml、CMakeLists.txt）如果有改动，还是要重新 colcon build；<br>② --packages-select 后面写的名字必须和 package.xml 里的 <code>&lt;name&gt;</code> 完全一致，跟文件夹叫什么无关。标准四步曲和成功标志的判断方法，第 03 节有完整讲解。</div>
+
+<div class="tip"><span class="lab">Workspace 的定义</span>工作空间就是一个<b>带有 src/ 的文件夹</b>：所有功能包的源码放在 src/ 里，编译产物自动落到旁边的三层目录。它和 ROS1 时代的 catkin_ws 是同一个概念，老教程里的说法可以直接套用。另外两句常见提醒：src 里只放包（没有 package.xml 的文件夹不算包）；build、install、log 不要手动修改，也不要提交进 git，它们随时可以重新生成。各层细节见第 02 节。</div>
 </section>
 
 <section class="blk" id="s2">
-<h2><span class="no">02</span>核心原理：四层目录结构</h2>
+<h2><span class="no">02</span>colcon 编译的基本流程</h2>
+<p>一次 <code>colcon build</code> 牵着三件事：产物落在哪（工作空间四层目录）、内部按什么顺序走（构建四阶段）、编完之后怎么被环境找到（Underlay / Overlay 叠层查找）。按顺序看完这三块，整个编译流程就通了。</p>
+<h3>工作空间四层目录：产物落在哪</h3>
 <div class="kgrid">
   <div class="kcard"><div class="kd">src/</div><div class="kt">源码层（唯一手写层）</div><p>所有功能包的源码、package.xml 都在这里。它是唯一需要纳入 git 版本管理的目录。</p></div>
   <div class="kcard"><div class="kd">build/</div><div class="kt">编译中间产物</div><p>CMake 缓存、.o 文件、构建元数据。可随时整个删除，重新编译即可。</p></div>
@@ -80,10 +170,7 @@
   <tr><td>干净的 git</td><td>.gitignore 常规只需排除 <code>build/ install/ log/</code>，仓库里只有 src。</td></tr>
   <tr><td>可重建性</td><td>任何一台装好 ROS2 的机器，<code>git clone + colcon build</code> 即可复现环境。</td></tr>
 </table>
-</section>
-
-<section class="blk" id="s3">
-<h2><span class="no">03</span>colcon 构建四阶段动画</h2>
+<h3>构建四阶段：内部怎么走（动画）</h3>
 <div class="anim-box">
 <svg viewBox="0 0 760 240" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
   <!-- 四阶段柱 -->
@@ -96,10 +183,10 @@
     <text x="295" y="112" fill="#94a3b8" font-size="12" text-anchor="middle">按依赖排序（DAG）</text>
     <rect x="410" y="60" width="150" height="70" rx="10" fill="#1e293b" stroke="#7c3aed" stroke-width="2"/>
     <text x="485" y="90" fill="#fff" font-size="15" text-anchor="middle" font-weight="bold">③ Build</text>
-    <text x="485" y="112" fill="#94a3b8" font-size="12" text-anchor="middle">并行编译 -jN CPU</text>
+    <text x="485" y="112" fill="#94a3b8" font-size="12" text-anchor="middle">多进程并行编译</text>
     <rect x="600" y="60" width="140" height="70" rx="10" fill="#1e293b" stroke="#7c3aed" stroke-width="2"/>
     <text x="670" y="90" fill="#fff" font-size="15" text-anchor="middle" font-weight="bold">④ Install</text>
-    <text x="670" y="112" fill="#94a3b8" font-size="12" text-anchor="middle">交付到 install/</text>
+    <text x="670" y="112" fill="#94a3b8" font-size="12" text-anchor="middle">逐包装入 install/</text>
   </g>
   <!-- 阶段间脉冲 -->
   <path d="M180 95 H220" stroke="#334155" stroke-width="3"/>
@@ -129,11 +216,8 @@
   </defs>
 </svg>
 </div>
-<p class="anim-cap">colcon 四阶段流水线：发现包 → 拓扑排序 → 并行编译 → 安装交付；排序之后才轮得到 Build，所以依赖多的包永远最后编。</p>
-</section>
-
-<section class="blk" id="s4">
-<h2><span class="no">04</span>Underlay / Overlay：叠层查找原理</h2>
+<p class="anim-cap">教学抽象的四阶段：发现包 → 拓扑排序 → 并行编译 → 安装交付；排序之后才轮得到 Build，所以<b>被别人依赖的包必须先编，依赖别人的包最后编</b>——就像图里 interfaces 先于 driver、bringup 收尾。对照官方说法（colcon 作者 ROSCON 2019 讲义 / developer 文档 Program flow）：colcon 先"计算依赖图、按拓扑序处理"，然后<b>对每个包把 build 和 install 合成一个任务、边编边装</b>，全部完成后统一生成 setup.bash 环境脚本——并不是四段完全独立的全局流水。</p>
+<h3>Underlay / Overlay：编完怎么被找到</h3>
 <p>ROS2 用<b>环境变量列表</b>实现包查找：可执行文件、Python 模块、接口定义都按顺序在多层前缀里搜索，<b>先匹配到的赢</b>。</p>
 <div class="flow">
   <div class="step"><div class="n">1</div><b>Underlay（底层）</b>：系统安装的 ROS2（<code>/opt/ros/humble</code>），提供 rclpy、rviz2 等基础能力。</div>
@@ -149,7 +233,7 @@
 </section>
 
 <section class="blk" id="s6">
-<h2><span class="no">05</span>colcon 命令精讲</h2>
+<h2><span class="no">03</span>colcon 命令精讲</h2>
 <p>标准四步曲——顺序不能乱：</p>
 <pre><span class="c"># ① 确认底层已加载（装完 ROS2 的默认动作，或显式执行）</span>
 source /opt/ros/humble/setup.bash
@@ -168,7 +252,7 @@ colcon build --event-handlers console_direct+<span class="y"># 实时滚动输�
 </section>
 
 <section class="blk" id="s7">
-<h2><span class="no">06</span>实操 A：从零创建工作空间</h2>
+<h2><span class="no">04</span>实操 A：从零创建工作空间</h2>
 <div class="flow">
   <div class="step"><div class="n">1</div>安装构建工具（多数桌面版已自带）：<code>sudo apt install python3-colcon-common-extensions</code></div>
   <div class="step"><div class="n">2</div>建目录骨架：<code>mkdir -p ~/ros2_ws/src</code>——src 是识别工作空间的标志。</div>
@@ -199,7 +283,7 @@ grep -o 'your_ws[^:]*' $COLCON_PREFIX_PATH   <span class="g"># 确认你的层�
 </section>
 
 <section class="blk" id="s8">
-<h2><span class="no">07</span>实操 B：Overlay 覆盖五连击</h2>
+<h2><span class="no">05</span>实操 B：Overlay 覆盖五连击</h2>
 <p>纯终端实操，全程在设备上执行。验证"后 source 者胜"与"Underlay 不可跳过"，请严格按顺序执行并记录每步输出：</p>
 <pre><span class="c"># ① 正确顺序：系统层先，自己层后</span>
 source /opt/ros/humble/setup.bash
@@ -224,7 +308,7 @@ rm -rf build install log &amp;&amp; colcon build</pre>
 </section>
 
 <section class="blk" id="s9">
-<h2><span class="no">08</span>注意事项与验收清单</h2>
+<h2><span class="no">06</span>注意事项与验收清单</h2>
 <div class="check">
   <ul>
     <li>四层目录齐全：src/build/install/log，且 git 仓库里只跟踪 src</li>
@@ -245,7 +329,7 @@ rm -rf build install log &amp;&amp; colcon build</pre>
 </section>
 
 <section class="blk" id="s10">
-<h2><span class="no">09</span>本课总结与思考题</h2>
+<h2><span class="no">07</span>本课总结与思考题</h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">结构</div><div class="kt">src / build / install / log</div><p>唯一手写层是 src；三个生成层随时可删，这是 out-of-source 的全部意义。</p></div>
   <div class="kcard"><div class="kd">工具</div><div class="kt">colcon 四阶段</div><p>Discovery → Topological → Build → Install，依赖排序保证编译顺序正确。</p></div>
