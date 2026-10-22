@@ -21,7 +21,7 @@
   <a href="#s4">04 专题：读懂 package.xml 与依赖标签</a>
   <a href="#s5">05 交互：依赖声明选配器</a>
   <a href="#s6">06 ros2 pkg / rosdep 命令精讲</a>
-  <a href="#s7">07 实操 A：创建并跑通 ament_python 包</a>
+  <a href="#s7">07 实操 A：建 ament_python 包并完成话题闭环</a>
   <a href="#s8">08 实操 B：创建 ament_cmake 包并看依赖生效</a>
   <a href="#s9">09 注意事项与验收清单</a>
   <a href="#s10">10 本课总结与思考题</a>
@@ -41,13 +41,14 @@
 
 <section class="blk" id="s1">
 <h2><span class="no">01</span>问题引入：为什么要"装包"</h2>
+<p>上一章编译 talker 时，你已经在每个源码目录里见过 <code>package.xml</code>——当时只说它是"包的身份证"，缺了 colcon 就不认这个目录。这张身份证上到底写了什么？为什么依赖要分门别类地声明？缺的依赖又怎么一键补齐？这一章把它拆开讲。</p>
 <div class="flow">
-  <div class="step"><div class="n">1</div>你的机器人有 20 个脚本：驱动、算法、启动文件……散落一地时无法交付。</div>
+  <div class="step"><div class="n">1</div>先看没有它会怎样：你的机器人有 20 个脚本——驱动、算法、启动文件……散落一地时无法交付。</div>
   <div class="step"><div class="n">2</div>同学拿到后问：先跑哪个？依赖什么库？接口消息哪来的？<b>没人答得出。</b></div>
-  <div class="step"><div class="n">3</div>ROS2 的答案：把"代码 + 清单 + 资源"打包为<b>功能包</b>，用机器可读的 package.xml 声明一切。</div>
+  <div class="step"><div class="n">3</div>ROS2 的答案：把"代码 + 清单 + 资源"打包为<b>功能包</b>，用机器可读的 package.xml 声明一切——身份证不是摆设，是写给 colcon、rosdep 和协作者看的契约。</div>
   <div class="step"><div class="n">4</div>类比：package.xml 就是 npm 的 package.json / Python 的 pyproject.toml——<b>清单即契约</b>。</div>
 </div>
-<div class="tip"><span class="lab">定义 Package</span>ROS2 中包含至少一个可执行/库文件、并带有 <code>package.xml</code> 清单文件的目录。工作空间管理"一批包"，功能包是"一个交付单元"。</div>
+<div class="tip"><span class="lab">定义 Package</span>ROS2 中包含至少一个可执行/库文件、并带有 <code>package.xml</code> 清单文件的目录。<b>上一章的工作空间管理"一批包"，这一章的功能包是"一个交付单元"</b>——先把单元本身搞清楚，才谈得上把它们组织进工作空间、声明依赖、编译交付。</div>
 </section>
 
 <section class="blk" id="s2">
@@ -149,14 +150,23 @@
 
 <section class="blk" id="s6">
 <h2><span class="no">06</span>ros2 pkg / rosdep 命令精讲</h2>
-<pre><span class="c"># 创建包（在工作空间 src/ 下执行）</span>
-ros2 pkg create --build-type ament_python \
-  --node-name hello_node --dependencies rclpy my_test_pkg
+<pre><span class="c"># 创建包（在工作空间 src/ 下执行）；包名紧跟 create ——</span>
+<span class="c"># --dependencies 是可变长参数，包名放它后面会被当成依赖吞掉，报 package_name required</span>
+ros2 pkg create my_test_pkg --build-type ament_python \
+  --node-name hello_node --dependencies rclpy
 
 <span class="c"># 运行期自查三件套</span>
 ros2 pkg list                      <span class="g"># 系统里有哪些包</span>
 ros2 pkg prefix nav2_bringup       <span class="g"># 包安装在哪一层（区分 Underlay/Overlay）</span>
 ros2 pkg executables my_test_pkg   <span class="g"># 该包暴露哪些可执行文件</span></pre>
+<p>拆开看第一条命令：<b>它的功能是在当前目录（必须是 src/）生成一个完整的包骨架</b>——package.xml、setup.py、setup.cfg、resource/、test/ 目录和节点源文件一次建好，创建完直接 <code>colcon build</code> 就能编。各部分含义：</p>
+<table>
+  <tr><th>命令的组成部分</th><th>作用</th><th>本例产生的结果</th></tr>
+  <tr><td><code>my_test_pkg</code>（位置参数）</td><td>包的名字，决定目录名，也写进清单的 <code>&lt;name&gt;</code>；必须紧跟 <code>create</code></td><td>生成 <code>src/my_test_pkg/</code> 目录</td></tr>
+  <tr><td><code>--build-type ament_python</code></td><td>选构建系统：python 生成 setup.py 骨架；cmake 生成 CMakeLists.txt 骨架</td><td>生成 setup.py、setup.cfg</td></tr>
+  <tr><td><code>--node-name hello_node</code></td><td>顺手生成一个节点源文件，并把它登记进命令入口</td><td>生成 <code>my_test_pkg/hello_node.py</code>，日后 <code>ros2 run</code> 可直接跑</td></tr>
+  <tr><td><code>--dependencies rclpy</code></td><td>预写进 package.xml 的依赖清单，后面可空格跟多个包名</td><td>清单里多一行 <code>&lt;depend&gt;rclpy&lt;/depend&gt;</code></td></tr>
+</table>
 <pre><span class="c"># 依赖安装的事实标准：rosdep（只装清单里声明了的）</span>
 rosdep init      <span class="g"># 一生一次：写入系统级 sources.list.d（需 sudo）</span>
 rosdep update    <span class="g"># 更新「ROS包名 → apt包名」映射数据库</span>
@@ -166,27 +176,72 @@ rosdep install --from-paths src --ignore-src -r -y
 </section>
 
 <section class="blk" id="s7">
-<h2><span class="no">07</span>实操 A：创建并跑通 ament_python 包</h2>
+<h2><span class="no">07</span>实操 A：建 ament_python 包，改三处完成话题闭环</h2>
 <div class="flow">
   <div class="step"><div class="n">1</div>进入工作空间 src/，用 <code>ros2 pkg create</code> 生成骨架（自动带 package.xml、setup.py、节点文件）。</div>
-  <div class="step"><div class="n">2</div>根目录 <code>colcon build</code>，观察 Summary 行。</div>
-  <div class="step"><div class="n">3</div>source 后 <code>ros2 run my_test_pkg hello_node</code> 启动验证。</div>
-  <div class="step"><div class="n">4</div>用 <code>ros2 pkg executables</code> 核对入口点注册是否正确。</div>
+  <div class="step"><div class="n">2</div>根目录 <code>colcon build --packages-select my_test_pkg</code>，观察 Summary 行。</div>
+  <div class="step"><div class="n">3</div>source 后 <code>ros2 run</code> 启动，观察"打一行就退"；用 <code>ros2 pkg executables</code> 核对入口点。</div>
+  <div class="step"><div class="n">4</div>按下面三处改动把模板改成发话题的真节点（只改三处，不整份重写）。</div>
+  <div class="step"><div class="n">5</div>重编再跑：窗口 1 每秒打印"发出: …"，保持运行。</div>
+  <div class="step"><div class="n">6</div>另开窗口，用 EXP-02 学的 list / echo / hz 四条命令闭环验收。</div>
 </div>
 <pre><span class="b">cd</span> ~/ros2_ws/src
-ros2 pkg create --build-type ament_python \
-  --node-name hello_node --dependencies rclpy my_test_pkg
-<span class="b">cd</span> ~/ros2_ws &amp;&amp; colcon build
+ros2 pkg create my_test_pkg --build-type ament_python \
+  --node-name hello_node --dependencies rclpy
+<span class="b">cd</span> ~/ros2_ws &amp;&amp; colcon build --packages-select my_test_pkg
 source install/setup.bash
 ros2 pkg executables my_test_pkg   <span class="g"># → my_test_pkg hello_node</span>
-ros2 run my_test_pkg hello_node    <span class="g"># Ctrl+C 退出</span></pre>
+ros2 run my_test_pkg hello_node    <span class="y"># 输出 Hi from my_test_pkg. 后直接退出——模板只是 4 行 print 脚本，还不是真节点</span></pre>
+<p>生成的模板文件其实只有 4 行 <code>print</code>——没 import rclpy、没有节点、没有 spin，所以打完就退出，<code>ros2 node list</code> 里自然也查不到它。<b>现在把它改成真节点，每秒往 /chatter 发一条消息。</b>这是第一次改代码，<b>不整份重写</b>——跟着三处改动做，每处都写清楚加什么、加在哪。</p>
+
+<p>第 0 步，先看看现在的文件长什么样（一共就 4 行）：</p>
+<pre><span class="g">cat</span> ~/ros2_ws/src/my_test_pkg/my_test_pkg/hello_node.py
+<span class="c"># def main():  print('Hi from my_test_pkg.')，加上两句入口调用——</span>
+<span class="c"># 没有 rclpy、没有节点、没有 spin，所以打完就退出，连 node list 都查不到</span></pre>
+
+<p><b>改动 1｜文件最顶部（<code>def main</code> 之前）加三行 import：</b></p>
+<pre>import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String   <span class="c"># 缺模块时：sudo apt install ros-humble-std-msgs</span></pre>
+
+<p><b>改动 2｜紧接着 import 下面、<code>def main</code> 之前，加一个节点类</b>——发布者和定时器都在这里：</p>
+<pre>class HelloNode(Node):
+    def __init__(self):
+        super().__init__('hello_node')
+        self.pub = self.create_publisher(String, 'chatter', 10)  <span class="c"># 发布者：话题 chatter，队列 10</span>
+        self.timer = self.create_timer(1.0, self.tick)           <span class="c"># 每秒调一次 tick</span>
+        self.n = 0
+
+    def tick(self):
+        self.n += 1
+        self.pub.publish(String(data=f'Hello World: {self.n}'))
+        self.get_logger().info(f'发出: Hello World: {self.n}')</pre>
+
+<p><b>改动 3｜把原来整个 <code>def main</code> 函数换成下面这 4 行</b>（print 换成初始化 + spin；spin 让进程停在这里持续发消息，不再打完就退）：</p>
+<pre>def main():
+    rclpy.init()
+    rclpy.spin(HelloNode())
+    rclpy.shutdown()</pre>
+
+<pre><span class="c"># ⑦ 保存后重新编译、运行，用上一章的命令验收</span>
+<span class="b">cd</span> ~/ros2_ws
+colcon build --packages-select my_test_pkg   <span class="y"># 改了源码必须重编（--symlink-install 可省这步，见 EXP-03 第 02 节）</span>
+<span class="b">source</span> install/setup.bash
+ros2 run my_test_pkg hello_node              <span class="y"># 窗口 1：每秒打一条"发出: …"，保持运行</span>
+
+<span class="c"># 窗口 2：EXP-02 学的四条命令逐项验收</span>
+ros2 node list              <span class="g"># → /hello_node   节点活着</span>
+ros2 topic list             <span class="g"># → /chatter      话题在</span>
+ros2 topic echo /chatter    <span class="y"># → 每秒一条 data: 'Hello World: N'</span>
+ros2 topic hz /chatter      <span class="g"># → 约 1.0 Hz     频率对</span></pre>
+<p>四项全中，闭环完成：<b>自己建包 → 改代码 → 选定包编译 → 运行 → 用上一章的工具验收</b>。以后每个新包都走这一套，只是把 my_test_pkg 换成你自己的包名。</p>
 </section>
 
 <section class="blk" id="s8">
 <h2><span class="no">08</span>实操 B：创建 ament_cmake 包并看依赖生效</h2>
 <pre><span class="b">cd</span> ~/ros2_ws/src
-ros2 pkg create --build-type ament_cmake \
-  --dependencies rclcpp std_msgs cmake_pkg_demo
+ros2 pkg create cmake_pkg_demo --build-type ament_cmake \
+  --dependencies rclcpp std_msgs
 <span class="c"># 查看生成的清单里 &lt;depend&gt; 是否落盘</span>
 grep depend cmake_pkg_demo/package.xml
 <span class="b">cd</span> ~/ros2_ws &amp;&amp; colcon build --packages-select cmake_pkg_demo
@@ -203,6 +258,7 @@ ros2 pkg prefix cmake_pkg_demo   <span class="c"># 确认走上层 Overlay</span
     <li>package.xml 是 format="3"，name/version/maintainer/license 四件套齐全</li>
     <li>声明的 depend 与代码实际 import/find_package 一致，不漏不多</li>
     <li><code>ros2 pkg executables &lt;包名&gt;</code> 能列出自己的节点入口</li>
+    <li>闭环验收：hello_node 改三处后重编，<code>ros2 topic list</code> 有 /chatter，<code>ros2 topic hz /chatter</code> 约 1.0 Hz</li>
     <li>能区分 build/exec/test 三种依赖阶段并说出各自的用途</li>
     <li>会用 <code>rosdep install --from-paths src</code> 一键补齐依赖</li>
     <li>python 包与 cmake 包各建一个且都 build 成功</li>
@@ -211,6 +267,7 @@ ros2 pkg prefix cmake_pkg_demo   <span class="c"># 确认走上层 Overlay</span
 <table>
   <tr><th>坑</th><th>症状</th><th>解法</th></tr>
   <tr><td>在错误目录 create</td><td>包生成在 ~/ 而非 src/，colcon 扫不到</td><td>必须先进入 <b>src/</b> 再 pkg create</td></tr>
+  <tr><td>包名写在 --dependencies 后面</td><td><code>error: the following arguments are required: package_name</code></td><td><code>--dependencies</code> 是可变长参数，会把后面不带 <code>-</code> 的词全当依赖吃掉；<b>包名紧跟 pkg create 写</b></td></tr>
   <tr><td>清单与 CMake 不一致</td><td>build 报 Could not find a package</td><td>package.xml 与 find_package <b>成对补</b>；或用 rosdep 重扫</td></tr>
   <tr><td>改了入口点没反应</td><td>ros2 run 找不到新节点</td><td>检查 setup.py entry_points 后<b>重编</b>（构建描述变更不走 symlink）</td></tr>
   <tr><td>rosdep 从没 init/update</td><td>ERROR: No sources list file</td><td><code>sudo rosdep init</code> + <code>rosdep update</code> 各一次</td></tr>
