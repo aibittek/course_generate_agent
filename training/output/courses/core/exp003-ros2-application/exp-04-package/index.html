@@ -100,7 +100,7 @@
   <path d="M295 142 V172" stroke="#b91c1c" stroke-width="1.6" stroke-dasharray="4 4"/>
 </svg>
 </div>
-<p class="anim-cap">依赖的生命周期：声明 → 解析 → 补装 → 链接；四个环节任一断裂都会在"链接成功"处报错。</p>
+<p class="anim-cap">依赖的生命周期：声明 → 解析 → 补装 → 链接；四个环节任一断裂都会在"链接成功"处报错。其中 colcon Discovery 就是 EXP-03 第 02 节四阶段里的第①步，这里直接拿来用，阶段细节不再重复。</p>
 </section>
 
 <section class="blk" id="s4">
@@ -157,7 +157,7 @@ ros2 pkg create my_test_pkg --build-type ament_python \
 
 <span class="c"># 运行期自查三件套</span>
 ros2 pkg list                      <span class="g"># 系统里有哪些包</span>
-ros2 pkg prefix nav2_bringup       <span class="g"># 包安装在哪一层（区分 Underlay/Overlay）</span>
+ros2 pkg prefix nav2_bringup       <span class="g"># 包安装在哪一层（层叠规则见 EXP-03 第 02 节）</span>
 ros2 pkg executables my_test_pkg   <span class="g"># 该包暴露哪些可执行文件</span></pre>
 <p>拆开看第一条命令：<b>它的功能是在当前目录（必须是 src/）生成一个完整的包骨架</b>——package.xml、setup.py、setup.cfg、resource/、test/ 目录和节点源文件一次建好，创建完直接 <code>colcon build</code> 就能编。各部分含义：</p>
 <table>
@@ -192,7 +192,7 @@ ros2 pkg create my_test_pkg --build-type ament_python \
 source install/setup.bash
 ros2 pkg executables my_test_pkg   <span class="g"># → my_test_pkg hello_node</span>
 ros2 run my_test_pkg hello_node    <span class="y"># 输出 Hi from my_test_pkg. 后直接退出——模板只是 4 行 print 脚本，还不是真节点</span></pre>
-<p>生成的模板文件其实只有 4 行 <code>print</code>——没 import rclpy、没有节点、没有 spin，所以打完就退出，<code>ros2 node list</code> 里自然也查不到它。<b>现在把它改成真节点，每秒往 /chatter 发一条消息。</b>这是第一次改代码，<b>不整份重写</b>——跟着三处改动做，每处都写清楚加什么、加在哪。</p>
+<p>生成的模板文件其实只有 4 行 <code>print</code>——没 import rclpy、没有节点、没有 spin，所以打完就退出，<code>ros2 node list</code> 里自然也查不到它。<b>现在把它改成真节点，每秒往 /chatter 发一条消息。</b>这是第一次改代码，<b>不整份重写</b>，跟着三处改动做，每处都写清楚加什么、加在哪。</p>
 
 <p>第 0 步，先看看现在的文件长什么样（一共就 4 行）：</p>
 <pre><span class="g">cat</span> ~/ros2_ws/src/my_test_pkg/my_test_pkg/hello_node.py
