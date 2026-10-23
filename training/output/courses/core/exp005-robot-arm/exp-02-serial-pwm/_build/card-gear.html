@@ -51,11 +51,20 @@ button{font-family:inherit;font-size:12.5px;font-weight:700;border-radius:8px;pa
 .legend{font-size:11.5px;color:#64748b;text-align:center;line-height:1.6;max-width:400px;
   background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:5px 9px}
 .legend b{color:#334155}
+/* 符号与单位小表 */
+.legend .stt{font-weight:700;color:#475569;display:block;margin-bottom:3px}
+.legend table{width:100%;border-collapse:collapse;font-size:11px;line-height:1.45}
+.legend th,.legend td{border:1px solid #e2e8f0;padding:2.5px 5px;text-align:left}
+.legend th{background:#f1f5f9;color:#475569;font-weight:700}
+.legend td:first-child{text-align:center;font-weight:800;color:#0f172a;width:34px}
+.legend td:nth-child(3){color:#64748b;white-space:nowrap}
+.legend .note{display:block;text-align:left;font-size:10.5px;line-height:1.55;margin-top:4px;color:#64748b}
+.legend .note b{color:#475569}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="hint">默认<b>静止</b>——按"<b>▶ 转动</b>"或拖<b>转速滑杆</b>让它转起来：两轮同步变快变慢，盯住<b>圈数比</b>，它永远是 2.50</div>
+  <div class="hint">默认<b>静止</b>——按"<b>▶ 转动</b>"或拖<b>转速滑杆</b>让它转起来：两轮同步变快变慢，盯住<b>减速比</b>，它永远是 2.50</div>
 
   <svg id="gearSvg" viewBox="0 0 400 270" aria-label="16齿小齿轮带动40齿大齿轮">
     <!-- 轮心连线（基圆切点提示） -->
@@ -91,7 +100,7 @@ button{font-family:inherit;font-size:12.5px;font-weight:700;border-radius:8px;pa
       <circle cx="155" cy="145" r="3" fill="#dc2626"/>
       <line x1="155" y1="145" x2="155" y2="205" stroke="#dc2626" stroke-width="1" stroke-dasharray="3 3"/>
       <text x="155" y="220" fill="#b91c1c" text-anchor="middle" font-weight="700">啮合点：两轮过齿速度相同</text>
-      <text x="155" y="234" fill="#b91c1c" text-anchor="middle" font-weight="700">→ 圈数比恒 = i = 40 ÷ 16 = 2.5</text>
+      <text x="155" y="234" fill="#b91c1c" text-anchor="middle" font-weight="700">→ 减速比恒 = i = 40 ÷ 16 = 2.5</text>
       <!-- i 标注在两轴之间 -->
       <line x1="85" y1="168" x2="225" y2="168" stroke="#94a3b8" stroke-width="1.2"/>
       <rect x="138" y="158" width="34" height="18" rx="5" fill="#fff" stroke="#94a3b8"/>
@@ -106,7 +115,7 @@ button{font-family:inherit;font-size:12.5px;font-weight:700;border-radius:8px;pa
   <div class="counts">
     <div class="cbox"><span class="cn">电机轴（z₁=16 小轮）</span><span class="cv" id="c1">0.0</span> <span class="cu">圈</span></div>
     <div class="cbox"><span class="cn">输出轴（z₂=40 大轮）</span><span class="cv" id="c2">0.0</span> <span class="cu">圈</span></div>
-    <div class="ratio"><span class="cn">圈数比 ÷ = i</span><span class="cv" id="c3">2.50</span></div>
+    <div class="ratio"><span class="cn">减速比 = i</span><span class="cv" id="c3">2.50</span></div>
   </div>
 
   <div class="ctrl">
@@ -124,9 +133,19 @@ button{font-family:inherit;font-size:12.5px;font-weight:700;border-radius:8px;pa
     <div class="bcap">拖转速：两条<b>都不动</b>——扭矩不由快慢决定，由齿数比决定（功率 P = T · ω 守恒）</div>
   </div>
 
-  <div class="verdict ok" id="verdict">恒 2.50 ✔ 圈数比 = 齿数比 40 ÷ 16，转速多快都不变</div>
+  <div class="verdict ok" id="verdict">恒 2.50 ✔ 减速比 = 齿数比 40 ÷ 16，转速多快都不变</div>
   <div class="lesson">齿数比 = 速度的除法、力矩的乘法（功率不变）。</div>
-  <div class="legend">图注：<b>ω</b> = 转速，转多快（rpm）｜<b>i</b> = 传动比（减速几倍）｜<b>T</b> = 力矩（扭矩，单位 N·m）｜<b>P = T · ω</b> = 功率 = 力矩 × 转速</div>
+  <div class="legend"><span class="stt">图注 · 符号与单位对照</span>
+    <table>
+      <tr><th>符号</th><th>含义</th><th>单位</th></tr>
+      <tr><td>z</td><td>齿数，数颗牙（z₁=16，z₂=40）</td><td>颗（齿）</td></tr>
+      <tr><td>i</td><td>减速比 = z₂ ÷ z₁，纯倍数</td><td>无单位</td></tr>
+      <tr><td>ω</td><td>转速，转多快（rpm = 转/分钟）</td><td>rpm</td></tr>
+      <tr><td>T</td><td>力矩，转的"劲"（N·m = 牛·米）</td><td>N·m</td></tr>
+      <tr><td>P</td><td>功率 = T × ω（W = 瓦）</td><td>W</td></tr>
+    </table>
+    <span class="note"><b>备注 1 · ω 的换算：</b>rpm 和 rad/s 两套单位，rpm × 2π ÷ 60 = rad/s（1 转 = 2π 弧度，1 分钟 = 60 秒）。例：90 rpm × 6.28 ÷ 60 ≈ 9.42 rad/s。<br><b>备注 2 · W 的来历：</b>P = T × ω 中，ω 用 rad/s 时，P 的单位就是 N·m/s，即 1 W = 1 N·m/s（1 焦耳/秒）。其中 N（牛顿）= 质量(kg) × 加速度(m/s²)：让 1 kg 产生 1 m/s² 加速度所需的力；重力下加速度取 9.8 m/s²。</span>
+  </div>
 </div>
 
 <script>
@@ -211,7 +230,7 @@ pauseBtn.addEventListener('click', function(){
 });
 document.getElementById('rst').addEventListener('click', function(){
   theta1 = 0;
-  verdict.innerHTML = '恒 2.50 ✔ 圈数比 = 齿数比 40 ÷ 16，转速多快都不变';
+  verdict.innerHTML = '恒 2.50 ✔ 减速比 = 齿数比 40 ÷ 16，转速多快都不变';
   upd();
 });
 

@@ -1,4 +1,4 @@
-﻿# MEMORY.md — 项目长期笔记
+﻿﻿﻿﻿# MEMORY.md — 项目长期笔记
 
 ## 课程文案风格（唯一事实源：`.workbuddy/skills/course-copy-spec/SKILL.md`）
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP-02 串口底层协议与 PWM 控制 — 机器人机械臂应用与开发</title>
+<title>EXP-02 关节电机底层控制与应用 — 机器人机械臂应用与开发</title>
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{--theme:#dc2626;--theme-deep:#b91c1c;--theme-bg:#fee2e2;--theme-bd:#fecaca}
@@ -40,7 +40,7 @@
   <a href="#s10">10 验收与总结</a>
   <h4>本课程实验</h4>
   <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
-  <a href="../exp-02-serial-pwm/index.html">EXP-02 串口底层协议与 PWM 控制</a>
+  <a href="../exp-02-serial-pwm/index.html">EXP-02 关节电机底层控制与应用</a>
   <a href="../exp-05-action-replay/index.html">EXP-05 ROS2 架构与动作回放</a>
   <a href="../exp-03-kinematics/index.html">EXP-03 正运动学基础</a>
   <a href="../exp-04-ik-solver/index.html">EXP-04 逆运动学基础与 IK 解算</a>
@@ -51,7 +51,7 @@
 
 <div class="exp-head">
   <span class="code">EXP-02 · 第 2 章 · 验证性 · 4 学时</span>
-  <h1>串口底层协议与 PWM 控制</h1>
+  <h1>关节电机底层控制与应用</h1>
   <p class="desc">本章<b>不启动 ROS2 节点</b>。学习目标：<b>机械臂的关节原理是什么、关节如何转动起来、又如何被控制</b>。<br>注：机械臂关节设备的节点名称两平台不同——实验箱 <code>/dev/stm32</code>、小车 <code>/dev/car1_stm32</code>。</p>
   <div class="meta">
     <span class="tag hl">难度 ⭐⭐ · 4 学时 · 验证性</span>
@@ -94,7 +94,7 @@
   <p>拆开一台舵机，里面是四件套，各干一件事：</p>
   <div class="kgrid kgrid4">
     <div class="kcard"><div class="kd">四件套 · 动力</div><div class="kt">电机 Motor</div><iframe src="_build/card-motor.html" title="演示：电机只管转，不知转到哪" height="500"></iframe><p>把电能变成转速，只会"转多快"，不知道"转到哪"。</p></div>
-    <div class="kcard"><div class="kd">四件套 · 力矩</div><div class="kt">减速器 Gear</div><iframe src="_build/card-gear.html" title="演示：齿轮降速增矩" height="600"></iframe><p>齿轮组降速增矩：电机转好几圈，输出轴才转一圈，换来能抬起手臂的力矩。</p><div class="tip tealb" style="margin-top:8px"><span class="lab">🔧 先认识"力矩"（就是口语里的"劲"）</span>让东西<b>转</b>起来靠的不是力气本身，而是<b>力矩 τ = F × r</b>（力 × 力臂，单位 N·m 牛·米）。同样大的力气 F，<b>力臂 r 越长、力矩越大</b>——拧螺丝时短扳手拧不动，套根长管就拧动了：不是力气变大，是力臂变长、力矩变大。舵机要抬起手臂，输出轴给的就是力矩。所以下面公式里的 <b>T</b>，指的都是力矩。</div><div class="tip tealb" style="margin-top:8px"><span class="lab">📐 齿轮公式（四步推导）</span><br><b>① i = z₂ / z₁ = 40 / 16 = 2.5</b> —— 两轮啮合处过牙速度必须一样：大轮 40 颗牙，小轮转 2.5 圈才凑够 40 颗，大轮正好转 1 圈。i 只由齿数决定，转多快都不变（对应动画的"恒 2.50"）。<br><b>② ω<sub>出</sub> = ω<sub>入</sub> ÷ i</b> —— 翻译成人话：输出转速 = 电机转速 ÷ 2.5。电机 90 rpm，输出轴只有 36 rpm。<br><b>③ P = T · ω ＝ 常数</b>（忽略摩擦）—— 功率 = 力矩 × 转速。齿轮只搬功率不创造功率，进出必须相等，就像水管变粗水流总量不变。<br><b>④ T<sub>出</sub> = i × T<sub>入</sub></b> —— 把 ② 代进 ③ 约出来的唯一结果：转速除以 2.5，功率不变，力矩就必须乘以 2.5。<b>降速增矩</b>四个字全在这：以慢换矩。</div></div>
+    <div class="kcard"><div class="kd">四件套 · 力矩</div><div class="kt">减速器 Gear</div><iframe src="_build/card-gear.html" title="演示：齿轮降速增矩" height="760"></iframe><p>齿轮组降速增矩：电机转好几圈，输出轴才转一圈，换来能抬起手臂的力矩。</p><div class="tip tealb" style="margin-top:8px"><span class="lab">🔧 先认识"力矩"（就是口语里的"劲"）</span>让东西<b>转</b>起来靠的不是力气本身，而是<b>力矩 τ = F × r</b>（力 × 力臂，单位 N·m 牛·米）。同样大的力气 F，<b>力臂 r 越长、力矩越大</b>——拧螺丝时短扳手拧不动，套根长管就拧动了：不是力气变大，是力臂变长、力矩变大。舵机要抬起手臂，输出轴给的就是力矩。所以下面公式里的 <b>T</b>，指的都是力矩。</div><div class="tip tealb" style="margin-top:8px"><span class="lab">📐 齿轮公式（四步推导）</span>每步都是三件套：<b>字母公式 → 代入数字 → 结果</b>，数字全部带单位；符号与单位对照见上面齿轮卡片底部的图注。<br><b>① 先数牙：i = z₂ ÷ z₁ = 40 颗 ÷ 16 颗 = 2.5</b>。两轮啮合处过牙速度必须一样，大轮一圈过 40 颗牙，小轮一圈只有 16 颗，所以小轮转 2.5 圈才配大轮 1 圈。颗÷颗，单位约掉，i 是纯倍数，只由齿数定。<br><b>② 转速：ω<sub>出</sub> = ω<sub>入</sub> ÷ i = 90 rpm ÷ 2.5 = 36 rpm</b>（rpm = 转/分钟）。电机 90 转/分，输出轴只有 36 转/分，慢下来了。<br><b>③ 前提：功率守恒，齿轮只搬功率不造功率，P<sub>入</sub> = T<sub>入</sub> × ω<sub>入</sub>，P<sub>出</sub> = T<sub>出</sub> × ω<sub>出</sub></b>。代入数字对账：1.0 N·m × 90 rpm = 2.5 N·m × 36 rpm = 90 N·m·rpm，两边始终相等（就像水管变粗流速变慢，每秒流过去的水总量不变）。<br><b>④ 结论：T<sub>出</sub> = T<sub>入</sub> × i = 1.0 N·m × 2.5 = 2.5 N·m</b>，就是把 ② 代进 ③ 解出来的。<br>一句话：转速除以 i，力矩就乘以 i，<b>降速增矩</b>四个字全在这（记住结论即可，推导不必背）。</div></div>
     <div class="kcard"><div class="kd">四件套 · 眼睛</div><div class="kt">磁编码器 Encoder</div><iframe src="_build/card-encoder.html" title="演示：磁铁转，芯片从磁场读出角度" height="940"></iframe><p>轴尾巴上装块磁铁，跟着轴一起转；静止的芯片像枚指南针，读出磁场方向、换算出角度——舵机"知道自己在哪"全靠它。</p></div>
     <div class="kcard"><div class="kd">四件套 · 大脑</div><div class="kt">驱动板 Driver</div><iframe src="_build/card-driver.html" title="演示：目标减实际，误差驱电机" height="900"></iframe><p>收到目标（脉宽），减去编码器读数得误差，再调电机电流把误差往零推——闭环的大脑。</p></div>
   </div>
@@ -421,7 +421,7 @@
 </nav>
 
 <footer>
-  <span>CORE-05 · 机器人机械臂应用与开发 · EXP-02 串口底层协议与 PWM 控制</span>
+  <span>CORE-05 · 机器人机械臂应用与开发 · EXP-02 关节电机底层控制与应用</span>
   <span>4 学时 · 验证性 · 基于 arm_practice 实验讲义改编</span>
 </footer>
 
