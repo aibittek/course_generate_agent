@@ -15,16 +15,14 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#s1" class="now">01 问题引入：为什么要"装包"</a>
-  <a href="#s2">02 核心原理：两种功能包类型</a>
-  <a href="#s3">03 动画：从清单到可运行的依赖链</a>
-  <a href="#s4">04 专题：读懂 package.xml 与依赖标签</a>
-  <a href="#s5">05 交互：依赖声明选配器</a>
-  <a href="#s6">06 ros2 pkg / rosdep 命令精讲</a>
-  <a href="#s7">07 实操 A：建 ament_python 包并完成话题闭环</a>
-  <a href="#s8">08 实操 B：创建 ament_cmake 包并看依赖生效</a>
-  <a href="#s9">09 注意事项与验收清单</a>
-  <a href="#s10">10 本课总结与思考题</a>
+  <a href="#s1" class="now">01 问题引入：交付代码，怎么才不抓瞎</a>
+  <a href="#s11">02 演示：拆开两个真实功能包</a>
+  <a href="#s2">03 原理：从清单到 build / install</a>
+  <a href="#s7">04 实操 A：从零建包，跑通话题闭环</a>
+  <a href="#s8">05 实操 B：编译两个真包对比</a>
+  <a href="#s5">06 自查：依赖标签选配器</a>
+  <a href="#s9">07 注意事项与验收清单</a>
+  <a href="#s10">08 本课总结与思考题</a>
   <h4>CH1 · ROS2 基础</h4>
   <a href="../exp-01-ros2-intro/index.html">EXP-01 ROS2 简介</a>
   <a href="../exp-02-cli-tools/index.html">EXP-02 命令工具</a>
@@ -35,24 +33,61 @@
 <div class="exp-head">
   <span class="code">EXP-04 · 第 1 章 · 验证性 · 2 学时</span>
   <h1>功能包与依赖管理：ROS2 的交付单元</h1>
-  <p class="desc">功能包（Package）是 ROS2 的最小交付单元：一段代码、一份清单 package.xml、一种构建类型。读懂清单、声明对依赖，是工程化的第一步。</p>
+  <p class="desc">功能包（Package）就是 ROS2 的<strong>交付单元</strong>：一份 <code>package.xml</code> 说清「我是谁、我依赖谁、怎么构建我」，colcon、rosdep 和同事全靠它干活。<br>本章目标：<b>能从零创建功能包，跑通话题闭环</b>——先拆两个真包看明白，再把从清单到 build / install 的编译流程走清楚，最后自己建、自己编、自己验。</p>
   <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 package.xml · ament</span></div>
 </div>
 
 <section class="blk" id="s1">
-<h2><span class="no">01</span>问题引入：为什么要"装包"</h2>
-<p>上一章编译 talker 时，你已经在每个源码目录里见过 <code>package.xml</code>——当时只说它是"包的身份证"，缺了 colcon 就不认这个目录。这张身份证上到底写了什么？为什么依赖要分门别类地声明？缺的依赖又怎么一键补齐？这一章把它拆开讲。</p>
-<div class="flow">
-  <div class="step"><div class="n">1</div>先看没有它会怎样：你的机器人有 20 个脚本——驱动、算法、启动文件……散落一地时无法交付。</div>
-  <div class="step"><div class="n">2</div>同学拿到后问：先跑哪个？依赖什么库？接口消息哪来的？<b>没人答得出。</b></div>
-  <div class="step"><div class="n">3</div>ROS2 的答案：把"代码 + 清单 + 资源"打包为<b>功能包</b>，用机器可读的 package.xml 声明一切——身份证不是摆设，是写给 colcon、rosdep 和协作者看的契约。</div>
-  <div class="step"><div class="n">4</div>类比：package.xml 就是 npm 的 package.json / Python 的 pyproject.toml——<b>清单即契约</b>。</div>
-</div>
-<div class="tip"><span class="lab">定义 Package</span>ROS2 中包含至少一个可执行/库文件、并带有 <code>package.xml</code> 清单文件的目录。<b>上一章的工作空间管理"一批包"，这一章的功能包是"一个交付单元"</b>——先把单元本身搞清楚，才谈得上把它们组织进工作空间、声明依赖、编译交付。</div>
+<h2><span class="no">01</span>问题引入：交付代码，怎么才不抓瞎</h2>
+<p>上一章 colcon build 你已经敲顺了，但每个源码目录里那份 <code>package.xml</code> 还一直没细看——今天就把它拆开。先换个角度想：<b>把代码交给别人，怎么才能不靠嘴解释？</b>各家生态早有答案了，都靠一份「说明书」：</p>
+<table>
+  <tr><th>你熟悉的生态</th><th>包里装什么</th><th>说明书（清单文件）</th><th>没有说明书，会怎样</th></tr>
+  <tr><td><b>Node.js</b></td><td>代码 + 启动入口</td><td>package.json</td><td>npm 不知道要装啥，<code>npm run xxx</code> 直接失灵</td></tr>
+  <tr><td><b>Python</b></td><td>模块 + 元数据</td><td>pyproject.toml</td><td>对方装不上依赖，只能回你一句"在我这能跑"</td></tr>
+  <tr><td><b>Java</b></td><td>类 + 资源</td><td>pom.xml</td><td>用了哪些库、什么版本，全靠口头相传</td></tr>
+  <tr><td><b>C / C++</b></td><td>头文件 + 库</td><td>vcpkg / conan 清单</td><td>换台机器链接就失败，还不知道到底缺哪个库</td></tr>
+  <tr><td><b>ROS2</b></td><td>节点 + launch + 接口</td><td><b>package.xml</b></td><td>colcon 扫不到这个包、rosdep 不知道该补啥、<code>ros2 run</code> 找不到入口</td></tr>
+</table>
+<p>说明书上写的就是三件事：<b>我是谁、我依赖谁、别人该怎么构建我</b>。ROS2 里它格外重要——一个工作空间几十个包，机器要靠这份说明书自动排序编译、补齐依赖、登记入口，同事拿到才知道先跑什么。这一章就走三步：<b>看懂说明书（演示）→ 弄明白机器照着它编译时都干了啥（原理）→ 自己从零写一份、跑通（实操）。</b></p>
+<div class="tip"><span class="lab">先给个定义</span>功能包（Package）= 至少一个可执行/库文件 + 一份 <code>package.xml</code> 清单的目录。<b>上一章的工作空间管"一批包"，这一章的主角是"一个交付单元"</b>。</div>
+</section>
+
+<section class="blk" id="s11">
+<h2><span class="no">02</span>演示：拆开两个真实功能包</h2>
+<p>先不写代码。上一章工作空间里就躺着两个官方包，正好一 C++ 一 Python，拆开对着看，差别一目了然：</p>
+<pre><span class="c"># ① C++ 那个：源码是 .cpp，构建说明书叫 CMakeLists.txt</span>
+<span class="g">ls</span> ~/ros2_ws/src/xflz_eai_car1/ros2_demos/demo_nodes_cpp/
+<span class="c"># package.xml  CMakeLists.txt  include/  src/</span>
+
+<span class="c"># ② Python 那个：没有 CMakeLists，换成 setup.py</span>
+<span class="g">ls</span> ~/ros2_ws/src/xflz_eai_car1/ros2_demos/demo_nodes_py/
+<span class="c"># package.xml  setup.py  setup.cfg  resource/  demo_nodes_py/</span>
+
+<span class="c"># ③ 两份"说明书"各看一眼（下面是节选对照）</span>
+<span class="g">cat</span> ~/ros2_ws/src/xflz_eai_car1/ros2_demos/demo_nodes_cpp/package.xml
+<span class="g">cat</span> ~/ros2_ws/src/xflz_eai_car1/ros2_demos/demo_nodes_py/package.xml</pre>
+<table>
+  <tr><th>对比</th><th>demo_nodes_cpp</th><th>demo_nodes_py</th></tr>
+  <tr><td>构建描述</td><td>CMakeLists.txt（要真编译）</td><td>setup.py + setup.cfg（安装即用）</td></tr>
+  <tr><td>清单里的 build_type</td><td><code>ament_cmake</code></td><td><code>ament_python</code></td></tr>
+  <tr><td>源码长什么样</td><td>src/topics/*.cpp</td><td>demo_nodes_py/topics/*.py</td></tr>
+  <tr><td>共同点</td><td colspan="2">都有 package.xml；都声明了构建工具和依赖（rclcpp / rclpy、消息类型 std_msgs）——这几行就是后文 rosdep 补装的依据</td></tr>
+</table>
+<pre><span class="c"># package.xml 主线字段：两边结构一样，只差几行依赖（节选）</span>
+&lt;package format="3"&gt;
+  &lt;name&gt;demo_nodes_cpp&lt;/name&gt;                     <span class="c"># ← 我是谁</span>
+  &lt;buildtool_depend&gt;ament_cmake&lt;/buildtool_depend&gt; <span class="c"># ← 用什么构建（py 包这里换成 ament_python）</span>
+  &lt;depend&gt;rclcpp&lt;/depend&gt;                         <span class="c"># ← 依赖谁（py 包写 rclpy）</span>
+  &lt;depend&gt;std_msgs&lt;/depend&gt;                       <span class="c"># ← 消息类型</span>
+  &lt;export&gt;&lt;build_type&gt;ament_cmake&lt;/build_type&gt;&lt;/export&gt;
+&lt;/package&gt;</pre>
+<div class="tip"><span class="lab">顺手数一数</span>上一章数过工作空间里有几十份 package.xml——每一份背后都是这样一个目录。<b>清单不是可有可无的装饰：没有它，colcon 扫到这个目录会直接跳过。</b></div>
 </section>
 
 <section class="blk" id="s2">
-<h2><span class="no">02</span>核心原理：两种功能包类型</h2>
+<h2><span class="no">03</span>原理：从清单到 build / install</h2>
+<p>演示里两个包的差别看清了。现在回答最要紧的问题：<b>在根目录敲下 <code>colcon build</code> 之后、到 <code>ros2 run</code> 能跑，中间机器到底干了什么？</b>清单在每一步起什么作用——这条线走完，build/ 和 install/ 里为什么会多出东西，就全明白了。</p>
+<h3>先定调：两种构建类型</h3>
 <div class="kgrid">
   <div class="kcard"><div class="kd">ament_python</div><div class="kt">纯 Python 包</div><p>setup.py + 模块目录 + entry_points 声明入口。无需编译（colcon 做安装），开发迭代最快。适合：应用逻辑、工具脚本。</p></div>
   <div class="kcard"><div class="kd">ament_cmake</div><div class="kt">C++ 包</div><p>CMakeLists.txt 驱动编译，生成可执行/动态库并安装接口。适合：驱动、算法、性能敏感节点。</p></div>
@@ -67,10 +102,16 @@
   <tr><td>入口声明</td><td>entry_points console_scripts</td><td>add_executable + install</td></tr>
   <tr><td>典型选择</td><td>应用层/编排层</td><td>驱动/算法/接口生成</td></tr>
 </table>
-</section>
-
-<section class="blk" id="s3">
-<h2><span class="no">03</span>动画：从清单到可运行的依赖链</h2>
+<h3>编译流程：一步清单 → 一个 build/ → 一份 install/</h3>
+<div class="flow">
+  <div class="step"><div class="n">1</div><b>读清单（Discovery）</b>：colcon 递归扫 src/，只认最里层带 package.xml 的目录；没有清单的目录直接跳过。</div>
+  <div class="step"><div class="n">2</div><b>按依赖排序</b>：清单里的 depend 连成一张图，谁被依赖谁先编——注意这排的是编译顺序，缺系统依赖它不管（那是 rosdep 的活）。</div>
+  <div class="step"><div class="n">3</div><b>按 build_type 分流</b>：ament_python 不真编译、秒过；ament_cmake 交给 CMake 生成构建规则、g++ 执行编译，.o 中间产物堆在 <code>build/&lt;包名&gt;/</code>。</div>
+  <div class="step"><div class="n">4</div><b>装进 install/</b>：可执行与库放进 <code>install/&lt;包名&gt;/lib/&lt;包名&gt;/</code>，清单、launch、消息定义放进 <code>share/&lt;包名&gt;/</code>，最后汇总出一份 <code>install/setup.bash</code>。</div>
+  <div class="step"><div class="n">5</div><b>source 后可用</b>：source setup.bash 把 install/ 下的 bin、lib 注进 PATH 和 PYTHONPATH，<code>ros2 run</code> 才找得到入口。</div>
+</div>
+<div class="tip tealb"><span class="lab">报 Could not find / No such file？</span>十有八九是清单里声明了、系统里却没有——<b>colcon 不负责下载</b>，先跑一句 <code>rosdep install --from-paths src --ignore-src -r -y</code> 补齐再编。</div>
+<h3>把依赖这条暗线画出来</h3>
 <div class="anim-box">
 <svg viewBox="0 0 760 220" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
   <!-- 四节点链 -->
@@ -101,10 +142,7 @@
 </svg>
 </div>
 <p class="anim-cap">依赖的生命周期：声明 → 解析 → 补装 → 链接；四个环节任一断裂都会在"链接成功"处报错。</p>
-</section>
-
-<section class="blk" id="s4">
-<h2><span class="no">04</span>专题：读懂 package.xml 与依赖标签</h2>
+<h3>读懂清单：字段与依赖的"生效阶段"</h3>
 <pre><span class="c">&lt;!--?xml：格式 3 是当前标准 --?&gt;</span>（省略头部后）：
 &lt;package format="3"&gt;
   &lt;name&gt;my_test_pkg&lt;/name&gt;
@@ -129,54 +167,8 @@
 <div class="tip amber"><span class="lab">为什么要分阶段声明</span>依赖分阶段可以让 CI 只装构建依赖跑编译、部署镜像只带运行依赖——清单越精确，交付镜像越小、rosdep 解析越快。</div>
 </section>
 
-<section class="blk" id="s5">
-<h2><span class="no">05</span>交互：依赖声明选配器</h2>
-<div class="ix-panel">
-  <div class="ix-title">Dep Chooser · 场景该写哪个标签</div>
-  <div class="ctl-row">
-    <label class="ctl">我的包需要……
-      <select id="scene" onchange="pickDep()">
-        <option value="msg">include 消息头/导入消息类型（如 std_msgs）</option>
-        <option value="launch">运行期用 ros2 launch 启动</option>
-        <option value="buildtool">选定构建系统 ament_cmake</option>
-        <option value="test">CI 里跑单元测试该装的 pytest 套件</option>
-        <option value="all">C++ 库编译链接并在运行时动态加载</option>
-      </select>
-    </label>
-  </div>
-  <div class="io" id="depIo">// 选择场景，输出推荐标签与生成的 XML 片段…</div>
-</div>
-</section>
-
-<section class="blk" id="s6">
-<h2><span class="no">06</span>ros2 pkg / rosdep 命令精讲</h2>
-<pre><span class="c"># 创建包（在工作空间 src/ 下执行）；包名紧跟 create ——</span>
-<span class="c"># --dependencies 是可变长参数，包名放它后面会被当成依赖吞掉，报 package_name required</span>
-ros2 pkg create my_test_pkg --build-type ament_python \
-  --node-name hello_node --dependencies rclpy
-
-<span class="c"># 运行期自查三件套</span>
-ros2 pkg list                      <span class="g"># 系统里有哪些包</span>
-ros2 pkg prefix nav2_bringup       <span class="g"># 包安装在哪一层（区分 Underlay/Overlay）</span>
-ros2 pkg executables my_test_pkg   <span class="g"># 该包暴露哪些可执行文件</span></pre>
-<p>拆开看第一条命令：<b>它的功能是在当前目录（必须是 src/）生成一个完整的包骨架</b>——package.xml、setup.py、setup.cfg、resource/、test/ 目录和节点源文件一次建好，创建完直接 <code>colcon build</code> 就能编。各部分含义：</p>
-<table>
-  <tr><th>命令的组成部分</th><th>作用</th><th>本例产生的结果</th></tr>
-  <tr><td><code>my_test_pkg</code>（位置参数）</td><td>包的名字，决定目录名，也写进清单的 <code>&lt;name&gt;</code>；必须紧跟 <code>create</code></td><td>生成 <code>src/my_test_pkg/</code> 目录</td></tr>
-  <tr><td><code>--build-type ament_python</code></td><td>选构建系统：python 生成 setup.py 骨架；cmake 生成 CMakeLists.txt 骨架</td><td>生成 setup.py、setup.cfg</td></tr>
-  <tr><td><code>--node-name hello_node</code></td><td>顺手生成一个节点源文件，并把它登记进命令入口</td><td>生成 <code>my_test_pkg/hello_node.py</code>，日后 <code>ros2 run</code> 可直接跑</td></tr>
-  <tr><td><code>--dependencies rclpy</code></td><td>预写进 package.xml 的依赖清单，后面可空格跟多个包名</td><td>清单里多一行 <code>&lt;depend&gt;rclpy&lt;/depend&gt;</code></td></tr>
-</table>
-<pre><span class="c"># 依赖安装的事实标准：rosdep（只装清单里声明了的）</span>
-rosdep init      <span class="g"># 一生一次：写入系统级 sources.list.d（需 sudo）</span>
-rosdep update    <span class="g"># 更新「ROS包名 → apt包名」映射数据库</span>
-rosdep install --from-paths src --ignore-src -r -y
-<span class="c">#  ↑  扫描 src 下所有 package.xml，缺什么装什么；-r 允许单条失败继续</span></pre>
-<div class="tip tealb"><span class="lab">rosdep 的本质</span>它是一张<b>翻译表</b>：把 package.xml 里的 ROS 依赖名翻译成 apt/pip 的发行版包名。所以需要 init（装表）+ update（更表）两次动作。</div>
-</section>
-
 <section class="blk" id="s7">
-<h2><span class="no">07</span>实操 A：建 ament_python 包，改三处完成话题闭环</h2>
+<h2><span class="no">04</span>实操 A：从零建包，跑通话题闭环</h2>
 <div class="flow">
   <div class="step"><div class="n">1</div>进入工作空间 src/，用 <code>ros2 pkg create</code> 生成骨架（自动带 package.xml、setup.py、节点文件）。</div>
   <div class="step"><div class="n">2</div>根目录 <code>colcon build --packages-select my_test_pkg</code>，观察 Summary 行。</div>
@@ -192,6 +184,14 @@ ros2 pkg create my_test_pkg --build-type ament_python \
 source install/setup.bash
 ros2 pkg executables my_test_pkg   <span class="g"># → my_test_pkg hello_node</span>
 ros2 run my_test_pkg hello_node    <span class="y"># 输出 Hi from my_test_pkg. 后直接退出——模板只是 4 行 print 脚本，还不是真节点</span></pre>
+<p>create 是本章第一条要记熟的命令，拆开看各参数（<b>建 C++ 包时完全一样，只把 <code>--build-type</code> 换成 <code>ament_cmake</code></b>）：</p>
+<table>
+  <tr><th>命令的组成部分</th><th>作用</th><th>本例产生的结果</th></tr>
+  <tr><td><code>my_test_pkg</code>（位置参数）</td><td>包的名字，决定目录名，也写进清单的 <code>&lt;name&gt;</code>；必须紧跟 <code>create</code></td><td>生成 <code>src/my_test_pkg/</code> 目录</td></tr>
+  <tr><td><code>--build-type ament_python</code></td><td>选构建系统：python 生成 setup.py 骨架；cmake 生成 CMakeLists.txt 骨架</td><td>生成 setup.py、setup.cfg</td></tr>
+  <tr><td><code>--node-name hello_node</code></td><td>顺手生成一个节点源文件，并把它登记进命令入口</td><td>生成 <code>my_test_pkg/hello_node.py</code>，日后 <code>ros2 run</code> 可直接跑</td></tr>
+  <tr><td><code>--dependencies rclpy</code></td><td>预写进 package.xml 的依赖清单，后面可空格跟多个包名</td><td>清单里多一行 <code>&lt;depend&gt;rclpy&lt;/depend&gt;</code></td></tr>
+</table>
 <p>生成的模板文件其实只有 4 行 <code>print</code>——没 import rclpy、没有节点、没有 spin，所以打完就退出，<code>ros2 node list</code> 里自然也查不到它。<b>现在把它改成真节点，每秒往 /chatter 发一条消息。</b>这是第一次改代码，<b>不整份重写</b>——跟着三处改动做，每处都写清楚加什么、加在哪。</p>
 
 <p>第 0 步，先看看现在的文件长什么样（一共就 4 行）：</p>
@@ -225,7 +225,7 @@ from std_msgs.msg import String   <span class="c"># 缺模块时：sudo apt inst
 
 <pre><span class="c"># ⑦ 保存后重新编译、运行，用上一章的命令验收</span>
 <span class="b">cd</span> ~/ros2_ws
-colcon build --packages-select my_test_pkg   <span class="y"># 改了源码必须重编（--symlink-install 可省这步，见 EXP-03 第 02 节）</span>
+colcon build --packages-select my_test_pkg   <span class="y"># 改了源码必须重编（--symlink-install 可省这步，见 EXP-03 第 03 节）</span>
 <span class="b">source</span> install/setup.bash
 ros2 run my_test_pkg hello_node              <span class="y"># 窗口 1：每秒打一条"发出: …"，保持运行</span>
 
@@ -238,21 +238,77 @@ ros2 topic hz /chatter      <span class="g"># → 约 1.0 Hz     频率对</span
 </section>
 
 <section class="blk" id="s8">
-<h2><span class="no">08</span>实操 B：创建 ament_cmake 包并看依赖生效</h2>
-<pre><span class="b">cd</span> ~/ros2_ws/src
-ros2 pkg create cmake_pkg_demo --build-type ament_cmake \
-  --dependencies rclcpp std_msgs
-<span class="c"># 查看生成的清单里 &lt;depend&gt; 是否落盘</span>
-grep depend cmake_pkg_demo/package.xml
-<span class="b">cd</span> ~/ros2_ws &amp;&amp; colcon build --packages-select cmake_pkg_demo
-<span class="g"># 成功后查看两层产物</span>
-ls install/cmake_pkg_demo/lib/   <span class="c"># C++ 可执行安装位置</span>
-ros2 pkg prefix cmake_pkg_demo   <span class="c"># 确认走上层 Overlay</span></pre>
-<p>再回看 <code>src/cmake_pkg_demo/CMakeLists.txt</code>：<code>find_package(rclcpp REQUIRED)</code> 与 package.xml 里的 depend 必须<b>成对出现</b>——清单管"装不装"，CMake 管"链不链"。</p>
+<h2><span class="no">05</span>实操 B：编译两个真包，对比 C++ 与 Python</h2>
+<p>不自己造包了，直接拿工作空间里现成的两个真包下手：demo_nodes_cpp 和 demo_nodes_py 干的是同一件事（话题 talker/listener），但构建类型一 C++ 一 Python——正好把原理那节说的"两条线"亲手走一遍。</p>
+<pre><span class="c"># ① 回到工作空间根目录，先编 C++ 那个——真编译，build/ 里会堆出 .o</span>
+<span class="b">cd</span> ~/ros2_ws
+colcon build --packages-select demo_nodes_cpp
+<span class="g">ls</span> build/demo_nodes_cpp/CMakeFiles/   <span class="y"># 大堆 .o 中间产物——g++ 真的干活了</span>
+
+<span class="c"># ② 再编 Python 那个——没有 g++ 这一步，秒过</span>
+colcon build --packages-select demo_nodes_py
+<span class="g">ls</span> build/demo_nodes_py/               <span class="y"># 几乎是空的：流程照走，只是不真编译</span>
+
+<span class="c"># ③ source 后对比两层产物去了哪</span>
+<span class="b">source</span> install/setup.bash
+<span class="g">ls</span> install/demo_nodes_cpp/lib/demo_nodes_cpp/    <span class="y"># C++：可执行文件装这里</span>
+<span class="g">ls</span> install/demo_nodes_py/lib/demo_nodes_py/      <span class="y"># Python：入口脚本也汇到这里</span>
+<span class="g">ls</span> install/demo_nodes_cpp/share/demo_nodes_cpp/  <span class="y"># 两边都有 share/：清单、launch 都在</span>
+
+<span class="c"># ④ 清单与 CMake 成对核对：depend 决定装谁、find_package 决定链谁</span>
+<span class="g">grep</span> depend ~/ros2_ws/src/xflz_eai_car1/ros2_demos/demo_nodes_cpp/package.xml
+<span class="g">grep</span> find_package ~/ros2_ws/src/xflz_eai_car1/ros2_demos/demo_nodes_cpp/CMakeLists.txt
+
+<span class="c"># ⑤ 各跑一个节点，确认真能用</span>
+ros2 run demo_nodes_cpp talker   <span class="g"># 另开窗口 ros2 topic echo /chatter 看得到</span>
+ros2 run demo_nodes_py talker</pre>
+<p>收口：<b>清单里的 build_type 决定走哪条线（python 秒过 / cmake 真编译），depend 决定谁先编、缺了找谁，find_package 决定链接——三者对齐，包才健康。</b>demo_nodes_cpp 和 demo_nodes_py 同样的功能、同样的验收方式，只有中间那段 build/ 产物完全不同：这就是原理节画的那条流程线跑在真包上的样子。</p>
+</section>
+
+<section class="blk" id="s5">
+<h2><span class="no">06</span>自查：依赖标签选配器（按阶段分类）</h2>
+<div class="ix-panel">
+  <div class="ix-title">Dep Chooser · 场景该写哪个标签</div>
+  <div class="ctl-row">
+    <label class="ctl">我的包需要……
+      <select id="scene" onchange="pickDep()">
+        <optgroup label="构建工具期">
+          <option value="buildtool">选定构建系统 ament_cmake</option>
+        </optgroup>
+        <optgroup label="编译期">
+          <option value="msg">include 消息头/导入消息类型（如 std_msgs）</option>
+          <option value="buildonly">只在编译时用的工具/头文件，运行用不到</option>
+        </optgroup>
+        <optgroup label="运行期">
+          <option value="launch">运行期用 ros2 launch 启动</option>
+          <option value="execpy">Python 运行期 import 第三方库</option>
+        </optgroup>
+        <optgroup label="测试/文档期">
+          <option value="test">CI 里跑单元测试该装的 pytest 套件</option>
+          <option value="doc">只在生成文档时需要的工具</option>
+        </optgroup>
+        <optgroup label="综合">
+          <option value="all">C++ 库编译链接并在运行时动态加载</option>
+        </optgroup>
+      </select>
+    </label>
+  </div>
+  <div class="io" id="depIo">// 选择场景，输出推荐标签与生成的 XML 片段…</div>
+</div>
+<table>
+  <tr><th>标签</th><th>生效阶段</th><th>什么时候写</th><th>典型例子</th></tr>
+  <tr><td><code>depend</code></td><td>编译 + 运行</td><td>默认选择，两阶段都真需要时</td><td>rclcpp / rclpy / std_msgs</td></tr>
+  <tr><td><code>build_depend</code></td><td>仅编译</td><td>头文件、代码生成器只在 build 时用</td><td>只在 .cpp 里 include 的库</td></tr>
+  <tr><td><code>exec_depend</code></td><td>仅运行</td><td>launch、配置、脚本不参与编译</td><td>ros2launch、rviz2、python3-numpy</td></tr>
+  <tr><td><code>buildtool_depend</code></td><td>构建工具期</td><td>构建系统本身，必写</td><td>ament_cmake / ament_python</td></tr>
+  <tr><td><code>test_depend</code></td><td>测试期</td><td>只有 colcon test / CI 要用</td><td>ament_lint_auto、pytest</td></tr>
+  <tr><td><code>doc_depend</code></td><td>文档期</td><td>只有生成文档任务要用</td><td>sphinx</td></tr>
+</table>
+<div class="tip amber"><span class="lab">分阶段的实惠</span>CI 只装构建依赖就能跑编译、部署镜像只带运行依赖——清单越精确，交付镜像越小、rosdep 解析越快。拿不准就用上面的选配器查一遍。</div>
 </section>
 
 <section class="blk" id="s9">
-<h2><span class="no">09</span>注意事项与验收清单</h2>
+<h2><span class="no">07</span>注意事项与验收清单</h2>
 <div class="check">
   <ul>
     <li>package.xml 是 format="3"，name/version/maintainer/license 四件套齐全</li>
@@ -261,7 +317,7 @@ ros2 pkg prefix cmake_pkg_demo   <span class="c"># 确认走上层 Overlay</span
     <li>闭环验收：hello_node 改三处后重编，<code>ros2 topic list</code> 有 /chatter，<code>ros2 topic hz /chatter</code> 约 1.0 Hz</li>
     <li>能区分 build/exec/test 三种依赖阶段并说出各自的用途</li>
     <li>会用 <code>rosdep install --from-paths src</code> 一键补齐依赖</li>
-    <li>python 包与 cmake 包各建一个且都 build 成功</li>
+    <li>demo_nodes_cpp 与 demo_nodes_py 各编译成功，并能说出两边 build/ 与 install/ 产物的差别</li>
   </ul>
 </div>
 <table>
@@ -275,7 +331,7 @@ ros2 pkg prefix cmake_pkg_demo   <span class="c"># 确认走上层 Overlay</span
 </section>
 
 <section class="blk" id="s10">
-<h2><span class="no">10</span>本课总结与思考题</h2>
+<h2><span class="no">08</span>本课总结与思考题</h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">单元</div><div class="kt">Package = 代码 + 清单</div><p>package.xml 是机器可读的契约，工作空间负责组织一批包。</p></div>
   <div class="kcard"><div class="kd">类型</div><div class="kt">python / cmake / 混合 / 接口</div><p>按性能与交付形态选型，接口独立成包可解耦重编。</p></div>
@@ -296,10 +352,13 @@ ros2 pkg prefix cmake_pkg_demo   <span class="c"># 确认走上层 Overlay</span
 </div>
 <script>
 var DEPS={
-  msg:'<span class="dim"># 消息类型在编译期生成代码、运行期也要随身携带 →</span>\n<span class="ok">&lt;depend&gt;std_msgs&lt;/depend&gt;</span>\n<span class="dim">等价于 build_depend + exec_depend 合并写法，最常用。</span>',
-  launch:'<span class="dim"># 只在 ros2 launch 解析时用到，不参与编译 →</span>\n<span class="ok">&lt;exec_depend&gt;ros2launch&lt;/exec_depend&gt;</span>\n<span class="dim">rviz 配置、参数 yaml 同理：只声明 exec_depend。</span>',
   buildtool:'<span class="dim"># 构建系统本身不是"代码依赖" →</span>\n<span class="ok">&lt;buildtool_depend&gt;ament_cmake&lt;/buildtool_depend&gt;</span>\n<span class="dim">写成 depend 会让运行镜像背上无用的构建工具。</span>',
+  msg:'<span class="dim"># 消息类型在编译期生成代码、运行期也要随身携带 →</span>\n<span class="ok">&lt;depend&gt;std_msgs&lt;/depend&gt;</span>\n<span class="dim">等价于 build_depend + exec_depend 合并写法，最常用。</span>',
+  buildonly:'<span class="dim"># 只在编译时用（头文件/代码生成器），运行期用不到 →</span>\n<span class="ok">&lt;build_depend&gt;camera_calibration_parsers&lt;/build_depend&gt;</span>\n<span class="dim">只在 .cpp 里 include、不进运行时的库才这么写。</span>',
+  launch:'<span class="dim"># 只在 ros2 launch 解析时用到，不参与编译 →</span>\n<span class="ok">&lt;exec_depend&gt;ros2launch&lt;/exec_depend&gt;</span>\n<span class="dim">rviz 配置、参数 yaml 同理：只声明 exec_depend。</span>',
+  execpy:'<span class="dim"># Python 纯运行期 import，不参与任何编译 →</span>\n<span class="ok">&lt;exec_depend&gt;python3-numpy&lt;/exec_depend&gt;</span>\n<span class="dim">rosdep 照样按它翻译安装，但不会进编译依赖图。</span>',
   test:'<span class="dim"># 只有 colcon test / CI 需要 →</span>\n<span class="ok">&lt;test_depend&gt;ament_cmake_gtest&lt;/test_depend&gt;</span>\n<span class="dim">生产部署镜像可完全剔除，缩小交付体积。</span>',
+  doc:'<span class="dim"># 只有生成文档的任务要用 →</span>\n<span class="ok">&lt;doc_depend&gt;sphinx&lt;/doc_depend&gt;</span>\n<span class="dim">编译、运行、测试统统不需要，交付镜像更不带。</span>',
   all:'<span class="dim"># 编译要头文件、运行要动态库 → 两阶段都真需要 →</span>\n<span class="ok">&lt;depend&gt;rclcpp&lt;/depend&gt;</span>\n<span class="dim">同时 CMakeLists 里必须 find_package(rclcpp REQUIRED) 成对出现。</span>'
 };
 function pickDep(){document.getElementById('depIo').innerHTML=DEPS[document.getElementById('scene').value];}
