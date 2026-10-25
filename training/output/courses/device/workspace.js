@@ -2584,6 +2584,12 @@
     setStatus('就绪 · 从左侧会话列表打开，或点「＋ 新建会话」', '');
 
     detectSameOrigin().then(function (info) {
+      if (isRemotePage() && info && info.addr === HELPER_HOST) {
+        // 远程页面：助手就算已经在跑也连不上明文 ws://（混合内容拦截），
+        // 必须切到助手自托管的 http 工作台，否则后面新建会话必然握手失败。
+        location.href = localWorkspaceUrl();
+        return;
+      }
       if (info) {
         S.sameOrigin = info;
         if (info.addr === HELPER_HOST) {
@@ -2601,15 +2607,8 @@
       } else {
         setDeviceLabel('本机助手 ' + bridgeBase().replace(/^https?:\/\//, '') +
           ' 未启动 · 连接时会自动尝试启动');
-        if (isRemotePage()) {
-          // 远程页面：wss 无证书、ws 被混合内容拦截。助手若已在跑就直接切过去，
-          // 没跑则弹「下载本机助手」引导。
-          probeHelper().then(function (ok) { if (ok) location.href = localWorkspaceUrl(); });
-          showGuide();
-        } else if (helperReady() !== 1) {
-          // 全新环境（协议未注册）：开局即弹一次性初始化引导，杜绝系统「选择应用」弹框
-          showGuide();
-        }
+        // 远程页面（助手没跑）与全新本地环境：都弹一次性初始化引导
+        if (isRemotePage() || helperReady() !== 1) showGuide();
       }
       if (!S.sessions.length && (!$('guideModal') || $('guideModal').hidden)) openModal();
     });
