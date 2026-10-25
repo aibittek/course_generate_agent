@@ -28,6 +28,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：屏幕里的小车，是谁画的</a>
   <a href="#s2">02 核心原理：link 三重属性 × joint 六类型</a>
   <a href="#s3">03 动画：两个发布者如何合力把车"画"出来</a>
@@ -49,6 +50,21 @@
   <p class="desc">rviz2 里那台蓝底盘黑轮的小车，源头是一份 XML——URDF。它是 Rviz2/Gazebo/TF2/运动规划的唯一模型输入。本实验讲透 link 三重属性与 joint 六类型的原理，用 Xacro 宏语言把 150 行模型压缩到 80 行，并让惯性矩阵从"魔法数字"变成公式推导。</p>
   <div class="meta"><span class="tag hl">难度 ⭐⭐⭐</span><span class="tag">4 学时</span><span class="tag">设计性</span><span class="tag">关键词 URDF · link · joint · Xacro · 惯性矩阵</span></div>
 </div>
+
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清三重属性</div><div class="kt">visual / collision / inertial</div><p>能阐述 URDF 中 link 三重属性各自的作用及其分离设计的工程意义——为什么渲染、碰撞检测、动力学计算需要独立定义。</p></div>
+  <div class="kcard"><div class="kd">② 掌握写法</div><div class="kt">URDF + Xacro</div><p>能正确编写含多个 link 与 joint 的 URDF，用 Xacro 参数化建模，并用 <code>xacro</code> 工具把 <code>.xacro</code> 展开为标准 URDF。</p></div>
+  <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">造一台差分车</div><p>独立构建简化差分驱动机器人（底盘 + 双轮 + 万向轮），在 rviz2 中加载并验证其运动学结构。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">为真机建模</div><p>能为 B2 实验箱上的实际机器人编写含真实尺寸参数的 URDF，并在 rviz2 中验证。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：joint 的六种类型怎么选（continuous / revolute / prismatic / fixed …），以及 parent-child 的方向不能写反。<br>
+<b>难点</b>：惯性矩阵不能拍脑袋——非法值会让 Gazebo 求解器发散、模型原地爆炸。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课是<b>全课程收口</b>：URDF 给出机器人的"身体"，EXP-19 的 TF2 给出"位置"，两者合起来，机器人才在数字世界里真正存在。</div>
+</section>
 
 <section class="blk" id="s1">
   <h2><span class="no">01</span>问题引入：屏幕里的小车，是谁画的<span class="fs">聚焦问题 · 激活旧知</span></h2>

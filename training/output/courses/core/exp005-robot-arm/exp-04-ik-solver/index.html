@@ -60,8 +60,8 @@ pre{font-size:13.5px;line-height:1.85}
     <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
     <a href="../exp-02-serial-pwm/index.html">EXP-02 串口协议与 PWM</a>
     <a href="../exp-03-kinematics/index.html">EXP-03 正运动学基础</a>
-    <a href="../exp-04-ik-solver/index.html">EXP-04 逆运动学与 IK 解算</a>
-    <a href="../exp-05-action-replay/index.html">EXP-05 架构与动作回放</a>
+    <a class="now" href="../exp-04-ik-solver/index.html">EXP-04 逆运动学与 IK 解算</a>
+    <a href="../exp-05-action-replay/index.html">EXP-05 ROS2 架构与动作回放</a>
     <a href="../exp-06-fixed-grasp/index.html">EXP-06 逆运动学固定抓取</a>
     <a href="../exp-07-visual-grasp/index.html">EXP-07 视觉动态抓取</a>
   </nav>
@@ -139,6 +139,8 @@ pre{font-size:13.5px;line-height:1.85}
 <h3>先约定两件事</h3>
 <p>第一件，角度还是从竖直的 Z 轴量起，跟上一章一致。零位时整条臂笔直竖着，q=0 表示和竖直线重合。</p>
 <p>第二件，这一章为了讲得清楚，<b>先把三维问题压到二维平面里</b>。因为 J2、J3、J4 三根轴都沿 Y 方向，它们只能让手臂在 X-Z 竖直平面里动。所以做法永远是：先用 J1 转到目标朝向，之后就在这个平面里解两杆问题。俯视图定方向，侧视图定形状。</p>
+<div class="tip amber"><span class="lab">⚠️ 但有一个"降维损失"要提前知道</span>把 5 关节压成 4 自由度（x, y, z, pitch）是要付代价的：<b>J5 的解恒为 0</b>。因为 J1 与 J5 共轴，在"末端俯仰已由 J2/J3/J4 定死"的前提下，J5 再怎么转都不能改变工具的朝向和位置——它是<b>冗余</b>的，所以解析解里直接取 0。后果是：<b>这台机器不能只靠 IK 把夹爪绕自身轴摆成任意角度</b>，需要在 <code>solution_to_dict()</code> 之外单独给 q5 赋值。想实现"夹爪换个朝向再抓"，得在解完之后手工设 q5，而不是指望 <code>solve_analytical_ik</code> 帮你解出来。</div>
+<div class="tip tealb"><span class="lab">🔍 限位到底是多少，两处说法要分清</span>解析器 <code>config.py</code> 的 <code>jointLimits</code> 写的是 <b>±π（±180°）</b>，这是 URDF 名义行程；真正执行的是 <code>arm_controller.py</code> 的 <code>JOINT_LIMITS_RAD = ±2.356（±135°）</code>，来自 270° 舵机的物理行程。所以：<b>解算器认为合法的角，控制器仍可能拒收</b>。写代码时两边都要过，别只信一边。</div>
 </section>
 
 <section class="blk" id="s2">
@@ -210,9 +212,19 @@ pre{font-size:13.5px;line-height:1.85}
   </div>
 </div>
 
-<p>有一个边界要记住：<b>两杆加起来最远能伸 0.2523 米</b>。超过这个距离，余弦定理算出来的值会小于 −1，<code>arccos</code> 没有答案，这就相当于够不着。程序里要先把这种情况拦掉，不能硬算。</p>
+<p>有一个边界要记住：<b>两杆加起来最远能伸 0.2523 米</b>。超过这个距离，余弦定理算出来的值会小于 −1，<code>arccos</code> 没有答案，这就相当于够不着。</p>
 
-<div class="tip amber"><b>提示：</b>手算的时候如果 <code>(d² − L1² − L2²) / (2·L1·L2)</code> 算出来超出 [−1, 1]，不是公式错了，是目标点不在可达范围内。</div>
+<div class="tip amber"><span class="lab">⚠️ 这里藏着一个真问题：源码把越界值"夹"掉了，而不是报错</span>
+看 <code>ik_analytical.py</code> 第 125-127 行：
+<pre style="margin:.5rem 0 .4rem"><code>cosQ3rel = (distSq - L1² - L2²) / (2·L1·L2)
+cosQ3rel = max(-1.0, min(1.0, cosQ3rel))   # ← 超界值被静默夹到 ±1
+q3rel_mag = math.acos(cosQ3rel)</code></pre>
+后果是：目标离得太远时，余弦值本该 &lt; −1，却被夹成 −1，<code>arccos(−1) = 180°</code>，程序<b>照样返回一组"解"</b>，一声不吭。它的 q3 停在 ±0.17° 附近（整条臂几乎伸直），<b>既不报 "Out of reach"，也不返回错误</b>。<br>
+实测复现（本章第 09 节就是让你自己跑出来）：<code>(0.25, 0, 0.15)</code>、<code>(0.22, 0.03, 0.12)</code>、<code>(0.18, 0.05, 0.10)</code> 三个点位全部超界，回代 FK 后误差 <b>18.4 / 22.9 / 21.7 mm</b>；而工作空间<b>内</b>的 <code>(0.20, −0.03, 0.18)</code> 误差是 <b>0.00 mm</b>。<br>
+<b>这就是"求解成功 ≠ 解准确"。</b>注意源码里其实有一个可达性检查（<code>dist &gt; maxReach + 1e-5</code> 就返回 "Out of reach"），但它<b>拦不住这种情况</b>——因为 <code>maxReach</code> 只算到 J4（<code>L1+L2</code>），而 <code>dist</code> 是到 J4 的距离，判据本身没写错；真正漏掉的是：<b>夹紧发生在更后面，把一次本该失败的求解粉饰成了一次成功</b>。
+</div>
+
+<div class="tip tealb"><span class="lab">🔍 工程上该怎么防</span>两条防线缺一不可：<b>① 求解前</b>按 <code>L1+L2 = 0.2523 m</code> 先算一遍可达性，超界就直接拒绝，别把选择权交给 arccos；<b>② 求解后</b>永远做一次 FK 回代、比对误差（这正是下一节"闭环验证"的由来）。只看 <code>error is None</code> 就认为解对了，是本课程最容易踩的坑。</div>
 </section>
 
 <section class="blk" id="s4">
@@ -375,7 +387,19 @@ pre{font-size:13.5px;line-height:1.85}
 <p>判断方法很简单：<b>先只比"解出来的角代回 FK"和"目标"</b>。这一步只有数学，不涉及真机。如果这里就差了，跟装配无关；如果这里对得上，真机上却差，那才是装配和标定的问题。</p>
 
 <h3>往真机下发</h3>
-<p>解出来的角要换成 PWM 才能发给舵机，换算关系在上一章讲过：<code>rad = (PWM − 1500) × 0.002356</code>。源码里 <code>solution_to_pwm()</code> 做这件事，然后通过串口发出去。</p>
+<p>解出来的角要换成 PWM 才能发给舵机，换算关系在上一章讲过：<code>PWM = rad ÷ 0.002356 + 1500</code>。源码里 <code>solution_to_pwm()</code> 做这件事，然后通过串口发出去。</p>
+<p>把它和别的可能的错因分清楚，是本章唯一需要背下来的一张表：</p>
+<table>
+  <tr><th>现象</th><th>该怀疑谁</th><th>怎么验证</th></tr>
+  <tr><td>解出来的角代回 FK，<b>就</b>和目标差了十几毫米，但仍返回"成功"</td><td><b>求解器 bug</b>（本章那个夹紧问题）</td><td>只跑纯数学、不接真机；换一个工作空间内的点做对照，误差立刻归零</td></tr>
+  <tr><td>代回 FK <b>完全对得上</b>，但真机指尖差几厘米</td><td><b>机械 / 标定</b>：零位、TCP、装配公差</td><td>卷尺量、四点法复验（见<a href="../calibration/index.html#s2">标定专题 第 2 部分</a>）</td></tr>
+  <tr><td>真机动作方向反了、或某个关节明显超范围</td><td><b>PWM↔弧度方向 / 限位</b></td><td>发单个关节 <code>s 1 1520</code> 看是不是只动 1 号；查 <code>SERVO_CONFIG</code> 的 <code>direction</code></td></tr>
+  <tr><td>同一个点在两次运行里误差不同</td><td><b>没有闭环或没有回代 FK</b></td><td>把 FK 回代误差打进日志，每次都看</td></tr>
+</table>
+
+<h3>想上真机？先走 --direct</h3>
+<p>本章的最高配是"跳过 ROS2、直连串口下发"，用来把算法误差和架构误差彻底分开：<code>interactive_ik_test.py --direct</code> 会直接打开串口（和 EXP-02 完全同一条链路），你输入的 x/y/z/pitch 在本地解完 IK 立刻变成 PWM 发下去——<b>中间没有节点、没有话题、没有 launch</b>。它跑通了却和 ROS2 路线结果不同，问题就一定出在架构层（话题没接上、参数没加载、TF 不同步），而不是算法。</p>
+<div class="tip amber"><span class="lab">⚠️ 用 --direct 前必须做的事</span>和 EXP-02 一模一样的清场：<b>先停掉 bringup / arm_controller</b>，否则两边抢 <code>/dev/stm32</code>。而且这条路径<b>绕过了 arm_controller 的软限位检查</b>（<code>JOINT_LIMITS_RAD = ±2.356</code>），防越界只能靠你自己看 <code>solution_to_pwm()</code> 打出来的 5 路 PWM 有没有贴到 500/2500。</div>
 <p>这一章不接实机也能做，只要闭环测试跑通就算达标。想上真机验证的，按实操步骤里的命令来。</p>
 </section>
 

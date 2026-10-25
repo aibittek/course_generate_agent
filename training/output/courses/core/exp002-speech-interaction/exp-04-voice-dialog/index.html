@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP-04 · 端到端语音对话 — 机器人自然语言交互应用</title>
+<title>EXP-04 · 大模型端到端对话 — 机器人自然语言交互应用</title>
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{
@@ -27,12 +27,12 @@
 
   <aside class="side">
     <h4>本页目录</h4>
-    <a href="#s1" class="now">01 问题引入：把"听、想、说"串成一句话有多难</a>
-    <a href="#s2">02 原理通俗讲解：三个房间轮流用麦克风</a>
+    <a href="#s1" class="now">01 问题引入：三个好零件，拼不成一个会聊天的人</a>
+    <a href="#s2">02 原理通俗讲解：一间录音棚、一块门牌、一个常驻的耳朵</a>
     <a href="#s3">03 关联知识点</a>
     <a href="#s4">04 实验目标</a>
     <a href="#s5">05 实验环境与准备</a>
-    <a href="#s6">06 动画讲解：三态状态机数据流</a>
+    <a href="#s6">06 动画讲解：三态状态机与流水线</a>
     <a href="#s7">07 互动讲解：对话状态机步进台</a>
     <a href="#s8">08 实操步骤</a>
     <a href="#s9">09 重点与易错点</a>
@@ -42,108 +42,124 @@
     <a href="../exp-01-mic-array-wakeup/index.html">EXP-01 六麦阵列唤醒</a>
     <a href="../exp-02-asr/index.html">EXP-02 声学模型 ASR 语音识别</a>
     <a href="../exp-03-tts/index.html">EXP-03 TTS 语音合成</a>
-    <a href="../exp-04-voice-dialog/index.html">EXP-04 端到端语音对话</a>
-    <a href="../exp-05-llm-understanding/index.html">EXP-05 大模型语义理解</a>
-    <a href="../exp-06-emotion-perception/index.html">EXP-06 多模态语音情绪感知</a>
+    <a href="../exp-04-voice-dialog/index.html">EXP-04 大模型端到端对话</a>
+    <a href="../exp-05-llm-understanding/index.html">EXP-05 实时语音交互与工具调用</a>
+    <a href="../exp-06-emotion-perception/index.html">EXP-06 多模态视觉语言理解</a>
   </aside>
 
   <main class="content">
 
     <div class="exp-head">
-      <span class="code">EXP-04 · 第 2 章 · 设计性 · 8 学时</span>
-      <h1>端到端语音对话：让机器人接得住话</h1>
-      <p class="desc">把唤醒、识别、理解、回答、播报串成一个能聊天、能被打断的完整循环。本实验整合前面三个实验的模块，让机器人做到"喊它 → 它听 → 它想 → 它说"。</p>
+      <span class="code">EXP-04 · 第 2 章 · 设计性 · 4 学时</span>
+      <h1>大模型端到端对话：让机器人接得住话</h1>
+      <p class="desc">把唤醒、识别、理解、回答、播报串成一个能聊天、能被打断的完整循环。本实验是<b>架构课</b>：不追参数细节，而是搞清"谁在什么时刻干活"——三态状态机、常驻采集线程、流式 SSE、打断信号，这四件事决定了机器人像"能聊天的伙伴"还是"三个各干各的实习生"。</p>
       <div class="meta">
-        <span class="tag hl">难度 ⭐⭐ · 8 学时</span>
+        <span class="tag hl">难度 ⭐⭐ · 4 学时</span>
         <span class="tag">三态状态机</span>
-        <span class="tag">防回声</span>
-        <span class="tag">流式分句</span>
+        <span class="tag">Capture 线程常驻</span>
+        <span class="tag">流式 SSE 分句</span>
         <span class="tag">打断 barge-in</span>
       </div>
     </div>
 
     <!-- 01 -->
     <section class="blk" id="s1">
-      <h2><span class="no">01</span>问题引入：把"听、想、说"串成一句话有多难</h2>
-      <p>到这里你已经有了三个零件：能听见叫它（EXP-01）、能听懂句子（EXP-02）、能开口说话（EXP-03）。可是把三个脚本直接拼起来，机器人并不像一个能聊天的伙伴，倒像三个各干各的实习生：</p>
+      <h2><span class="no">01</span>问题引入：三个好零件，拼不成一个会聊天的人</h2>
+      <p>到这里你已经有了三个零件：能听见叫它（EXP-01）、能听懂句子（EXP-02）、能开口说话（EXP-03）。可是把三个脚本直接串起来，机器人并不像一个能聊天的伙伴，倒像三个各干各的实习生：</p>
       <div class="flow">
-        <div class="step"><span class="n">1</span><b>它自己跟自己聊</b><br>喇叭刚放出的回答，又被自己的麦克风听了进去，当成"你在说话"。</div>
+        <div class="step"><span class="n">1</span><b>它自己跟自己聊</b>：喇叭刚放出的提示音或回答，又被自己的麦克风听了进去，当成"你在说话"</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">2</span><b>它不肯停</b><br>回答念到一半你想插话，它非要念完最后一句才理你。</div>
+        <div class="step"><span class="n">2</span><b>它不肯停</b>：回答念到一半你想插话，它非要念完最后一句才理你</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">3</span><b>它反应慢</b><br>要等大模型把整段话写完才开口，第一句就得等好几秒。</div>
+        <div class="step"><span class="n">3</span><b>它反应慢</b>：要等大模型把整段话写完才开口，第一句就得等好几秒</div>
+        <div class="arr">→</div>
+        <div class="step"><span class="n">4</span><b>它开头漏字</b>：唤醒之后你立刻开口，前几个字却没被录进去</div>
       </div>
-      <p>这些问题没有一个出在单个模块上——识别是对的、合成也是对的——<b>出在模块之间怎么交接</b>：</p>
+      <p>这四个问题<b>没有一个出在单个模块上</b>——识别是对的、合成也是对的——出在模块之间怎么交接：</p>
       <table>
-        <thead><tr><th>看到的现象</th><th>缺少的那个机制</th></tr></thead>
+        <thead><tr><th>看到的现象</th><th>缺少的那个机制</th><th>对应知识点</th></tr></thead>
         <tbody>
-          <tr><td>机器人自问自答，把自己的话当成用户输入</td><td>防回声：说话的时候要"捂住耳朵"</td></tr>
-          <tr><td>插话无效，必须等它念完</td><td>打断：随时可以插话，立刻闭嘴</td></tr>
-          <tr><td>首句响应慢，"想到才说"</td><td>流式分句：大模型说一句，喇叭播一句</td></tr>
+          <tr><td>机器人自问自答，把自己的话当成用户输入</td><td>防回声：播提示音前后要把音频缓冲清干净</td><td>双轮 drain（第 02 节）</td></tr>
+          <tr><td>插话无效，必须等它念完</td><td>打断：随时能插话，立刻闭嘴</td><td><code>interrupt_event</code>（第 07 节）</td></tr>
+          <tr><td>首句响应慢，"想到才说"</td><td>流式分句：模型吐一句，喇叭播一句</td><td>SSE + <code>SENTENCE_RE</code>（第 05 节）</td></tr>
+          <tr><td>唤醒后头几个字丢了</td><td>采集线程必须<b>一直</b>在跑，不能等唤醒后才开录音</td><td>Capture 常驻 + 队列（第 04 节）</td></tr>
         </tbody>
       </table>
-      <div class="tip amber"><span class="lab">💡 本节要点</span>端到端语音对话的难点不在"换个更大的模型"，而在<b>安排谁在什么时刻干活</b>。这也是从"模块演示"走向"能用的产品"的分水岭。</div>
+      <div class="tip amber"><span class="lab">💡 本节要点</span>端到端语音对话的难点不在"换个更大的模型"，而在<b>安排谁在什么时刻干活</b>。这也是从"模块演示"走向"能用的产品"的分水岭。本实验只做 4 学时，因此我们把精力集中在<b>架构四条主线</b>上；工程细节（提示音双轮排空、常驻播放器、工具调用）留给 EXP-05。</div>
     </section>
 
     <!-- 02 -->
     <section class="blk" id="s2">
-      <h2><span class="no">02</span>原理通俗讲解：三个房间轮流用麦克风</h2>
-      <p><b>生活比喻：机器人只有一间录音棚。</b>棚里只有一支麦克风和一个喇叭，所以同一时刻只能有一个角色在里面干活。门口挂着一块牌子，写着"现在轮到谁"——这块牌子就是<b>状态（state）</b>。</p>
+      <h2><span class="no">02</span>原理通俗讲解：一间录音棚、一块门牌、一个常驻的耳朵</h2>
+      <p><b>生活比喻：机器人只有一间录音棚。</b>棚里只有一支麦克风和一个喇叭，同一时刻只能有一个角色在里面干活。门口挂着一块牌子，写着"现在轮到谁"——这块牌子就是<b>状态（state）</b>。</p>
       <div class="flow">
-        <div class="step"><span class="n">1</span><b>IDLE（待机）· 守门的人</b><br>竖着耳朵只等一句话：叫"小飞小飞"。别的动静都当没听见。</div>
+        <div class="step"><span class="n">1</span><b>IDLE（待机）· 守门的人</b>：竖着耳朵只等一句话——"小飞小飞"。别的动静都当没听见。</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">2</span><b>LISTENING（聆听）· 做记录的人</b><br>先"哎"一声（提示音），然后专心把你说的话记下来，直到听出你停下来了。</div>
+        <div class="step"><span class="n">2</span><b>LISTENING（聆听）· 做记录的人</b>：先播一声提示音（"我在"），清掉回声后专心把你说的话记下来，直到端点检测判断你停下来了。</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">3</span><b>SPEAKING（说话）· 念稿的人</b><br>把想好的答案一句句念出来；念的时候耳朵还留着一只，听你有没有插话。</div>
+        <div class="step"><span class="n">3</span><b>SPEAKING（说话）· 念稿的人</b>：把大模型边想边吐出的句子一句句念出来；念的时候耳朵还留着一只，听你有没有插话。</div>
       </div>
-      <p>牌子同一时刻只写一个名字，所以流程永远不会"串台"——这就是<b>三态状态机</b>的全部含义。</p>
-      <h3>四个必须懂的小机制</h3>
+      <p>牌子同一时刻只写一个名字，所以流程永远不会"串台"——这就是<b>三态状态机</b>的全部含义。但要让它真的好用，还需要四个辅助机制：</p>
       <div class="kgrid">
         <div class="kcard">
+          <div class="kd">👂 常驻耳朵</div>
+          <div class="kt">Capture 线程一直跑</div>
+          <p>"唤醒后才开始录音"会在唤醒判断的那几十毫秒里丢掉你的第一个字。正确做法：录音线程<b>从程序启动就一直在采</b>，把音频块塞进队列；谁来消费（KWS 还是 ASR）由状态决定。这就是"生产者-消费者"模式。</p>
+        </div>
+        <div class="kcard">
           <div class="kd">🔇 防回声</div>
-          <div class="kt">说话时捂住耳朵</div>
-          <p>你对着电话大声说话，听筒里的声音会绕回来。机器人也一样：提示音和它自己的回答会绕回麦克风，被识别成"用户说话"。做法是播提示音前后<b>把音频缓冲清干净</b>，再开始认真听。</p>
+          <div class="kt">先排空，再认真听</div>
+          <p>提示音和它自己的回答会绕回麦克风。做法：播完提示音后<b>睡一小会儿</b>（让 ALSA 缓冲 + 房间混响放完），然后把队列里攒下的音频块全部丢掉，再新建一个干净的 ASR stream。</p>
         </div>
         <div class="kcard">
           <div class="kd">✂️ 流式分句</div>
           <div class="kt">说一句，吐一句</div>
-          <p>不等大模型把整段写完。它一边想，我们一边按句号逗号切开：切出一句就合成一句、播一句。第一句几秒内就能听到，不用干等。</p>
+          <p>不等大模型写完整段。它一边吐 token，我们一边往缓冲里累积，遇到句号/问号/逗号就切出一句、立刻送 TTS 合成播放。第一句几百毫秒就能听到。</p>
         </div>
         <div class="kcard">
           <div class="kd">✋ 打断</div>
           <div class="kt">允许插话</div>
-          <p>念稿的时候，守门的人没有下班——唤醒词仍在监听。一旦又听到"小飞小飞"，立刻停止播放，回到聆听状态听你要说什么。</p>
+          <p>念稿时守门的人没有下班——唤醒词仍在监听。一旦又听到"小飞小飞"，先发一个"停"的信号（<code>Event</code>），后台线程看到就收工，播放器被关掉，回到聆听状态。</p>
         </div>
         <div class="kcard">
-          <div class="kd">🔁 回到待机</div>
+          <div class="kd">🔁 必回待机</div>
           <div class="kt">念完把牌子翻回去</div>
-          <p>不管这段回答是正常念完、被打断、还是出错，最后都必须把牌子翻回 IDLE，否则下一次喊它就没反应了。</p>
+          <p>不管正常念完、被打断、还是出错，最后都必须回到 IDLE，否则下一次喊它就没反应了。源码里这条靠"后台线程的 <code>finally</code> 里必定设置 <code>speaking_done</code>"来保证。</p>
+        </div>
+        <div class="kcard">
+          <div class="kd">⏱ 防卡死</div>
+          <div class="kt">流式超时放弃</div>
+          <p>本地大模型偶发卡住时，读 SSE 的循环会一直阻塞，状态机就永远停在 SPEAKING。<code>stall_timeout</code>（默认 30s 没收到新 token）会主动抛异常退出本次请求。</p>
         </div>
       </div>
-      <p><b>整条链路（记住这五个词就够了）：</b></p>
+
+      <h3>整条链路（记住这五个词就够了）</h3>
       <div class="flow">
-        <div class="step"><span class="n">1</span>拾音<small>　麦克风一直采，声音进缓冲队列</small></div>
+        <div class="step"><span class="n">1</span>拾音<small>　麦克风一直在采，音频块进队列（Capture 线程）</small></div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">2</span>唤醒<small>　听到"小飞小飞"才开工</small></div>
+        <div class="step"><span class="n">2</span>唤醒<small>　听到"小飞小飞"才开工（硬件事件或板载 KWS）</small></div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">3</span>识别<small>　ASR 把你的话变成文字，你说停了它就收尾</small></div>
+        <div class="step"><span class="n">3</span>识别<small>　ASR 把话变成文字，你说停了它就收尾（端点检测）</small></div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">4</span>理解 + 回答<small>　大模型边想边吐字</small></div>
+        <div class="step"><span class="n">4</span>生成<small>　大模型流式吐字，遇到标点就切句</small></div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">5</span>合成 + 播放<small>　按句切给 TTS，一句句从喇叭出来</small></div>
+        <div class="step"><span class="n">5</span>合成播放<small>　每句立刻合成 PCM 送进常驻播放器</small></div>
       </div>
-      <div class="tip tealb"><span class="lab">🎯 核心直觉</span>状态机回答的是"<b>我现在该干什么</b>"，流式回答的是"<b>内容怎么不停地流过去</b>"。两件事叠加，才有"边想边说、随时能打断"的对话感。</div>
-      <div class="tip violet"><span class="lab">📌 进阶（先记名字，跑通再看代码）</span>真实源码里还有几个工程细节：清缓冲要做两轮（中间停 0.2 秒等尾巴回声灌完）、播放器常驻不反复重启、大模型超时要主动放弃。它们解决的问题都是上面四个概念，不影响你先跑通。</div>
+      <div class="tip tealb"><span class="lab">🎯 核心直觉</span>状态机回答的是"<b>我现在该干什么</b>"；队列回答的是"<b>音频从哪来</b>"；流式回答的是"<b>内容怎么不停地流过去</b>"；事件回答的是"<b>什么时候该停</b>"。四件事叠加，才有"边想边说、随时能打断"的对话感。</div>
     </section>
 
     <!-- 03 -->
     <section class="blk" id="s3">
       <h2><span class="no">03</span>关联知识点</h2>
       <div class="kgrid">
-        <div class="kcard"><div class="kd">🔄 状态机</div><div class="kt">三态切换</div><p>IDLE / LISTENING / SPEAKING，由 <code>state</code> 一个变量决定。任何时刻只处于一个状态，每个状态只做一件事。</p></div>
-        <div class="kcard"><div class="kd">🔇 防回声</div><div class="kt">清空音频缓冲</div><p>播提示音时麦克风还在采，回声会混进下一轮识别。清缓冲 + 稍等片刻，让回声先流干净。</p></div>
-        <div class="kcard"><div class="kd">✂️ 流式</div><div class="kt">按句切分</div><p>大模型边生成、TTS 边合成。句号、问号、逗号都是切点，切出一句就送一句。</p></div>
-        <div class="kcard"><div class="kd">✋ 打断</div><div class="kt">barge-in</div><p>播报期间唤醒词仍在监听，命中就停播、放弃当前回答，回到聆听。用户插话不需要等。</p></div>
+        <div class="kcard"><div class="kd">🔄 状态机</div><div class="kt">三态互斥</div><p>IDLE / LISTENING / SPEAKING，由 <code>self.state</code> 一个字符串决定。互斥的价值：① 避免 ASR 和 TTS 同时抢声卡；② 每个状态只有明确的入口出口，好测；③ 想加"思考中"只需加节点。</p></div>
+        <div class="kcard"><div class="kd">🧵 线程</div><div class="kt">Capture 常驻 + queue</div><p>录音线程 <code>while True: alsa.read() → queue.put()</code>；主循环 <code>queue.get(timeout=0.1)</code>。队列满时主动丢最旧的一块（丢旧不丢新，保证拿到的是最新声音）。</p></div>
+        <div class="kcard"><div class="kd">🌐 接口</div><div class="kt">OpenAI 兼容 API</div><p>本地的 RKLLM 服务实现了 <code>/v1/chat/completions</code>，所以可以直接用标准 OpenAI 客户端调用。请求体：<code>{"model":…, "messages":[…], "stream":true}</code>。</p></div>
+        <div class="kcard"><div class="kd">📡 协议</div><div class="kt">流式 SSE</div><p>服务端逐块返回 <code>data: {JSON}\n\n</code>，每块里 <code>delta.content</code> 是新增的几个字。客户端边读边拼，<b>首字延迟</b>从"整段生成完"降到"第一个 token"。</p></div>
+        <div class="kcard"><div class="kd">✂️ 切句</div><div class="kt">SENTENCE_RE</div><p><code>([。！？；，、\n]|[.?!,](?=\s|$))</code>。逗号也切，是为了让第一句更快出来；切太细则断句难听，切太粗则等待变长。</p></div>
+        <div class="kcard"><div class="kd">🔔 事件</div><div class="kt">threading.Event</div><p><code>interrupt_event</code>：主循环<b>设置</b>、worker 线程<b>轮询</b>。它替代了"共享一个 bool 变量"——<code>Event</code> 自带内存屏障与等待能力，是线程间最轻量的信号。</p></div>
+        <div class="kcard"><div class="kd">✅ 完成信号</div><div class="kt">speaking_done</div><p>反向的一条：worker <b>设置</b>、主循环<b>读取</b>。它的重要性在于<b>必须在 finally 里设置</b>，否则主循环永远等不到"说完了"，卡死在 SPEAKING。</p></div>
+        <div class="kcard"><div class="kd">💾 历史</div><div class="kt">多轮上下文管理</div><p>把 <code>{"role":"user"/"assistant","content":…}</code> 追加进列表，超过上限就裁掉最早的。不裁会撑爆上下文；裁太多会"忘事"。<code>system</code> 提示词每次都要带上。</p></div>
       </div>
     </section>
 
@@ -151,10 +167,12 @@
     <section class="blk" id="s4">
       <h2><span class="no">04</span>实验目标</h2>
       <ul class="check">
-        <li>能说出三个状态的名称与切换条件，并解释为什么"同一时刻只能有一个状态"</li>
-        <li>跑通 <code>voice_interaction.py --mic-array</code>，完成一轮完整的"唤醒 → 提问 → 听到回答"</li>
-        <li>观察流式分句的效果：第一句回答在几秒内响起，而不是等整段生成完</li>
-        <li>成功完成一次打断：回答中途说唤醒词，机器人 1 秒内闭嘴并回到聆听</li>
+        <li>能画出三态状态机，说清每个状态的<b>进入动作、退出条件、失败兜底</b>，并解释"为什么同一时刻只能有一个状态"</li>
+        <li>能说清 Capture 线程常驻相比"唤醒后才录音"解决了什么问题，并用日志验证"唤醒后第一个字没丢"</li>
+        <li>跑通一轮完整对话：喊唤醒词 → 提问 → 听到回答，日志出现 <code>IDLE → LISTENING → SPEAKING → IDLE</code></li>
+        <li>观察并解释流式效果：<b>第一句</b>在你停嘴后几秒内响起，而不是等整段生成完</li>
+        <li>成功完成一次打断：回答中途说唤醒词，1 秒内停播并回到聆听；再问一句仍能正常回答（说明状态没卡住）</li>
+        <li>能指出 <code>interrupt_event</code> 与 <code>speaking_done</code> 各自的方向（谁设、谁读），并说明缺一个会出什么竞态</li>
       </ul>
     </section>
 
@@ -164,34 +182,38 @@
       <table>
         <thead><tr><th>类别</th><th>配置</th></tr></thead>
         <tbody>
-          <tr><td>硬件</td><td>具身智能实验箱 B2 / C1（RK3576 + 讯飞六麦阵列）</td></tr>
+          <tr><td>硬件</td><td>具身智能实验箱 B2（RK3576 + 讯飞六麦阵列）<b>或</b> 小车 C1（板载 ES8388 麦克风，无阵列）</td></tr>
           <tr><td>系统</td><td>Ubuntu 22.04 + ROS2 Humble，Python 3.10</td></tr>
-          <tr><td>模型</td><td>EXP-01/02/03 已准备好的唤醒、ASR、TTS 模型，以及本地大模型 Qwen3.5-0.8B</td></tr>
-          <tr><td>代码</td><td><code>interaction/car1_interaction/tools/voice_interaction.py</code></td></tr>
+          <tr><td>依赖</td><td><code>sherpa-onnx</code>、<code>rclpy</code>、<code>requests</code>、<code>pyserial</code>、<code>pyyaml</code></td></tr>
+          <tr><td>模型</td><td>EXP-01/02/03 已准备好的唤醒、ASR、TTS 模型；本地大模型 <code>Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm</code></td></tr>
+          <tr><td>代码</td><td><code>ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/voice_interaction.py</code></td></tr>
         </tbody>
       </table>
-      <pre><span class="c"># ① 确认六麦阵列在位</span>
-<span class="g">arecord -l</span>                  <span class="y"># 能看到 card 4: XFMDPV0018 即可</span>
+      <pre><span class="c"># ① 确认阵列在位（B2）；C1 跳过此步</span>
+<span class="g">arecord</span> -l | grep -i XFM
+<span class="y">card 4: XFMDPV0018 [XFM-DP-V0.0.18], device 0: USB Audio</span>
 
-<span class="c"># ② 确认模型目录齐全（前面实验已生成）</span>
-<span class="g">ls</span> models/asr/ models/tts/ models/llm/
+<span class="c"># ② 确认模型与服务代码齐全</span>
+<span class="g">ls</span> /home/iflytek/models/rkllm/*.rkllm
+<span class="g">ls</span> ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/llm_server.py
 
-<span class="c"># ③ 进入代码目录</span>
-<span class="g">cd</span> ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/</pre>
-      <div class="tip tealb"><span class="lab">✅ 准备检查</span>三条命令都有正常输出再往下走。若没插六麦阵列却加了 <code>--mic-array</code>，程序启动就会报"未找到麦克风阵列设备"。</div>
+<span class="c"># ③ 进入代码目录（后续命令都在这里跑）</span>
+<span class="g">cd</span> ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/
+<span class="g">ls</span> voice_interaction.py config.yaml xf_mic_array.py</pre>
+      <div class="tip tealb"><span class="lab">✅ 准备检查</span>三条命令都有正常输出再往下走。<b>B2 必须加 <code>--mic-array</code></b>，C1 必须<b>不加</b>——加错会直接报"未找到 XFM 设备"或录不到声音。另外确认没有别的程序占着声卡（浏览器、音乐播放器、上一次没退干净的进程）。</div>
     </section>
 
     <!-- 06 -->
     <section class="blk" id="s6">
-      <h2><span class="no">06</span>动画讲解：三态状态机数据流</h2>
-      <p>下图是 <code>voice_interaction.py</code> 的运行全景：左上是一直在采音的麦克风，中间是三块状态牌，右上是负责"想和说"的后台线程。盯着 4 秒一轮的节拍看：<b>状态牌依次亮起 → 声音块流进队列 → 播报中被打断时红线回跳</b>。</p>
+      <h2><span class="no">06</span>动画讲解：三态状态机与流水线</h2>
+      <p>下图是 <code>voice_interaction.py</code> 的运行全景：左上是一直在采音的 Capture 线程与音频队列，中间是三块状态牌，右上是负责"想和说"的后台线程。盯着 4 秒一轮的节拍看：<b>状态牌依次亮起 → 音频块流进队列 → 播报中被打断时红线回跳</b>。</p>
       <div class="anim-box">
         <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace" font-size="12">
           <rect x="0" y="0" width="720" height="300" fill="#111827"/>
           <!-- Capture 线程 -->
           <rect x="16" y="18" width="150" height="52" rx="8" fill="#1f2937" stroke="#4b5563"/>
-          <text x="91" y="38" fill="#9ca3af" text-anchor="middle">麦克风采集</text>
-          <text x="91" y="56" fill="#6b7280" text-anchor="middle" font-size="10">16kHz 一直采</text>
+          <text x="91" y="38" fill="#9ca3af" text-anchor="middle">Capture 线程</text>
+          <text x="91" y="56" fill="#6b7280" text-anchor="middle" font-size="10">16kHz 一直采（不停）</text>
           <rect x="196" y="34" width="86" height="20" rx="4" fill="#374151" stroke="#6b7280"/>
           <text x="239" y="48" fill="#d1d5db" text-anchor="middle" font-size="10">audio_queue</text>
           <!-- 音频块流动 -->
@@ -210,7 +232,7 @@
             <animate attributeName="stroke" values="#4b5563;#7c3aed;#7c3aed;#4b5563" keyTimes="0;0.45;0.67;0.72" dur="4s" repeatCount="indefinite"/>
           </rect>
           <text x="360" y="144" fill="#e5e7eb" text-anchor="middle" font-weight="bold">LISTENING</text>
-          <text x="360" y="162" fill="#9ca3af" text-anchor="middle" font-size="10">提示音 → 清缓冲 → 识别</text>
+          <text x="360" y="162" fill="#9ca3af" text-anchor="middle" font-size="10">提示音 → 排空 → 识别</text>
           <!-- SPEAKING -->
           <rect x="530" y="120" width="150" height="56" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2">
             <animate attributeName="stroke" values="#4b5563;#4b5563;#7c3aed;#4b5563" keyTimes="0;0.72;0.95;1" dur="4s" repeatCount="indefinite"/>
@@ -218,7 +240,7 @@
           <text x="605" y="144" fill="#e5e7eb" text-anchor="middle" font-weight="bold">SPEAKING</text>
           <text x="605" y="162" fill="#9ca3af" text-anchor="middle" font-size="10">边想 → 边分句 → 边播</text>
           <!-- 状态间箭头 -->
-          <path d="M190 140 L283 140" stroke="#7c3aed" stroke-width="2" fill="none" marker-end="none" stroke-dasharray="8,6">
+          <path d="M190 140 L283 140" stroke="#7c3aed" stroke-width="2" fill="none" stroke-dasharray="8,6">
             <animate attributeName="stroke-dashoffset" values="14;0" dur="1s" repeatCount="indefinite"/>
             <animate attributeName="opacity" values="0.2;1;0.2" keyTimes="0;0.35;1" dur="4s" repeatCount="indefinite"/>
           </path>
@@ -234,23 +256,23 @@
             <animate attributeName="stroke-dashoffset" values="22;0" dur="0.8s" repeatCount="indefinite"/>
           </path>
           <text x="470" y="248" fill="#f87171" font-size="11" text-anchor="middle" opacity="0.4">
-            听到唤醒词 → 打断，立刻回 LISTENING
+            唤醒词命中 → interrupt_event 置位 → 立刻回 LISTENING
             <animate attributeName="opacity" values="0;0;1;0.4" keyTimes="0;0.82;0.88;1" dur="4s" repeatCount="indefinite"/>
           </text>
           <!-- worker 线程 -->
           <rect x="530" y="34" width="150" height="52" rx="8" fill="#1f2937" stroke="#4b5563"/>
-          <text x="605" y="54" fill="#9ca3af" text-anchor="middle">后台线程</text>
-          <text x="605" y="72" fill="#6b7280" text-anchor="middle" font-size="10">大模型边想边切句</text>
+          <text x="605" y="54" fill="#9ca3af" text-anchor="middle">LLM+TTS worker</text>
+          <text x="605" y="72" fill="#6b7280" text-anchor="middle" font-size="10">读 SSE 边想边切句</text>
           <path d="M605 86 L605 118" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="4,4">
             <animate attributeName="stroke-dashoffset" values="8;0" dur="1s" repeatCount="indefinite"/>
           </path>
-          <!-- spoken_done 信号 -->
-          <path d="M680 148 L696 148 L696 148 L696 300 L30 300 L30 148 L40 148" stroke="#34d399" stroke-width="1.5" fill="none" stroke-dasharray="4,4" opacity="0.5"/>
-          <text x="360" y="288" fill="#34d399" font-size="10" text-anchor="middle">播报结束信号（无论念完 / 被打断 / 出错都会发）→ 回到 IDLE</text>
+          <!-- speaking_done 信号 -->
+          <path d="M680 148 L700 148 L700 292 L24 292 L24 148 L40 148" stroke="#34d399" stroke-width="1.5" fill="none" stroke-dasharray="4,4" opacity="0.5"/>
+          <text x="360" y="284" fill="#34d399" font-size="10" text-anchor="middle">speaking_done（finally 里必设）→ 回到 IDLE</text>
           <!-- 说明 -->
           <text x="16" y="104" fill="#6b7280" font-size="10">同一时刻只有一个状态；播报时耳朵仍在听唤醒词</text>
         </svg>
-        <div class="anim-cap">动画 4-1：三态状态机与后台线程的配合（4 秒循环）——IDLE 等唤醒 → LISTENING（提示音、清缓冲、识别）→ SPEAKING（边生成边分句边播）→ 绿线回来重新待机；红弧表示播报中被打断，直接跳回聆听。</div>
+        <div class="anim-cap">动画 4-1：三态状态机与后台线程的配合（4 秒循环）——IDLE 等唤醒 → LISTENING（提示音、排空队列、识别）→ SPEAKING（边生成边分句边播）→ 绿线回待机；红弧表示播报中被打断，直接跳回聆听。</div>
       </div>
     </section>
 
@@ -267,88 +289,180 @@
           <button class="btn" onclick="vdStep('interrupt')">④ 中途打断</button>
           <button class="btn ghost" onclick="vdReset()">↺ 复位</button>
         </div>
-        <div class="io" id="vdIo">$ 状态机就绪：state=IDLE，等着被叫…</div>
+        <div class="io" id="vdIo">$ 状态机就绪：state=IDLE，Capture 线程已在跑，等着被叫…</div>
       </div>
-      <div class="tip violet"><span class="lab">🔍 观察点</span>第 ② 步留意"你停下来"这个动作——识别收尾是靠<b>端点检测</b>判断的，不是靠固定等几秒。第 ④ 步留意顺序：先发出"停"的信号，播放器才被关掉，后台线程收工后还要补发一个"我说完了"的信号，主流程才敢回到待机。</div>
+      <div class="tip violet"><span class="lab">🔍 四个观察点</span>
+        ① 第 ② 步留意"你停下来"这个动作——识别收尾靠<b>端点检测</b>，不是靠固定等几秒。<br>
+        ② 第 ③ 步留意"逗号也切句"——所以第一句话几乎立刻开始播，而不是等整段生成完。<br>
+        ③ 第 ④ 步留意顺序：<b>先发停止信号</b>（<code>interrupt_event.set()</code>），worker 收工后<b>再补发"我说完了"</b>（<code>speaking_done.set()</code>），主流程才敢回待机。顺序反了会漏掉一小段声音或卡死。<br>
+        ④ 任何时候都要能答上"现在 state 是什么"。排错第一句永远是这个问题。
+      </div>
     </section>
 
     <!-- 08 -->
     <section class="blk" id="s8">
       <h2><span class="no">08</span>实操步骤</h2>
       <div class="flow">
-        <div class="step"><span class="n">1</span><b>把大模型服务起来</b>：让"想"的部分先在线</div>
+        <div class="step"><span class="n">1</span><b>把大模型服务起来</b>：让"想"的部分先在线（程序一般会自动拉起，先手动起更稳）</div>
         <div class="arr">→</div>
         <div class="step"><span class="n">2</span><b>用麦克风阵列启动对话</b>：程序自己拉起唤醒、识别、播报</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">3</span><b>喊它、问它、听它答</b>：完整走一轮</div>
+        <div class="step"><span class="n">3</span><b>喊它、问它、听它答</b>：完整走一轮，观察首句延迟</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">4</span><b>试着插话</b>：看状态怎么切换</div>
+        <div class="step"><span class="n">4</span><b>试着插话</b>：看状态怎么切换、下一轮是否正常</div>
       </div>
 
       <p><b>步骤 1：启动大模型服务</b>（终端 1）</p>
-      <pre><span class="c"># 若程序会自动拉起大模型，这一步可跳过；先手动起更稳妥</span>
-<span class="g">cd</span> ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/
+      <pre><span class="c"># voice_interaction.py 默认会内嵌自动拉起服务，但先手动起更容易看清问题</span>
+<span class="g">cd</span> ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/
 <span class="g">python3</span> llm_server.py
-<span class="y"># [LLM] model loaded, listen on 0.0.0.0:8080</span></pre>
-      <p>看到监听 8080 端口即就绪。<b>预期输出</b>：<code>model loaded</code> + 端口提示，无报错。</p>
+<span class="y"># ========init....===========</span>
+<span class="y"># rkllm init success!</span>
+<span class="y"># API: http://0.0.0.0:8080/v1/chat/completions</span>
 
-      <p><b>步骤 2：启动端到端对话</b>（终端 2，另开一个）</p>
-      <pre><span class="g">python3</span> voice_interaction.py --mic-array
-<span class="y"># [Main] 找到录音设备: plughw:4,0 (XFMDPV0018)</span>
-<span class="y"># [KWS] 唤醒词: 小飞小飞, 小飞同学, 你好小飞</span>
-<span class="y"># [TTS] speed=1.0 gain=2.0</span>
-<span class="y"># 就绪 — 说唤醒词开始对话, Ctrl+C 退出</span></pre>
-      <p><b>预期输出</b>：最后一行出现"就绪"。若卡在找设备，回到 05 节检查 <code>arecord -l</code>。</p>
+<span class="c"># 另开终端确认服务活着（能拿到模型名就通了）</span>
+<span class="g">curl</span> http://127.0.0.1:8080/v1/models
+<span class="y">{"data":[{"id":"Qwen3.5-0.8B..."}]}</span></pre>
+      <p><b>预期输出</b>：看到 <code>rkllm init success</code> 与 8080 端口提示，<code>curl</code> 能返回模型名。</p>
+
+      <p><b>步骤 2：启动端到端对话</b>（终端 2）</p>
+      <pre><span class="g">cd</span> ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/
+
+<span class="c"># B2（含 XFM 六麦阵列）</span>
+<span class="g">python3</span> voice_interaction.py --mic-array
+<span class="c"># C1（无 XFM，ES8388 板载）—— 不加 --mic-array</span>
+<span class="g">python3</span> voice_interaction.py
+
+<span class="c"># 预期启动日志：</span>
+<span class="y">[Main] 检测讯飞麦克风阵列设备...</span>
+<span class="y">[Main] 找到录音设备: plughw:4,0 (XFM-DP-V0.0.18)</span>
+<span class="y">[Main] 找到播放设备: plughw:3,0          ← B2：XFM 声卡仅采集，播放走套件 USB 音箱卡</span>
+<span class="y">[KWS] 设置唤醒词: 小飞小飞, 小飞同学, 你好小飞</span>
+<span class="y">[LLM] LLM 服务就绪（或自动拉起）</span>
+<span class="y">[TTS] speed=1.0 gain=2.0</span>
+<span class="y">==================================================</span>
+<span class="y">就绪 — 说唤醒词开始对话, Ctrl+C 退出</span>
+<span class="y">==================================================</span></pre>
+      <div class="tip amber"><span class="lab">⚠️ 若卡在"检测设备"</span>回到第 05 节检查 <code>arecord -l</code>；若报"未找到 XFM 设备"说明 <code>--mic-array</code> 加错了平台（C1 不该加）；若报 8080 端口被占，先 <code>lsof -i :8080</code> 看看是不是上一次的 llm_server 没退干净。</div>
 
       <p><b>步骤 3：喊唤醒词 → 说一句 → 听回答</b></p>
-      <pre><span class="c"># 对着六麦阵列清晰地说：</span>
-<span class="y">"小飞小飞"     → 听到"叮"的提示音</span>
-<span class="y">"今天北京天气怎么样？" → 停顿一下，等它开口</span>
+      <pre><span class="c"># 对着阵列清晰地说：</span>
+<span class="y">"小飞小飞"                → 听到提示音（"我在"），进入 LISTENING</span>
+<span class="y">"今天北京天气怎么样？"     → 停一下（约 1 秒），等它开口</span>
 
-<span class="c"># 程序侧应看到三轮日志（加 --debug 更详细）</span>
-<span class="y"># [Main] IDLE → LISTENING</span>
-<span class="y"># [ASR]  今天北京天气怎么样？</span>
-<span class="y"># [Main] LISTENING → SPEAKING</span>
-<span class="y"># [LLM]  我没有实时查询天气的能力…</span>
-<span class="y"># [Main] SPEAKING → IDLE</span></pre>
-      <div class="tip tealb"><span class="lab">⏱ 重点观察</span>第一句回答应该在你停嘴后<b>几秒内</b>响起，而不是等整段文字生成完——这就是流式分句的效果。说完话要<b>停一下</b>（约 1 秒），让程序判断你讲完了。</div>
+<span class="c"># 程序侧应看到这样的日志序列（加 --debug 更详细）：</span>
+<span class="y">[KWS] 唤醒: 小飞小飞</span>
+<span class="y">[Main] IDLE → LISTENING</span>
+<span class="y">[ASR] 今天北京天气怎么样？</span>
+<span class="y">[Main] LISTENING → SPEAKING</span>
+<span class="y">[LLM]  我没有实时查询天气的能力…</span>
+<span class="y">[Main] SPEAKING → IDLE</span></pre>
+      <div class="tip tealb"><span class="lab">⏱ 重点观察两个时间</span>
+        ① <b>首句延迟</b>：你停嘴到<b>第一声</b>响起的间隔，正常在 3 秒内（含 ASR 收尾 + 首 token + 首句合成）。这就是流式分句的价值——如果它先"安静很久"然后一口气念完，说明分句没生效。<br>
+        ② <b>说完要停一下</b>：约 1 秒，让端点检测判断你讲完了。<b>一口气不停地说，它反而不会收句。</b>
+      </div>
 
-      <p><b>步骤 4：中途打断</b></p>
-      <pre><span class="c"># 让它回答一段较长的话，念到一半时再说一次："小飞小飞"</span>
-<span class="y"># [KWS] 打断: 小飞小飞</span>
-<span class="y"># [Main] SPEAKING → LISTENING (打断)</span>
-<span class="y"># 提示音再次响起，等你说话</span></pre>
-      <p><b>预期输出</b>：喇叭<b>立刻</b>安静（1 秒内），随后重新提示你说话。再问一句新问题，能正常回答，说明状态没有卡住。</p>
+      <p><b>步骤 4：中途打断（本实验的高潮）</b></p>
+      <pre><span class="c"># 先问一个会长篇大论的问题，让它念起来：</span>
+<span class="y">"详细介绍下 RK3576 这块芯片"</span>
+
+<span class="c"># 趁它还在念，再说一次："小飞小飞"</span>
+<span class="y">[KWS] 打断: 小飞小飞</span>
+<span class="y">[Main] SPEAKING → LISTENING (打断)</span>
+<span class="y"># 喇叭立刻安静（1 秒内），提示音再次响起，等你说话</span>
+
+<span class="c"># 关键验证：紧接着问一个新问题</span>
+<span class="y">"现在几点了？"    → 能正常识别并回答</span>
+<span class="c"># 说明 interrupt 之后状态被正确清理，没有卡死</span></pre>
+      <p><b>预期输出</b>：打断生效后喇叭<b>立即</b>安静，且<b>下一轮仍能正常工作</b>。只验证"能停"不够，必须验证"停了还能再来一次"——这才是状态机没坏。</p>
+
+      <p><b>步骤 5：读代码，找到四个关键位置</b></p>
+      <pre><span class="c"># ① 状态变量与两个 Event 的声明</span>
+<span class="g">grep</span> -n "self.state\|interrupt_event\|speaking_done" voice_interaction.py | head -20
+
+<span class="c"># ② Capture 常驻线程</span>
+<span class="g">grep</span> -n -A 12 "def _capture_loop" voice_interaction.py
+
+<span class="c"># ③ 句子切分正则（注意逗号也在里面）</span>
+<span class="g">grep</span> -n "SENTENCE_RE" voice_interaction.py
+
+<span class="c"># ④ 流式超时保护</span>
+<span class="g">grep</span> -n -B 3 -A 6 "stall_timeout" voice_interaction.py
+
+<span class="c"># ⑤ speaking_done 必须在 finally 里（关键约束）</span>
+<span class="g">grep</span> -n -B 4 -A 2 "speaking_done.set()" voice_interaction.py</pre>
+
+      <p><b>步骤 6：三个小改造（每个都只需改一处）</b></p>
+      <table>
+        <thead><tr><th>改什么</th><th>改哪里</th><th>预期现象</th></tr></thead>
+        <tbody>
+          <tr><td>切句更保守（只按句号/问号切）</td><td><code>SENTENCE_RE = re.compile(r'([。！？\n]|[.?!](?=\s|$))')</code></td><td>首句延迟变大、但断句更自然（不会被逗号切碎）</td></tr>
+          <tr><td>切句更激进（加英文逗号、空格）</td><td>在字符类里补 <code>,</code> 与空格</td><td>首句更快，但可能出现"我今天…"这种半句被念出来的怪断句</td></tr>
+          <tr><td>临时禁用打断</td><td>把 SPEAKING 分支里的唤醒检测注释掉</td><td>插话无效、必须等它念完——亲身体会"为什么需要 barge-in"</td></tr>
+        </tbody>
+      </table>
+      <div class="tip tealb"><span class="lab">💡 建议</span>改完记得改回来。这三个改造是本实验性价比最高的环节——<b>10 分钟就能建立"参数 ↔ 体验"的直觉</b>，比读一百行代码有效。</div>
     </section>
 
     <!-- 09 -->
     <section class="blk" id="s9">
       <h2><span class="no">09</span>重点与易错点</h2>
-      <div class="tip amber"><span class="lab">⚠️ 排错思路</span>先问一句"<b>它现在卡在哪个状态</b>"，再去看那个状态对应的日志。90% 的问题不是模型错，而是时序没对齐。</div>
+      <div class="tip amber"><span class="lab">⚠️ 排错第一句话永远是它</span>"<b>现在 state 是什么？</b>"——知道状态，就知道该看哪一段日志。90% 的问题不是模型错，而是时序没对齐。</div>
       <table>
         <thead><tr><th>现象</th><th>原因</th><th>怎么办</th></tr></thead>
         <tbody>
           <tr>
-            <td><b>机器人自问自答 / 把自己的话当输入</b>（回声）</td>
-            <td>提示音或回答的声音绕回麦克风，缓冲没清干净</td>
-            <td>等提示音播完再开口；确认清缓冲做了两轮；仍出现就把"播完后再等一会儿"的时长调大</td>
+            <td><b>机器人自问自答</b>，把自己的话当输入</td>
+            <td>提示音或回答绕回麦克风，音频队列没清干净</td>
+            <td>确认播完提示音后做了排空；若仍出现，把"播完后再等一会儿"的时长调大（房间混响长）</td>
+          </tr>
+          <tr>
+            <td><b>唤醒后第一个字丢了</b></td>
+            <td>录音是在唤醒之后才启动的</td>
+            <td>确认 Capture 线程在程序启动时就 <code>start()</code>，而不是在 LISTENING 里才开</td>
           </tr>
           <tr>
             <td><b>说完没反应</b>，一直停在聆听</td>
-            <td>没检测到"你说完了"（端点）／麦克风没收到声音</td>
-            <td>说完整句子后停顿约 1 秒；检查 <code>arecord -l</code> 与录音电平；约 5 秒没人说话它会自动回待机，重喊一次唤醒词即可</td>
+            <td>端点没触发（你没停顿）／麦克风没收到声音</td>
+            <td>说完停约 1 秒；检查录音电平；等待超时后它会自动回 IDLE，重喊一次唤醒词</td>
+          </tr>
+          <tr>
+            <td><b>首句等很久</b>，然后一口气念完</td>
+            <td>没做流式分句，或在等 LLM 完整生成</td>
+            <td>检查 <code>SENTENCE_RE</code> 是否生效、是否真的在读 SSE 流（<code>stream=True</code>）</td>
           </tr>
           <tr>
             <td><b>打断失效</b>，必须等它念完</td>
-            <td>播报时把唤醒监听关掉了，或打断标志没在新一轮开始前复位</td>
-            <td>确认 SPEAKING 期间唤醒词仍在监听；打断后进入下一轮前先清掉打断标志</td>
+            <td>播报时把唤醒监听关了，或 <code>interrupt_event</code> 没传到 worker</td>
+            <td>确认 SPEAKING 期间唤醒仍在监听；检查 worker 内部是否轮询 <code>interrupt_event.is_set()</code></td>
+          </tr>
+          <tr>
+            <td><b>打断一次之后再也不能对话</b></td>
+            <td><code>interrupt_event</code> 没在下一轮开始前 <code>clear()</code></td>
+            <td>进入 LISTENING 前先 <code>interrupt_event.clear()</code>，否则新一轮一进来就"已被打断"</td>
+          </tr>
+          <tr>
+            <td><b>永远卡在 SPEAKING</b></td>
+            <td>worker 抛异常退出了，但没在 <code>finally</code> 里设 <code>speaking_done</code></td>
+            <td>这条 <code>finally</code> 是<b>硬约束</b>：<code>speaking_done.set()</code> 必须在 finally 块里，无论成功失败</td>
+          </tr>
+          <tr>
+            <td><b>LLM 请求一直挂着</b></td>
+            <td>本地模型偶发卡死，读 SSE 阻塞</td>
+            <td>启用 <code>stall_timeout</code>（30s 无新 token 就放弃）；排查 NPU 驱动/模型是否崩</td>
+          </tr>
+          <tr>
+            <td><b>多轮之后答非所问</b></td>
+            <td>对话历史无限增长撑爆上下文，或忘了带 system 提示词</td>
+            <td>限制历史条数（如保留最近 10 轮），裁掉最早的；system 每次都带</td>
           </tr>
         </tbody>
       </table>
       <ul class="check">
-        <li>三个状态的名字和切换条件要能一口气说出来，排错时才有抓手。</li>
-        <li>打断时"先发停止信号，再关播放器"——顺序反了会漏掉一小段声音。</li>
-        <li>无论正常念完、被打断还是出错，最后都要回到 IDLE，否则下一次喊它没反应。</li>
+        <li>三个状态的名字和切换条件能一口气说出来，排错时才有抓手</li>
+        <li>打断时"先发停止信号，再等 worker 收工"——顺序反了会漏音或卡住</li>
+        <li>无论正常念完、被打断还是出错，最后都要回到 IDLE</li>
+        <li>能指出 <code>interrupt_event</code>（主循环设 / worker 读）与 <code>speaking_done</code>（worker 设 / 主循环读）方向相反</li>
       </ul>
     </section>
 
@@ -357,23 +471,23 @@
       <h2><span class="no">10</span>总结与思考</h2>
       <div class="kgrid">
         <div class="kcard"><div class="kd">🏁 完成成果</div><div class="kt">一条能聊天的链路</div><p>跑通 <code>voice_interaction.py --mic-array</code>：喊一声、问一句、听到回答，中途还能插话打断。</p></div>
-        <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">四个概念</div><p>三态状态机管"谁在干活"，防回声管"别听见自己"，流式分句管"别干等"，打断管"随时能插话"。</p></div>
-        <div class="kcard"><div class="kd">➡ 去向 EXP-05</div><div class="kt">从"听见字面"到"听懂意图"</div><p>现在它只是把话原样交给大模型。下一个实验让大模型正经做意图识别和槽位提取，真正听懂你要它干什么。</p></div>
+        <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">五件事各司其职</div><p>状态机管"谁在干活"，常驻线程管"别丢头几个字"，排空管"别听见自己"，流式分句管"别干等"，事件管"随时能停"。</p></div>
+        <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">多线程协同与排错</div><p>生产者-消费者、双向 Event 信号、以及"先问 state 再查日志"的排错习惯。</p></div>
+        <div class="kcard"><div class="kd">➡ 去向 EXP-05</div><div class="kt">从"能聊"到"能干活"</div><p>现在它只是把话原样交给大模型。下一个实验加上工具调用：说"抓取"，机械臂真的动起来。</p></div>
       </div>
-      <div class="tip violet"><span class="lab">💭 思考题</span>
-        <p><b>1.</b> 三个人共用一间录音棚，如果没人规定"现在轮到谁"，会发生什么？请用这个比喻解释：为什么必须有一个 <code>state</code> 变量，而不能让唤醒、识别、播报三段代码各跑各的？</p>
-        <p><b>2.</b> 打电话时对方一直说个不停，你会怎么办？机器人要做到"能被打断"，必须同时满足两个条件——<b>听得见</b>（播报时仍监听唤醒词）和<b>停得下</b>（立刻停止播放）。如果只保留第一个会怎样？只保留第二个又会怎样？</p>
-      </div>
+      <div class="tip violet"><span class="lab">💭 思考题 1</span>三个人共用一间录音棚，如果没人规定"现在轮到谁"，会发生什么？请用这个比喻解释：为什么必须有一个 <code>state</code> 变量，而不能让唤醒、识别、播报三段代码各跑各的循环？</div>
+      <div class="tip violet"><span class="lab">💭 思考题 2</span>要做到"能被打断"，必须同时满足两个条件——<b>听得见</b>（播报时仍监听唤醒词）和<b>停得下</b>（立刻停止播放）。如果只保留第一个会怎样？只保留第二个又会怎样？请分别描述用户体验的崩坏过程。</div>
+      <div class="tip violet"><span class="lab">💭 思考题 3</span><code>interrupt_event</code> 和 <code>speaking_done</code> 是两个方向相反的信号。为什么不能合并成一个"是否正在说话"的布尔变量？请举一个具体的竞态时序（提示：主循环刚决定切到 SPEAKING，worker 还没来得及开始，此时布尔量是什么值？谁会误判？）。</div>
     </section>
 
     <nav class="expnav">
       <a href="../exp-03-tts/index.html"><span class="lb">← 上一个</span>EXP-03 TTS 语音合成</a>
-      <a href="../exp-05-llm-understanding/index.html" class="next"><span class="lb">下一个实验 →</span>EXP-05 大模型语义理解</a>
+      <a href="../exp-05-llm-understanding/index.html" class="next"><span class="lb">下一个实验 →</span>EXP-05 实时语音交互与工具调用</a>
     </nav>
 
     <footer>
-      <span>CORE-03 · 机器人自然语言交互应用 · EXP-04 端到端语音对话</span>
-      <span>8 学时 · 设计性 · 基于 speech_practice 实验讲义改编</span>
+      <span>CORE-03 · 机器人自然语言交互应用 · EXP-04 大模型端到端对话</span>
+      <span>4 学时 · 设计性 · 基于 speech_practice 实验讲义改编</span>
     </footer>
 
   </main>
@@ -381,43 +495,54 @@
 
 <script>
 (function(){
-  var vdState = 'IDLE', vdToken = '', vdIo = document.getElementById('vdIo');
+  var vdState = 'IDLE', vdIo = document.getElementById('vdIo');
   function out(html, cls){
     vdIo.innerHTML += '\n<span class="' + (cls||'dim') + '">' + html + '</span>';
     vdIo.scrollTop = vdIo.scrollHeight;
   }
   window.vdStep = function(step){
     if(step === 'wake'){
-      if(vdState === 'SPEAKING'){ out('[KWS] 打断: 小飞小飞', 'warn'); vdState = 'LISTENING'; out('[Main] SPEAKING → LISTENING (打断)', 'warn'); return; }
+      if(vdState === 'SPEAKING'){
+        out('[KWS] 打断: 小飞小飞 → interrupt_event.set()', 'warn');
+        out('[LLM+TTS worker] 轮询到事件 → 停止读流、关播放器 → finally: speaking_done.set()', 'warn');
+        vdState = 'LISTENING';
+        out('[Main] SPEAKING → LISTENING (打断)', 'warn');
+        out('[Main] 提示音 + 排空队列 + 新建 ASR stream', 'dim');
+        return;
+      }
       if(vdState !== 'IDLE'){ out('当前 state=' + vdState + '，请先复位', 'bad'); return; }
-      out('[KWS] 唤醒: 小飞小飞 → 播放提示音 0.67s，清缓冲 第1轮 3 帧 / 第2轮 1 帧', 'ok');
+      out('[KWS] 唤醒: 小飞小飞', 'ok');
+      out('[Main] 播放提示音（约 0.67s）→ 睡 prompt_dur+0.8s 等回声散掉', 'dim');
+      out('[Main] 排空 audio_queue → 新建干净 ASR stream', 'dim');
       out('[Main] IDLE → LISTENING（开始认真听你说）', 'ok');
       vdState = 'LISTENING';
     } else if(step === 'listen'){
       if(vdState !== 'LISTENING'){ out('需要先处于 LISTENING（点 ①）', 'bad'); return; }
       out('[ASR] 今天 → 今天北京 → 今天北京天气怎么样？', 'dim');
-      out('[ASR] 听你停下来了（端点命中），这句话有效 → 交给回复流程', 'ok');
+      out('[ASR] 端点检测命中（尾静音 1.5s），这句话有效', 'ok');
+      out('[Main] interrupt_event.clear() / speaking_done.clear()', 'dim');
+      out('[Main] LISTENING → SPEAKING（启动 LLM+TTS worker 线程）', 'ok');
       vdState = 'SPEAKING';
-      out('[Main] LISTENING → SPEAKING（后台线程启动，准备边想边说）', 'ok');
     } else if(step === 'speak'){
       if(vdState !== 'SPEAKING'){ out('需要先处于 SPEAKING（点 ②）', 'bad'); return; }
-      out('[LLM] 边生成边切句: "我没有实时天气…" → 命中切句符 → TTS 合成 → 送播放', 'ok');
-      out('[LLM] 第 2 句、第 3 句依次送出，第一句已经开始播了', 'ok');
-      vdToken = 'speaking';
-      out('（此刻它正在念；想体验打断，请复位后按 ①→② 再点 ④）', 'dim');
-      out('[Main] 播完 → 后台线程收工，发出"说完了"信号 → SPEAKING → IDLE', 'ok');
+      out('[LLM] 读 SSE: "我没有实时" → 命中切句符 → 立刻合成并播', 'ok');
+      out('[LLM] "查询天气的能力。" → 第 2 句送出，第 1 句已经在响', 'ok');
+      out('[Main] worker finally: speaking_done.set() → 主循环 SPEAKING → IDLE', 'ok');
       vdState = 'IDLE';
+      out('（想体验打断：复位后按 ①→②，再点 ④）', 'dim');
     } else if(step === 'interrupt'){
       if(vdState !== 'SPEAKING'){ out('打断只在 SPEAKING 有效（请按 ①→② 后再试）', 'bad'); return; }
-      out('[KWS] 播报中再次听到唤醒词 → 先发"停"的信号，再关掉播放', 'warn');
-      out('[LLM] 后台线程发现要停 → 立刻收工，并补发"说完了"信号', 'warn');
+      out('[KWS] 播报中又听到唤醒词', 'warn');
+      out('[Main] interrupt_event.set()  ← 先发停止信号', 'warn');
+      out('[LLM+TTS worker] 检测到事件 → 跳出循环、关播放器', 'warn');
+      out('[LLM+TTS worker] finally: speaking_done.set()  ← 补发"我说完了"', 'warn');
       out('[Main] SPEAKING → LISTENING，重新提示你说话', 'ok');
       vdState = 'LISTENING';
     }
   };
   window.vdReset = function(){
     vdState = 'IDLE';
-    vdIo.innerHTML = '$ 状态机就绪：state=IDLE，等着被叫…';
+    vdIo.innerHTML = '$ 状态机就绪：state=IDLE，Capture 线程已在跑，等着被叫…';
   };
 })();
 </script>

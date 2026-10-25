@@ -151,7 +151,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
         <tr>
           <td class="m"><a href="#s2">2 TCP 标定（四点法）</a></td>
           <td>明白 TCP 是"法兰之后的等效工具点"；会用四姿态顶同一尖点解出偏移；解释 FINGERTIP 0.033 的来历</td>
-          <td><code>kinematics/config.py</code>：FINGERTIP_OFFSET_Z=0.033 / Y_TCP=0.215mm / TCP_OFFSET_Z=0.0762；讲义实验5 标定工具清单</td>
+          <td><code>kinematics/config.py</code>+<code>transform.py</code>：FINGERTIP_OFFSET_Z=0.033 / Y_TCP=0.215mm / TCP_OFFSET_Z=0.0762；讲义实验5 标定工具清单</td>
           <td>四姿态法兰位姿示意 + Δ 偏移滑块 → 尖点弥散圈实时 mm 读数；"四点法求解"最小二乘一键塌缩到同一点</td>
           <td><a href="../exp-06-fixed-grasp/index.html#s7">EXP-06 §07</a> · <a href="../principles/index.html#m5">原理 M5</a></td>
         </tr>
@@ -221,8 +221,9 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
         </ol>
         <div class="math" style="margin-top:.6rem">
 δ (μs) → 角度偏差 = δ × <span class="hl">0.002356</span> rad/μs &nbsp;例：+70μs ≈ <span class="num" id="zDeg">+9.4°</span><br>
-校准后发送：<span class="hlb">PWM_send = PWM_target(rad 转来) + δ</span> &nbsp;<span style="color:#64748b">// "知道秤缺一斤，称重时补一斤"</span>
+校准后发送：<span class="hlb">PWM_send = PWM_target(rad 转来) − δ</span>&nbsp;<span style="color:#64748b">// δ = 实际中位 PWM − 1500，所以发送时要把它减掉</span>
         </div>
+        <div class="tip"><b>为什么"±9.4°"在指尖会放大成几厘米：</b>J2 的偏差会把整条大臂+小臂+工具（0.126+0.126+0.151 ≈ 0.40 m）一起转过去，臂越远放大越多——顶端 9.4° 的角误差 ≈ 0.40 × 0.164 rad ≈ <b>6.6 cm</b>；J3 只影响小臂+工具（≈0.28 m），同样 9.4° 也有 ≈4.5 cm。<b>这就是"手臂看着只歪一点点、抓取却偏一大截"的原因</b>：角误差在关节处很小，在末端被连杆长度放大。<br>反过来给一个现场口径：想让末端控制在 5 mm 内，J2 允许角误差 ≈ 5 mm ÷ 403 mm ≈ <b>0.0124 rad ≈ 0.71°≈ 5 μs</b>——5 μs 只有 1 个 PWM 刻度（舵机理论分辨率约 2.4 μs）的两倍，所以校准"再来一轮精调"不是吹毛求疵，而是被几何放大的必然要求。</div>
         <div class="tip"><b>生效边界（读码发现，务必讲到）：</b>全仓库 <code>servo_offsets.yaml</code> 只被 calibration 包的 GUI/服务读写，<b>arm 控制链（arm_controller / kinematics）并不自动加载它</b>——所以① GUI 里的 Apply 是"会话内补偿"；② 长期生效要回到第 4 步"归零验证 + 各链路各自偏置"；③ 这正是讲义坑表"校准后仍不齐 → 多轮迭代"的深层原因。</div>
         <div class="tip"><b>和第 4 部分（手眼）的顺序：</b>零位管"每个关节从哪算 0"，手眼管"相机装在哪"。零位没校，手眼标定时采的每个 T_ee 都带着同样的歪——AX=XB 会把一部分歪悄悄吸收进 X 里，<b>换个位姿又露馅</b>。所以顺序永远是：先第 1 部分，再第 4 部分。</div>
       </div>
@@ -245,7 +246,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   </div>
   <div class="mod-body">
     <div class="case">
-      <b>🎯 案例（代码 · kinematics/config.py + 讲义实验5 工具清单）：</b>仓库里的 TCP 不是理论值而是<b>标定产物</b>：<code>FINGERTIP_OFFSET_Z = 0.033</code>（指尖在 tcp_link 下方 33mm——正是 EXP-06 里 <code>gripper_depth=-0.033</code>"负值=抬高"的由来）、<code>TCP_OFFSET_Z = 0.0762</code>、<code>Y_TCP = 0.215mm</code>（IK 里 asin 补偿的真身）。讲义实验5 的标定工具清单：<b>刻度标定尺、水平仪</b>——四点法只需再加<b>一支可固定的尖笔/锥销</b>，把它顶在同一纸上小孔里转四个姿态即可。
+      <b>🎯 案例（代码 · kinematics/config.py + 讲义实验5 工具清单）：</b>仓库里的 TCP 不是理论值而是<b>标定产物</b>：<code>FINGERTIP_OFFSET_Z = 0.033</code>（<b>实测值</b>：指尖在 tcp_link 下方 33 mm）、<code>TCP_OFFSET_Z = 0.0762</code>（实测 76.25 mm）、<code>Y_TCP = 0.215 mm</code>（IK 里那个 asin 补偿的真身）。<b>注意别把它们和 <code>gripper_depth</code> 混为一谈</b>：33 mm 是"指尖比 tcp_link 低多少"的<b>几何常数</b>；<code>gripper_depth</code> 是"抓取点相对检测面再挪多少"的<b>运行参数</b>（yaml 实配 −0.040 是抬高 40 mm）。两者单位都是米，含义完全不同——很多同学会以为 −0.033 就是来自这 33 mm，那是巧合，不是因果。讲义实验5 的标定工具清单：<b>刻度标定尺、水平仪</b>——四点法只需再加<b>一支可固定的尖笔/锥销</b>，把它顶在同一纸上小孔里转四个姿态即可。
       <span class="src">出处：ros2_ws/.../arm/kinematics/kinematics/config.py（LEVEL3_SUMMARY 称其 "Robot Calibration Parameters"）+ TESTING_GUIDE.md"指尖位于 tcp_link 下方 33mm"；讲义实验5·1.3 实验环境标定工具行。</span>
     </div>
 
@@ -349,10 +350,10 @@ function zDraw(){
   var align=Math.abs(e2)<1.2&&Math.abs(e3)<1.2;
   io.innerHTML=
     '未施加校准：J2 角偏差 '+(z.calibrated?'0.0':(d2*K).toFixed(1))+'°　J3 角偏差 '+(z.calibrated?'0.0':(d3*K).toFixed(1))+'°\n'
-    +'δ=('+d2+', '+d3+')μs '+(z.calibrated?'→ 发送时已加回，实际出力 = 目标':'→ 直接发，末端落点系统偏 ≈'+dev.toFixed(0)+'px 屏幕距')+'\n'
+    +'δ=('+d2+', '+d3+')μs '+(z.calibrated?'→ 发送时已减掉，实际出力 = 目标':'→ 直接发，末端落点系统偏 ≈'+dev.toFixed(0)+'px 屏幕距')+'\n'
     +(align?'<span class="k">✓ 已对齐——这就是"全零归零笔直"应看到的结果</span>'
           :(!z.calibrated?'<span class="bad">✗ 固定偏 δ：换哪个目标角都歪同样角度（系统误差，非随机）</span>'
-                        :'<span class="warn">残余 <1.2°——讲义口径：再来一轮精调</span>'))
+                        :'<span class="warn">残余 '+(Math.max(Math.abs(d2),Math.abs(d3))*K).toFixed(1)+'° ≥1.2°——讲义口径：再来一轮精调</span>'))
     +'\n<span class="warn">// servo_offsets.yaml 只进 calibration 包，控制链不加载——以 joint_command 归零验证为准</span>';
 }
 document.getElementById('z2').addEventListener('input',zDraw);
@@ -405,7 +406,7 @@ function tUpd(){
   });
   if(Math.abs(uZ-dZ)>0.6){
     c.strokeStyle='rgba(220,38,38,.4)';c.lineWidth=1.4;c.setLineDash([5,4]);
-    c.beginPath();c.arc(cx,cy,S2*Math.abs(uZ-dZ),0,7);c.stroke();c.setLineDash([]);
+    c.beginPath();c.arc(cx,cy,S*Math.abs(uZ-dZ),0,7);c.stroke();c.setLineDash([]);
   }
   // legend
   c.fillStyle='#94a3b8';c.fillText('灰块 = 四个姿态下的法兰位姿 p_i（FK 记录）',16,20);
@@ -532,7 +533,7 @@ tUpd();
       </div>
       <div class="panel">
         <h4>交互② · 深度校正（同一会话的免费副产物）</h4>
-        <div class="math">深度图：<span class="hl" id="dRaw">—</span>　校正：<span class="hlb">d_corr = scale·d_raw + offset</span>（linear 模型，valid 0.10~1.50m）</div>
+        <div class="math">深度原始读数：<span class="hl" id="dRawLab">—</span>　校正模型：<span class="hlb">d_corr = scale·d_raw + offset</span>（线性模型，有效区间 0.10~1.50m）</div>
         <div class="ctl-row">
           <label class="ctl">scale <input type="range" id="dS" min="0.96" max="1.04" step="0.005" value="1"><output id="dSo">1.000</output></label>
           <label class="ctl">offset (m) <input type="range" id="dO" min="-0.05" max="0.05" step="0.005" value="0"><output id="dOo">0.000</output></label>
@@ -749,7 +750,7 @@ function dUpd(){
   document.getElementById('dSo').value=s.toFixed(3);
   document.getElementById('dOo').value=(o>=0?' ':'')+o.toFixed(3);
   document.getElementById('dRo').value=r.toFixed(2);
-  document.getElementById('dRaw').textContent='d_raw='+r.toFixed(3)+'m';
+  document.getElementById('dRawLab').textContent='d_raw='+r.toFixed(3)+'m';
   var rows=[0.30,0.50,1.00].map(function(t){
     var got=s*t+o, res=(got-t)*1000;
     var bad=Math.abs(res)>10?'color:#dc2626;font-weight:700':'color:#059669;font-weight:700';

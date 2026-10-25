@@ -72,6 +72,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：改一个数字为什么这么贵</a>
   <a href="#s2">02 核心原理：声明 → 读取 → 设置的生命周期</a>
   <a href="#s3">03 动画：ros2 param set 的完整数据流</a>
@@ -97,6 +98,21 @@
   <p class="desc">PID 系数、采样周期、报警阈值——硬编码意味着"改参 = 改码 → 编译 → 部署"。本课讲清参数作为"运行时可读写配置层"的原理、declare/get/set 生命周期与动态回调闭环。</p>
   <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">设计性</span><span class="tag">关键词 Parameter · Descriptor · YAML</span></div>
 </div>
+
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清原理</div><div class="kt">参数是什么</div><p>能阐述参数是"节点内部状态的运行时可读写配置"，与话题（数据流）、服务（操作）有本质区别；并说清 <code>ParameterDescriptor</code> 在自描述与范围声明中的作用。</p></div>
+  <div class="kcard"><div class="kd">② 掌握流程</div><div class="kt">声明 → 读取 → 动态回调</div><p>以 <code>gas_sensor_node</code> 为基础，完成 <code>declare_parameter</code> 声明、<code>get_parameter</code> 读取、<code>add_on_set_parameters_callback</code> 动态回调的完整编程流程。</p></div>
+  <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">做一个可调节点</div><p>独立实现"发布周期 / 采样使能 / 报警阈值可在线调整"的 MQ5 节点，注册 <code>entry_points</code> 后用 <code>ros2 param list/get/set/describe/dump</code> 完成验证。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">把旋钮拉出代码</div><p>能为实际系统设计参数化配置——PID 系数、速度上限、触发阈值都通过参数暴露，<b>不重启节点即可调优</b>。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：<code>declare_parameter</code> 的默认值同时决定了参数类型（<code>1.0</code>→double，<code>1</code>→int），类型定错后续读写会失败。<br>
+<b>难点</b>：理解"设置参数不是直接覆盖"——必须先过 <code>on_set_parameters</code> 这道校验闸门。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课的节点以 <b>EXP-06 的 <code>gas_sensor_node.py</code> 为起点</b>逐步加参数能力，建议对比着看两份代码。</div>
+</section>
 
 <section class="blk" id="s1">
 <h2><span class="no">01</span>问题引入：改一个数字为什么这么贵<span class="fs">聚焦问题 · 激活旧知</span></h2>

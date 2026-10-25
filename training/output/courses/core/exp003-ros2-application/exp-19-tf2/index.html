@@ -160,6 +160,7 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
 <!-- ============ SIDEBAR ============ -->
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 引例：这束激光该画在哪</a>
   <a href="#s2">02 原理：TF2 树为什么长成一棵树</a>
   <a href="#s3">03 动画：一次 TF 查询的全过程</a>
@@ -199,6 +200,21 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
 </div>
 
 <!-- ===== 01 ===== -->
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清结构</div><div class="kt">为什么是树</div><p>能阐述 TF2 变换树的结构原理——为什么坐标系必须组织成"有向无环图（DAG）"，以及 <code>/tf</code> 与 <code>/tf_static</code> 分别承载动态 / 静态变换的设计意图。</p></div>
+  <div class="kcard"><div class="kd">② 掌握 API</div><div class="kt">Broadcaster / Listener</div><p>能正确使用 <code>StaticTransformBroadcaster</code> 发固定偏移、<code>TransformBroadcaster</code> 定时发动变换，用 <code>Buffer + TransformListener</code> 查询任意两个坐标系的相对位姿。</p></div>
+  <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">建一棵 TF 树</div><p>独立编写节点发布 <code>base_link → lidar_frame → camera_frame</code> 的变换树，并用 <code>tf2_echo</code> 与 <code>view_frames</code> 验证。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">给真实传感器定位</div><p>能在 B2 或 C1 上，为结构光深度相机、激光雷达发布它们在底盘坐标系下的 TF2 变换。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：<code>/tf_static</code> 只用一次发布 + Transient Local（后加入的节点也能拿到）；动态变换必须持续重发。<br>
+<b>难点</b>：旋转为什么用四元数而不是欧拉角——以及 <code>tf2_echo</code> 输出的那个四元数该怎么读。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课的 TF 树是 <b>EXP-20 URDF 的运转前提</b>：URDF 定义"长什么样"，TF2 决定"画在哪"。</div>
+</section>
+
 <section class="blk" id="s1">
   <h2><span class="no">01</span> 引例：这束激光该画在哪<span class="fs">聚焦问题 · 激活旧知</span></h2>
   <div class="tip"><span class="lab">先回忆</span>EXP-15 rviz2 里的 Fixed Frame 下拉框、EXP-06 消息 header 里的 <code>frame_id</code> 字段——它们背后都指向同一个问题：<b>不同坐标系里的数据怎么对齐</b>。本章的 TF2 就是这个问题的系统性答案，也是后面 URDF 与导航的地基。</div>
@@ -241,7 +257,7 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
     <tr><td><code>/tf</code></td><td><strong>动态</strong>变换（odom→base_link、机械臂关节角…）</td><td>10 ~ 100 Hz 普通 Reliable + KeepLast(100)</td><td>量大、值一直在变，<strong>新订阅者只需拿到"最新值"</strong>，历史旧值没有意义 → KeepLast 限深</td></tr>
     <tr><td><code>/tf_static</code></td><td><strong>静态</strong>变换（雷达到车体的安装位姿…）</td><td><strong>一次性发布</strong>，QoS = <strong>Transient Local</strong>（latch）</td><td>装好就不变；<strong>后启动的节点也必须能拿到</strong> → 靠 Transient Local "重放"最后一条给新订阅者（同 ROS2 参数的 <code>transient_local</code> 语义）</td></tr>
   </table>
-  <div class="tip violet"><span class="lab">🔁 和 EXP-10 参数的呼应</span><code>/tf_static</code> 的 latch 语义与"参数默认值能被后加入节点读到"是同一套 QoS 机制。这就是"原理可迁移"——学透 QoS，这里的Latch行为一看就懂。</div>
+  <div class="tip violet"><span class="lab">🔁 和 EXP-06 QoS 的呼应（别和 EXP-10 参数搞混）</span><code>/tf_static</code> 的 latch 语义，用的就是 EXP-06 里讲过的 <b>QoS Durability = Transient Local</b>：发布者替"迟到的订阅者"保留最后一条。<b>注意它不是参数的机制</b>——参数走的是"参数服务 + 参数事件"这套独立设施，和话题 QoS 无关。这里真正要迁移的知识只有一个：<i>凡是"后加入的节点也必须拿到"的数据，就该给它 Transient Local。</i></div>
 
   <h3>2.4 谁来发布？</h3>
   <ul>
@@ -543,7 +559,7 @@ ros2 run tf2_demo static_tf_pub</pre></div>
   <div class="kgrid">
     <div class="kcard"><div class="kd">成果</div><div class="kt">发布并验证了一条静态 TF 边</div><p>tf2_demo 包 + StaticTransformBroadcaster，三级验证手段（echo / view_frames / RViz）全通过。</p></div>
     <div class="kcard"><div class="kd">原理</div><div class="kt">树 + 连乘 + 缓冲</div><p>TF2 = 有根树（无环保证查询终止）+ 边的连乘合成 + 带时间戳的 Buffer 缓冲插值。</p></div>
-    <div class="kcard"><div class="kd">QoS</div><div class="kt">动态 KeepLast vs 静态 Transient Local</div><p>/tf 要"最新"、/tf_static 要"后到也有"——同一套 QoS 机制的两种业务化用法。</p></div>
+    <div class="kcard"><div class="kd">QoS</div><div class="kt">动态 KeepLast vs 静态 Transient Local</div><p>/tf 要"最新"（KeepLast）、/tf_static 要"后到也有"（Transient Local）——同一套 Durability 开关的两种业务化用法，与 EXP-06 的 QoS 三要素一脉相承。</p></div>
     <div class="kcard"><div class="kd">迁移</div><div class="kt">四元数反解 yaw</div><p>2·atan2(z, w) 是读码必备；机械臂姿态、相机位姿都是同一套四元数。</p></div>
   </div>
   <h3>🧠 思考题</h3>

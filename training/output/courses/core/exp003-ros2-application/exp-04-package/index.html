@@ -15,6 +15,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：交付代码，怎么才不抓瞎</a>
   <a href="#s11">02 演示：拆开两个真实功能包</a>
   <a href="#s2">03 原理：从清单到 build / install</a>
@@ -37,15 +38,30 @@
   <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 package.xml · ament</span></div>
 </div>
 
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清字段</div><div class="kt">package.xml 怎么读</div><p>能阐述 <code>name</code> / <code>version</code> / <code>build_depend</code> / <code>exec_depend</code> 等字段的含义，并说清"编译时需要"与"运行时需要"的区别。</p></div>
+  <div class="kcard"><div class="kd">② 掌握命令</div><div class="kt">一条命令建包</div><p>能正确执行 <code>ros2 pkg create --build-type ament_python --node-name &lt;节点名&gt; &lt;包名&gt;</code>，并读懂自动生成的文件结构。</p></div>
+  <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">建含两个节点的包</div><p>能独立创建含两个节点的 Python 功能包，正确配置 <code>setup.py</code> 的 <code>entry_points</code>，并成功编译运行。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">选对构建类型</div><p>后续开发中能根据需求正确选择 <code>ament_python</code> 还是 <code>ament_cmake</code>，并准确声明依赖。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：<code>entry_points</code> 的注册格式（左边可执行名、右边"文件:函数"）——它是 <code>ros2 run</code> 能找到节点的唯一凭据。<br>
+<b>难点</b>：三类依赖（<code>build_depend</code> / <code>exec_depend</code> / <code>depend</code>）该在什么场景用哪一个。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+建包是<b>每个后续实验的第一步</b>。本课练熟，EXP-05 起就能把精力全放在原理上。</div>
+</section>
+
 <section class="blk" id="s1">
 <h2><span class="no">01</span>问题引入：交付代码，怎么才不抓瞎</h2>
 <p>上一章 colcon build 你已经敲顺了，但每个源码目录里那份 <code>package.xml</code> 还一直没细看——今天就把它拆开。先换个角度想：<b>把代码交给别人，怎么才能不靠嘴解释？</b>各家生态早有答案了，都靠一份「说明书」：</p>
 <table>
   <tr><th>你熟悉的生态</th><th>包里装什么</th><th>说明书（清单文件）</th><th>没有说明书，会怎样</th></tr>
   <tr><td><b>Node.js</b></td><td>代码 + 启动入口</td><td>package.json</td><td>npm 不知道要装啥，<code>npm run xxx</code> 直接失灵</td></tr>
-  <tr><td><b>Python</b></td><td>模块 + 元数据</td><td>pyproject.toml</td><td>对方装不上依赖，只能回你一句"在我这能跑"</td></tr>
-  <tr><td><b>Java</b></td><td>类 + 资源</td><td>pom.xml</td><td>用了哪些库、什么版本，全靠口头相传</td></tr>
-  <tr><td><b>C / C++</b></td><td>头文件 + 库</td><td>vcpkg / conan 清单</td><td>换台机器链接就失败，还不知道到底缺哪个库</td></tr>
+  <tr><td><b>Python</b></td><td>模块 + 元数据</td><td>pyproject.toml、requirements.txt</td><td>对方装不上依赖，只能回你一句"在我这能跑"</td></tr>
+  <tr><td><b>Java</b></td><td>类 + 资源</td><td>pom.xml（Maven）/ build.gradle（Gradle）</td><td>用了哪些库、什么版本，全靠口头相传</td></tr>
+  <tr><td><b>C / C++</b></td><td>头文件 + 库</td><td>CMakeLists.txt 编译规则</td><td>构建规则和依赖两头都散着——换台机器链接就失败，还不知道缺哪个库</td></tr>
   <tr><td><b>ROS2</b></td><td>节点 + launch + 接口</td><td><b>package.xml</b></td><td>colcon 扫不到这个包、rosdep 不知道该补啥、<code>ros2 run</code> 找不到入口</td></tr>
 </table>
 <p>说明书上写的就是三件事：<b>我是谁、我依赖谁、别人该怎么构建我</b>。ROS2 里它格外重要——一个工作空间几十个包，机器要靠这份说明书自动排序编译、补齐依赖、登记入口，同事拿到才知道先跑什么。这一章就走三步：<b>看懂说明书（演示）→ 弄明白机器照着它编译时都干了啥（原理）→ 自己从零写一份、跑通（实操）。</b></p>
@@ -99,18 +115,18 @@
   <tr><td>构建描述</td><td>setup.py + setup.cfg</td><td>CMakeLists.txt</td></tr>
   <tr><td>清单</td><td colspan="2">两者都必须有 package.xml（格式 3）</td></tr>
   <tr><td>编译耗时</td><td>近零（安装型）</td><td>随代码量增长</td></tr>
-  <tr><td>入口声明</td><td>entry_points console_scripts</td><td>add_executable + install</td></tr>
+  <tr><td>入口声明</td><td>setup.py 里 <code>entry_points</code> 的 console_scripts 段（建包后 <code>cat setup.py</code> 可见）</td><td>CMakeLists.txt 里 <code>add_executable()</code> + <code>install()</code>（喏，<code>grep add_executable</code> demo_nodes_cpp 的 CMakeLists 就能找到）</td></tr>
   <tr><td>典型选择</td><td>应用层/编排层</td><td>驱动/算法/接口生成</td></tr>
 </table>
 <h3>编译流程：一步清单 → 一个 build/ → 一份 install/</h3>
 <div class="flow">
   <div class="step"><div class="n">1</div><b>读清单（Discovery）</b>：colcon 递归扫 src/，只认最里层带 package.xml 的目录；没有清单的目录直接跳过。</div>
-  <div class="step"><div class="n">2</div><b>按依赖排序</b>：清单里的 depend 连成一张图，谁被依赖谁先编——注意这排的是编译顺序，缺系统依赖它不管（那是 rosdep 的活）。</div>
-  <div class="step"><div class="n">3</div><b>按 build_type 分流</b>：ament_python 不真编译、秒过；ament_cmake 交给 CMake 生成构建规则、g++ 执行编译，.o 中间产物堆在 <code>build/&lt;包名&gt;/</code>。</div>
+  <div class="step"><div class="n">2</div><b>按依赖排序</b>：清单里的 depend 连成一张图，谁被依赖谁先编。你刚 cat 过的 demo_nodes_cpp / demo_nodes_py，依赖全是 rclcpp、std_msgs 这类<b>系统包</b>，早就在环境里排好了，所以单独编译它们感觉不出先后；等哪天你自己的 my_interfaces（消息定义）被 my_app 用上，colcon 就会先编 my_interfaces 再编 my_app——注意这排的只是工作空间内的编译顺序，缺系统依赖它不管（那是 rosdep 的活）。</div>
+  <div class="step"><div class="n">3</div><b>按 build_type 分流</b>：ament_python <b>不编译</b>——只是把执行需要的资源（.py 源文件、入口脚本、清单）安装到 install/，所以秒级完成；ament_cmake 交给 CMake 生成构建规则、g++ 执行编译，.o 中间产物堆在 <code>build/&lt;包名&gt;/</code>。</div>
   <div class="step"><div class="n">4</div><b>装进 install/</b>：可执行与库放进 <code>install/&lt;包名&gt;/lib/&lt;包名&gt;/</code>，清单、launch、消息定义放进 <code>share/&lt;包名&gt;/</code>，最后汇总出一份 <code>install/setup.bash</code>。</div>
-  <div class="step"><div class="n">5</div><b>source 后可用</b>：source setup.bash 把 install/ 下的 bin、lib 注进 PATH 和 PYTHONPATH，<code>ros2 run</code> 才找得到入口。</div>
+  <div class="step"><div class="n">5</div><b>source 后可用</b>：source setup.bash 把 install/ 下的 bin、lib 注进 PATH 和 PYTHONPATH，之后 <code>ros2 run</code> 找得到可执行、<code>ros2 launch</code> 找得到包和 launch 文件——两种启动方式都靠这一步就位。</div>
 </div>
-<div class="tip tealb"><span class="lab">报 Could not find / No such file？</span>十有八九是清单里声明了、系统里却没有——<b>colcon 不负责下载</b>，先跑一句 <code>rosdep install --from-paths src --ignore-src -r -y</code> 补齐再编。</div>
+<div class="tip tealb"><span class="lab">报 Could not find / No such file？</span><b>给个真实场景</b>：你给包加了 <code>&lt;depend&gt;image_transport&lt;/depend&gt;</code>，colcon build 时 CMake 报 <code>Could not find a package configuration file provided by "image_transport"</code>——不是名字写错了，是这台机器还没装这个包，而清单只是「声明了要」，<b>colcon 不负责下载</b>。这时跑：<br><code>rosdep install --from-paths src --ignore-src -r -y</code><span style="opacity:.75">（它按清单扫描，缺啥装啥）</span>——装完再 <code>colcon build</code>，同一个包就能编过。</div>
 <h3>把依赖这条暗线画出来</h3>
 <div class="anim-box">
 <svg viewBox="0 0 760 220" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
@@ -136,26 +152,33 @@
   <circle r="6" fill="#34d399" cx="370" cy="106"><animate attributeName="cx" values="370;420" dur="1.5s" begin="0.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.5s" begin="0.5s" repeatCount="indefinite"/></circle>
   <circle r="6" fill="#34d399" cx="570" cy="106"><animate attributeName="cx" values="570;620" dur="1.5s" begin="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.5s" begin="1s" repeatCount="indefinite"/></circle>
   <!-- 底部失败分支 -->
-  <rect x="220" y="172" width="350" height="34" rx="8" fill="#3f1d1d" stroke="#b91c1c" stroke-dasharray="5 4"/>
-  <text x="395" y="194" fill="#fca5a5" font-size="12.5" text-anchor="middle">缺依赖分支：ModuleNotFoundError / 找不到类型 → 先 rosdep install 再重编</text>
-  <path d="M295 142 V172" stroke="#b91c1c" stroke-width="1.6" stroke-dasharray="4 4"/>
+  <rect x="130" y="170" width="530" height="46" rx="8" fill="#3f1d1d" stroke="#b91c1c" stroke-dasharray="5 4"/>
+  <text x="395" y="190" fill="#fca5a5" font-size="12.5" text-anchor="middle">缺依赖分支：ModuleNotFoundError / 找不到类型定义</text>
+  <text x="395" y="207" fill="#fca5a5" font-size="12.5" text-anchor="middle">→ 先 rosdep install 补齐，再 colcon build 重编</text>
+  <path d="M295 142 V170" stroke="#b91c1c" stroke-width="1.6" stroke-dasharray="4 4"/>
 </svg>
 </div>
 <p class="anim-cap">依赖的生命周期：声明 → 解析 → 补装 → 链接；四个环节任一断裂都会在"链接成功"处报错。</p>
 <h3>读懂清单：字段与依赖的"生效阶段"</h3>
-<pre><span class="c">&lt;!--?xml：格式 3 是当前标准 --?&gt;</span>（省略头部后）：
+<pre><span class="c"># 节选自真机 demo_nodes_cpp/package.xml（cat ~/ros2_ws/src/xflz_eai_car1/ros2_demos/demo_nodes_cpp/package.xml，真文件更长）</span>
 &lt;package format="3"&gt;
-  &lt;name&gt;my_test_pkg&lt;/name&gt;
-  &lt;version&gt;0.1.0&lt;/version&gt;
-  &lt;description&gt;我的第一个功能包&lt;/description&gt;
-  &lt;maintainer email="you@mail.com"&gt;你的名字&lt;/maintainer&gt;
-  &lt;license&gt;Apache-2.0&lt;/license&gt;
-  <span class="y">&lt;depend&gt;rclpy&lt;/depend&gt;                 # 编译+运行都需要（最常用）</span>
-  &lt;buildtool_depend&gt;ament_python&lt;/buildtool_depend&gt; <span class="c"># 构建系统本身</span>
-  &lt;exec_depend&gt;ros2launch&lt;/exec_depend&gt;  <span class="y"># 仅运行期需要（launch 文件）</span>
-  &lt;test_depend&gt;ament_lint_auto&lt;/test_depend&gt; <span class="c"># 仅测试期需要</span>
-  &lt;export&gt;&lt;build_type&gt;ament_python&lt;/build_type&gt;&lt;/export&gt;
+  &lt;name&gt;demo_nodes_cpp&lt;/name&gt;
+  &lt;version&gt;…&lt;/version&gt;                    <span class="c"># 版本/维护者/license 等四件套从略</span>
+  <span class="c"># ① 构建工具期：用什么构建我</span>
+  &lt;buildtool_depend&gt;ament_cmake&lt;/buildtool_depend&gt;
+  <span class="c"># ② 仅编译期（build_depend）：g++ 编代码时要用</span>
+  &lt;build_depend&gt;rclcpp&lt;/build_depend&gt;
+  &lt;build_depend&gt;std_msgs&lt;/build_depend&gt;
+  <span class="c"># ③ 仅运行期（exec_depend）：跑起来/launch 时才用</span>
+  &lt;exec_depend&gt;launch_ros&lt;/exec_depend&gt;
+  &lt;exec_depend&gt;rclcpp&lt;/exec_depend&gt;
+  <span class="c"># ④ 测试期（test_depend）：colcon test 才用</span>
+  &lt;test_depend&gt;ament_lint_auto&lt;/test_depend&gt;
+  &lt;export&gt;&lt;build_type&gt;ament_cmake&lt;/build_type&gt;&lt;/export&gt;
 &lt;/package&gt;</pre>
+<pre><span class="c"># 对照 demo_nodes_py/package.xml（同样节选）——rclpy、std_msgs 挂在 exec_depend 下：</span>
+<span class="c"># Python 不编译，不存在"仅编译期"要装而运行期不用的依赖，所以看不到 build_depend。</span>
+<span class="c"># 两个文件都可以真机 cat、再用 grep build_depend 对比着核对一遍</span></pre>
 <table>
   <tr><th>标签</th><th>生效阶段</th><th>典型用途</th></tr>
   <tr><td><code>depend</code></td><td>编译 + 运行</td><td>默认选择：消息类型、客户端库</td></tr>

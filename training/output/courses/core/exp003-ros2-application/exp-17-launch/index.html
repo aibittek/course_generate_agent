@@ -50,6 +50,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：五个终端的手忙脚乱</a>
   <a href="#s2">02 核心原理：ROS2 为什么把启动语言换成 Python</a>
   <a href="#s3">03 动画：解析、拉起、优雅退出的全过程</a>
@@ -76,6 +77,21 @@
 </div>
 
 <!-- 01 问题引入 -->
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清演进</div><div class="kt">为什么用 Python</div><p>能阐述 ROS2 Launch 从 ROS1 的 XML-only <code>roslaunch</code> 到 Python-first 的设计逻辑——为什么选 Python，以及事件驱动如何比 XML 静态声明更灵活。</p></div>
+  <div class="kcard"><div class="kd">② 掌握写法</div><div class="kt">Node + LaunchDescription</div><p>能独立写 Python Launch 文件，正确声明 <code>Node(package, executable, parameters, remappings, output)</code> 并构建 <code>LaunchDescription</code>。</p></div>
+  <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">remap / 条件 / 事件</div><p>独立实现话题 remap、<code>IfCondition</code>/<code>UnlessCondition</code> 条件启动、<code>OnProcessExit</code> 事件触发（A 退出后自动起 B）。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">一键启动整套系统</div><p>能为之前的实验（MQ5 收发、指纹服务）写统一 Launch 文件，一键拉起完整采集系统。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：remap 的方向不能写反（<code>(源码名, 系统名)</code>），写反会静默失效、不报错。<br>
+<b>难点</b>：理解事件驱动编排：LaunchDescription 是静态列表，"A 退出后起 B"必须靠事件机制。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课是 <b>把前面十几个实验"打包成系统"的关键一步</b>。EXP-18 会再上一层，用元包把多个包聚起来。</div>
+</section>
+
 <section class="blk" id="s1">
   <h2><span class="no">01</span>问题引入：五个终端的手忙脚乱<span class="fs">聚焦问题 · 激活旧知</span></h2>
   <div class="tip"><span class="lab">先回忆</span>EXP-05~08 每个实验都要开 2~3 个终端、逐条敲 <code>ros2 run</code>、关错一个整组全崩——这些重复劳动正是本章要消灭的对象：<b>一个命令、一份文件，拉起整支机器人队伍</b>，并且让它们同生共死。</div>

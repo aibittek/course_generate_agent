@@ -117,7 +117,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
   <div class="bades">
     <span class="bade">📚 7 个实验</span>
     <span class="bade">⏱️ 32 学时</span>
-    <span class="bade">🤖 六轴机械臂 · 实验箱 B2 / 小车 C1 双载台</span>
+    <span class="bade">🤖 5 自由度机械臂 + 夹爪 · 实验箱 B2 / 小车 C1 双载台</span>
     <span class="bade">🎯 前置：ROS2 基础</span>
   </div>
 </section>
@@ -147,13 +147,15 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <table>
       <thead><tr><th>维度</th><th>取值 / 说明</th><th>首次出现</th></tr></thead>
       <tbody>
-        <tr><td class="k2">硬件平台</td><td>具身智能实验箱 B2 / 机器人小车 C1（两平台均搭载六轴机械臂，URDF 名义 5 自由度链 + 夹爪），桌面级抓取场景，双载台通用</td><td>EXP-01</td></tr>
-        <tr><td class="k2">串口链路</td><td>1 Mbps（1000000 baud）pyserial 直连下位机，0xAA55 双字节帧头 + CRC8 校验</td><td>EXP-02</td></tr>
-        <tr><td class="k2">PWM 舵机</td><td>脉宽 500~2500 μs，中位 CENTER_PWM=1500，弧度换算 PWM_TO_RAD=0.002356</td><td>EXP-02</td></tr>
-        <tr><td class="k2">运动学指标</td><td>验收线 Avg &lt; 0.5 mm、Max &lt; 1.5 mm；实测现状：test_fk_ik.py 3/4 点位 FAIL、误差 18~23 mm（疑为 IK/FK 几何模型不一致），并非全部达标</td><td>EXP-03 / EXP-04</td></tr>
+        <tr><td class="k2">硬件平台</td><td>具身智能实验箱 B2 / 机器人小车 C1（两平台共用同一套臂：URDF 名义 5 自由度链 arm_joint1~5 + 夹爪 r_joint，第六颗舵机 id5 只夹爪用；桌面级抓取场景）</td><td>EXP-01</td></tr>
+        <tr><td class="k2">串口链路</td><td>1 Mbps（1000000 baud）8N1，pyserial 直连下位机；帧 = <code>0xAA 0x55 + func + len + data + CRC8</code>（CRC8 从 func 盖到 data 末尾，256 字节查表）</td><td>EXP-02</td></tr>
+        <tr><td class="k2">PWM 舵机</td><td>脉宽 500~2500 μs，中位 CENTER_PWM=1500，弧度换算 PWM_TO_RAD = 4.712 rad ÷ 2000 = 0.002356。舵机物理行程 270°=4.712 rad，对应 ±1000 μs = <b>±2.356 rad = ±135°</b>（这才是实机真正的限位）</td><td>EXP-02</td></tr>
+        <tr><td class="k2">关节轴分布</td><td>J1 绕 <b>Z</b>（航向）+ J2/J3/J4 三根轴<b>互相平行都绕 Y</b>（俯仰）+ J5 绕 <b>Z</b>（夹爪自转）。所以 J2+J3+J4 的角度可以<b>直接相加</b>，而 J1 不行——这是 EXP-03/04 全部几何推导的出发点</td><td>EXP-03</td></tr>
+        <tr><td class="k2">有效自由度</td><td>5 个关节只有 <b>4 个独立笛卡尔自由度</b>（x, y, z + 工具俯仰 pitch）：J1 定方位，J2/J3 定平面位置，J4 定俯仰，J1 与 J5 的转动<b>共轴重合</b>——所以 J5 不能在固定 pitch 下改末端朝向，这就是作业里 "q5 恒为 0" 的原因</td><td>EXP-03 / EXP-04</td></tr>
+        <tr><td class="k2">运动学指标</td><td>验收线 Avg &lt; 0.5 mm、Max &lt; 1.5 mm。实测现状：工作空间<b>内</b>点位闭环可到 0.00 mm，但<b>超出 0.2523 m 的两杆合长</b>的点位会静默夹紧 cos 值、误差 18~23 mm 却不报错——这是"求解成功 ≠ 解准确"的活教材（见 EXP-04）</td><td>EXP-03 / EXP-04</td></tr>
         <tr><td class="k2">偏移证伪</td><td>旧版口径 "J2 +4.0°、J3 +2.3° 实测机械偏移" 已证伪——源码中无 system_offset_analysis 与偏移配置，无法复现；误差一律以实测归因为准</td><td>EXP-04</td></tr>
-        <tr><td class="k2">抓取参数</td><td>节点默认 gripper_depth 0.0 / pre_grasp_height 0.03 / grasp_pitch 180°（夹爪朝下）；lift_height 0.05 已声明但源码未使用，按实验实测调优</td><td>EXP-06</td></tr>
-        <tr><td class="k2">视觉定位</td><td>HSV 颜色分割 + 深度反投影（fx=fy=614，cx=320，cy=240）+ TF 坐标链变换</td><td>EXP-07</td></tr>
+        <tr><td class="k2">抓取参数</td><td>节点默认 gripper_depth 0.0 / pre_grasp_height 0.03 / grasp_pitch 180°（夹爪朝下）；<b>arm_params.yaml 实配已改为 −0.040</b>（负值=抬高）；lift_height 0.05 已声明但源码未使用，改它无效——真实抬升看 pre_grasp_height</td><td>EXP-06</td></tr>
+        <tr><td class="k2">视觉定位</td><td>HSV 颜色分割（红色两段并集）+ 深度反投影（fx=fy 由 camera_info 实时读取，实测 ≈614，cx≈320，cy≈240）+ TF 坐标链变换</td><td>EXP-07</td></tr>
         <tr><td class="k2">软件栈</td><td>ROS2 Humble · MoveIt2 · Gazebo · pyserial · URDF/TF · server_cors Web 仿真器（8000 端口）</td><td>贯穿全课</td></tr>
       </tbody>
     </table>
@@ -456,7 +458,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <div class="top"><span class="code">EXP-06</span><span class="tag">⭐⭐⭐ · 4 学时</span></div>
       <h3>逆运动学固定抓取</h3>
       <p>真实接口 set_pick_target / target_pose 与 pick·place Trigger 服务，离线预演、分步移动 _move_stepwise、六阶段抓取序列与抓取参数实测调优。</p>
-      <div class="kv"><b>关键参数</b> · gripper_depth 默认 0.0（yaml 实配 -0.033）· pre_grasp_height 0.03 · lift_height 0.05（源码未使用）· grasp_pitch 180°（四元数 {0,1,0,0} 夹爪朝下）· 放置点 (0.059,0.074,0.219)</div>
+      <div class="kv"><b>关键参数</b> · gripper_depth 默认 0.0（yaml 实配 −0.040，负值=抬高 40mm）· pre_grasp_height 0.03 · lift_height 0.05（<b>源码未使用</b>）· grasp_pitch 180°（四元数 {0,1,0,0} 夹爪朝下）· 放置点 (0.059,0.074,0.219)</div>
       <div class="meta"><span class="tag">抓取状态机</span><span class="tag">分步移动</span><span class="tag">软限位</span><span class="tag">抓取参数调优</span></div>
       <ul class="explist">
         <li><a class="ttl" href="exp-06-fixed-grasp/index.html#s1">① 问题引入：固定目标为何也要"先想再动"</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-fixed-grasp/index.html#s1">4 学时 · 开始</a></li>

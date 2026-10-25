@@ -51,7 +51,7 @@
   <div class="tip amber"><span class="lab">情境</span>
     点外卖时骑手的路线是"<strong>先去 A 店取餐，再去 B 小区送达，最后顺路回 C 取下一样货</strong>"——是一串有先后语义的任务，不是单点。EXP-03 的 <span class="io dim">/navigate_to_pose</span> 只能"到一处"；要连续跑三个点，你可以在脚本里连发三次，但到达判定、中途避障、某一段失败怎么办，都得自己管。Nav2 的 <span class="io dim">/navigate_through_poses</span> 把这些打包好了：一次下发 <strong>poses[] 数组</strong>，机器人必须依次经过每个点。
   </div>
-  <p>本课用 ROS2 的 <strong>Action</strong> 通信（goal → feedback → result，就像"下单 → 物流跟踪 → 签收确认"）驱动两个导航器，完成单点、多点连续导航，并研究卡住时的进度检查（progress_checker）与恢复动作（spin/backup）。</p>
+  <p>本课用 ROS2 的 <strong>Action</strong> 通信（goal → feedback → result，就像"下单 → 物流跟踪 → 签收确认"）驱动两个导航器，完成单点、多点连续导航，并研究卡住时的进度检查（progress_checker）与行为树恢复动作（清代价地图 / Spin / Wait）。</p>
 </section>
 
 <section class="blk" id="s2">
@@ -61,11 +61,12 @@
   </div>
   <div class="kgrid">
     <div class="kcard"><div class="kd">导航器 1</div><div class="kt">navigate_to_pose</div><p>只有一个最终目标（位置+朝向）。行为树流程：算路径 → 跟踪 → 到达。适合"从甲地到乙地"。</p></div>
-    <div class="kcard"><div class="kd">导航器 2</div><div class="kt">navigate_through_poses</div><p>一串途经点 poses[]，<strong>必须依次经过每个点</strong>（点与点之间也避障），最后停在最后一个点。适合巡检路线、多点送货。这是它与单点的本质区别：中间点是必经点，不是"顺路参考"。</p></div>
-    <div class="kcard"><div class="kd">到达判定</div><div class="kt">general_goal_checker</div><p>xy_goal_tolerance 0.10 m / yaw_goal_tolerance 0.1 rad——进到这个圈里就算"到站"，所以途经点间距别小于 0.5 m，否则上一点还没判定完下一点就糊了。</p></div>
-    <div class="kcard"><div class="kd">安全兜底</div><div class="kt">progress_checker + 恢复</div><p>10 秒没挪 10 cm（required_movement_radius 0.1 / movement_time_allowance 10.0）判定卡住 → behavior_server 出手：<strong>spin</strong> 原地转圈找路、<strong>backup</strong> 倒车出来、drive_on_heading 直行、wait 等待——还不行就 ABORTED，绝不硬闯。</p></div>
+    <div class="kcard"><div class="kd">导航器 2</div><div class="kt">navigate_through_poses</div><p>一串途经点 poses[]，一次规划出一条<b>依次串起所有点</b>的路径再跟踪，最后停在最后一个点。适合巡检路线、多点送货。</p></div>
+    <div class="kcard"><div class="kd">关键机制</div><div class="kt">RemovePassedGoals(r=0.7 m)</div><p>本项目行为树里有 <code>RemovePassedGoals radius="0.7"</code>：车一进到距某途经点 0.7 m 内，该点就从队列里被剔除。所以<b>"经过"是 0.7 m 半径内的掠过，不是逐点精确停车</b>——这也是途经点间距必须远大于 0.7 m 的原因。</p></div>
+    <div class="kcard"><div class="kd">到达判定</div><div class="kt">general_goal_checker</div><p>xy_goal_tolerance 0.10 m / yaw_goal_tolerance 0.1 rad——只对<b>最终目标</b>做精确到站判定，所以终点仍会准确地停下并转正。</p></div>
+    <div class="kcard"><div class="kd">安全兜底</div><div class="kt">progress_checker + 恢复</div><p>10 秒没挪 10 cm（required_movement_radius 0.1 / movement_time_allowance 10.0）判定卡住 → 行为树进入恢复：<b>清两张代价地图 → Spin 1.57 rad 找路 → Wait 5 秒</b>，重试 6 次仍无效则 ABORTED，绝不硬闯。</p></div>
   </div>
-  <div class="tip violet"><span class="lab">外卖员类比</span>骑手迷路了先原地转圈看看（spin），不行倒车出来（backup），还不行就报告"这单送不了"（ABORTED），而不是撞门进去——这就是恢复动作<strong>有限次、失败即终止</strong>的安全设计。</div>
+  <div class="tip violet"><span class="lab">外卖员类比</span>骑手迷路了先原地转一圈看看（Spin），再清空脑子重新看地图（清代价地图），还不行就等一等再试（Wait），最后报告"这单送不了"（ABORTED），而不是撞门进去——这就是恢复动作<strong>限次数、失败即终止</strong>的安全设计。本车是麦轮可横移，行为树里明确注释了不用 backup。</div>
 </section>
 
 <section class="blk" id="s3">
@@ -73,10 +74,11 @@
   <div class="kgrid">
     <div class="kcard"><div class="kd">知识点 1</div><div class="kt">ROS2 Action 三件套</div><p>goal / feedback / result；long-running + 可取消 + 有反馈的任务必须用 Action 而非 Service。</p></div>
     <div class="kcard"><div class="kd">知识点 2</div><div class="kt">bt_navigator 双注册</div><p>nav2_params.yaml navigators: ["navigate_to_pose", "navigate_through_poses"] 注册了两个导航器插件。</p></div>
-    <div class="kcard"><div class="kd">知识点 3</div><div class="kt">行为树节点</div><p>nav2_compute_path_to_pose_action_bt_node / nav2_compute_path_through_poses_action_bt_node / nav2_follow_path_action_bt_node 已在 plugin_lib_names 注册。</p></div>
-    <div class="kcard"><div class="kd">知识点 4</div><div class="kt">frame_id 必须是 map</div><p>目标坐标系写 map（全局坐标系）；写成 odom 小车会去错误位置——因为 AMCL 持续在修正 map→odom。</p></div>
+    <div class="kcard"><div class="kd">知识点 3</div><div class="kt">行为树节点</div><p>nav2_compute_path_to_pose_action_bt_node / nav2_compute_path_through_poses_action_bt_node / nav2_follow_path_action_bt_node 已在 plugin_lib_names 注册，节点缺失会导致行为树加载失败。</p></div>
+    <div class="kcard"><div class="kd">知识点 4</div><div class="kt">frame_id 必须是 map</div><p>目标坐标系写 map（全局系）；写成 odom 小车会去错误位置——因为 AMCL 一直在修正 map→odom，两者并不等价。</p></div>
     <div class="kcard"><div class="kd">知识点 5</div><div class="kt">四元数朝向</div><p>朝 +X 用 w=1；朝 -Y 用 (0,0,-0.707,0.707)；可用 tf2_echo 验证。目标点在墙内会 ABORTED（不可达）。</p></div>
-    <div class="kcard"><div class="kd">知识点 6</div><div class="kt">鲁棒性四指标</div><p>到达率 ≥80%、路径平滑度（无急转）、避障响应 <2s、中途停车 ≤1 次/任务——导航"好不好"用数字说话。</p></div>
+    <div class="kcard"><div class="kd">知识点 6</div><div class="kt">鲁棒性四指标</div><p>到达率 ≥80%、路径平滑度（无急转）、避障响应 &lt;2 s、中途停车 ≤1 次/任务——导航"好不好"用数字说话。</p></div>
+    <div class="kcard"><div class="kd">知识点 7</div><div class="kt">重规划节奏</div><p>单点行为树 1 Hz 重规划；多点行为树降到 0.333 Hz（每 3 秒），因为长路线不必频繁重算——参数在 XML 的 RateController 里。</p></div>
   </div>
 </section>
 
@@ -101,7 +103,7 @@
     <tr><td>依赖</td><td>完成 EXP-03 / EXP-04；导航 launch 正常运行</td></tr>
     <tr><td>主入口</td><td><span class="io dim">navigation/car1_navigation/launch/navigation.launch.py</span>、<span class="io dim">config/nav2_params.yaml</span>（bt_navigator / behavior_server / progress_checker 段）</td></tr>
   </table>
-  <div class="tip amber"><span class="lab">准备清单</span>① 场地至少 3m×4m，途经点之间留出转弯空间（间距 >0.5m）；② 准备 3 个纸箱用于堵通道测试；③ 恢复动作（spin）测试时旋转半径内不要站人；④ 单次现象不下结论——统计类测试至少跑 5 遍。</div>
+  <div class="tip amber"><span class="lab">准备清单</span>① 场地至少 3 m×4 m，途经点之间留出转弯空间（间距 &gt;1.0 m，务必大于 0.7 m 剔除半径）；② 准备 3 个纸箱用于堵通道测试；③ 恢复动作（Spin）测试时旋转半径内不要站人；④ 单次现象不下结论——统计类测试至少跑 5 遍。</div>
 </section>
 
 <section class="blk" id="s6">
@@ -143,11 +145,11 @@
         <text x="346" y="82">✔<animate attributeName="opacity" values="0;1" begin="2.6s" fill="freeze"></animate></text>
         <text x="561" y="207">✔<animate attributeName="opacity" values="0;1" begin="4s" fill="freeze"></animate></text>
       </g>
-      <text x="40" y="52" font-size="13" fill="#1d4ed8" font-family="monospace">/navigate_through_poses: A → B → C（必经，非可选）</text>
+      <text x="40" y="52" font-size="13" fill="#1d4ed8" font-family="monospace">/navigate_through_poses: A → B → C（一条路线串起，0.7m 内掠过即算过）</text>
       <text x="40" y="72" font-size="12" fill="#64748b" font-family="monospace">feedback: distance_remaining 1.9 → 1.2 → 0.5 → 0</text>
     </svg>
   </div>
-  <p class="anim-cap">图 6-1：一次下发 poses[] 三个途经点，小车按 A→B→C 顺序行驶，每段都独立规划与避障（橙色弧线是绕过纸箱的局部调整）；每个点到达打 ✔（容差 0.10 m / 0.1 rad）后才切下一段，feedback 持续回报 distance_remaining——这就是"必经点"语义与单点连发的本质区别。</p>
+  <p class="anim-cap">图 6-1：一次下发 poses[] 三个途经点，小车按 A→B→C 顺序行驶，整条路线一次规划完成，每段都靠局部规划避障（橙色弧线是绕过纸箱的调整）；途经点进入 <b>0.7 m 半径</b>即被 RemovePassedGoals 剔除并切往下一段，最后一个点才按 0.10 m / 0.1 rad 精确到站——这就是它和"单点连发"的本质区别。</p>
 </section>
 
 <section class="blk" id="s7">
@@ -165,9 +167,10 @@
   <table>
     <tr><th>维度</th><th>navigate_to_pose（单点）</th><th>navigate_through_poses（多点）</th></tr>
     <tr><td>goal 结构</td><td>1 个 PoseStamped</td><td>poses[] 数组（有序）</td></tr>
-    <tr><td>中间点</td><td>无此概念，可抄近路</td><td><strong>必经</strong>，会刻意绕去</td></tr>
+    <tr><td>中间点</td><td>无此概念，可直接抄近路</td><td>会被路线串起来，进 0.7 m 半径即视为已过</td></tr>
+    <tr><td>重规划节奏</td><td>1 Hz</td><td>0.333 Hz（每 3 秒）</td></tr>
     <tr><td>典型场景</td><td>"从甲地到乙地"</td><td>巡检路线、多点送货</td></tr>
-    <tr><td>失败处理</td><td>返回 ABORTED 即结束</td><td>需调度策略：重试 / 跳过 / 终止（权衡后自定）</td></tr>
+    <tr><td>失败处理</td><td>重试 6 次后 ABORTED 即结束</td><td>同左；调度层还需决定 重试 / 跳过 / 终止</td></tr>
   </table>
 </section>
 
@@ -180,12 +183,12 @@
     <div class="arr"></div>
     <div class="step"><span class="n">3</span>多点导航：一次下发 A(0,0.5) → B(1,1) → C(1.5,0.5)，记录 /amcl_pose 时间序列绘制轨迹，验证是否<strong>依次经过三点</strong></div>
     <div class="arr"></div>
-    <div class="step"><span class="n">4</span>调度测试：3 纸箱堵死必经通道 → 观察日志 "Failed to make progress" → spin/backup 恢复 → 无效则 ABORTED；再只堵一半（留 60cm）观察能否绕过</div>
+    <div class="step"><span class="n">4</span>调度测试：3 纸箱堵死必经通道 → 观察日志 "Failed to make progress" → 清图/Spin/Wait 恢复 → 6 次仍无效则 ABORTED；再只堵一半（留 60cm）观察能否绕过</div>
     <div class="arr"></div>
     <div class="step"><span class="n">5</span>鲁棒性评估：3 点路线连跑 5 遍记到达率/耗时/停车次数，再加入 1 个移动障碍跑 5 遍对比</div>
   </div>
   <pre><span class="c"># ① 启动导航</span>
-ros2 launch car1_navigation navigation.launch.py map:=slam_map
+ros2 launch car1_navigation navigation.launch.py map:=map_01
 
 <span class="c"># ② 查看 action 定义（goal / feedback / result）</span>
 ros2 interface show nav2_msgs/action/NavigateToPose
@@ -195,15 +198,18 @@ ros2 interface show nav2_msgs/action/NavigateThroughPoses   <span class="c"># go
 ros2 action send_goal --feedback /navigate_to_pose nav2_msgs/action/NavigateToPose \
   "{pose: {header: {frame_id: 'map'}, pose: {position: {x: 1.0, y: 0.5}, orientation: {w: 1.0}}}}"
 
-<span class="c"># ④ 多点连续导航：A→B→C 依次必经</span>
+<span class="c"># ④ 多点连续导航：A→B→C 一次下发（注意点是"掠过"而非"逐点停"）</span>
 ros2 action send_goal /navigate_through_poses nav2_msgs/action/NavigateThroughPoses \
   "{poses: [{header: {frame_id: 'map'}, pose: {position: {x: 0.0, y: 0.5}, orientation: {w: 1.0}}},
             {header: {frame_id: 'map'}, pose: {position: {x: 1.0, y: 1.0}, orientation: {w: 1.0}}},
             {header: {frame_id: 'map'}, pose: {position: {x: 1.5, y: 0.5}, orientation: {w: 1.0}}}]}" --feedback
 
 <span class="c"># ⑤ 跟踪轨迹与到达误差</span>
-ros2 topic echo /amcl_pose     <span class="c"># 时间序列可绘制成轨迹图验证"必经"</span></pre>
-  <pre><span class="c"># ⑥ 调度脚本骨架：目标序列 + 失败重试（SUCCEEDED 才继续）</span>
+ros2 topic echo /amcl_pose     <span class="c"># 时间序列可绘制成轨迹图验证"依次经过"</span>
+
+<span class="c"># ⑥ 观察恢复动作有没有真的触发</span>
+ros2 topic echo /behavior_tree_log</pre>
+  <pre><span class="c"># ⑦ 调度脚本骨架：目标序列 + 失败重试（SUCCEEDED 才继续）</span>
 goals = [g1, g2, g3]
 for g in goals:
     result = send_navigate_to_pose(g)          <span class="c"># 阻塞等待完成</span>
@@ -216,31 +222,31 @@ for g in goals:
 
 <section class="blk" id="s9">
   <h2><span class="no">09</span>重点与易错点</h2>
-  <div class="tip amber"><span class="lab">重点</span>① Action 三段式与两个导航器的语义差异；② "必经点"与"抄近路"的区别；③ progress_checker（10s/10cm）+ 恢复动作的兜底链；④ 四指标量化评估（到达率 / 平滑度 / 避障响应 / 中途停车）。</div>
+  <div class="tip amber"><span class="lab">重点</span>① Action 三段式与两个导航器的语义差异；② "0.7 m 掠过"与"精确到站"的区别；③ progress_checker（10 s / 10 cm）+ 恢复动作（清图 → Spin → Wait）的兜底链；④ 四指标量化评估（到达率 / 平滑度 / 避障响应 / 中途停车）。</div>
   <table>
     <tr><th>坑</th><th>现象</th><th>解决</th></tr>
     <tr><td>frame_id 写错</td><td>小车奔向错误位置</td><td>必须写 map 系，勿写 odom</td></tr>
-    <tr><td>以为多点 = 只去终点</td><td>轨迹与预期不符</td><td>中间点是必经点，机器人会刻意经过（本质区别）</td></tr>
-    <tr><td>途经点间距太小</td><td>到达判定混乱/跳点</td><td>相邻点保持 &gt;0.5 m（容差 0.10m 只是到站圈）</td></tr>
+    <tr><td>以为多点 = 逐点停车</td><td>轨迹与预期不符</td><td>途经点是 0.7 m 内掠过（RemovePassedGoals），只有终点精确到站</td></tr>
+    <tr><td>途经点间距太小</td><td>跳过中间点</td><td>相邻点保持 &gt;1.0 m（务必远大于 0.7 m 剔除半径）</td></tr>
     <tr><td>调度脚本不查结果</td><td>任务"静默失败"</td><td>必检 action result，失败记录与重试</td></tr>
-    <tr><td>以为卡住会无限重试</td><td>期待硬闯成功</td><td>恢复动作有限次，无效即 ABORTED——安全设计，堵死属正常</td></tr>
-    <tr><td>一直卡住不恢复</td><td>无 spin/backup 日志</td><td>检查 progress_checker 的 movement_time_allowance（10.0）</td></tr>
-    <tr><td>中间点被跳过</td><td>少经过一个点</td><td>调小 xy_goal_tolerance；核对 poses[] 顺序</td></tr>
-    <tr><td>动障测试人站住不动</td><td>被当成静态墙</td><td>人在雷达前勿静止超 0.5s，保持走动</td></tr>
+    <tr><td>以为卡住会无限重试</td><td>期待硬闯成功</td><td>行为树 RecoveryNode 只重试 6 次，无效即 ABORTED——安全设计，堵死属正常</td></tr>
+    <tr><td>一直卡住不恢复</td><td>无行为日志</td><td>检查 progress_checker 的 movement_time_allowance（10.0），并用 <code>ros2 topic echo /behavior_tree_log</code> 看分支</td></tr>
+    <tr><td>找不到 backup 恢复</td><td>以为少装了插件</td><td>本车麦轮可横移，behavior_server 与行为树都没启用 backup，属设计选择</td></tr>
+    <tr><td>动障测试人站住不动</td><td>被当成静态墙</td><td>人在雷达前别静止超 0.5 s，保持走动</td></tr>
     <tr><td>测一次就下结论</td><td>统计无意义</td><td>至少 5 遍取统计，导航有随机性</td></tr>
   </table>
   <ul class="check">
-    <li>四指标合格线（参考）：到达率 ≥80%、避障响应 <2s、中途停车 ≤1 次/任务</li>
+    <li>四指标合格线（参考）：到达率 ≥80%、避障响应 &lt;2 s、中途停车 ≤1 次/任务</li>
     <li>调度脚本先做"目标可达"预检查（costmap 判断），避免明知不可达还发</li>
-    <li>spin 恢复测试时人远离小车，旋转半径内清场</li>
+    <li>恢复动作测试时人远离小车，Spin 旋转半径内清场</li>
   </ul>
 </section>
 
 <section class="blk" id="s10">
   <h2><span class="no">10</span>总结与思考：失败重试与进度检查</h2>
-  <div class="tip tealb"><span class="lab">本课收获</span>掌握 Action 三段式与两个导航器语义；会用 send_goal --feedback 下发单点/多目标；理解 progress_checker（10 秒没挪 10 cm 判卡住）+ spin/backup/drive_on_heading 恢复链，以及 SUCCEEDED/ABORTED 两种结果下的调度策略；会用四指标跑 5 遍统计评估鲁棒性。</div>
+  <div class="tip tealb"><span class="lab">本课收获</span>掌握 Action 三段式与两个导航器语义；会用 send_goal --feedback 下发单点/多目标；理解 progress_checker（10 秒没挪 10 cm 判卡住）+ 清图/Spin/Wait 恢复链，以及 SUCCEEDED/ABORTED 两种结果下的调度策略；会用四指标跑 5 遍统计评估鲁棒性。</div>
   <div class="tip violet"><span class="lab">思考 1</span>多点导航中某个点连续失败，你的调度策略是"原地重试 / 跳过继续 / 整体终止"哪一种？三种策略分别适合什么任务（送快递 vs 巡检 vs 危险区域探测），请说明权衡。</div>
-  <div class="tip violet"><span class="lab">思考 2</span>progress_checker 为什么同时要"10cm"和"10 秒"两个阈值、缺一不可？结合你的鲁棒性数据（到达率/停车次数），分析这套配置在什么场景会失效（提示：对称大厅、超窄通道），如何改进？</div>
+  <div class="tip violet"><span class="lab">思考 2</span>progress_checker 为什么要同时有"10 cm"和"10 秒"两个阈值、缺一不可？再想想 RemovePassedGoals 的 0.7 m 半径：如果把它改成 0.2 m，多点导航会更容易"真经过"还是更容易卡住？代价是什么？</div>
 </section>
 
 <nav class="expnav">
@@ -262,19 +268,20 @@ function plan(k){
       '<span class="warn">验证点：--feedback 的 distance_remaining 应单调减小</span>';
   }else if(k==='tour'){
     h='<span class="ok">✔ 任务② 有先后语义的多站 → navigate_through_poses</span>\n'+
-      '<span class="ok">✔ 一次下发 poses[]，A→B→C 依次必经，点间也避障</span>\n'+
-      '<span class="warn">⚠ 途经点间距 >0.5m；frame_id 全部为 map</span>\n'+
-      '<span class="dim">对比：三次连发单点也能到，但调度/重试全要自己写</span>';
+      '<span class="ok">✔ 一次下发 poses[]，规划出一条串起 A→B→C 的路线，进 0.7m 即算过</span>\n'+
+      '<span class="warn">⚠ 途经点间距 &gt;1.0m；frame_id 全部为 map</span>\n'+
+      '<span class="dim">对比：三次连发单点也能到，但每点都会精确停车，且调度/重试要自己写</span>';
   }else if(k==='blocking'){
-    h='<span class="warn">⚠ 任务③ B 点在堵死区 → 必经语义会让小车执着于 B</span>\n'+
-      '<span class="dim">progress_checker 判卡（10s 未挪 10cm）→ spin/backup 恢复 → 仍无效 → ABORTED</span>\n'+
-      '<span class="dim">这正是"必经"的代价：调度层需决定 重试/跳过/终止</span>\n'+
-      '<span class="bad">✘ 期望它自动绕开 B 直奔 C 是对语义的误解</span>';
+    h='<span class="warn">⚠ 任务③ B 点被堵死 → 路线必经 B 半径，小车会反复尝试靠近</span>\n'+
+      '<span class="dim">progress_checker 判卡（10s 未挪 10cm）→ 清代价地图 / Spin 1.57rad / Wait 5s → 重试 6 次</span>\n'+
+      '<span class="dim">仍无效 → ABORTED，此时 B 及后续 C 都不会执行</span>\n'+
+      '<span class="bad">✘ 期望它自动跳过 B 直奔 C 是对语义的误解——跳过要由调度层决定</span>';
   }else{
-    h='<span class="warn">⚠ 任务④ 终点前卡死 → 恢复动作链完整出演</span>\n'+
-      '<span class="dim">日志出现 "Failed to make progress" → behavior_server: spin 转圈找路</span>\n'+
-      '<span class="dim">→ 不行 backup 后退 → 再不行 drive_on_heading/wait → 恢复失败 ABORTED</span>\n'+
-      '<span class="ok">✔ 记录完整时间线：卡住时刻 → 恢复动作 → 结果——这就是安全兜底的可观测证据</span>';
+    h='<span class="warn">⚠ 任务④ 终点前卡死 → 恢复链完整出演</span>\n'+
+      '<span class="dim">日志出现 "Failed to make progress" → 行为树走 RecoveryFallback 分支</span>\n'+
+      '<span class="dim">→ 清局部/全局代价地图 → Spin 1.57rad 转一圈重新观察 → Wait 5s → 再重试</span>\n'+
+      '<span class="ok">✔ 记录完整时间线：卡住时刻 → 恢复动作 → 结果——这就是安全兜底的可观测证据</span>\n'+
+      '<span class="dim">// 想看分支细节：ros2 topic echo /behavior_tree_log</span>';
   }
   io.innerHTML=h;
 }

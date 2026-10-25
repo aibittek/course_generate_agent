@@ -35,10 +35,10 @@
   <nav>
     <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
     <a href="../exp-02-serial-pwm/index.html">EXP-02 串口协议与 PWM</a>
-    <a href="../exp-05-action-replay/index.html">EXP-05 架构与动作回放</a>
     <a href="../exp-03-kinematics/index.html">EXP-03 正运动学基础</a>
     <a href="../exp-04-ik-solver/index.html">EXP-04 逆运动学基础与 IK 解算</a>
-    <a href="../exp-06-fixed-grasp/index.html">EXP-06 逆运动学固定抓取</a>
+    <a href="../exp-05-action-replay/index.html">EXP-05 ROS2 架构与动作回放</a>
+    <a class="now" href="../exp-06-fixed-grasp/index.html">EXP-06 逆运动学固定抓取</a>
     <a href="../exp-07-visual-grasp/index.html">EXP-07 视觉动态抓取</a>
   </nav>
 </aside>
@@ -68,9 +68,20 @@
 <p><b>set_pick_target 像把东西写进"待办清单"，pick 像按下"执行"键。</b>发话题只是记下"我要抓 (0.28, 0, 0.10)"——胳膊一动不动；直到 Trigger 服务被调用，状态机才开工。这个"先记账、后执行"的设计让你可以慢慢核对目标，而不用担心手一抖臂就飞出去。</p>
 <p><b>分步移动 = 挥铁锹先对准、再下铲。</b>如果五个关节同时动，末端轨迹像泼水一样不可预测，还极易经过奇异位姿。car1 的 <code>two_stage_move()</code>：<b>STAGE 1</b> 只转底座 J1 对准目标方位，<b>STAGE 2</b> 保持 J1、驱动 J2-J5 到目标姿态——先粗后精，工业机械臂的标配打法。</p>
 <p><b>六阶段状态机 = 一套广播体操口令。</b>IDLE（立正）→ APPROACH（抬手到预抓点）→ DESCEND（下探）→ GRASP（合爪）→ LIFT（提起）→ HOLD（抱着待命）。每个口令只做一件事，做完检查（软限位、奇异）再进下一个——出错随时能停在明确的阶段上排查。</p>
+<div class="tip amber"><span class="lab">⚠️ 先说清一件事：这套"状态名"没有对外发布</span>讲义和上面的类比讲的是 <b>IDLE→APPROACH→DESCEND→GRASP→LIFT→HOLD</b> 这六个<b>阶段</b>，它帮你理解流程。但<b>读源码会发现</b>：<code>arm_controller.py</code> 是<b>一条顺序执行的 <code>_execute_pick()</code> 函数</b>，没有状态变量、没有对外的状态话题——<code>/arm/grasp_state</code> <b>在当前仓库里并不存在</b>。所以：<b>别去 echo 一个不存在的状态话题</b>；要看过程，就看节点日志里的六步顺序，或者看机械臂实际在做什么。</div>
+<p><b>源码里 <code>_execute_pick()</code> 的六个动作，逐条对上：</b></p>
+<table>
+<tr><th>步</th><th>源码做什么</th><th>对应阶段名</th></tr>
+<tr><td>1</td><td><code>_set_gripper(True)</code> → 延时 <code>gripper_duration+0.2</code></td><td>开爪</td></tr>
+<tr><td>2</td><td>IK 解 <code>(x, y, grasp_z + pre_grasp_height)</code> → <code>_move_stepwise()</code>（<b>这里含 STAGE1 转底座</b>）</td><td>APPROACH</td></tr>
+<tr><td>3</td><td>IK 解 <code>(x, y, grasp_z)</code> → <code>_move_joints(.., 1.5)</code>，只走 1.5 秒</td><td>DESCEND</td></tr>
+<tr><td>4</td><td><code>_set_gripper(False)</code> → 延时</td><td>GRASP</td></tr>
+<tr><td>5</td><td>IK 解回 <code>(x, y, grasp_z + pre_grasp_height)</code>，<b>这才是抬升</b></td><td>LIFT</td></tr>
+<tr><td>6</td><td>IK 解 <code>post_grasp_pose</code> → <code>_move_stepwise()</code></td><td>回观察位（HOLD 的实体）</td></tr>
+</table>
 <div class="kgrid">
-  <div class="kcard"><div class="kd">gripper_depth</div><div class="kt">下探多深算"抓实"</div><p><b>从目标表面向下探的距离：默认 0.0（tcp 停在表面点）、0.01~0.03 按物夹深、配置实配 −0.033=抬高跨物。浅了抓不牢，深了穿桌。</b></p></div>
-  <div class="kcard"><div class="kd">奇异检测</div><div class="kt">胳膊伸直的"死点"</div><p>Jacobian 条件数 cond(J) 超阈值（100~200 量级）判定奇异风险，自动切备用解——好比腿绷直了使不上劲，先微弯一点。</p></div>
+  <div class="kcard"><div class="kd">gripper_depth</div><div class="kt">下探多深算"抓实"</div><p><b>源码口径：<code>grasp_z = 检测点z − gripper_depth</code>。</b>所以<b>正值 = 往下探</b>（0.01~0.03 按物深夹），<b>负值 = 抬高</b>（指尖跨住物侧）。节点默认 0.0 = TCP 停在表面；<code>arm_params.yaml</code> 实配 <b>−0.040</b>（抬高 40 mm）。浅了抓不牢，深了穿桌。</p></div>
+  <div class="kcard"><div class="kd">奇异检测</div><div class="kt">胳膊伸直的"死点"</div><p><b>理论上</b>：Jacobian 条件数 cond(J) 越大越接近奇异（腿绷直了使不上劲）。<b>但源码里这个检测没有实现</b>——<code>arm_controller.py</code> 只做 <code>_check_limits()</code>（关节角 ±2.356 rad 的软限位），没有 cond(J) 计算、没有备用解切换。<b>现在的防奇异手段是"分步移动 + 目标点设计"</b>：先转 J1 避开、再把 z 抬高避开完全伸直。想加真检测，是本实验的开放改进项。</p></div>
 </div>
 </section>
 
@@ -79,12 +90,15 @@
 <h2><span class="no">03</span>关联知识点</h2>
 <p><b>四组抓取参数</b>（GraspConfig，全部米/弧度）：</p>
 <table>
-<tr><th>参数</th><th>默认</th><th>含义与调法</th></tr>
-<tr><td>gripper_depth</td><td>0.0<br><span style="font-size:.72em;color:#94a3b8">yaml 实配 −0.033</span></td><td>从检测表面再往下探：默认 <b>0.0 = tcp 停在检测到的表面点</b>；正值 0.01~0.03 按物深夹；<code>arm_params.yaml</code> 实配 <b>−0.033</b>（负值=抬高，指尖跨住物侧）。太大穿桌</td></tr>
-<tr><td>pre_grasp_height</td><td>0.03</td><td>预抓高度（默认 0.03m）：接近与退出都走它——撞桌就加大；<b>抬升实际也由它决定</b></td></tr>
-<tr><td>lift_height</td><td>0.05<br><span style="font-size:.72em;color:#b91c1c">源码未使用</span></td><td>抬升高度：<b>声明了但从未参与计算</b>——<b>改它没有任何效果</b>；真实抬升 = 退回 z+pre_grasp_height → post_grasp_pose</td></tr>
+<tr><th>参数</th><th>节点默认</th><th>含义与调法</th></tr>
+<tr><td>gripper_depth</td><td>0.0<br><span style="font-size:.72em;color:#b91c1c">arm_params.yaml 实配 −0.040</span></td><td><b>源码算的是 <code>grasp_z = 检测点z − gripper_depth</code></b>，所以：<b>正值 = 往下多探</b>（0.01~0.03 按物深夹）；<b>负值 = 抬高</b>（指尖越过表面、跨住物侧）。节点默认 0.0 = TCP 停在检测表面；yaml 实配 −0.040 是为了让夹爪"跨"住物块。<b>正得太大穿桌，负得太多夹空。</b></td></tr>
+<tr><td>pre_grasp_height</td><td>0.03</td><td>预抓取净空：<b>接近点 = grasp_z + pre_grasp_height</b>。撞桌就加大；退出也走这一点。<b>抬升实际也由它决定</b>（见下一行）</td></tr>
+<tr><td>lift_height</td><td>0.05<br><span style="font-size:.72em;color:#b91c1c">源码未使用</span></td><td><b>声明了但从未参与计算</b>——<b>改它没有任何效果</b>。真实抬升 = 退回 <code>z + pre_grasp_height</code> → 再走 <code>post_grasp_pose</code>。<b>想抬得更高，调 pre_grasp_height，不是它。</b></td></tr>
 <tr><td>grasp_pitch</td><td>π（180°）</td><td>末端俯仰（自竖直量起，同 EXP-04 纪律）：0°=朝上 · 90°=水平 · <b>180°=夹爪垂直朝下</b>（桌面抓取恒 180°，即四元数 {0,1,0,0}）</td></tr>
+<tr><td>grasp_x_offset</td><td>0.0</td><td>抓取点 X 补偿：重力 + 齿轮间隙让臂实际停在比指令<b>更远</b>约 1.5 cm 处，<b>负值</b>把抓取点往回拉。yaml 默认 0（不再用固定值掩盖模型偏差）。<b>它同时作用于接近/下探/退回三个点</b>，所以改了不会让路径歪掉。</td></tr>
+<tr><td>post_grasp_pose</td><td>[0.20, 0, 0.22, π]</td><td>抓完回到的姿态：work 位 (0.186, 0, 0.365)、pitch=90° 水平向前。源码特意<b>从 pre_grasp 直接跳到这里</b>，中间不加"垂直上抬"点——因为那个中间点在 pitch=180° 下不可达，auto-pitch 会偷偷把它掰到 ~165°，再切回 180° 时腕部翻转、末端"点头"下沉。</td></tr>
 </table>
+<div class="tip amber"><span class="lab">⚠️ 这一行最容易讲错，务必分清</span><b>抬升高度 ≠ lift_height。</b>源码里 <code>lift_h = self.lift_height</code> 确实被赋值了，但后续 6 个步骤一次都没用它。真正让物体离桌的是第 5 步"退回 pre_grasp 位置"——它把 TCP 抬回 <code>grasp_z + pre_grasp_height</code>。所以物体离桌高度就是 <b>pre_grasp_height</b>。这条是读码发现的讲义勘误，实测"改 lift_height 毫无变化"就是这个原因。</div>
 <p><b>四位姿四元数速查</b>（orientation 字段）：目标垂直向下用 <code>{x:0, y:1, z:0, w:0}</code>（pitch=180°）；示例放置点 (0.059, 0.074, 0.219) 用 <code>{x:0, y:0.9826, z:0, w:0.1856}</code>。</p>
 <p><b>状态机遥测</b>：<code>/arm/grasp_state</code> 话题字段 current_state(string)、target_pose、progress(0-100)；状态值 IDLE、APPROACH、DESCEND、GRASP、LIFT、HOLD、PLACE_DESCEND、RELEASE。</p>
 <p><b>参数调优（讲义 6.2 口径）</b>：四参数是<b>节点参数</b>（运行时传入；没有"按物体形状分组的配置文件"——不同物块调出不同值是<b>调参结果</b>，不是预置分组）。抓之前用 <b>预演三工具</b>核对：① 仿真器 <code>http://&lt;IP&gt;:8000/viewer</code>（/viewer 后缀不能省）；② 离线 FK <code>pwm_to_fk_demo.py 2150 1200 2200 2275 1500</code>（输入五路 PWM，输出 TCP 位姿/RPY/四元数/PoseStamped）；③ 单独发 target_pose 看 5 路 PWM 确认无一路接近 500/2500 极限。</p>
@@ -182,7 +196,7 @@
     <label class="ctl">grasp_pitch (°)<input type="number" id="gp" value="180" step="5"></label>
     <button class="btn" onclick="checkGrasp()">组包并校验</button>
   </div>
-  <div class="io" id="ixout">基线（节点参数默认）：gripper_depth 0.0（arm_params.yaml 实配 −0.033）／ pre_grasp_height 0.03 ／ lift_height 0.05（<b>源码未使用，调了无效！</b>）／ grasp_pitch π=180°。对照档：depth 0.01 / 0.03。校验：depth 勿穿桌、pre 勿低于 0.02、pitch 保持 180° 夹爪朝下。</div>
+  <div class="io" id="ixout">基线（节点参数默认）：gripper_depth 0.0（arm_params.yaml 实配 <b>−0.040</b>）／ pre_grasp_height 0.03 ／ lift_height 0.05（<b>源码未使用，调了无效！</b>）／ grasp_pitch π=180°。对照档：depth +0.01 / +0.03（往下探）。校验：depth 勿穿桌、pre 勿低于 0.02、pitch 保持 180° 夹爪朝下。</div>
 </div>
 <p>选"大球"预设填入 depth 0.03 / pitch 180°；手动把 pre_grasp_height 压到 0.02 以下点"组包"，会得到 <span class="bad">撞桌风险</span> 警告——对应讲义"抓取过程撞桌面 → 增大 pre_grasp_height"的排查入口。右侧输出即你要写进 pick 调用/参数发布里的完整 GraspConfig。</p>
 </section>
@@ -202,17 +216,20 @@
   <div class="step"><b>Step 5 · 放置与调参</b><br>place 完成闭环，改参数对比。</div>
 </div>
 <pre><span class="c"># 步骤 1 · 启动（先 bringup 再控制器，顺序即安全）</span>
-ros2 launch car1_arm_bringup bringup.launch.py
+ros2 launch car1_bringup bringup.launch.py
 ros2 launch car1_arm_controller arm_controller.launch.py
 
 <span class="c"># 步骤 2 · 勘察（确认接口，别猜）</span>
 ros2 topic list | grep arm_controller
-ros2 service list | grep -E "pick|place"
+ros2 service list | grep arm_controller
+<span class="y"># 预期话题：/arm_controller/target_pose、/arm_controller/set_pick_target、/arm_controller/joint_command</span>
+<span class="y"># 预期服务：pick、place、set_grasp_target、set_gripper、go_home、go_work、emergency_stop</span>
 <span class="y"># 注意：/arm_controller/pick、/place 是 std_srvs/srv/Trigger（无请求字段）</span>
 
 <span class="c"># 步骤 3 · 离线预演（不动舵机）：五路 PWM → TCP 位姿交叉核对</span>
-python3 .../arm/kinematics/kinematics/pwm_to_fk_demo.py 2150 1200 2200 2275 1500
-<span class="y"># 输出 TCP 位置 / RPY / 四元数 / PoseStamped，用于核对 set_pick_target 的目标</span>
+cd ~/ros2_ws/src/xflz_eai_car1/arm/kinematics/kinematics
+python3 pwm_to_tcp.py 1500 1100 2200 1850 1500
+<span class="y"># 输出 TCP 位置 / RPY / 四元数，用于核对 set_pick_target 的目标</span>
 <span class="y"># 仿真预演：http://&lt;设备IP&gt;:8000/viewer  （/viewer 后缀不能省）</span>
 
 <span class="c"># 步骤 4a · 设置抓取目标点（只记账，臂不会动）</span>
@@ -224,17 +241,21 @@ ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStam
 ros2 service call /arm_controller/pick std_srvs/srv/Trigger "{}"
 <span class="g"># 约 5~8 秒：开爪 → 抬到 pre_grasp_height → 下探 → 合爪 → 抬升 → 回 post_grasp_pose</span>
 <span class="y"># 另一条路（立即执行用于预检）：ros2 topic pub --once /arm_controller/target_pose ...（会直接动！）</span>
-ros2 topic echo /arm/grasp_state     <span class="c"># current_state / target_pose / progress(0-100)</span></pre>
-<pre><span class="c"># 步骤 5a · 设置放置目标点（仍走 set_pick_target，更新缓存）</span>
+<span class="y"># 过程怎么看：盯 arm_controller 的终端日志（六步顺序 + IK 解的 5 路角度），没有状态话题可 echo</span></pre>
+  <pre><span class="c"># 步骤 5a · 设置放置目标点（仍走 set_pick_target，同时覆盖 pick_target 与 place_target）</span>
 ros2 topic pub --once /arm_controller/set_pick_target geometry_msgs/msg/PoseStamped \
   "{header: {frame_id: 'base_link'}, pose: {position: {x: 0.059, y: 0.074, z: 0.219}, orientation: {x: 0.0, y: 0.9826, z: 0.0, w: 0.1856}}}"
 <span class="c"># 步骤 5b · 触发放置（同样 Trigger 空体）</span>
 ros2 service call /arm_controller/place std_srvs/srv/Trigger "{}"
 
-<span class="c"># 步骤 5c · gripper_depth 调优对比（基线/浅/深三档）</span>
-<span class="y"># 节点参数（无 grasp_params.yaml 形状分组）：gripper_depth 0.0 基线（yaml 实配 -0.033）/ 0.01 浅 / 0.03 深</span>
-<span class="y"># 可调项：pre_grasp_height 0.02~0.10（撞桌加大，抬升实靠它）；grasp_pitch 保持 180 夹爪朝下；lift_height 改了没用（源码未使用）</span>
-<span class="y"># 观察日志中的 "STAGE 1"（底座旋转）、"STAGE 2"（臂部运动）</span></pre>
+<span class="c"># 步骤 5c · gripper_depth 调优对比（基线/抬高/下探三档，用 -p 覆盖节点参数）</span>
+<span class="c"># 重启 arm_controller 并带上新参数：</span>
+ros2 run car1_arm_controller arm_controller --ros-args -p gripper_depth:=0.02
+<span class="y"># 对照档：-0.040（yaml 实配，抬高）/ 0.0（节点默认，停在表面）/ +0.02（往下探）</span>
+<span class="y"># 可调项：pre_grasp_height 0.02~0.10（撞桌加大，抬升也靠它）；grasp_pitch 保持 180 夹爪朝下</span>
+<span class="y"># lift_height 改了没用（源码未使用）——这一点要在报告里实测证明一次</span></pre>
+
+<div class="tip tealb"><span class="lab">🔍 一个隐藏的坑：publish + call 会赛跑</span><code>arm_controller</code> 用的是 <code>MultiThreadedExecutor</code>，<code>set_pick_target</code> 的 topic 回调和 <code>pick</code> 的服务回调<b>跑在不同线程上</b>。如果你用脚本"发完 topic 立刻 call pick"，<b>pick 可能先看到旧目标</b>——源码注释里专门写了这件事，并为此提供了服务形式 <code>/arm_controller/set_grasp_target</code>（<code>SetGraspTarget</code> 类型，有请求字段、会等响应，所以"存完再走"是确定的）。<br><b>命令行手敲没这个问题</b>（两条命令之间有几秒人手的间隔），但写成脚本自动抓取时必须换服务，否则会随机抓到上一个点。</div>
 </section>
 
 <!-- 09 -->
@@ -245,10 +266,12 @@ ros2 service call /arm_controller/place std_srvs/srv/Trigger "{}"
 <tr><th>坑</th><th>现象</th><th>对策</th></tr>
 <tr><td>误用 target_pose 当记账</td><td>指令一发臂就动</td><td>记账用 set_pick_target；target_pose 是"立即 IK+移动"的预检口</td></tr>
 <tr><td>pick 传请求字段</td><td>服务调用报类型错误</td><td>std_srvs/Trigger 无字段，命令体写 "{}"</td></tr>
-<tr><td>抓取撞桌面</td><td>DESCEND 阶段触桌</td><td>增大 pre_grasp_height；gripper_depth 负值=抬高；物体坐标对不齐查 TF——<b>别改 lift_height，源码未使用</b></td></tr>
-<tr><td>分步移动卡 STAGE 1</td><td>底座转完臂不动</td><td>检查 J1 软限位与目标方位（目标在身后/限位内角）</td></tr>
-<tr><td>物体未夹稳掉落</td><td>LIFT 后掉落</td><td>增加 gripper_depth；物体实物位置必须与发布坐标刻度尺对齐</td></tr>
-<tr><td>接近奇异中止</td><td>日志报奇异/cond(J) 高</td><td>Jacobian 条件数 &gt;100~200 触发备用解；微调目标点避开笔直伸展</td></tr>
+<tr><td>抓取撞桌面</td><td>DESCEND 阶段触桌</td><td>增大 pre_grasp_height；gripper_depth 用负值抬高；物体坐标对不齐查 TF——<b>别改 lift_height，源码未使用</b></td></tr>
+<tr><td>分步移动卡在转底座</td><td>底座转完臂不动</td><td>检查 J1 软限位（±2.356）与目标方位（目标在身后）；看日志 <code>limit violation: arm_joint1=...</code></td></tr>
+<tr><td>物体未夹稳掉落</td><td>退回后掉落</td><td>增大 gripper_depth（往下多探）；物体实物位置必须与发布坐标刻度尺对齐</td></tr>
+<tr><td>"接近奇异中止"却找不到日志</td><td>以为被奇异检测拦了</td><td><b>本仓库没有奇异检测</b>——中止只可能来自 IK 报错、关节限位或急停，按这三项查</td></tr>
+<tr><td>目标明明设了却抓旧点</td><td>脚本连发时随机抓错</td><td>publish 与 call 赛跑：改用 <code>/arm_controller/set_grasp_target</code> 服务，或两条命令间加延时</td></tr>
+<tr><td>echo /arm/grasp_state 无输出</td><td>以为节点挂了</td><td>该话题<b>不存在</b>；过程看节点日志的六步顺序</td></tr>
 </table>
 <ul class="check">
   <li>成功判据：pick 后 5~8 秒完成六阶段至 HOLD；place 后回 IDLE；全程无越限告警。</li>
@@ -313,7 +336,7 @@ function checkGrasp(){
       gp=parseFloat(document.getElementById('gp').value);
   var msg=[],bad=false;
   if(gd>0.03){msg.push('<span class="bad">depth='+gd+'&gt;0.03：可能顶穿被抓物/撞桌</span>');bad=true;}
-  else if(gd<0){msg.push('<span class="warn">depth='+gd+'（负值=抬高：arm_params.yaml 实配 −0.033 的语义，TCP 高于检测面、指尖跨住物侧）</span>');}
+  else if(gd<0){msg.push('<span class="warn">depth='+gd+'（负值=抬高：grasp_z = 检测z+'+(-gd).toFixed(3)+'，TCP 高于检测面、指尖跨住物侧。arm_params.yaml 实配 −0.040 即此语义）</span>');}
   else if(gd===0){msg.push('<span class="ok">depth=0.0 基线：tcp 停在检测表面点（节点参数默认）</span>');}
   else if(gd<0.01){msg.push('<span class="warn">depth='+gd+'&lt;0.01：偏浅，立方块易滑脱（对照 0 / 0.01 / 0.03 三档实测选值）</span>');}
   else{msg.push('<span class="ok">depth='+gd+' 在 0.01~0.03 常用档内</span>');}

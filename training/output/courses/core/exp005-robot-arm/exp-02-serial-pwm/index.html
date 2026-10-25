@@ -40,10 +40,10 @@
   <a href="#s10">10 验收与总结</a>
   <h4>本课程实验</h4>
   <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
-  <a href="../exp-02-serial-pwm/index.html">EXP-02 关节电机底层控制与应用</a>
-  <a href="../exp-05-action-replay/index.html">EXP-05 ROS2 架构与动作回放</a>
+  <a href="../exp-02-serial-pwm/index.html" class="now">EXP-02 关节电机底层控制与应用</a>
   <a href="../exp-03-kinematics/index.html">EXP-03 正运动学基础</a>
   <a href="../exp-04-ik-solver/index.html">EXP-04 逆运动学基础与 IK 解算</a>
+  <a href="../exp-05-action-replay/index.html">EXP-05 ROS2 架构与动作回放</a>
   <a href="../exp-06-fixed-grasp/index.html">EXP-06 逆运动学固定抓取</a>
   <a href="../exp-07-visual-grasp/index.html">EXP-07 视觉动态抓取</a>
 </aside>
@@ -196,6 +196,7 @@
       <tr><td><code>0x40</code> / <code>0x42</code></td><td>写入 / 读取开机模式（写 EEPROM 后舵机重启）</td><td>PC → 舵机</td><td>csm / csr 配置开机行为</td></tr>
     </tbody>
   </table>
+  <div class="tip tealb"><span class="lab">🔍 两个必须算一遍的数（源码可验）</span><b>① CRC8 到底盖了哪些字节？</b>看 <code>board_sdk.py</code> 与 <code>test_servo_direct.py</code> 的组包代码 <code>buf = [0xAA, 0x55, func, len] + data</code> 后跟 <code>crc8(buf[2:])</code>——<b>帧头两字节 0xAA 0x55 不参与校验</b>，校验范围是 <code>func + len + data</code>。接收端也是同样的子串重算，所以少算一段或把帧头算进去都会导致"帧永远不通过"。<br><b>② 1Mbps 到底够不够用？</b>一帧约 7 字节（帧头 2 + func 1 + len 1 + 子命令/ID/PWM 约 3 + CRC 1），5 关节 50 Hz：<code>5 × 7 × 8 bit × 50 Hz = 14000 bps</code>，仅占 1 Mbps 的 <b>1.4%</b>。就算挂 10 颗舵机、提到 100 Hz，也只有 <code>10 × 7 × 8 × 100 = 56000 bps = 5.6%</code>——所以这套总线的瓶颈从来不是带宽，而是<b>单线半双工的分时排队</b>与应答等待。</div>
   <p><b>观察任务（互动 2-2）：</b>① 表里点"写多舵机目标"，按"发送演示帧"，看右侧 3D 输出轴跟着转，同时左下字节日志亮出 <code>AA 55 05 …</code> 和随数据变化的 CRC；② 点"0x0B 释放力矩"，用出现的手掰滑块直接掰输出轴；③ 什么都不点，盯住 0x08 缓存表自己在跳。</p>
   <div class="frame-embed">
     <iframe src="../../../../assets/modules/servo-lab/servo-lab.html?mode=proto" title="舵机实验室：协议模式" height="700"></iframe>
@@ -275,7 +276,7 @@
       <tr><td><code>work</code></td><td>5 关节齐回工作位 [1500,1100,2200,1850,1500]</td><td>换算成弧度约 [0, −0.943, 1.65, 0.825, 0]，与 EXP-05 的 /joint_command 预置值对账</td></tr>
       <tr><td><code>home</code></td><td>6 路全回 1500 中位</td><td>最安全的姿态，异常恢复先打它</td></tr>
       <tr><td><code>s 1 1520</code></td><td>单颗舵机微调（ID 1 → 1520μs）</td><td>只有 1 号动 = ID 寻址正确</td></tr>
-      <tr><td><code>g 1000</code> / <code>g 2000</code></td><td>夹爪张开 / 全闭</td><td>1000=张开端，2000=全闭端（对照 yaml 的 gripper_open: 1000）</td></tr>
+      <tr><td><code>g 1000</code> / <code>g 2000</code></td><td>夹爪张开 / 全闭</td><td>裸机自定值；ROS2 侧的规范口径是 <b>开 800 / 闭 1500</b>（避开 ±135° 硬限位，EXP-05 沿用），别把两套数混着记</td></tr>
       <tr><td><code>1500 1100 2200 1850 1500</code></td><td>五个数连打 = 5 关节一次到位</td><td>与 work 本质相同，数值自定</td></tr>
       <tr><td><code>read</code></td><td>打印 0x08 上报的全部状态</td><td>PWM / 温度 / 电压一目了然</td></tr>
       <tr><td><code>free</code> / <code>load</code></td><td>释放力矩（可手掰）/ 恢复锁死</td><td>摆初始姿势用 free，摆完记得 load</td></tr>
@@ -284,7 +285,7 @@
   <pre><span class="c"># 安全流程：先回家，再微调</span>
 <span class="g">work</span>            <span class="c"># 第一条永远是它：回到已知安全位</span>
 <span class="g">s 1 1520</span>        <span class="c"># 1 号舵机中位+20μs，微调神器（换算 ≈ +0.0471 rad）</span>
-<span class="g">g 1000</span>          <span class="c"># 张开夹爪；g 2000 全闭</span>
+<span class="g">g 800</span>           <span class="c"># 张开夹爪；g 1500 全闭（与 EXP-05 的 servo 口径一致）</span>
 <span class="g">free</span>            <span class="c"># 手掰摆位；load 锁回去</span></pre>
   <div class="tip tealb"><span class="lab">🔍 安全窗对账</span>任何手打的脉宽先心算：落在 500~2500 才准发；1520 这类近中位值永远是试手首选。03 节互动面板里点"越界 3000"看到的报警，就是实机同样的值会引发的后果。</div>
   <p><b>判定成功：</b><code>s 1 1520</code> 只动 1 号舵机；<code>free</code> 后能推动、<code>load</code> 后推不动。<b>你刚才证明了：</b>ID + 脉宽两个数，足够在一条线上精确指挥任何一颗舵机。</p>

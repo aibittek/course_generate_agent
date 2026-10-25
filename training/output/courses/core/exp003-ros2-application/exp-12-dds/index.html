@@ -254,6 +254,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
 
   <aside class="sidebar">
     <div class="st">本实验章节</div>
+    <a href="#goal">★ 课程目标</a>
     <a href="#s1" class="active"><span class="n">01</span>DDS 是什么：为什么话题、服务、动作都靠它</a>
     <a href="#s2"><span class="n">02</span>核心原理：RMW——DDS 的"万能适配器"</a>
     <a href="#s3"><span class="n">03</span>域模型：RTPS 协议的四层嵌套</a>
@@ -261,7 +262,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
     <a href="#s5"><span class="n">05</span>自动发现两阶段：为什么不用写"连接代码"</a>
     <a href="#s6"><span class="n">06</span>互动沙盘：亲手推进两阶段发现</a>
     <a href="#s7"><span class="n">07</span>QoS 决策表：按数据特性选策略</a>
-    <a href="#s8"><span class="n">08</span>实操 A：域隔离（端口 / 多播 / 共享内存）</a>
+    <a href="#s8"><span class="n">08</span>实操 A：域隔离（端口 / 组播 / 共享内存）</a>
     <a href="#s9"><span class="n">09</span>实操 B：QoS 两组反差实验</a>
     <a href="#s10"><span class="n">10</span>注意事项与验收清单</a>
     <a href="#s11"><span class="n">11</span>实验总结与思考题</a>
@@ -288,7 +289,22 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
     </div>
 
     <!-- 01 -->
-    <section class="blk reveal" id="s1">
+    <section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清分层</div><div class="kt">RMW 为什么要存在</div><p>能阐述 RMW 抽象层的设计原理——上层 <code>rcl</code> API 不改一行就能切换底层 DDS 实现（Fast-DDS / CycloneDDS），并说清 RTPS 中 Participant、Endpoint、Writer/Reader 的层次关系。</p></div>
+  <div class="kcard"><div class="kd">② 掌握操作</div><div class="kt">切实现 / 配 QoS / 看发现</div><p>能正确执行切换 DDS 实现（<code>RMW_IMPLEMENTATION</code> 环境变量）、配置 QoS 策略、观察 DDS 发现过程（SPDP + SEDP）。</p></div>
+  <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">对比 QoS 行为差异</div><p>独立编写使用非默认 QoS 的收发节点，对比 <code>RELIABLE</code> vs <code>BEST_EFFORT</code>、<code>KEEP_LAST(1)</code> vs <code>KEEP_LAST(100)</code> 的行为差异。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">按数据特性选 QoS</div><p>能为不同话题选合理 QoS：激光雷达允许丢帧但要低延迟；位姿估计不可丢帧但能忍较高延迟。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：SPDP（找人）与 SEDP（找端点）两阶段发现的分工——它是"没写连接代码为什么能通"的完整答案。<br>
+<b>难点</b>：四层域模型（Domain → Participant → Publisher/Subscriber → DataWriter/DataReader）容易记混，尤其"节点 ≠ Participant"。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课把 <b>EXP-01 的"去中心化"讲到了 byte 级</b>。EXP-13 会接着讲"域"这一层的实际用法。</div>
+</section>
+
+<section class="blk reveal" id="s1">
       <h2><span class="sn">01</span>DDS 是什么：为什么话题、服务、动作都靠它<span class="fs">聚焦问题 · 激活旧知</span></h2>
       <div class="tip"><span class="lab">先回忆</span>EXP-05 两个节点一启动就能"看见"彼此、EXP-06 QoS 合同、EXP-07/08 服务与动作的一问一答——<b>前面课程里学的话题、服务、动作，它们底层通信的具体实现过程，全部由 DDS 完成</b>。它相当于 ROS 机器人系统中的<b>神经网络</b>：上层器官（一个个节点）再复杂，信号传递都走这一套网络。</div>
       <p class="lead">要认识这套神经网络，先回答两个问题：<b>它是什么？为什么是它？</b>——能实现通信的模型和软件框架非常多，把常用的四种摆在一起看，DDS 的优势就清楚了：</p>
@@ -393,7 +409,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
         <div class="kcard"><div class="kt">以数据为中心</div><div class="kd">通信双方<b>互不认识</b>：发布者只管把数据放上 DataBus，订阅者按"话题名 + 类型 + QoS"各取所需——这正是 EXP-05~08 三种通信共用的底座。</div></div>
         <div class="kcard"><div class="kt">去中心 P2P</div><div class="kd">没有 Master 也没有 Broker，<b>每个进程自带完整通信栈</b>：自动发现、自动匹配、断线自愈——任何一个节点挂掉，别人照常工作。</div></div>
       </div>
-      <div class="tip">💡 <b>DDS 给 ROS2 带来了什么</b>：① <b>自动发现</b>——无需任何注册服务器；② <b>细粒度 QoS</b>——可靠性/持久性/存活检测全部可配；③ <b>实时传输</b>——RTPS 协议基于 UDP 多播，延迟可控；④ <b>厂商生态</b>——Fast-DDS、CycloneDDS、Connext 多家实现可互换。</div>
+      <div class="tip">💡 <b>DDS 给 ROS2 带来了什么</b>：① <b>自动发现</b>——无需任何注册服务器；② <b>细粒度 QoS</b>——可靠性/持久性/存活检测全部可配；③ <b>实时传输</b>——RTPS 协议基于 UDP 组播，延迟可控；④ <b>厂商生态</b>——Fast-DDS、CycloneDDS、Connext 多家实现可互换。</div>
     </section>
 
     <!-- 02 -->
@@ -407,7 +423,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
         <div class="lv indent3" style="background:#eff6ff;border-color:#bfdbfe"><span class="ln">rmw_fastrtps_cpp</span><span class="ld">默认实现 · eProsima Fast-DDS</span></div>
         <div class="lv indent3" style="background:#eff6ff;border-color:#bfdbfe"><span class="ln">rmw_cyclonedds_cpp</span><span class="ld">备选 · Eclipse CycloneDDS</span></div>
         <div class="lv indent3" style="background:#eff6ff;border-color:#bfdbfe"><span class="ln">rmw_connextdds</span><span class="ld">商用 · RTI Connext</span></div>
-        <div class="lv indent3" style="background:#eff6ff;border-color:#bfdbfe"><span class="ln">RTPS over UDP</span><span class="ld">网络线级协议 —— 序列化 · 寻址 · 多播传输</span></div>
+        <div class="lv indent3" style="background:#eff6ff;border-color:#bfdbfe"><span class="ln">RTPS over UDP</span><span class="ld">网络线级协议 —— 序列化 · 寻址 · 组播传输</span></div>
       </div>
       <div class="kgrid">
         <div class="kcard"><div class="kt">可替换性</div><div class="kd"><code class="inline">export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp</code> 一行切换底层实现，<b>代码零改动、无需重编译</b>。课堂若离线，可课前用 <code class="inline">apt-get download ros-humble-rmw-cyclonedds-cpp ros-humble-cyclonedds</code> 取包，课上 <code class="inline">sudo dpkg -i ./*.deb</code> 安装。</div></div>
@@ -428,7 +444,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
           <span class="nl-tag">① Domain 通信域 · 一栋"大楼"</span>
           <span class="nl-desc">按 <b>Domain ID</b> 分组，不同楼（域）的人互相看不见。EXP-13 里配置的 <code class="inline">ROS_DOMAIN_ID</code> 就是楼号——只有同楼的人才能通信，避免无用数据占带宽。</span>
           <div class="nest-lvl participant">
-            <span class="nl-tag">② Participant 参与者 · 大楼里的一家公司 = 一个 ROS2 进程</span>
+            <span class="nl-tag">② Participant 参与者 · 大楼里的一家公司 = 一个进程内的 DDS 上下文</span>
             <span class="nl-desc">进程一启动就"开张"，领一张全球唯一的营业执照 <b>GUID</b>。一家公司可以有多个部门。</span>
             <div class="nest-lvl ps">
               <span class="nl-tag">③ Publisher / Subscriber · 公司的发货部 / 收货部</span>
@@ -445,7 +461,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
           </div>
         </div>
       </div>
-      <div class="tip">💡 <b>对上号</b>：<code class="inline">ros2 node list</code> 里看到的每个节点 ≈ 进程里的 <b>Participant</b>（一家公司）；<code class="inline">ros2 topic info --verbose</code> 打出的 "GID" 就是 DataWriter 的 GUID 十六进制形式（快递员工号）。你在命令行看到的一切，都能在这套"楼→公司→部门→快递员"里找到位置。</div>
+      <div class="tip">💡 <b>对上号（这里最容易记混）</b>：<b>一个 Participant ≈ 一个进程</b>，而 <code class="inline">ros2 node list</code> 数出来的是<b>节点</b>——同一进程里的多个节点通常共用一个 Participant（一家公司可以开好几个部门）。<br>所以：节点数 ≠ 公司数。真正带工号的是 <code class="inline">ros2 topic info --verbose</code> 打出的 "GID"，那是 <b>DataWriter 的 GUID</b>（快递员工号）。你在命令行看到的一切，都能在这套"楼→公司→部门→快递员"里找到位置。</div>
     </section>
 
     <!-- 04 动画 -->
@@ -455,7 +471,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
       <p class="lead">你写代码时只喊了一句 <code class="inline">publish(msg)</code>，但这条消息要连下四层楼、过一道网络、再上四层楼，才能变成对端那个 <code class="inline">callback(msg)</code>。下面把这段"旅程"摊开看：</p>
       <figure class="anim2d-block">
         <svg class="anim2d" viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" role="img"
-             aria-label="一条消息经 rcl、rmw、RTPS 四层下楼、过 UDP 多播、再四层上楼到达对端回调">
+             aria-label="一条消息经 rcl、rmw、RTPS 四层下楼、过 UDP 组播、再四层上楼到达对端回调">
           <rect width="760" height="330" rx="12" fill="#f8fafc"/>
           <rect x="40" y="6" width="230" height="22" rx="6" fill="#7c3aed"/>
           <text x="155" y="21" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">发送端 · 你的节点</text>
@@ -472,7 +488,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
             <text x="155" y="190" text-anchor="middle" font-weight="700" fill="#0e7490">③ rmw（适配器）</text>
             <text x="155" y="208" text-anchor="middle" font-size="10.5" fill="#64748b">翻译成厂商函数调用</text>
             <rect x="40" y="232" width="230" height="50" rx="9" fill="#fff" stroke="#2563eb" stroke-width="2"/>
-            <text x="155" y="254" text-anchor="middle" font-weight="700" fill="#1e40af">④ RTPS / UDP 多播</text>
+            <text x="155" y="254" text-anchor="middle" font-weight="700" fill="#1e40af">④ RTPS / UDP 组播</text>
             <text x="155" y="272" text-anchor="middle" font-size="10.5" fill="#64748b">序列化 · 寻址 · 239.255.0.1</text>
           </g>
           <g font-family="Cascadia Code,Consolas,monospace" font-size="12">
@@ -490,7 +506,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
             <text x="605" y="80" text-anchor="middle" font-size="10.5" fill="#64748b">你的订阅回调被调用</text>
           </g>
           <ellipse cx="380" cy="257" rx="62" ry="32" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" stroke-dasharray="6 4"/>
-          <text x="380" y="254" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb">UDP 多播</text>
+          <text x="380" y="254" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb">UDP 组播</text>
           <text x="380" y="270" text-anchor="middle" font-size="10" fill="#64748b">239.255.0.1</text>
           <text x="155" y="322" text-anchor="middle" font-size="10.5" fill="#0e7490" font-weight="700">← ③ 是唯一"可换零件"（切 RMW 实现）</text>
           <text x="605" y="322" text-anchor="middle" font-size="10.5" fill="#0e7490" font-weight="700">⑥ 也是唯一"可换零件" →</text>
@@ -498,7 +514,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
             <animate attributeName="cx" values="155;155;155;155;380;605;605;605;605" keyTimes="0;0.10;0.30;0.50;0.58;0.66;0.78;0.90;1" dur="3.6s" repeatCount="indefinite"/>
             <animate attributeName="cy" values="65;65;129;193;257;257;193;129;65" keyTimes="0;0.10;0.30;0.50;0.58;0.66;0.78;0.90;1" dur="3.6s" repeatCount="indefinite"/>
           </circle>
-          <text x="380" y="312" text-anchor="middle" font-size="10.5" fill="#94a3b8">同一条消息走完 "左楼下 → 多播网络 → 右楼上" 八步旅程（3.6 秒循环）</text>
+          <text x="380" y="312" text-anchor="middle" font-size="10.5" fill="#94a3b8">同一条消息走完 "左楼下 → 组播网络 → 右楼上" 八步旅程（3.6 秒循环）</text>
         </svg>
         <figcaption>动画 12-1｜你只写了第 ① 步，剩下 ②~⑧ 全是中间件替你跑完——其中 ③ 和 ⑥ 是唯一能整体替换的"零件"（换 DDS 实现）</figcaption>
       </figure>
@@ -513,7 +529,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
       <div class="disco-flow">
         <div class="df-card spdp">
           <div class="df-h"><span class="df-num" style="background:#2563eb">1</span>阶段一 · SPDP（找人）</div>
-          <div class="df-body">每个进程启动后，向多播地址 <code class="inline">239.255.0.1</code> 周期广播"我来了"（带上自己的 <b>GUID</b> 和<b>楼号 Domain</b>）。收到的人把彼此记进<b>花名册</b>。这一步用 <b>Best Effort</b>——丢一两条没关系，下个周期还会再喊。</div>
+          <div class="df-body">每个进程启动后，向组播（multicast）地址 <code class="inline">239.255.0.1</code> 周期发送"我来了"（带上自己的 <b>GUID</b> 和<b>楼号 Domain</b>）。收到的人把彼此记进<b>花名册</b>。这一步用 <b>Best Effort</b>——丢一两条没关系，下个周期还会再喊。</div>
         </div>
         <div class="df-card sedp">
           <div class="df-h"><span class="df-num" style="background:#0d9488">2</span>阶段二 · SEDP（找端点）</div>
@@ -539,7 +555,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
         <div class="ix-panel">
           <div class="sand">
             <div class="sand-stage" id="sandStage">
-              <div class="sand-hub" id="sandHub">239.255.0.1<br>多播地址</div>
+              <div class="sand-hub" id="sandHub">239.255.0.1<br>组播地址</div>
               <div class="sand-node a" id="sa"><b>Node A</b><span class="role">pub /gas_sensor</span><span class="guid">GUID 0x1a…</span><div class="ep">↗ 发 /gas_sensor</div></div>
               <div class="sand-node b" id="sb"><b>Node B</b><span class="role">sub /gas_sensor</span><span class="guid">GUID 0x2b…</span><div class="ep">↘ 收 /gas_sensor</div></div>
               <div class="sand-node c" id="sc"><b>Node C</b><span class="role">sub /gas_sensor</span><span class="guid">GUID 0x3c…</span><div class="ep">↘ 收 /gas_sensor</div></div>
@@ -598,12 +614,12 @@ qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=<span class="b">10</span
       <div class="termbar"><span class="tl">终端 2</span><b>从端口看穿域号</b><span class="note">新终端</span></div>
       <div class="cmdstep">
         <div class="cs-hd"><span class="cs-no">2</span><b>ss 列出 UDP 监听端口</b><span class="cs-where">终端 2</span></div>
-        <p class="cs-why">域 0 的发现端口应为 <b>7400</b>（多播发现）与 <b>7411</b>（单播发现）：</p>
+        <p class="cs-why">域 0 的发现端口应为 <b>7400</b>（组播发现）与 <b>7411</b>（单播发现）：</p>
         <pre><span class="g">ss</span> -unap | <span class="g">grep</span> -E <span class="y">"7400|7411"</span></pre>
         <div class="io"><span class="dim">$ ss -unap | grep -E "7400|7411"</span>
 UNCONN 0 0 <span class="ok">0.0.0.0:7400</span> 0.0.0.0:* users:(("talker",pid=3121,fd=12))
 UNCONN 0 0 <span class="ok">0.0.0.0:7411</span> 0.0.0.0:* users:(("talker",pid=3121,fd=13))
-<span class="dim"># 7400 = 多播发现 · 7411 = 单播发现</span></div>
+<span class="dim"># 7400 = 组播发现 · 7411 = 单播发现</span></div>
       </div>
       <div class="cmdstep">
         <div class="cs-hd"><span class="cs-no">3</span><b>换域跑，端口号凭空 +1750</b><span class="cs-where">终端 3</span></div>
@@ -621,15 +637,15 @@ UNCONN 0 0 <span class="ok">0.0.0.0:9161</span> 0.0.0.0:* users:(("talker",pid=4
         <p class="cs-see">✔ 功能现象（不同域节点绝对互不可见）+ 底层证据（端口号恰好 7400 + 250×7 = 9150）同时到手，这条最有教学价值。</p>
       </div>
 
-      <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 8px">A-2 · 多播发现通道本身（ros2 multicast）</h3>
-      <p>发现报文<b>独立于话题数据</b>，走的是 UDP 多播。<code class="inline">ros2 multicast</code> 是 ros2cli 自带命令，可直接抓到这个通道：</p>
+      <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 8px">A-2 · 组播发现通道本身（ros2 multicast）</h3>
+      <p>发现报文<b>独立于话题数据</b>，走的是 UDP 组播。<code class="inline">ros2 multicast</code> 是 ros2cli 自带命令，可直接抓到这个通道：</p>
       <div class="termbar"><span class="tl">终端 A</span><b>接收端</b></div>
       <pre><span class="g">ros2</span> multicast receive</pre>
       <div class="termbar"><span class="tl">终端 B</span><b>发送端</b><span class="note">新终端</span></div>
       <pre><span class="g">ros2</span> multicast send</pre>
       <div class="io"><span class="dim"># 终端 A 输出：</span>
 Received from <span class="ok">10.1.134.9:57588</span>: 'Hello World!'</div>
-      <div class="tip amber">⚠️ <b>由此可解释一个经典现象</b>：实验室把两台机器接在不同 VLAN、或交换机禁了 <b>IGMP Snooping 组播</b> 时，"节点互相看不见"——这不是 ROS 的 bug，是 DDS 的<b>发现层被切断</b>了。数据链路根本还没建立，自然收不到任何消息。<br>排查顺序：先 <code class="inline">ping</code> 通（IP 可达）→ 再 <code class="inline">ros2 multicast send/receive</code>（多播可达）→ 都通了才轮到查域号与 QoS。</div>
+      <div class="tip amber">⚠️ <b>由此可解释一个经典现象</b>：实验室把两台机器接在不同 VLAN、或交换机禁了 <b>IGMP Snooping 组播</b> 时，"节点互相看不见"——这不是 ROS 的 bug，是 DDS 的<b>发现层被切断</b>了。数据链路根本还没建立，自然收不到任何消息。<br>排查顺序：先 <code class="inline">ping</code> 通（IP 可达）→ 再 <code class="inline">ros2 multicast send/receive</code>（组播可达）→ 都通了才轮到查域号与 QoS。</div>
 
       <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 8px">A-3 · 共享内存传输：同机通信不走网卡</h3>
       <div class="cmdstep">
@@ -654,7 +670,7 @@ tmpfs           3.9G   48M  3.8G   2% /dev/shm</div>
           <tr><th>#</th><th>证据项</th><th>记录方式</th><th>合格标准</th></tr>
           <tr><td>1</td><td>域号 → 端口映射</td><td><code>ss -unap</code> 截图</td><td>域 0 = 7400/7411，域 7 = 9150/9161，能说出 +250×7 的规律</td></tr>
           <tr><td>2</td><td>域隔离功能现象</td><td><code>ROS_DOMAIN_ID=7 ros2 topic list</code> 截图</td><td>看不到域 0 的 <code>/chatter</code></td></tr>
-          <tr><td>3</td><td>多播通道存活</td><td><code>ros2 multicast</code> 收发截图</td><td>能收到对端 Hello World 与来源 IP:端口</td></tr>
+          <tr><td>3</td><td>组播通道存活</td><td><code>ros2 multicast</code> 收发截图</td><td>能收到对端 Hello World 与来源 IP:端口</td></tr>
           <tr><td>4</td><td>共享内存证据</td><td><code>ls -l /dev/shm</code> 截图</td><td>指出 <code>fastrtps_port7411</code> 与发现端口的对应关系</td></tr>
         </table>
       </div>
@@ -729,7 +745,7 @@ QoS profile:
         <tbody>
           <tr><td>全程零安装</td><td>本节实操全部使用 ros2cli 自带命令（<code>ss</code> / <code>ros2 multicast</code> / <code>ls</code>），不需要联网装任何 DDS 实现</td></tr>
           <tr><td>域号范围</td><td>ROS_DOMAIN_ID 取值 0~232；端口映射公式 <code>7400 + 250 × 域号</code>，域号过大可能超出系统端口范围</td></tr>
-          <tr><td>多播依赖</td><td>SPDP 依赖 UDP 多播——虚拟机/容器关闭多播、交换机禁 IGMP 时节点互相看不见；用 <code>ros2 multicast send/receive</code> 先验证通道</td></tr>
+          <tr><td>组播依赖</td><td>SPDP 依赖 UDP 组播——虚拟机/容器关闭组播、交换机禁 IGMP 时节点互相看不见；用 <code>ros2 multicast send/receive</code> 先验证通道</td></tr>
           <tr><td>共享内存残留</td><td>进程被 <code>kill -9</code> 后 <code>/dev/shm</code> 可能留下 <code>fastrtps_*</code> 段文件导致下次启动异常，清理用 <code>fastdds shm clean</code></td></tr>
           <tr><td>QoS 不匹配无声</td><td>不兼容时表现为"没有任何反应、没有报错"，只有 <code>topic info -v</code> 的 Subscription count: 0 能佐证</td></tr>
           <tr><td>Durability 三态</td><td>VOLATILE / TRANSIENT_LOCAL / TRANSIENT，第三种需 DDS 持久化存储支持，课程默认前两者</td></tr>
@@ -738,7 +754,7 @@ QoS profile:
       <ul class="check">
         <li><span class="out">ss -unap | grep -E "7400|7411"</span> 能指出这是<b>域 0</b> 的发现端口，并算出域 7 对应 9150/9161</li>
         <li><span class="out">ROS_DOMAIN_ID=7 ros2 topic list</span> 看不到域 0 的 <code>/chatter</code>——域隔离功能现象成立</li>
-        <li><span class="out">ros2 multicast receive / send</span> 能收到对端消息与来源 IP:端口，说清发现报文走 UDP 多播</li>
+        <li><span class="out">ros2 multicast receive / send</span> 能收到对端消息与来源 IP:端口，说清发现报文走 UDP 组播</li>
         <li><span class="out">ls -l /dev/shm | grep fast</span> 能认出 <code>fastrtps_port7411</code>，解释同机通信走共享内存</li>
         <li>TRANSIENT_LOCAL 订阅端<b>晚启动</b>仍能收到 5 条历史消息，换 VOLATILE 一条都收不到</li>
         <li><span class="out">topic info -v</span> 看到 <b>Subscription count: 0</b> 时能解释"不兼容 = 连接未建立"而非"收到空数据"</li>
@@ -753,8 +769,8 @@ QoS profile:
       <div class="kgrid">
         <div class="kcard"><div class="kt">✅ 完成成果</div><div class="kd">能用一个域号 + 三条命令看出隔离效果；能从 <code class="inline">ss</code> 端口号和 <code class="inline">/dev/shm</code> 文件名拿到底层证据；跑通 durability 与 reliability 两组 QoS 反差实验。</div></div>
         <div class="kcard"><div class="kt">🧠 原理收获</div><div class="kd">rcl→rmw→DDS 三层抽象的工程价值；RTPS 四层域模型；SPDP+SEDP 两阶段自动发现的完整因果链；域号与端口的物理映射。</div></div>
-        <div class="kcard"><div class="kt">🛠 技能收获</div><div class="kd">会用 <code class="inline">ss</code> 验证端口偏移、<code class="inline">ros2 multicast</code> 验证多播通道、<code class="inline">ls /dev/shm</code> 验证共享内存；能读懂 <code class="inline">topic info -v</code> 的六项 QoS。</div></div>
-        <div class="kcard"><div class="kt">❓ 排障方法</div><div class="kd">节点不通按四步排查：ping 通 IP → <code class="inline">multicast</code> 通多播 → 同 Domain → QoS 请求 ≤ 提供。最后才怀疑 RMW 实现是否统一。</div></div>
+        <div class="kcard"><div class="kt">🛠 技能收获</div><div class="kd">会用 <code class="inline">ss</code> 验证端口偏移、<code class="inline">ros2 multicast</code> 验证组播通道、<code class="inline">ls /dev/shm</code> 验证共享内存；能读懂 <code class="inline">topic info -v</code> 的六项 QoS。</div></div>
+        <div class="kcard"><div class="kt">❓ 排障方法</div><div class="kd">节点不通按四步排查：ping 通 IP → <code class="inline">multicast</code> 通组播 → 同 Domain → QoS 请求 ≤ 提供。最后才怀疑 RMW 实现是否统一。</div></div>
       </div>
       <div class="tip">📝 <b>思考题 1</b>：如果让你设计一个"ROS3 通信层"，会继续沿用 DDS 的去中心化设计吗？请从实时性、安全、车规合规三个角度各举一条支持或反对的理由。</div>
       <div class="tip">📝 <b>思考题 2</b>：SPDP 使用 Best Effort 而应用话题可以用 Reliable——为什么"发现阶段"反而允许丢包？（提示：周期重播 + 花名册幂等）</div>
@@ -783,7 +799,7 @@ function sandAdvance(){
   }else if(sandStep===2){
     ['sa','sb','sc'].forEach(function(i){sandEl(i).classList.add('discovered');});
     sandBroadcast();
-    sandEl('sandLog').innerHTML='<span class="lg-step">② SPDP · 找人</span>　每个节点向多播地址 <b>239.255.0.1</b> 周期喊"我来了"（带 GUID + 楼号）。收到的人把彼此记进<b>花名册</b>——现在 A/B/C 都知道"网络里有谁"了，但还不知道对方发什么。';
+    sandEl('sandLog').innerHTML='<span class="lg-step">② SPDP · 找人</span>　每个节点向组播地址 <b>239.255.0.1</b> 周期喊"我来了"（带 GUID + 楼号）。收到的人把彼此记进<b>花名册</b>——现在 A/B/C 都知道"网络里有谁"了，但还不知道对方发什么。';
   }else if(sandStep===3){
     ['sa','sb','sc'].forEach(function(i){sandEl(i).classList.add('ep-show');});
     sandEl('sandLog').innerHTML='<span class="lg-step">③ SEDP · 找端点</span>　互相认识后，交换各自的<b>端点清单 + QoS</b>：A 说"我发 /gas_sensor"，B/C 说"我收 /gas_sensor"。';

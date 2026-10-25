@@ -28,6 +28,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：黑盒调试的困局</a>
   <a href="#s2">02 核心原理：插件化架构为什么好用</a>
   <a href="#s3">03 动画：同一系统，四双眼睛</a>
@@ -53,6 +54,21 @@
 </div>
 
 <!-- 01 问题引入 -->
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清设计</div><div class="kt">为什么要插件化</div><p>能阐述 rqt 基于 Qt 插件框架的设计原理——为什么把多个调试工具整合为可组合面板，比"开一堆独立窗口"在机器人开发中更高效。</p></div>
+  <div class="kcard"><div class="kd">② 掌握主力</div><div class="kt">graph + plot</div><p>能熟练用 <code>rqt_graph</code> 画节点-话题-服务拓扑诊断通信链路，用 <code>rqt_plot</code> 实时绘制任意话题字段的曲线看时序趋势。</p></div>
+  <div class="kcard"><div class="kd">③ 独立排查</div><div class="kt">日志过滤与调参</div><p>能用 <code>rqt_console</code> 按 DEBUG/INFO/WARN/ERROR/FATAL 过滤日志快速定位问题节点，用 <code>rqt_reconfigure</code> 不重启节点调参。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移成流程</div><div class="kt">先看图再看曲线</div><p>把"先 rqt_graph 定位拓扑异常，再 rqt_plot 确认数值趋势"当成标准调试流程，用在后续实验里。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：<code>rqt_graph</code> 的读图能力——它能把"我以为连上了"和"实际没连上"一眼区分开。<br>
+<b>难点</b>：rqt_plot 采样率不足会产生"假波形"（奈奎斯特），别把显示问题误判成数据问题。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课工具在 <b>EXP-16 bag 回放分析</b>里会再用一次：录完包用 rqt_plot 看曲线最直观。</div>
+</section>
+
 <section class="blk" id="s1">
   <h2><span class="no">01</span>问题引入：黑盒调试的困局<span class="fs">聚焦问题 · 激活旧知</span></h2>
   <div class="tip"><span class="lab">先回忆</span>EXP-06 的 <code>ros2 topic echo / hz</code>、EXP-05 的 <code>ros2 node info</code>、EXP-10 的 <code>ros2 param set</code>——你已经用熟了这一串命令行工具。本章做的事只有一件：<b>把它们全部装进同一个图形界面</b>，调试时不再开十几个终端。</div>
@@ -152,7 +168,7 @@
   </div>
   <div class="tip tealb">
     <span class="lab">日志级别不用 rqt，命令行更顺手</span>
-    日志过滤与动态提级改用纯 CLI 等价物：<code>ros2 run rqt_console</code> 已被 <code>ros2 topic echo /rosout</code> + grep 替代；动态改级别用标准的 <code>ros2 service call /&lt;node&gt;/set_logger_levels rcl_interfaces/srv/SetLoggerLevels</code>——本机现成、可写进脚本、比 GUI 更好复现。
+    日志过滤与动态提级改用纯 CLI 等价物：<code>ros2 run rqt_console</code> 的场景可用 <code>ros2 topic echo /rosout</code> + grep 覆盖；动态改级别用标准的 <code>ros2 service call /&lt;node&gt;/set_logger_levels rcl_interfaces/srv/SetLoggerLevels</code>（前提是日志服务节点在线）——本机现成、可写进脚本、比 GUI 更好复现。
   </div>
   <div class="tip tealb">
     <span class="lab">奈奎斯特提醒</span>
@@ -183,7 +199,7 @@
   <div class="termbar"><span class="tl">终端</span><b>日志级别：不用 GUI，命令行等价物更顺手</b><span class="note">本机现成</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1</span><b>查一个节点有哪些 logger、当前什么级别</b><span class="cs-where">终端</span></div>
-    <p class="cs-why">ROS2 Humble 每个节点都自带 <code>/&lt;node&gt;/get_logger_levels</code> 与 <code>/set_logger_levels</code> 服务——这正是不开 rqt 也能改级别的原理：</p>
+    <p class="cs-why"><b>补充一句原理</b>：<code>set_logger_levels</code> 不是每个节点凭空自带的，它由 <b>日志服务节点</b>（如 <code>logger_level_service</code>，或 rclpy/rclcpp 中开启 <code>enable_logger_service=True</code>）统一提供；只有该服务在线，下面这条命令才有对象可调。同理，<code>ros2 topic echo /rosout</code> 要求发起节点以 DEBUG 级别重新发布日志——<b>先提级，才看得见</b>。<br>查一个节点当前有哪些 logger、什么级别：</p>
     <pre><span class="g">ros2</span> node list                       <span class="c"># 先拿节点名，如 /car1_base_driver</span>
 <span class="g">ros2</span> service list | grep logger</pre>
     <div class="io"><span class="dim">$ ros2 node list</span>

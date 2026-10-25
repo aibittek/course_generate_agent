@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP-05 · 大模型语义理解 — 机器人自然语言交互应用</title>
+<title>EXP-05 · 实时语音交互与工具调用 — 机器人自然语言交互应用</title>
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{
@@ -28,13 +28,13 @@ pre code{background:none;border:none;border-radius:0;padding:0;font-size:1em;col
 
   <aside class="side">
     <h4>本页目录</h4>
-    <a href="#s1" class="now">01 问题引入：同一句话，执行还是闲聊</a>
-    <a href="#s2">02 原理通俗讲解：秘书接电话的四件事</a>
+    <a href="#s1" class="now">01 问题引入：从"会聊天"到"真去干"</a>
+    <a href="#s2">02 原理通俗讲解：一句话变成一次机械臂动作，中间有六关</a>
     <a href="#s3">03 关联知识点</a>
     <a href="#s4">04 实验目标</a>
     <a href="#s5">05 实验环境与准备</a>
-    <a href="#s6">06 动画讲解：一句话如何变成一次真实调用</a>
-    <a href="#s7">07 互动讲解：意图分类实验台</a>
+    <a href="#s6">06 动画讲解：双路径决策与执行闭环</a>
+    <a href="#s7">07 互动讲解：关键词与 LLM 双路径实验台</a>
     <a href="#s8">08 实操步骤</a>
     <a href="#s9">09 重点与易错点</a>
     <a href="#s10">10 总结与思考</a>
@@ -43,323 +43,514 @@ pre code{background:none;border:none;border-radius:0;padding:0;font-size:1em;col
     <a href="../exp-01-mic-array-wakeup/index.html">EXP-01 六麦阵列唤醒</a>
     <a href="../exp-02-asr/index.html">EXP-02 声学模型 ASR 语音识别</a>
     <a href="../exp-03-tts/index.html">EXP-03 TTS 语音合成</a>
-    <a href="../exp-04-voice-dialog/index.html">EXP-04 端到端语音对话</a>
-    <a href="../exp-05-llm-understanding/index.html">EXP-05 大模型语义理解</a>
-    <a href="../exp-06-emotion-perception/index.html">EXP-06 多模态语音情绪感知</a>
+    <a href="../exp-04-voice-dialog/index.html">EXP-04 大模型端到端对话</a>
+    <a href="../exp-05-llm-understanding/index.html">EXP-05 实时语音交互与工具调用</a>
+    <a href="../exp-06-emotion-perception/index.html">EXP-06 多模态视觉语言理解</a>
   </aside>
 
   <main class="content">
 
     <div class="exp-head">
       <span class="code">EXP-05 · 第 2 章 · 综合性 · 8 学时</span>
-      <h1>大模型语义理解：听懂你想干什么</h1>
-      <p class="desc">上一节的机器人靠关键词"对暗号"，换个说法就听不懂。这一节让大模型当一次"秘书"：先听懂你要办什么事，再记下关键信息，最后照着办事清单真的去执行——而不只是嘴上答应一句"好的"。</p>
+      <h1>实时语音交互与工具调用：让机器人真的动手</h1>
+      <p class="desc">EXP-04 里机器人只会"说话"；这一节让它<b>动手</b>。一句"请把机械臂放到工作位置"，要跨过六道关：硬件唤醒、提示音排空、端点识别、双路径决策、串口下发、机械臂执行。本实验是整门课的<b>集成高峰</b>——把前四个实验的模块全部接起来，并加上工具调用这条新链路。</p>
       <div class="meta">
         <span class="tag hl">难度 ⭐⭐⭐ · 8 学时</span>
-        <span class="tag">意图识别</span>
-        <span class="tag">槽位提取</span>
-        <span class="tag">Function Calling</span>
-        <span class="tag">本地大模型 · 断网可用</span>
+        <span class="tag">XFM 硬件唤醒</span>
+        <span class="tag">双轮 drain 防回声</span>
+        <span class="tag">action.yaml 四模式</span>
+        <span class="tag">串口 0xAA55 + CRC8</span>
+        <span class="tag">关键词 + LLM 双路径</span>
       </div>
     </div>
 
+    <!-- 01 -->
     <section class="blk" id="s1">
-      <h2><span class="no">01</span>问题引入：同一句话，执行还是闲聊</h2>
-      <p>"把机械臂放到右边" —— 这句话机器人该怎么反应？<b>动手</b>，还是<b>陪你聊天</b>？</p>
-      <p>在 EXP-04 里，机器人靠"抓"→pick、"放"→place 这种关键词来判断。词对上了就动手，没对上就发呆。几条固定指令还行，稍微换个说法就露馅：</p>
-      <table>
-        <thead><tr><th>你说的话</th><th>关键词方案的下场</th></tr></thead>
-        <tbody>
-          <tr><td>"把胳膊抬起来歇会儿"</td><td>没有"抓"也没有"放"，匹配失败，机器人没反应</td></tr>
-          <tr><td>"先抓起来，然后放到右边"</td><td>只命中一个词，两个动作的顺序全丢了</td></tr>
-          <tr><td>"学工专业"（含"工"字）</td><td>误判成工作指令，机械臂乱动</td></tr>
-          <tr><td>"附近有什么好吃的？"</td><td>没有对应关键词，只能硬塞进"无动作"</td></tr>
-        </tbody>
-      </table>
-      <p>把这样的机器人想成一个<b>只认门牌号的快递员</b>：6 号门、8 号门他跑得飞快，但你说"送到那个有猫的家"，他就原地宕机。</p>
-      <div class="tip amber"><span class="lab">💡 本节要点</span>语义理解不是让模型自由发挥地聊天，而是老老实实做三件事：<b>判断你要干什么</b>（意图）、<b>记下关键信息</b>（槽位）、<b>按清单真的去执行</b>（Function Calling）。能被程序接着用，才叫"听懂了"。</div>
-    </section>
-
-    <section class="blk" id="s2">
-      <h2><span class="no">02</span>原理通俗讲解：秘书接电话的四件事</h2>
-      <p>把机器人后端想成一位<b>秘书</b>。老板（用户）在电话里说了一句话，秘书要做四件事，缺一件都办不成事。</p>
-      <table>
-        <thead><tr><th>秘书做的事</th><th>技术名词</th><th>放到机器人上</th></tr></thead>
-        <tbody>
-          <tr><td><b>一、听懂要办什么事</b><br>是让你去点菜，还是只想跟你唠嗑</td><td>意图识别 intent</td><td>这句话属于"控制设备"/"查询信息"/"闲聊"哪一类</td></tr>
-          <tr><td><b>二、记下关键信息</b><br>什么菜、几份、辣不辣</td><td>槽位提取 slot</td><td>抓什么颜色的方块、放到左边还是右边、转多少度</td></tr>
-          <tr><td><b>三、填成标准表单</b><br>不写"随便来点好吃的"，只填格子</td><td>结构化 JSON</td><td><code>{"意图":"控制","动作":"抓取","位置":"右边"}</code>，机器照着读就行</td></tr>
-          <tr><td><b>四、照办事清单去做</b><br>不是嘴上说"好的我去办"，而是真的跑一趟</td><td>Function Calling</td><td>把"打开车灯"真的变成一次点亮 LED 的调用</td></tr>
-        </tbody>
-      </table>
-
-      <p><b>为什么一定要"填表单"？</b>因为秘书说的话再漂亮，程序也读不懂。表单的每个格子都有名字、有固定格式，程序才能一眼找到"位置=右边"这种关键信息。</p>
-
-      <p><b>办事清单（Function Calling）是怎么运作的？</b>一共三步，转一圈就办完一件事：</p>
-      <table>
-        <thead><tr><th>步骤</th><th>谁来做</th><th>发生了什么</th></tr></thead>
-        <tbody>
-          <tr><td>① 挑工具</td><td>大模型</td><td>模型不直接回答，而是说"我要用 calculator，参数是 1+1"</td></tr>
-          <tr><td>② 真去干</td><td>你的程序</td><td>程序查表找到对应函数，真的算一遍，得到结果 2</td></tr>
-          <tr><td>③ 汇报结果</td><td>程序 → 模型</td><td>把"结果是 2"告诉模型，模型再用大白话说"1+1 等于 2"</td></tr>
-        </tbody>
-      </table>
-      <p>和"让模型自己心算"的区别在于：<b>心算可能算错，也可能是编的；调用计算器得到的答案是真的。</b></p>
-
-      <p><b>把整条语音链路串起来看，本实验是第 4 站：</b></p>
+      <h2><span class="no">01</span>问题引入：从"会聊天"到"真去干"</h2>
+      <p>上一节的机器人能听会说，但它听懂之后只做一件事——<b>回一句话</b>。可当你说"把机械臂放到工作位置"时，你要的不是一段文字，而是<b>机械臂真的动起来</b>。</p>
+      <p>看起来只是"再调一个函数"，实际上一脚踩进三个新麻烦：</p>
       <div class="flow">
-        <div class="step"><span class="n">1</span><div>拾音<br><small>麦克风采集声音</small></div></div>
-        <div class="arr">→</div>
-        <div class="step"><span class="n">2</span><div>唤醒<br><small>喊一声"小飞小飞"</small></div></div>
-        <div class="arr">→</div>
-        <div class="step"><span class="n">3</span><div>识别<br><small>ASR 把声音变成文字</small></div></div>
-        <div class="arr">→</div>
-        <div class="step"><span class="n">4</span><div><b>理解 ★</b><br><small>听懂意图与槽位，决定要不要动手</small></div></div>
-        <div class="arr">→</div>
-        <div class="step"><span class="n">5</span><div>回复<br><small>组织答案，TTS 说出口</small></div></div>
+        <div class="step"><span class="n">1</span><b>提示音会污染识别</b>：唤醒后要播"我在"，这段声音绕回麦克风，被 ASR 当成"用户在说话"——识别出"VIVO""HELLO"这类鬼东西</div>
+        <div class="arr"></div>
+        <div class="step"><span class="n">2</span><b>慢一拍就没法用</b>：说"抓取"，等 3 秒机械臂才动，用户会以为它没听见、再说一遍 → 结果执行两次。"说话到动作"必须在 1 秒左右</div>
+        <div class="arr"></div>
+        <div class="step"><span class="n">3</span><b>听错一个字就乱动</b>：ASR 把"工作"听成"攻坚"、把"抓取"听成"爪取"。如果直接交给 LLM 自由发挥，小模型很可能输出一段瞎话，或者干脆什么都不做</div>
       </div>
-      <div class="tip tealb"><span class="lab">🎯 核心直觉</span>提示词是"嘱咐"——说一遍，模型可能记不住、可能自由发挥。Function Calling 是"协议"——只允许模型在<b>你给的那几件工具</b>里挑，参数还得按格式填。嘱咐靠不住，协议才靠得住。</div>
+      <table>
+        <thead><tr><th>看到的现象</th><th>缺的那个机制</th><th>本实验的位置</th></tr></thead>
+        <tbody>
+          <tr><td>唤醒后 ASR 识别出"VIVO""OK""HELLO"</td><td>提示音回声没排干净</td><td>第 03 步：双轮 drain</td></tr>
+          <tr><td>每句话之间有明显"咔"的停顿</td><td>播放器每句都重启进程</td><td>第 04 步：persistent aplay</td></tr>
+          <tr><td>说"抓取"没反应 / 机械臂不动</td><td>没有"人话 → 动作"的映射表</td><td>第 05 步：action.yaml</td></tr>
+          <tr><td>动作执行了但姿态怪 / 报错</td><td>串口帧格式或 CRC 不对</td><td>第 06 步：0xAA55 协议</td></tr>
+          <tr><td>"攻坚"这类误识别导致无动作</td><td>没有纠错表</td><td>第 07 步：关键词三步匹配 + fuzzy_map</td></tr>
+        </tbody>
+      </table>
+      <div class="tip amber"><span class="lab">💡 本节要点</span>工具调用的核心不是"让大模型更聪明"，而是<b>给它一条可靠的执行通道，并在它不靠谱时留一条退路</b>。本实验的答案是"<b>关键词优先、LLM 兜底</b>"的双路径——这既是工程折中，也是本课最重要的设计思想之一。</div>
     </section>
 
+    <!-- 02 -->
+    <section class="blk" id="s2">
+      <h2><span class="no">02</span>原理通俗讲解：一句话变成一次机械臂动作，中间有六关</h2>
+      <p><b>生活比喻：餐厅点单。</b>你对服务员说"来一份不要香菜的牛肉面"。这句话要经过：<b>听清</b>（服务员耳朵）→ <b>确认没听错</b>（复述一遍）→ <b>翻译成后厨语言</b>（写单子：面 + 清汤 + 去香菜）→ <b>后厨执行</b>（真的下锅）→ <b>端上来</b>。任何一环出错，你都吃不到那碗面。工具调用完全同构：</p>
+      <table>
+        <thead><tr><th>关</th><th>餐厅里</th><th>机器人里</th><th>对应代码</th></tr></thead>
+        <tbody>
+          <tr><td><b>1 叫醒</b></td><td>你招手示意服务员过来</td><td>XFM 硬件唤醒（串口 AIUI 事件）</td><td><code>mic_array_wakeup_detected</code></td></tr>
+          <tr><td><b>2 清场</b></td><td>服务员先应一声"来了"，等你真正开口</td><td>播提示音 + 排空音频队列（双轮 drain）</td><td><code>_play_prompt_then_start_asr</code></td></tr>
+          <tr><td><b>3 听清</b></td><td>听你完整说完一句</td><td>ASR 流式识别 + 端点检测（或 SileroVAD）</td><td><code>_handle_listening</code></td></tr>
+          <tr><td><b>4 决断</b></td><td>服务员判断"这是点菜，不是闲聊"</td><td><b>双路径</b>：关键词先匹配，没命中才问 LLM</td><td><code>_start_speaking</code></td></tr>
+          <tr><td><b>5 下单</b></td><td>写成后厨能看懂的单子</td><td>拼串口帧：<code>0xAA 0x55 | Func | Len | Data | CRC8</code></td><td><code>move_servos</code></td></tr>
+          <tr><td><b>6 上菜</b></td><td>后厨真的做出来</td><td>STM32 驱动舵机到目标 PWM</td><td><code>action.yaml</code> 的 servos</td></tr>
+        </tbody>
+      </table>
+
+      <h3>关键点 1：为什么必须"关键词优先"</h3>
+      <p>本实验的模型是 <b>0.8B</b> 的小模型。它能理解意思，但<b>输出格式不稳定</b>——你让它"只输出 work/home/pick/place/none 之一"，它偶尔会多写一句解释、或者输出"工作模式"四个汉字。相比之下，<b>关键词匹配是确定性的</b>：包含"抓"就是 pick，没有例外。</p>
+      <table>
+        <thead><tr><th></th><th>关键词路径</th><th>LLM 路径</th></tr></thead>
+        <tbody>
+          <tr><td>响应时间</td><td><b>&lt; 100ms</b>（纯字符串匹配）</td><td>1~3s（要跑一次推理）</td></tr>
+          <tr><td>可靠性</td><td>确定性，同输入同输出</td><td>可能格式漂移、可能瞎猜</td></tr>
+          <tr><td>能理解的说法</td><td>只认有限的字（抓/放/工/校）</td><td>能懂"帮我把胳膊抬起来歇会儿"</td></tr>
+          <tr><td>适合放在</td><td>第一道闸门（快、稳）</td><td>兜底（慢、但灵活）</td></tr>
+        </tbody>
+      </table>
+      <div class="tip tealb"><span class="lab">🎯 核心直觉</span><b>快而准的放前面，慢而灵活的放后面。</b>这不是"哪个更先进"的问题——关键词永远比 LLM 快，LLM 永远比关键词灵活。工程上的正确答案是把两者<b>串成阶梯</b>，而不是二选一。</div>
+
+      <h3>关键点 2：三个"必须懂"的工程技巧</h3>
+      <div class="kgrid">
+        <div class="kcard">
+          <div class="kd">🧹 双轮 drain</div>
+          <div class="kt">为什么"排空"要做两次</div>
+          <p>播放提示音后，你先睡 <code>提示音时长 + 0.8s</code>（含 ALSA 输出缓冲 + 房间混响），把队列里攒的块<b>全部丢掉</b>。但录音线程还在跑——就在你丢的这一瞬间，它可能又塞进一两块"尾巴回声"。所以<b>停 0.2s 再丢一次</b>。少了第二轮，第一句话开头总有杂音。</p>
+        </div>
+        <div class="kcard">
+          <div class="kd">🔊 persistent aplay</div>
+          <div class="kt">播放器为什么不能每句重启</div>
+          <p>每句都 <code>aplay file.wav</code> 起新进程，有 100~300ms 启动开销，且句间必有一次硬停顿。<b>正确做法</b>：开一个 <code>aplay -t raw ... -</code> 常驻进程，把 PCM 从 <code>stdin</code> 一直灌进去。进程复用，句间无缝。</p>
+        </div>
+        <div class="kcard">
+          <div class="kd">📏 PWM 与舵机</div>
+          <div class="kt">"动作"到底是什么</div>
+          <p>机械臂的"动作"不是抽象姿态，而是一组<b>舵机编号 → PWM 脉宽</b>。PWM 500~2500 对应大约 −90°~+90°（1500 是居中）。<code>action.yaml</code> 里每个模式就是一张这样的数字表。</p>
+        </div>
+        <div class="kcard">
+          <div class="kd">⏱ stall_timeout</div>
+          <div class="kt">防卡死</div>
+          <p>本地模型偶发卡住时，读 SSE 的循环会一直阻塞，状态机永远停在 SPEAKING。持续 30s 没收到新 token 就主动放弃本次请求——<b>宁可这一轮没答案，也不能整个系统僵死</b>。</p>
+        </div>
+      </div>
+
+      <h3>关键点 3：串口帧——机械臂能读懂的唯一语言</h3>
+      <p>机械臂的 STM32 只认识一种字节序列。它的设计和 EXP-01 的 AIUI 协议思路一样（同步头 + 长度 + 校验），但更简单：</p>
+      <pre><span class="c"># 一帧的完整组成（源码 _send() 就是这么拼的）</span>
+<span class="y">0xAA 0x55</span>   <span class="c">帧头（2 字节，固定值，用来找帧起点）</span>
+<span class="y">Func</span>        <span class="c">功能码（1 字节）：0x05 = 位置指令</span>
+<span class="y">Len</span>         <span class="c">Data 长度（1 字节）</span>
+<span class="y">Data</span>        <span class="c">载荷（n 字节）</span>
+<span class="y">CRC8</span>        <span class="c">校验（1 字节，从 Func 算到 Data 末尾）</span>
+
+<span class="c"># Data 的内容（位置指令 0x05）</span>
+<span class="y">[0x01, dur_lo, dur_hi, count, (sid, pwm_lo, pwm_hi) × count]</span>
+<span class="c">#  ↑固定   运动时长(ms,小端)  ↑舵机个数   ↑每个舵机：id(1B) + pwm(2B,小端)</span></pre>
+      <div class="tip violet"><span class="lab">🔍 与 EXP-01 的 AIUI 协议对比</span>两者都是"同步头 + 长度 + 校验"的经典套路，但细节不同：AIUI 用 <code>0xA5</code> 单字节帧头、<b>加法取反</b>校验；机械臂用 <code>0xAA 0x55</code> 双字节帧头、<b>CRC8 查表</b>校验。<b>为什么要用双字节帧头 + CRC8？</b>因为机械臂会动、电机有电磁干扰，误码率比纯接收的麦克风高得多，需要更强的校验。<b>协议强度要和信道质量匹配</b>——这句话值得记下来。</div>
+    </section>
+
+    <!-- 03 -->
     <section class="blk" id="s3">
       <h2><span class="no">03</span>关联知识点</h2>
       <div class="kgrid">
-        <div class="kcard"><div class="kd">🎯</div><div class="kt">意图识别</div><p>判断这句话"要办什么事"。常见三分类：控制设备、查询信息、纯闲聊。分类错了，后面全错。</p></div>
-        <div class="kcard"><div class="kd">📝</div><div class="kt">槽位提取</div><p>从话里挑出关键信息：对象、位置、数量、颜色，填进<a href="#s2">表单</a>对应的格子。一句话带多个动作时，用数组加顺序号。</p></div>
-        <div class="kcard"><div class="kd">🃏</div><div class="kt">Function Calling</div><p>先声明"我手里有哪几张牌"（tools），模型挑一张并给出参数（tool_calls），程序执行完把结果告诉它。</p></div>
-        <div class="kcard"><div class="kd">💻</div><div class="kt">本地大模型</div><p>Qwen3.5-0.8B 跑在板子的 NPU 上，不联网也能用，响应快、数据不出设备。代价是模型小，理解力和稳定性都有限。</p></div>
+        <div class="kcard"><div class="kd">🎤 唤醒</div><div class="kt">XFM 硬件唤醒 vs 板载 KWS</div><p>两种方案可切换：有阵列时走串口 AIUI 事件（<b>零 CPU 占用</b>，延迟 &lt; 100ms）；无阵列时用 sherpa-onnx 板载 KWS（CPU &lt; 5%，延迟 200~500ms）。由 <code>--mic-array</code> 决定走哪条。</p></div>
+        <div class="kcard"><div class="kd">🔍 设备</div><div class="kt">detect_xfm_devices</div><p>解析 <code>arecord -l</code>，正则抓含 "XFM" 的行，拼出 <code>plughw:卡片号,设备号</code>。B2 上阵列声卡<b>只提供采集</b>，播放走套件独立的 USB 音箱卡——所以录音/播放设备号常常不一样。</p></div>
+        <div class="kcard"><div class="kd">🧹 回声</div><div class="kt">双轮 drain</div><p><code>播提示音 → sleep(时长+0.8s) → drain 1 → sleep(0.2s) → drain 2 → 新建 ASR stream</code>。这五步缺一不可，是"唤醒后第一句总有杂音"的标准解法。</p></div>
+        <div class="kcard"><div class="kd">✂️ 切句</div><div class="kt">SENTENCE_RE + 文本清洗</div><p>LLM 输出含 markdown、emoji、括号，直接送 TTS 会念出"星号星号"。所以要先 <code>_clean_for_tts</code> 清洗，再按 <code>[。！？；，、\n]</code> 切句。<b>清洗正则和切句正则要分开维护。</b></p></div>
+        <div class="kcard"><div class="kd">🔊 播放</div><div class="kt">persistent aplay 进程</div><p><code>Popen(["aplay","-t","raw","-f","S16_LE","-c","2","-r","16000","-D",dev,"-q","-"], stdin=PIPE)</code>。崩了就 <code>_reopen()</code> 重启，PCM 丢一点但流程不断。</p></div>
+        <div class="kcard"><div class="kd">🗺️ 配置</div><div class="kt">action.yaml 四个模式</div><p><code>work</code>（工作）/ <code>home</code>（校准）/ <code>pick</code>（抓取）/ <code>place</code>（放置），每个含 <code>servos</code>（舵机→PWM）与 <code>duration</code>（秒）。<b>必须与脚本同目录</b>，否则加载失败。</p></div>
+        <div class="kcard"><div class="kd">🔌 协议</div><div class="kt">0xAA55 + CRC8</div><p>双字节帧头定位起点；<code>Func</code> 区分指令类型；<code>Len</code> 定长；CRC8 查表校验（表与 <code>board_sdk.py</code> 一致）。</p></div>
+        <div class="kcard"><div class="kd">🔤 匹配</div><div class="kt">关键词三步 + fuzzy_map</div><p>① 英文名精确匹配 ② 核心字匹配（抓→pick、放→place、校/准→home、工/攻/公→work）③ 中文描述兜底。前面都没命中才查 <code>fuzzy_map</code> 纠错表（攻坚→工作、爪取→抓取）。</p></div>
+        <div class="kcard"><div class="kd">⏱ 防卡死</div><div class="kt">stall_timeout</div><p>连续 30s 没收到新 token 就抛 <code>TimeoutError</code> 放弃本次请求，避免状态机永久阻塞。</p></div>
+        <div class="kcard"><div class="kd">🧠 兜底</div><div class="kt">LLM 短输出分类</div><p>关键词没命中时，让 LLM 只输出 <code>work/home/pick/place/none</code> 之一：<code>temperature=0.0</code>、<code>max_tokens=6</code>、<code>system_prompt</code> 明确约束。命中则执行，<code>none</code> 则不动作。</p></div>
       </div>
     </section>
 
+    <!-- 04 -->
     <section class="blk" id="s4">
       <h2><span class="no">04</span>实验目标</h2>
       <ul class="check">
-        <li>能说清意图识别、槽位提取、结构化 JSON 三者的分工，并举出生活里的对应例子</li>
-        <li>能启动本地大模型服务，用同一句话对比"闲聊模式"和"带工具模式"的返回差异</li>
-        <li>能看懂返回里的工具调用信息，知道模型挑了什么工具、填了什么参数</li>
-        <li>能说出 skill_executor 如何把模型的意思变成机器人真正的动作</li>
+        <li>跑通 <code>voice_interaction.py --mic-array</code>，完成"唤醒 → 提问 → 听到回答"，并说明 XFM 硬件唤醒相比板载 KWS 的三个差异</li>
+        <li>用 <code>--debug</code> 看到"排空音频队列: 第1轮 N 帧, 第2轮 M 帧"，能解释为什么要分两轮</li>
+        <li>用 <code>ps aux | grep aplay</code> 确认播放进程<b>只有一</b>且长期存活，能解释 persistent aplay 的意义</li>
+        <li>跑通 <code>voice_tools_interaction.py --mic-array</code>，说"机械臂抓取"让机械臂执行 <code>pick</code> 模式，<b>从说完到动作 &lt; 1s</b></li>
+        <li>能画出 0xAA55 帧的字段顺序，并说清 CRC8 覆盖范围（从 Func 开始，不含帧头）</li>
+        <li>验证"攻坚"这类误识别能被 <code>fuzzy_map</code> 纠正为 <code>work</code> 模式</li>
+        <li>验证双路径：关键词命中走快速路径；未命中的复杂说法由 LLM 兜底；说"今天天气怎么样"应输出 <code>none</code> 不执行任何动作</li>
+        <li>能解释为什么 0.8B 小模型的任务必须限制成"只输出一个单词"，而不是让它自由回答</li>
       </ul>
     </section>
 
+    <!-- 05 -->
     <section class="blk" id="s5">
       <h2><span class="no">05</span>实验环境与准备</h2>
       <table>
         <thead><tr><th>类别</th><th>配置</th></tr></thead>
         <tbody>
-          <tr><td>硬件</td><td>具身智能实验箱 B2（RK3576，带 NPU 加速）</td></tr>
-          <tr><td>系统</td><td>Ubuntu 22.04 + ROS2 Humble，Python 3.10</td></tr>
-          <tr><td>依赖</td><td><code>requests</code>（客户端）、<code>flask</code>（服务端）</td></tr>
-          <tr><td>模型</td><td>Qwen3.5-0.8B 本地模型文件（约 0.8GB，随镜像预置）</td></tr>
-          <tr><td>代码</td><td><code>ros2_ws/src/xflz_eai_car1/interaction/car1_llm/</code></td></tr>
+          <tr><td>硬件</td><td>具身智能实验箱 B2（RK3576 NPU 6TOPS + 讯飞 XFM 六麦阵列 + 机械臂串口）／小车 C1（无 XFM）</td></tr>
+          <tr><td>系统</td><td>Ubuntu 22.04 + ROS2 Humble，Python 3.10（推荐 <code>ros2_venv</code>）</td></tr>
+          <tr><td>核心库</td><td><code>sherpa_onnx</code>（KWS/ASR/TTS）、<code>requests</code>（LLM HTTP）、<code>pyserial</code>（机械臂）、<code>pyyaml</code>（配置）</td></tr>
+          <tr><td>模型</td><td>ASR：sherpa-onnx Transducer；TTS：Matcha-TTS + Vocos；LLM：<code>Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm</code></td></tr>
+          <tr><td>机械臂串口</td><td><b>B2</b>：<code>/dev/stm32</code>（平台 udev 软链，指向 ttyUSB1）@ <b>1000000</b> baud；<b>C1</b>：<code>/dev/car1_stm32</code></td></tr>
+          <tr><td>主入口</td><td><code>car1_interaction/tools/voice_interaction.py</code>（一般对话）+ <code>voice_tools_interaction.py</code>（工具调用）</td></tr>
         </tbody>
       </table>
-      <pre><code class="language-bash"><span class="c"># 进入工具目录（后面所有命令都在这里执行）</span>
-<span class="g">cd ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/</span>
-<span class="c"># 看一眼有哪些文件</span>
-<span class="g">ls</span>
-<span class="y"># llm_server.py  llm_test.py  tools_config.py</span></code></pre>
-      <div class="tip"><span class="lab">✅ 准备检查</span>顺序不能反：<b>先起服务端（llm_server.py），再起客户端（llm_test.py）</b>。客户端一启动就会去问服务端"你叫什么模型"，连不上会直接报 <code>Cannot connect to server</code> 退出。另外服务端一次只处理一个请求，别同时开好几个客户端。</div>
-    </section>
+      <pre><span class="c"># ① 确认阵列在位（B2）</span>
+<span class="g">lsusb</span> | grep -i 1a86
+<span class="g">arecord</span> -l | grep -i XFM
 
+<span class="c"># ② 确认机械臂串口存在并授权 —— 这一步不做，工具模式铁定不动</span>
+<span class="g">ls</span> -l /dev/stm32          <span class="c"># B2（udev 软链，指向 /dev/ttyUSB1）</span>
+<span class="g">ls</span> -l /dev/car1_stm32     <span class="c"># C1</span>
+<span class="g">sudo</span> chmod 666 /dev/stm32
+
+<span class="c"># ③ 确认 tools 目录下四个关键文件都在（必须同目录！）</span>
+<span class="g">cd</span> ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/
+<span class="g">ls</span> voice_interaction.py voice_tools_interaction.py action.yaml config_tools.yaml
+
+<span class="c"># ④ 确认 RKLLM 运行时在位</span>
+<span class="g">ls</span> -l /usr/lib/librkllmrt.so
+<span class="g">ls</span> /home/iflytek/models/rkllm/*.rkllm
+
+<span class="c"># ⑤ 看一眼四个模式的舵机表</span>
+<span class="g">cat</span> action.yaml</pre>
+  <div class="tip"><span class="lab">💡 准备清单</span>① <b>机械臂周围留空</b>（运动范围 30cm 内不要有手和杂物），第一次跑先把机械臂固定好；② 确认 <code>action.yaml</code> 与脚本同目录；③ B2 加 <code>--mic-array</code>、C1 不加；④ 检查 8080 端口没被上一次的服务残留占用（<code>lsof -i :8080</code>）。</div>
+</section>
+
+    <!-- 06 -->
     <section class="blk" id="s6">
-      <h2><span class="no">06</span>动画讲解：一句话如何变成一次真实调用</h2>
-      <p>看下面这个 4 秒的循环：一句话被送进模型 → 模型分出意图和槽位 → 吐出一张 JSON 表单 → 照着表单挑一个工具 → 程序真的执行 → 结果回到模型 → 模型说人话。特别注意最后那条从右往左回到模型的绿线，那就是"汇报结果"。</p>
+      <h2><span class="no">06</span>动画讲解：双路径决策与执行闭环</h2>
+      <p>看一句话的三条可能命运：<b>关键词命中 → 立即执行</b>（最快）、<b>关键词未命中 → 问 LLM 分类 → 执行</b>（兜底）、<b>LLM 说 none → 不动作</b>。注意右下角那条"执行结果不发 TTS"的虚线——工具模式下省掉合成时间，就是为了抢那 1 秒。</p>
       <div class="anim-box">
         <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace" font-size="12">
           <rect x="0" y="0" width="720" height="300" fill="#111827"/>
-          <!-- 输入句 -->
-          <rect x="16" y="24" width="210" height="40" rx="8" fill="#1f2937" stroke="#4b5563"/>
-          <text x="121" y="49" fill="#e5e7eb" text-anchor="middle">"把机械臂放到右边再抓"</text>
-          <!-- token 流 -->
-          <rect x="236" y="34" width="16" height="10" rx="2" fill="#7c3aed">
-            <animate attributeName="x" values="232;436" dur="1.4s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0;1;1;0" dur="1.4s" repeatCount="indefinite"/>
+
+          <!-- 输入 -->
+          <rect x="14" y="120" width="128" height="56" rx="8" fill="#1f2937" stroke="#4b5563"/>
+          <text x="78" y="142" fill="#e5e7eb" text-anchor="middle" font-size="11">ASR 文本</text>
+          <text x="78" y="160" fill="#9ca3af" text-anchor="middle" font-size="9.5">"机械臂请抓取"</text>
+
+          <!-- 路径1：关键词匹配 -->
+          <path d="M144 136 L192 74" stroke="#d97706" stroke-width="2" fill="none" stroke-dasharray="7,5">
+            <animate attributeName="stroke-dashoffset" values="12;0" dur="1s" repeatCount="indefinite"/>
+          </path>
+          <rect x="196" y="44" width="184" height="60" rx="8" fill="#1f2937" stroke="#d97706" stroke-width="2">
+            <animate attributeName="stroke" values="#4b5563;#d97706;#d97706;#4b5563" keyTimes="0;0.15;0.4;1" dur="4s" repeatCount="indefinite"/>
           </rect>
-          <rect x="236" y="52" width="16" height="10" rx="2" fill="#a78bfa">
-            <animate attributeName="x" values="232;436" dur="1.4s" begin="0.35s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0;1;1;0" dur="1.4s" begin="0.35s" repeatCount="indefinite"/>
+          <text x="288" y="64" fill="#fbbf24" text-anchor="middle" font-size="11" font-weight="bold">① 关键词三步匹配</text>
+          <text x="288" y="80" fill="#9ca3af" text-anchor="middle" font-size="9.5">英文名 → 核心字 → 中文描述</text>
+          <text x="288" y="95" fill="#fcd34d" text-anchor="middle" font-size="9.5">"抓" → pick　&lt;100ms</text>
+
+          <!-- 路径2：LLM 兜底 -->
+          <path d="M144 160 L192 206" stroke="#2563eb" stroke-width="2" fill="none" stroke-dasharray="7,5">
+            <animate attributeName="stroke-dashoffset" values="12;0" dur="1s" begin="0.3s" repeatCount="indefinite"/>
+          </path>
+          <rect x="196" y="178" width="184" height="66" rx="8" fill="#1f2937" stroke="#2563eb" stroke-width="2">
+            <animate attributeName="stroke" values="#4b5563;#2563eb;#2563eb;#4b5563" keyTimes="0;0.18;0.42;1" dur="4s" repeatCount="indefinite"/>
           </rect>
-          <!-- 模型 -->
-          <rect x="440" y="18" width="264" height="60" rx="8" fill="#1f2937" stroke="#7c3aed" stroke-width="2">
-            <animate attributeName="stroke" values="#4b5563;#7c3aed;#4b5563" keyTimes="0;0.2;1" dur="4s" repeatCount="indefinite"/>
-          </rect>
-          <text x="572" y="42" fill="#e5e7eb" text-anchor="middle">Qwen3.5-0.8B @ RKLLM (NPU)</text>
-          <text x="572" y="62" fill="#9ca3af" text-anchor="middle" font-size="10">system: 只输出 JSON，字段 intent/slots</text>
-          <!-- JSON 框 -->
-          <rect x="440" y="98" width="264" height="64" rx="8" fill="#0b1120" stroke="#059669"/>
-          <text x="452" y="120" fill="#34d399">{</text>
-          <text x="464" y="138" fill="#6ee7b7">"intent": <tspan fill="#fbbf24">"control"</tspan>,</text>
-          <text x="464" y="154" fill="#6ee7b7">"slots": {<tspan fill="#fbbf24">"pos":"right"</tspan>}</text>
-          <!-- 意图/槽位标注 -->
-          <rect x="16" y="98" width="210" height="64" rx="8" fill="#1f2937" stroke="#4b5563"/>
-          <text x="121" y="120" fill="#9ca3af" text-anchor="middle" font-size="11">听懂了什么</text>
-          <text x="129" y="140" fill="#a78bfa" font-size="11">意图 → control（要动手）</text>
-          <text x="129" y="156" fill="#a78bfa" font-size="11">槽位 → pos=right（放右边）</text>
-          <path d="M226 130 L438 130" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,5">
-            <animate attributeName="stroke-dashoffset" values="10;0" dur="1s" repeatCount="indefinite"/>
+          <text x="288" y="198" fill="#93c5fd" text-anchor="middle" font-size="11" font-weight="bold">② LLM 分类兜底</text>
+          <text x="288" y="214" fill="#9ca3af" text-anchor="middle" font-size="9.5">temp=0 max_tokens=6</text>
+          <text x="288" y="230" fill="#9ca3af" text-anchor="middle" font-size="9.5">只允许 work/home/pick/place/none</text>
+
+          <!-- 汇合点 -->
+          <path d="M382 74 L426 74 L426 136 L444 136" stroke="#7c3aed" stroke-width="2" fill="none" stroke-dasharray="7,5">
+            <animate attributeName="stroke-dashoffset" values="12;0" dur="1s" begin="0.5s" repeatCount="indefinite"/>
           </path>
-          <!-- tool_call 循环 -->
-          <rect x="40" y="196" width="180 " height="56" rx="8" fill="#1f2937" stroke="#d97706"/>
-          <text x="130" y="218" fill="#fbbf24" text-anchor="middle">tool_calls</text>
-          <text x="130" y="236" fill="#9ca3af" text-anchor="middle" font-size="10">move_arm(pos="right")</text>
-          <rect x="270" y="196" width="180" height="56" rx="8" fill="#1f2937" stroke="#2563eb"/>
-          <text x="360" y="218" fill="#93c5fd" text-anchor="middle">客户端 FUNCTION_MAP 执行</text>
-          <text x="360" y="236" fill="#9ca3af" text-anchor="middle" font-size="10">→ {"ok": true, "pwm": …}</text>
-          <rect x="500" y="196" width="180" height="56" rx="8" fill="#1f2937" stroke="#059669"/>
-          <text x="590" y="218" fill="#6ee7b7" text-anchor="middle">role: "tool" 回传</text>
-          <text x="590" y="236" fill="#9ca3af" text-anchor="middle" font-size="10">→ 模型终答"已放到右边"</text>
-          <!-- 连接箭头 -->
-          <path d="M220 224 L268 224" stroke="#d97706" stroke-width="2" fill="none" stroke-dasharray="6,5">
-            <animate attributeName="stroke-dashoffset" values="11;0" dur="1s" repeatCount="indefinite"/>
+          <path d="M382 210 L426 210 L426 158 L444 158" stroke="#7c3aed" stroke-width="2" fill="none" stroke-dasharray="7,5">
+            <animate attributeName="stroke-dashoffset" values="12;0" dur="1s" begin="0.7s" repeatCount="indefinite"/>
           </path>
-          <path d="M450 224 L498 224" stroke="#2563eb" stroke-width="2" fill="none" stroke-dasharray="6,5">
-            <animate attributeName="stroke-dashoffset" values="11;0" dur="1s" begin="0.5s" repeatCount="indefinite"/>
+
+          <!-- 分岔：执行 or none -->
+          <polygon points="470,128 500,147 470,166 440,147" fill="#1f2937" stroke="#7c3aed" stroke-width="2"/>
+          <text x="470" y="151" fill="#c4b5fd" text-anchor="middle" font-size="9.5">命中?</text>
+
+          <!-- none 分支 -->
+          <path d="M496 166 L522 194" stroke="#6b7280" stroke-width="1.6" fill="none" stroke-dasharray="5,4"/>
+          <rect x="524" y="186" width="92" height="34" rx="7" fill="#111827" stroke="#4b5563"/>
+          <text x="570" y="207" fill="#9ca3af" text-anchor="middle" font-size="10">none → 不动作</text>
+
+          <!-- 执行链路 -->
+          <rect x="506" y="44" width="96" height="48" rx="8" fill="#1f2937" stroke="#059669"/>
+          <text x="554" y="64" fill="#6ee7b7" text-anchor="middle" font-size="10">move_servos</text>
+          <text x="554" y="79" fill="#9ca3af" text-anchor="middle" font-size="9">PWM 500~2500 夹紧</text>
+          <path d="M470 128 L470 100 L504 100" stroke="#059669" stroke-width="2" fill="none" stroke-dasharray="6,5">
+            <animate attributeName="stroke-dashoffset" values="11;0" dur="1s" begin="0.9s" repeatCount="indefinite"/>
           </path>
-          <path d="M590 195 C 590 120, 700 60, 704 48" stroke="#059669" stroke-width="1.5" fill="none" stroke-dasharray="5,4" opacity="0.6">
-            <animate attributeName="stroke-dashoffset" values="9;0" dur="1s" begin="1s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0.2;1;0.4" keyTimes="0;0.5;1" dur="4s" repeatCount="indefinite"/>
+
+          <!-- 串口帧 -->
+          <rect x="612" y="30" width="96" height="76" rx="8" fill="#0b1120" stroke="#d97706"/>
+          <text x="660" y="48" fill="#fcd34d" text-anchor="middle" font-size="9.5">0xAA 0x55</text>
+          <text x="660" y="62" fill="#fcd34d" text-anchor="middle" font-size="9.5">Func 0x05</text>
+          <text x="660" y="76" fill="#fcd34d" text-anchor="middle" font-size="9.5">Len | Data</text>
+          <text x="660" y="90" fill="#fcd34d" text-anchor="middle" font-size="9.5">CRC8</text>
+          <text x="660" y="102" fill="#9ca3af" text-anchor="middle" font-size="8">1Mbaud</text>
+          <path d="M604 68 L610 68" stroke="#d97706" stroke-width="2" fill="none"/>
+
+          <!-- 执行完成 -->
+          <rect x="506" y="242" width="202" height="42" rx="8" fill="#1f2937" stroke="#34d399"/>
+          <text x="607" y="260" fill="#6ee7b7" text-anchor="middle" font-size="10.5">机械臂到位 → TOOLS → IDLE</text>
+          <text x="607" y="276" fill="#6b7280" text-anchor="middle" font-size="9">工具模式跳过 TTS（省 1~2s）</text>
+          <path d="M660 108 L660 240" stroke="#34d399" stroke-width="1.6" fill="none" stroke-dasharray="5,4">
+            <animate attributeName="stroke-dashoffset" values="9;0" dur="1.1s" repeatCount="indefinite"/>
           </path>
-          <path d="M668 80 L572 96" stroke="#059669" stroke-width="1.5" fill="none" stroke-dasharray="5,4">
-            <animate attributeName="stroke-dashoffset" values="9;0" dur="1s" begin="1s" repeatCount="indefinite"/>
-          </path>
-          <text x="360" y="284" fill="#6b7280" text-anchor="middle" font-size="10">最后一站：把执行结果交回模型，由它用大白话告诉用户</text>
+
+          <text x="14" y="30" fill="#6b7280" font-size="10">先快后慢：关键词永远比 LLM 快 → 放在第一道闸门</text>
+          <text x="14" y="284" fill="#6b7280" font-size="10">关键词未命中才问 LLM —— 双路径阶梯，不是二选一</text>
         </svg>
-        <div class="anim-cap">动画 5-1：语义理解与 Function Call 闭环（4 秒循环）——紫色 token 流入模型，绿框吐出结构化 JSON，橘/蓝/绿三站组成「tool_calls → 客户端执行 → role:tool 回传」循环，最后一条绿线回到模型生成终答。理解的产物不是文字，而是<b>可被程序消费的结构</b>。</div>
+        <div class="anim-cap">动画 5-1：双路径决策与执行闭环（4 秒循环）——左：ASR 文本分出两条路；中：关键词 &lt;100ms 直达、LLM 兜底 1~3s；右：命中则拼 0xAA55 帧下发串口，未命中则是 none 不动作。</div>
       </div>
     </section>
 
+    <!-- 07 -->
     <section class="blk" id="s7">
-      <h2><span class="no">07</span>互动讲解：意图分类实验台</h2>
-      <p>点按钮，看同一个模型在不同"稳定性"下如何理解同一句话。重点看两件事：<b>温度调高后表单会不会变形</b>，以及<b>一句话里有两个动作时该怎么拆</b>。</p>
+      <h2><span class="no">07</span>互动讲解：关键词与 LLM 双路径实验台</h2>
+      <p>输入或点选一句话，看它走哪条路径、匹配到哪个模式、延迟多少。特别注意两个反直觉现象：<b>误识别能靠核心字救回来</b>，但<b>核心字太宽也会误伤</b>。</p>
       <div class="ix-panel">
-        <div class="ix-title">意图分类与采样实验台 · Intent Lab</div>
+        <div class="ix-title">双路径决策实验台 · Tool Match Lab</div>
         <div class="ctl-row">
-          <button class="btn" onclick="ixClassify('q','stable')">查询句 · temp 0.1</button>
-          <button class="btn" onclick="ixClassify('c','stable')">控制句 · temp 0.1</button>
-          <button class="btn" onclick="ixClassify('c','loose')">同一句 · temp 1.2</button>
-          <button class="btn" onclick="ixClassify('m','stable')">多意图句 · temp 0.1</button>
-          <button class="btn ghost" onclick="ixReset()">↺ 复位</button>
+          <button class="btn" onclick="mtCase(0)">"机械臂请抓取"</button>
+          <button class="btn ghost" onclick="mtCase(1)">"请把机械臂放到工作位置"</button>
+          <button class="btn ghost" onclick="mtCase(2)">"机械臂攻坚"（误识别）</button>
+          <button class="btn ghost" onclick="mtCase(3)">"帮我把胳膊抬起来歇会儿"</button>
+          <button class="btn ghost" onclick="mtCase(4)">"今天天气怎么样？"</button>
+          <button class="btn ghost" onclick="mtCase(5)">"今天学习 python"（误伤）</button>
+          <button class="btn ghost" onclick="mtReset()">↺ 复位</button>
         </div>
-        <div class="io" id="ixIo">$ system: 你是语义解析器，只输出 JSON：{"intent":…, "slots":{…}}\n$ 点上方按钮发起一次 /v1/chat/completions 请求…</div>
+        <div class="io" id="mtIo">$ 就绪：优先级 = 英文名精确 → 核心字 → 中文描述 → fuzzy_map → LLM 兜底</div>
       </div>
-      <div class="tip violet"><span class="lab">🔍 观察点</span>温度 1.2 的控制句会偶现多余字段甚至裸文本（0.8B 小模型 + 高温 = 结构漂移），这正是"分类任务要低温"的直观证据；多意图句则拆成 <code>intents:[…]</code> 数组并带 order 序号槽位——真实系统里这就是 EXP-04 关键词方案做不到的"先…然后…"。</div>
+      <div class="tip violet"><span class="lab">🔍 三个必看的点</span>
+        ① 第 3 条"攻坚"命中的是核心字 <b>攻</b> → work。这是<b>纠错成功</b>的例子（fuzzy_map 里也记着"攻坚→工作"）。<br>
+        ② 第 6 条"学习 python"会因<b>工</b>字被误判为 work —— 这就是"核心字匹配"的代价。<b>字越短，容错越强，误伤也越多</b>。<br>
+        ③ 第 4 条关键词全不命中，交给 LLM 才理解成"拾起/放置"类动作，但小模型可能输出不规范 → 这就是为什么需要"限制输出词表 + 严格正则"。
+      </div>
     </section>
 
+    <!-- 08 -->
     <section class="blk" id="s8">
       <h2><span class="no">08</span>实操步骤</h2>
       <div class="flow">
-        <div class="step"><span class="n">1</span><div>起大模型服务</div></div>
+        <div class="step"><span class="n">1</span><b>先跑一般对话</b>：<code>voice_interaction.py --mic-array</code>，确认唤醒→识别→LLM→TTS 全链路通</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">2</span><div>试两句：一句闲聊，一句指令</div></div>
+        <div class="step"><span class="n">2</span><b>看双轮 drain 日志</b>：<code>--debug</code> 观察两轮各排掉几帧</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">3</span><div>带上工具清单再试，看它挑哪个工具</div></div>
+        <div class="step"><span class="n">3</span><b>验证 persistent aplay</b>：<code>ps</code> 看进程是否常驻</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">4</span><div>看 skill_executor 把意思变成动作</div></div>
+        <div class="step"><span class="n">4</span><b>跑工具模式</b>：<code>voice_tools_interaction.py --mic-array</code>，让机械臂动起来</div>
+        <div class="arr">→</div>
+        <div class="step"><span class="n">5</span><b>验证误识别纠正与双路径</b>：攻坚 / 复杂说法 / 闲聊三类</div>
+        <div class="arr">→</div>
+        <div class="step"><span class="n">6</span><b>改一处参数看效果</b>：新增一个模式或一条纠错词</div>
       </div>
 
-      <h3>步骤 1：起大模型服务</h3>
-      <p>打开第一个终端，启动服务端，等它打印出初始化成功的字样：</p>
-      <pre><code class="language-bash"><span class="g">python3 llm_server.py</span>
-<span class="y"># ========init....===========
-# rkllm init success!
-# API: http://0.0.0.0:8080/v1/chat/completions</span></code></pre>
-      <p>另开一个终端确认服务活着（能拿到模型名就说明通了）：</p>
-      <pre><code class="language-bash"><span class="g">curl http://127.0.0.1:8080/v1/models</span>
-<span class="y"># {"data":[{"id":"Qwen3.5-0.8B..."}]}</span></code></pre>
+      <p><b>步骤 1：一般语音对话（链路自检）</b></p>
+      <pre><span class="c"># 终端 1：LLM 服务（voice_interaction.py 默认会自动拉起，本步可省略）</span>
+<span class="g">cd</span> ros2_ws/src/xflz_eai_car1/interaction/car1_llm/tools/
+<span class="g">python3</span> llm_server.py
 
-      <h3>步骤 2：同一句，对比"闲聊"与"指令"</h3>
-      <p>先问一句纯闲聊，再问一句要动手的，注意观察返回内容的差别——闲聊给的是人话，指令该给的是表单或工具调用。</p>
-      <pre><code class="language-bash"><span class="c"># 闲聊：模型正常说话</span>
-<span class="g">python3 llm_test.py --prompt "你好，你是谁？"</span>
-<span class="y"># AI  > 我是运行在本地的小助手，可以回答问题。</span>
+<span class="c"># 终端 2：语音交互</span>
+<span class="g">cd</span> ros2_ws/src/xflz_eai_car1/interaction/car1_interaction/tools/
+<span class="g">python3</span> voice_interaction.py --mic-array      <span class="c"># B2</span>
+<span class="g">python3</span> voice_interaction.py                  <span class="c"># C1（无 XFM）</span>
 
-<span class="c"># 指令：模型应该开始"想办法动手"</span>
-<span class="g">python3 llm_test.py --prompt "现在几点了？"</span>
-<span class="y"># AI  > 抱歉，我无法获取当前时间。（没有工具，只能说不知道）</span></code></pre>
-      <p>另外记住一个旋钮：<b>temperature</b>（温度）。它只有一个规律——<b>越低越稳、越高越活泼</b>。要它老实出 JSON 就调低到 0.1，要它陪你闲聊写诗才调高。其余采样参数（top_p、repeat_penalty 等）保持默认即可。</p>
-      <div class="tip amber"><span class="lab">⚠️ 关键对比</span>第二句模型"答不上来"不是它笨，而是<b>手里没工具</b>。它只能凭记忆说话，而时间这种实时信息，记忆里根本没有。这就是下一步要给它"办事清单"的原因。</div>
+<span class="c"># 预期启动日志：</span>
+<span class="y">[Main] 检测讯飞麦克风阵列设备...</span>
+<span class="y">[Main] 找到录音设备: plughw:4,0 (XFM-DP-V0.0.18)</span>
+<span class="y">[Main] 找到播放设备: plughw:3,0</span>
+<span class="y">[KWS] 设置唤醒词: 小飞小飞, 小飞同学, 你好小飞</span>
+<span class="y">[LLM] 启动 LLM: Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm (端口 8080)</span>
+<span class="y">[LLM] LLM 服务就绪</span>
+<span class="y">[TTS] speed=1.0 gain=2.0</span>
+<span class="y">就绪 — 说唤醒词开始对话, Ctrl+C 退出</span>
 
-      <h3>步骤 3：带上工具清单再试</h3>
-      <p>加 <code>--mode tools</code>，模型就会看到四张牌：查时间、查系统信息、计算、查电量。再问同样的问题：</p>
-      <pre><code class="language-bash"><span class="g">python3 llm_test.py --mode tools --prompt "现在几点了？"</span>
-<span class="y"># 可用工具: get_current_time, get_system_info, calculator, get_battery_status
-# 模型挑中: get_current_time()
-# {
-#   "datetime": "2026-10-21 14:30:05",
-#   "time": "14:30:05"
-# }</span>
+<span class="c"># 交互过程：</span>
+<span class="y">唤醒："小飞小飞"                       → 播提示音"我在"</span>
+<span class="y">[Main] IDLE → LISTENING</span>
+<span class="y">说话："今天北京天气怎么样？"</span>
+<span class="y">[ASR] 今天北京天气怎么样？</span>
+<span class="y">[LLM]  我没有实时查询天气的能力...</span>
+<span class="y">[Main] SPEAKING → IDLE</span></pre>
 
-<span class="g">python3 llm_test.py --mode tools --prompt "计算 123 * 456"</span>
-<span class="y"># 模型挑中: calculator(expression="123 * 456")
-# { "result": 56088 }</span></code></pre>
-      <p>模型这一轮返回的本来不是给用户看的话，而是一张"办事清单"——工具名加参数，包在 <code>&lt;tool_call&gt;</code> 标签里。<code>llm_test.py</code> 会自动把它解析掉，所以你只看到上面那份执行结果：</p>
-      <pre><code class="language-json"><span class="c">// 模型原始返回（被 llm_test 解析并执行的部分）</span>
-<span class="g">&lt;tool_call&gt;</span>
-{"name": "calculator", "arguments": {"expression": "123 * 456"}}
-<span class="g">&lt;/tool_call&gt;</span></code></pre>
-      <p>注意模型<b>只说了要算什么，并没有算</b>。真正的乘法是程序做的，这也是为什么结果值得信任。</p>
+      <p><b>步骤 2：观察双轮 drain —— 防回声的唯一证据在这里</b></p>
+      <pre><span class="g">python3</span> voice_interaction.py --mic-array --debug
+<span class="c"># 唤醒后仔细观察这两行（数字每次不同，关键是"两轮都有"）：</span>
+<span class="y">[Main] 播放提示音 (0.67s, 42880 bytes)</span>
+<span class="y">[Main] 排空音频队列: 第1轮 3 帧, 第2轮 1 帧</span>
+<span class="y">[Main] IDLE → LISTENING</span>
 
-      <h3>步骤 4：看 skill_executor 怎么真正执行</h3>
-      <p>模型只负责"说要干什么"，真正动手的是 ROS2 节点。一条命令同时拉起对话节点和技能执行节点，启动日志里会打印加载了几个技能：</p>
-      <pre><code class="language-bash"><span class="g">ros2 launch car1_llm llm.launch.py</span>
-<span class="y"># [skill_executor]: Skill executor started, loaded 5 skills</span></code></pre>
-      <p>对话节点会把模型的意图写成一条消息发到话题上，格式是 <code>技能名|参数:值</code>。另开终端盯着它：</p>
-      <pre><code class="language-bash"><span class="g">ros2 topic echo /interaction/llm/skill_request</span>
-<span class="y"># data: 'navigate_to|location:kitchen'</span></code></pre>
-      <p>skill_executor 收到后拆出技能名和参数，查 <code>skills.yaml</code> 里对应的配置，再去调用真正的 ROS 服务或动作。这张表就是"人话"和"机器人能力"之间的翻译词典：</p>
-      <pre><code class="language-yaml"><span class="c"># skills.yaml 片段：左边是"人话里的说法"，右边是真正的机器人能力</span>
-<span class="g">skills:</span>
-<span class="g">  navigate_to:</span>
-<span class="g">    type: "action"</span>
-<span class="g">    action: "/navigate_to_pose"</span>
-<span class="g">    parameters:</span>
-<span class="g">      location:</span>
-<span class="g">        type: "map"</span>
-<span class="g">        mapping:</span>
-<span class="g">          kitchen: [1.0, 2.0, 0.0]</span>
-<span class="g">          bedroom: [2.0, 0.0, 1.57]</span></code></pre>
-      <div class="tip tealb"><span class="lab">⏱ 预期效果</span>前三步都在验证"听懂了没有"，第四步才验证"真的做了没有"。跑完你应该能指着日志说出这条链条：<b>一句话 → 意图+槽位 → 技能名+参数 → ROS 服务/动作 → 机器人动了</b>。</div>
+<span class="c"># 反证实验：把第二轮 drain 注释掉，再跑一次</span>
+<span class="c"># 现象：第一句话开头经常多出"嗯""啊"或直接识别成"VIVO""HI"</span>
+<span class="c"># → 这就是"尾巴回声"被喂进了 ASR。改回来即可。</span>
+
+<span class="c"># 原理回顾（源码注释写得很清楚）：</span>
+<span class="c">#   1. 写提示音 PCM 到 aplay 管道</span>
+<span class="c">#   2. sleep(提示音时长 + 0.8s)  ← 含 ALSA 输出缓冲 + 房间混响</span>
+<span class="c">#   3. 第一轮 drain（丢掉播放期间攒的块）</span>
+<span class="c">#   4. sleep(0.2s)              ← 让采集线程把漏掉的尾巴灌进来</span>
+<span class="c">#   5. 第二轮 drain（最终清理）</span>
+<span class="c">#   6. create_stream() 新建干净 ASR 流</span></pre>
+
+      <p><b>步骤 3：验证 persistent aplay 进程常驻</b></p>
+      <pre><span class="c"># 交互过程中，另开终端看 aplay 进程</span>
+<span class="g">ps</span> aux | grep aplay | grep -v grep
+<span class="y">user  12345  ... /usr/bin/aplay -t raw -f S16_LE -c 2 -r 16000 -D plughw:3,0 -q -</span>
+
+<span class="c"># 让它念一段长回答，期间反复执行上面这条命令</span>
+<span class="c"># 预期：PID 始终是同一个（进程复用，不是每句新起）</span>
+
+<span class="c"># 对比方案（理解为什么这样做）：</span>
+<span class="c">#   每句 aplay file.wav  → PID 每次变，句间有 100~300ms 硬停顿</span>
+<span class="c">#   常驻 aplay + stdin   → PID 不变，句间无缝</span></pre>
+
+      <p><b>步骤 4：工具调用模式 —— 让机械臂真的动</b></p>
+      <pre><span class="c"># ① 先确认串口与配置</span>
+<span class="g">ls</span> -l /dev/stm32 &amp;&amp; <span class="g">sudo</span> chmod 666 /dev/stm32
+<span class="g">cat</span> action.yaml | head -30
+
+<span class="c"># ② 启动工具模式</span>
+<span class="g">python3</span> voice_tools_interaction.py --mic-array     <span class="c"># B2</span>
+<span class="g">python3</span> voice_tools_interaction.py                 <span class="c"># C1</span>
+
+<span class="y">[Main] 已加载 4 个机械臂模式: ['home', 'pick', 'place', 'work']</span>
+<span class="y">[Main] 机械臂串口已打开: /dev/stm32 @ 1000000        ← B2</span>
+<span class="y">[Main] 机械臂串口已打开: /dev/car1_stm32 @ 1000000   ← C1</span>
+
+<span class="c"># ③ 关键词路径（最快）：</span>
+<span class="y">唤醒："小飞小飞"</span>
+<span class="y">说话："机械臂请抓取"</span>
+<span class="y">[ASR] 机械臂请抓取</span>
+<span class="y">[Main] 关键词匹配: pick        ← 核心字"抓"命中，未走 LLM</span>
+<span class="y">[TOOLS] 执行模式: pick duration=2.0s</span>
+<span class="y">（机械臂移动到抓取位姿）</span>
+<span class="y">[Main] TOOLS → IDLE</span>
+<span class="c"># 从说完到开始动：应 &lt; 1s</span>
+
+<span class="c"># ④ LLM 兜底路径（关键词没命中）：</span>
+<span class="y">说话："请把机械臂调整到工作姿态"</span>
+<span class="c"># 注意："工作"含"工"字，其实核心字也会命中；换成不含核心字的说法更能验证兜底：</span>
+<span class="y">说话："让它摆成待命的姿势"</span>
+<span class="y">[LLM]  home</span>
+<span class="y">[Main] 关键词匹配: home （LLM 输出命中模式名）</span>
+<span class="y">[TOOLS] 执行模式: home duration=3.0s</span>
+
+<span class="c"># ⑤ none 路径（不该动作的时候千万别动）：</span>
+<span class="y">说话："今天天气怎么样？"</span>
+<span class="y">[LLM]  none</span>
+<span class="y">[Main] 未匹配任何模式 → 直接 IDLE，机械臂不动</span></pre>
+      <div class="tip amber"><span class="lab">⚠️ 机械臂安全</span>第一次跑工具模式时，<b>先把手离开机械臂运动范围</b>，并把机械臂固定在桌面上。<code>work</code> 模式的 <code>duration=2.0</code> 意味着它会在 2 秒内平滑移到目标——突然断电或串口断开可能让它停在中间位姿，属正常现象，不是故障。</div>
+
+      <p><b>步骤 5：验证误识别纠正（本实验最"解气"的一步）</b></p>
+      <pre><span class="c"># 故意说一个 ASR 容易听错的词："机械臂攻坚"（想说"工作"）</span>
+<span class="y">[ASR] 机械臂攻坚</span>
+<span class="y">[Main] 关键词匹配: work   ← 核心字"攻"命中（fuzzy_map: 攻坚→工作）</span>
+<span class="y">[TOOLS] 执行模式: work duration=2.0s</span>
+
+<span class="c"># 再试几个 fuzzy_map 里的经典误识别：</span>
+<span class="c">#   "爪取"   → 抓取 → pick</span>
+<span class="c">#   "放直"   → 放置 → place</span>
+<span class="c">#   "准备模式" → 校准模式 → home</span>
+<span class="c">#   "公交"   → 工作 → work</span>
+
+<span class="c"># 反例：验证"核心字太宽会误伤"</span>
+<span class="y">说话："今天学习 python"</span>
+<span class="y">[ASR] 今天学习 python</span>
+<span class="y">[Main] 关键词匹配: work   ← "工"字？其实是"学"没问题…
+# 换成"我想学工科专业" 试试：
+<span class="y">说话："我想学工科专业"</span>
+<span class="y">[Main] 关键词匹配: work   ← 因为含"工"！机械臂会动</span>
+<span class="c"># 这就是核心字匹配的代价：容错强 ↔ 误伤多。改进方向见思考题。</span></pre>
+
+      <p><b>步骤 6：动手改一处 —— 新增一个模式或一条纠错</b></p>
+      <pre><span class="c"># 方案 A：给 action.yaml 加一个模式（改完不用重启程序会自动加载？——需重启）</span>
+<span class="g">cat</span> &gt;&gt; action.yaml &lt;&lt;'EOF'
+- name: wave
+  description: 挥手模式
+  duration: 1.5
+  servos:
+    0: 1500
+    1: 1500
+    2: 2000
+    3: 1200
+    4: 1500
+EOF
+<span class="c"># 重启工具模式，应看到"已加载 5 个模式"</span>
+<span class="c"># 但注意：核心字匹配表里没有"挥"，所以必须说英文模式名 wave 才生效</span>
+<span class="c"># → 这暴露了"配置驱动 + 硬编码关键词"的耦合问题（见思考题 3）</span>
+
+<span class="c"># 方案 B：给 fuzzy_map 补一条纠错</span>
+<span class="c"># 打开 voice_tools_interaction.py 的 _match_tool_action，在 fuzzy_map 里加：</span>
+<span class="c">#   "抓一下": "抓取",</span>
+<span class="c">#   "拿起来": "抓取",</span>
+<span class="c"># 重启后说"拿起来"，观察是否命中 pick</span>
+
+<span class="c"># 方案 C：收紧 LLM 输出约束（config_tools.yaml）</span>
+<span class="g">cat</span> config_tools.yaml | grep -A 5 "llm:"
+<span class="c"># 确认三项：</span>
+<span class="c">#   system_prompt: "你是机械臂指令分类器，只输出 work/home/pick/place/none 之一"</span>
+<span class="c">#   max_tokens: 6      ← 限制成极短输出</span>
+<span class="c">#   temperature: 0.0   ← 确定性最高</span></pre>
+      <div class="tip tealb"><span class="lab">💡 建议</span>三个方案里，<b>方案 B 性价比最高</b>（改一行、立刻见效），也最能训练"从现象反推该改哪里"的能力。方案 A 会让你碰到"配置加了但关键词认不出"的真实困境——这个坑值得撞一次。</div>
     </section>
 
+    <!-- 09 -->
     <section class="blk" id="s9">
       <h2><span class="no">09</span>重点与易错点</h2>
-      <p>初学者会踩的坑基本只有三个，认准它们就够了：</p>
+      <div class="tip amber"><span class="lab">⚠️ 排错顺序（背下来）</span>① <b>串口开了吗</b>（<code>ArmSerialController.open()</code> 返回值）→ ② <b>模式加载了吗</b>（启动日志"已加载 N 个模式"）→ ③ <b>匹配到哪个模式</b>（日志"关键词匹配: xxx"）→ ④ <b>PWM 在范围内吗</b>（500~2500）→ ⑤ 才去怀疑模型。这五步能覆盖九成问题。</div>
       <table>
-        <thead><tr><th>现象</th><th>为什么会这样</th><th>怎么改</th></tr></thead>
+        <thead><tr><th>现象</th><th>原因</th><th>怎么办</th></tr></thead>
         <tbody>
-          <tr><td>模型一本正经地编了槽位，比如你说"放右边"，它填成"左侧"</td><td>0.8B 小模型理解力有限，加上温度偏高，容易"猜"</td><td>把 temperature 降到 0.1～0.3；在提示词里明确"没提到的信息一律填 null，不许猜"</td></tr>
-          <tr><td>明明给了工具，模型却不调用，只顾聊天</td><td>工具描述写得太含糊，比如只写"处理"，模型看不出什么时候该用</td><td>描述写成"'要办的事'+动词"，如"查询当前时间"；问题也问具体些</td></tr>
-          <tr><td>程序解析模型返回的 JSON 时报错</td><td>模型偶尔会多写一句解释，或带 Markdown 代码块，导致不是纯 JSON</td><td>解析前先打印原文；解析失败就降级用正则把 JSON 抠出来，别让整个流程崩掉</td></tr>
+          <tr><td><b>机械臂完全不动</b></td><td>串口没打开 / 权限不足 / 设备名不对</td><td><code>sudo chmod 666 /dev/stm32</code>；<code>ls -l /dev/stm32</code> 确认软链存在；注意 <code>ArmSerialController</code> 的默认值 <code>/dev/ttyUSB0</code> <b>在两个平台上都不对</b>，必须按 05 节的表改</td></tr>
+          <tr><td><b>说"抓取"没反应</b></td><td>action.yaml 路径错，一个模式都没加载</td><td><code>action.yaml</code> 必须与脚本<b>同目录</b>；看启动日志"已加载 N 个模式"是否 ≥4</td></tr>
+          <tr><td><b>模式匹配到错的</b></td><td>核心字优先级太高（"工"抢走了本该 place 的话）</td><td>看日志"关键词匹配: xxx"。必要时调整 <code>_match_tool_action</code> 的判断顺序，或换成更具体的说法（"放置"而不是"放到工作台上"）</td></tr>
+          <tr><td><b>唤醒后识别出 VIVO / HELLO / OK</b></td><td>提示音回声污染</td><td>确认双轮 drain 都在；调大 <code>wait_time</code>（<code>prompt_dur + 0.8</code> 改 1.5）；房间混响长时更明显</td></tr>
+          <tr><td><b>唤醒后第一句话头几个字丢</b></td><td>drain 期间用户已经开始说话</td><td>正常现象——提示音+排空共约 1.5s。要缩短就换更短的提示音；或在 UI 上给"请说"的视觉反馈</td></tr>
+          <tr><td><b>句间有明显停顿</b></td><td>播放器每句重启</td><td>确认用的是 <code>Playback</code> 常驻类而不是 <code>subprocess.run(["aplay", wav])</code></td></tr>
+          <tr><td><b>打断无响应</b></td><td><code>interrupt_event</code> 没传进 worker</td><td>检查 <code>_llm_tts_worker</code> 的参数列表里有没有 <code>interrupt_event</code>，以及内部是否轮询 <code>is_set()</code></td></tr>
+          <tr><td><b>打断一次后再也不能对话</b></td><td>事件没在下一轮开始前清掉</td><td>进入 LISTENING 前 <code>interrupt_event.clear()</code></td></tr>
+          <tr><td><b>机械臂动作但姿态怪</b></td><td>舵机编号或 PWM 与硬件不匹配</td><td>用 <code>home</code>（全 1500）先验证居中；逐一调单个舵机确认编号对应关系</td></tr>
+          <tr><td><b>LLM 输出乱、无法触发</b></td><td>config_tools.yaml 缺 <code>system_prompt</code></td><td>补上分类器提示词，并设 <code>max_tokens</code> 很小、<code>temperature=0</code></td></tr>
+          <tr><td><b>LLM 服务连不上</b></td><td>未启动 / 端口被占 / 模型路径错</td><td>自动启动有 120s 超时，耐心等；<code>lsof -i :8080</code> 查占用；核对 <code>config.yaml</code> 的 <code>llm_server.model</code></td></tr>
+          <tr><td><b>LLM 流式卡住不动</b></td><td>模型或 NPU 驱动偶发挂起</td><td><code>stall_timeout</code> 应生效（30s 放弃）；若没生效说明该参数没传进 <code>chat_stream</code></td></tr>
         </tbody>
       </table>
       <ul class="check">
-        <li>排错顺序永远是：<b>先确认服务通不通，再怀疑提示词</b>。服务没起，怎么改提示词都没用。</li>
-        <li>调参数一次只改一个。先把 temperature 固定成 0.1 把格式调稳，再谈其他。</li>
-        <li>加新工具只改两个地方：<code>tools_config.py</code> 里的 <code>TOOLS</code>（告诉模型有这张牌）和 <code>FUNCTION_MAP</code>（这张牌怎么打），名字必须一模一样。</li>
-        <li>调试时永远看<b>原始返回</b>，不要只看解析成功后漂亮的结果——问题往往藏在被丢掉的那半句话里。</li>
+        <li>能说出 <code>interrupt_event</code>（主循环设/worker 读）与 <code>speaking_done</code>（worker 设/主循环读）方向相反</li>
+        <li>能画出 0xAA55 帧，说清 CRC8 <b>从 Func 开始算</b>、不含帧头</li>
+        <li>能解释"为什么机械臂用 CRC8 而 AIUI 用加法校验"（信道质量决定协议强度）</li>
+        <li>能说出关键词路径和 LLM 路径各自的延迟量级（&lt;100ms vs 1~3s）</li>
+        <li>知道 <code>none</code> 分支的重要性：不匹配时<b>宁可不动作</b>，也不要瞎执行</li>
       </ul>
     </section>
 
+    <!-- 10 -->
     <section class="blk" id="s10">
       <h2><span class="no">10</span>总结与思考</h2>
       <div class="kgrid">
-        <div class="kcard"><div class="kd">🏁</div><div class="kt">你完成了什么</div><p>起了本地大模型服务；用同一句话对比了闲聊与指令的差别；带着工具清单让模型挑中正确工具；看懂了 skill_executor 如何把意图变成机器人动作。</p></div>
-        <div class="kcard"><div class="kd">🧠</div><div class="kt">一句话记住原理</div><p>意图识别是"听懂要办什么事"，槽位提取是"记下关键信息"，JSON 是"填成标准表单"，Function Calling 是"照着清单真去办"。</p></div>
-        <div class="kcard"><div class="kd">➡</div><div class="kt">下一站</div><p>我们现在知道用户"说了什么"，但还不知道他是"什么心情"说的。EXP-06 给对话加上情绪这条线。</p></div>
+        <div class="kcard"><div class="kd">🏁 完成成果</div><div class="kt">语音 → 机械臂动作全链路</div><p>唤醒 → 排空 → 识别 → 双路径决策 → 拼帧下发 → 舵机执行，六个模式运行正常。</p></div>
+        <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">双路径阶梯 + 协议强度匹配</div><p>快而准的放前面、慢而灵活的兜底；协议复杂度应当和信道质量匹配。</p></div>
+        <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">工程级细节</div><p>双轮 drain、persistent aplay、CRC8 帧、fuzzy_map 纠错、stall_timeout——这些都是"能用"和"好用"之间的差距。</p></div>
+        <div class="kcard"><div class="kd">➡ 去向 EXP-06</div><div class="kt">从"听懂"到"看懂"</div><p>现在它会听话也会动手了。最后一个实验加上眼睛：让它一边听你问，一边看图回答。</p></div>
       </div>
-      <div class="tip violet"><span class="lab">💭 思考题</span>
-        <p><b>1.</b> 你点外卖时说"来一份不要香菜的微辣牛肉面"，店员会记下"牛肉面 + 微辣 + 不要香菜"——这里的意图和槽位分别是什么？如果换成机器人帮你端菜，哪些信息必须写进表单，哪些可以不写？</p>
-        <p><b>2.</b> 秘书接电话时，如果老板说"帮我订个明天下午的会议室"，秘书会反问"几点的、几个人"。可现在的机器人往往听完就猜。你觉得该在流程的哪一步加上"反问确认"？加了之后，用户体验会变好还是变差？</p>
-      </div>
+      <div class="tip violet"><span class="lab">💭 思考题 1</span>双轮 drain 的"drain 1 → sleep 0.2s → drain 2"为什么必须 sleep？直接连续 drain 两次会怎样？请结合"采集线程仍在持续 push"这一事实说明。</div>
+      <div class="tip violet"><span class="lab">💭 思考题 2</span>工具模式为什么优先在 ASR 文本上做关键词匹配，而不是直接走 LLM？请估算两条路径的延迟差，并说明"如果只保留 LLM 路径，用户体验会退化到什么程度"。</div>
+      <div class="tip violet"><span class="lab">💭 思考题 3</span>把 <code>action.yaml</code> 从 4 个模式扩到 20 个模式时，"核心字匹配"这套硬编码会彻底失效（想想：20 个中文描述里必然出现重复的字）。请设计一个更好的匹配方案（提示：用配置里的 <code>description</code> 自动生成关键词表、加"否定词排除"、或引入编辑距离模糊匹配）。</div>
+      <div class="tip violet"><span class="lab">💭 思考题 4</span>对比 EXP-01 的 AIUI 协议（<code>0xA5</code> 单字节帧头 + 加法取反校验）和本实验的机械臂协议（<code>0xAA 0x55</code> 双字节帧头 + CRC8），为什么后者需要"更强"的校验？如果给机械臂也用单字节帧头 + 加法校验，可能出现什么后果？</div>
     </section>
 
     <nav class="expnav">
-      <a href="../exp-04-voice-dialog/index.html"><span class="lb">← 上一个</span>EXP-04 端到端语音对话</a>
-      <a href="../exp-06-emotion-perception/index.html" class="next"><span class="lb">下一个实验 →</span>EXP-06 多模态语音情绪感知</a>
+      <a href="../exp-04-voice-dialog/index.html"><span class="lb">← 上一个</span>EXP-04 大模型端到端对话</a>
+      <a href="../exp-06-emotion-perception/index.html" class="next"><span class="lb">下一个实验 →</span>EXP-06 多模态视觉语言理解</a>
     </nav>
 
     <footer>
-      <span>CORE-03 · 机器人自然语言交互应用 · EXP-05 大模型语义理解</span>
+      <span>CORE-03 · 机器人自然语言交互应用 · EXP-05 实时语音交互与工具调用</span>
       <span>8 学时 · 综合性 · 基于 speech_practice 实验讲义改编</span>
     </footer>
 
@@ -368,35 +559,29 @@ pre code{background:none;border:none;border-radius:0;padding:0;font-size:1em;col
 
 <script>
 (function(){
-  var io = document.getElementById('ixIo');
+  var io = document.getElementById('mtIo');
   function emit(s, cls){
     io.innerHTML += '\n<span class="' + (cls||'dim') + '">' + s + '</span>';
     io.scrollTop = io.scrollHeight;
   }
-  var utter = {
-    q: { text: '咱们实验室现在温度多少？', json: '{"intent":"查询","slots":{"领域":"环境信息","对象":"温度"}}' },
-    c: { text: '把机械臂放到右边', json: '{"intent":"控制","slots":{"动作":"放置","位置":"右"}}' },
-    m: { text: '先抓起积木，然后放回盒子', json: '{"intents":[{"order":1,"intent":"控制","slots":{"动作":"抓取"}},{"order":2,"intent":"控制","slots":{"动作":"放置","容器":"盒子"}}]}' }
+  // 每条样例：文本、命中路径、命中模式、延迟
+  var cases = [
+    { t:'机械臂请抓取', path:'① 核心字匹配', hit:'pick', note:'"抓" → pick，未走 LLM', cls:'ok', ms:'<100ms' },
+    { t:'请把机械臂放到工作位置', path:'① 核心字匹配', hit:'work', note:'注意："放"字更靠前吗？不——源码优先判"抓"，再"放"，再"校/准"，再"工/攻/公"。本例含"放"但也含"工"，按顺序执行到"放"就先命中 place！', cls:'warn', ms:'<100ms' },
+    { t:'机械臂攻坚', path:'① 核心字匹配', hit:'work', note:'ASR 把"工作"听成"攻坚"，但"攻"在核心字表里 → 依然命中 work（fuzzy_map 也有"攻坚→工作"）', cls:'ok', ms:'<100ms' },
+    { t:'帮我把胳膊抬起来歇会儿', path:'② LLM 分类兜底', hit:'home / none', note:'关键词全不命中 → 交给 LLM。0.8B 小模型可能输出"home"也可能输出多余文字，需严格正则兜底', cls:'warn', ms:'1~3s' },
+    { t:'今天天气怎么样？', path:'② LLM 分类兜底', hit:'none', note:'LLM 输出 none → 不执行任何动作，直接回 IDLE（这是正确行为，不是失败）', cls:'ok', ms:'1~3s' },
+    { t:'我想学工科专业', path:'① 核心字匹配（误伤）', hit:'work', note:'含"工"字 → 被判成工作模式，机械臂会动！容错强 ↔ 误伤多，这是核心字匹配的固有代价', cls:'bad', ms:'<100ms' }
+  ];
+  window.mtCase = function(i){
+    var c = cases[i];
+    emit('$ ASR 文本: "' + c.t + '"', 'dim');
+    emit('  → 走 ' + c.path + '，延迟 ' + c.ms, 'dim');
+    emit('  匹配结果: ' + c.hit + '　' + (c.hit==='none' ? '不动作' : '→ 拼 0xAA55 帧下发串口'), c.cls);
+    emit('  ' + c.note, c.cls === 'bad' ? 'bad' : (c.cls === 'warn' ? 'warn' : 'ok'));
   };
-  window.ixClassify = function(kind, temp){
-    emit('$ POST /v1/chat/completions  temperature=' + (temp==='loose'?'1.2':'0.1') + '  stream=false', 'dim');
-    emit('You > ' + utter[kind].text, 'dim');
-    if(temp === 'loose' && kind === 'c'){
-      emit('AI  > {"intent":"控制","slots":{"动作":"放置","区域":"右侧","置信度":0.93}} // 多了自造字段', 'warn');
-      emit('   ⚠ 温度 1.2：字段集合漂移，白名单校验会拒收该结果', 'bad');
-    } else if(temp === 'loose' && kind === 'q'){
-      emit('AI  > 查询到实验室当前温度为 26.5 摄氏度。（直接说了人话，没出 JSON！）', 'bad');
-      emit('   ⚠ 结构化约束被高温破坏 → 下游程序无法解析', 'bad');
-    } else if(kind === 'm'){
-      emit('AI  > ' + utter.m.json, 'ok');
-      emit('   ✓ 多意图拆成数组并带 order 槽位 → 可依次下发任务', 'ok');
-    } else {
-      emit('AI  > ' + utter[kind].json, 'ok');
-      emit('   ✓ intent 命中白名单，slots 齐全 → 进入 FUNCTION_MAP 路由', 'ok');
-    }
-  };
-  window.ixReset = function(){
-    io.innerHTML = '$ system: 你是语义解析器，只输出 JSON：{"intent":…, "slots":{…}}\n$ 点上方按钮发起一次 /v1/chat/completions 请求…';
+  window.mtReset = function(){
+    io.innerHTML = '$ 就绪：优先级 = 英文名精确 → 核心字 → 中文描述 → fuzzy_map → LLM 兜底';
   };
 })();
 </script>

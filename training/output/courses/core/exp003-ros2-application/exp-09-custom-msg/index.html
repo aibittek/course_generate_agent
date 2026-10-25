@@ -58,6 +58,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：一次数据串台事故复盘</a>
   <a href="#s2">02 核心原理：结构与场景选型</a>
   <a href="#s3">03 动画：接口文件如何变成可 import 的类</a>
@@ -83,6 +84,21 @@
   <p class="desc">标准 Float32 装不下"温度+湿度+有效位"。本课回看实验 6-8 用过的全部接口，讲清 .msg/.srv/.action 三种文件结构、rosidl 编译链与接口包分离哲学。</p>
   <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">设计性</span><span class="tag">关键词 rosidl · 接口包 · 契约</span></div>
 </div>
+
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清结构</div><div class="kt">三种接口文件</div><p>能阐述 <code>.msg</code>（单段字段）、<code>.srv</code>（一个 <code>---</code> 分隔请求/响应）、<code>.action</code>（两个 <code>---</code> 分隔 Goal/Result/Feedback）的结构差异与适用场景。</p></div>
+  <div class="kcard"><div class="kd">② 掌握链路</div><div class="kt">定义 → 编译 → import</div><p>掌握 <code>ros_sensor_interfaces</code> 从"写接口定义 → 配 <code>rosidl_generate_interfaces</code> → 生成 Python/C++ 类 → 节点 import 使用"的完整链路。</p></div>
+  <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">读懂已有契约</div><p>能用 <code>ros2 interface list/show</code> 查看定义，并说清 <code>TemperatureHumidity</code>、<code>VerifyFingerprint</code>、<code>RfidScan</code> 等接口与 EXP-06~08 各节点的对应关系。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">为新传感器定接口</div><p>能为新传感器建自定义接口包（如光照度、加速度计），并正确配置 <code>CMakeLists.txt</code> 的 <code>rosidl_generate_interfaces</code> 与 <code>package.xml</code> 的依赖。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：接口包必须是 <code>ament_cmake</code>（不能用 ament_python）；改了接口一定要重新编译接口包，再 source。<br>
+<b>难点</b>：理解"接口是编译期的契约"——它决定了发布端与订阅端能不能对上话，而不是运行时才协商。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课是<b>EXP-06~08 的收口</b>：把散落在三个实验里的自定义接口集中再看一遍。同时为 EXP-17 launch 传参打基础。</div>
+</section>
 
 <section class="blk" id="s1">
 <h2><span class="no">01</span>问题引入：一次"数据串台"的误报事故<span class="fs">聚焦问题 · 激活旧知</span></h2>

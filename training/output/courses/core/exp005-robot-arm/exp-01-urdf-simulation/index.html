@@ -38,11 +38,11 @@ ol.todo{list-style:decimal;padding-left:1.6rem}
   <a href="#s9">05 深读二：display 架构解析</a>
   <a href="#s10">06 总结与思考</a>
   <h4>本课程实验</h4>
-  <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
+  <a href="../exp-01-urdf-simulation/index.html" class="now">EXP-01 URDF 模型与仿真控制</a>
   <a href="../exp-02-serial-pwm/index.html">EXP-02 关节电机底层控制与应用</a>
-  <a href="../exp-05-action-replay/index.html">EXP-05 ROS2 架构与动作回放</a>
   <a href="../exp-03-kinematics/index.html">EXP-03 正运动学基础</a>
   <a href="../exp-04-ik-solver/index.html">EXP-04 逆运动学基础与 IK 解算</a>
+  <a href="../exp-05-action-replay/index.html">EXP-05 ROS2 架构与动作回放</a>
   <a href="../exp-06-fixed-grasp/index.html">EXP-06 逆运动学固定抓取</a>
   <a href="../exp-07-visual-grasp/index.html">EXP-07 视觉动态抓取</a>
 </aside>
@@ -109,17 +109,19 @@ ol.todo{list-style:decimal;padding-left:1.6rem}
   <h2><span class="no">03</span>关节 · 限位 · 角色</h2>
   <p class="lead">关节（叫什么）、限位（能转多少）、角色（干什么用）——一个关节一行，一次讲透。限位按<b>角度</b>分两层标注：<b>URDF 层</b> = display 里滑块的真实行程（文件里实际写的是弧度，04 节见原文）；<b>实机层</b> = 270° 舵机真正能去的地方：</p>
   <table>
-    <thead><tr><th>关节（GUI 同名）</th><th>限位（角度）· URDF 滑块</th><th>限位 · 实机（270° 舵机）</th><th>角色</th></tr></thead>
+    <thead><tr><th>关节（GUI 同名）</th><th>转轴</th><th>限位（角度）· URDF 滑块</th><th>限位 · 实机（270° 舵机）</th><th>角色</th></tr></thead>
     <tbody>
-      <tr><td>arm_joint1（底座回转）</td><td>±180°</td><td>±135°</td><td>决定手臂朝向哪个方位</td></tr>
-      <tr><td>arm_joint2（大臂俯仰）</td><td>±180°</td><td>±135°</td><td>抬起整条手臂</td></tr>
-      <tr><td>arm_joint3（小臂俯仰）</td><td>±180°</td><td>±135°</td><td>伸缩半径的关键</td></tr>
-      <tr><td>arm_joint4 / arm_joint5（腕部）</td><td>±180°</td><td>±135°</td><td>调整末端姿态与俯仰角</td></tr>
-      <tr><td>夹爪 r_joint（舵机 id5）</td><td>±180°（<b>旋转</b>关节，不是平移）</td><td>PWM 800 ~ 1500 μs（开到 800）</td><td>开合执行——gripper_controller 所控</td></tr>
-      <tr><td>四个车轮 wheel_*</td><td>continuous（无行程限制）</td><td>走底盘驱动，不占臂舵机</td><td>底盘移动，本实验只观察</td></tr>
-      <tr><td>l_joint / r_in·r_out / l_in·l_out</td><td>±180°</td><td>无独立舵机（源码 joints 表仅 6 路）</td><td>随动连杆，只观察</td></tr>
+      <tr><td>arm_joint1（底座回转）</td><td>Z</td><td>±180°</td><td>±135°</td><td>决定手臂朝向哪个方位</td></tr>
+      <tr><td>arm_joint2（大臂俯仰）</td><td>Y</td><td>±180°</td><td>±135°</td><td>抬起整条手臂</td></tr>
+      <tr><td>arm_joint3（小臂俯仰）</td><td>Y</td><td>±180°</td><td>±135°</td><td>伸缩半径的关键</td></tr>
+      <tr><td>arm_joint4（腕部俯仰）</td><td>Y</td><td>±180°</td><td>±135°</td><td>决定末端俯仰角（pitch），桌面抓取的关键</td></tr>
+      <tr><td>arm_joint5（夹爪自转）</td><td>Z</td><td>±180°</td><td>±135°</td><td>绕工具轴自转，只改夹爪朝向——<b>与 J1 共轴</b></td></tr>
+      <tr><td>夹爪 r_joint（舵机 id5）</td><td>—</td><td>±180°（<b>旋转</b>关节，不是平移）</td><td>PWM 800（开）~ 1500（闭）</td><td>开合执行——gripper_controller 所控</td></tr>
+      <tr><td>四个车轮 wheel_*</td><td>—</td><td>continuous（无行程限制）</td><td>走底盘驱动，不占臂舵机</td><td>底盘移动，本实验只观察</td></tr>
+      <tr><td>l_joint / r_in·r_out / l_in·l_out</td><td>—</td><td>±180°</td><td>无独立舵机（源码 joints 表仅 6 路）</td><td>随动连杆，只观察</td></tr>
     </tbody>
   </table>
+  <div class="tip"><span class="lab">💡 先记一条轴分布</span><b>J1 绕 Z，J2/J3/J4 三根轴互相平行都绕 Y，J5 又回到 Z。</b>这一条看似枯燥，却决定了后面所有算法：<b>J2、J3、J4 的角度可以直接相加</b>（同一平面内接力转），而 J1 不行；也正因为 J1 与 J5 共轴，这台机器只有 <b>4 个独立笛卡尔自由度</b>（x, y, z + 俯仰），J5 在固定 pose 下永远解出 0。EXP-03 打开"坐标帧"就能亲眼看到这三根平行轴。</div>
   <div class="tip amber"><span class="lab">⚠️ 限位的两层口径</span>URDF 层：car1.urdf 里臂关节统一写 <code>lower="-3.14" upper="3.14"</code>，所以滑块一路能拖到 ±180°。实机层：舵机是 270° 总行程的总线舵机，PWM 从 500 到 2500、中位 1500，折下来每边只有 ±135°（<code>arm_controller.py</code> 里 <code>JOINT_LIMITS_RAD = ±2.356</code>）。两边一比：同一个关节，仿真能去的地方比实机多出 45°，RViz 放你过去，真机会打齿。这 45° 就是安全红线第 1 条（不许把角度下发到舵机物理行程之外）要管的地方，EXP-02 接上真机才真正生效。</div>
   <p>把两条限位画在同一把尺子上，红区就是"仿真放行、实机撞墙"的 45° 危险带：</p>
   <div class="arch">

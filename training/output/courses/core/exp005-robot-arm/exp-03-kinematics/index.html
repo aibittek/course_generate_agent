@@ -72,8 +72,9 @@ pre{font-size:13.5px;line-height:1.85}
   <nav>
     <a href="../exp-01-urdf-simulation/index.html">EXP-01 URDF 模型与仿真控制</a>
     <a href="../exp-02-serial-pwm/index.html">EXP-02 串口协议与 PWM</a>
-    <a href="../exp-03-kinematics/index.html">EXP-03 正运动学基础</a>
+    <a class="now" href="../exp-03-kinematics/index.html">EXP-03 正运动学基础</a>
     <a href="../exp-04-ik-solver/index.html">EXP-04 逆运动学与 IK 解算</a>
+    <a href="../exp-05-action-replay/index.html">EXP-05 ROS2 架构与动作回放</a>
     <a href="../exp-06-fixed-grasp/index.html">EXP-06 逆运动学固定抓取</a>
     <a href="../exp-07-visual-grasp/index.html">EXP-07 视觉动态抓取</a>
   </nav>
@@ -326,10 +327,18 @@ pre{font-size:13.5px;line-height:1.85}
 <p>拿 <code>simple-arm.urdf</code> 里的真实长度来算（单位是米）：</p>
 <table>
   <tr><th>哪一段</th><th>有多长</th><th>从哪到哪</th><th>它的累计角</th></tr>
-  <tr><td>大臂</td><td>L1 = 0.126</td><td>J2 到 J3</td><td>q2</td></tr>
-  <tr><td>小臂</td><td>L2 = 0.126</td><td>J3 到 J4</td><td>q2 + q3</td></tr>
-  <tr><td>工具段</td><td>L = 0.151（0.074 加 0.076）</td><td>J4 到指尖</td><td>q2 + q3 + q4</td></tr>
+  <tr><td>大臂</td><td>L1 = 0.126144</td><td>J2 到 J3</td><td>q2</td></tr>
+  <tr><td>小臂</td><td>L2 = 0.126144</td><td>J3 到 J4</td><td>q2 + q3</td></tr>
+  <tr><td>工具段</td><td>L_TCP = 0.150642</td><td>J4 到指尖 tcp_link</td><td>q2 + q3 + q4</td></tr>
+  <tr style="background:#fef3c7"><td colspan="2"><b>两杆合长 L1 + L2</b></td><td colspan="2"><b>= 0.2523 m</b> —— 这是 IK 判断"够不够得着"的分界线，下一章会反复用到</td></tr>
 </table>
+
+<div class="tip amber">
+<span class="lab">⚠️ 三个和代码对不上的地方，先在这里说清</span>
+<b>① 0.126 与 0.126144 的差别不是笔误。</b>URDF 里写的是 Z 分量 0.12614，但连杆在 X 上还有 −0.0009 m 的装配偏斜，程序取的是 X-Z 平面投影长度 <code>hypot(−0.0009, 0.126141) = 0.126144</code>。手算取 0.126、程序取 0.126144，差异 0.1 mm 级别，不影响本章结论，但对账时别以为哪边算错了。<br>
+<b>② 工具段长度别用「0.074 + 0.076」硬加。</b>J4→J5 是 0.0744，J5→TCP 是 0.0762，但 J5 的固定姿态是 <b>绕 Z 转 −π</b>，两段在 X 上的偏移方向反过来了，实际投影是 <code>0.150642 m</code>（≈0.0744+0.0762，0.2 mm 差异来自那个反向偏移）。<br>
+<b>③ 本章的 0.126 / 0.151 口径是教学模型 <code>simple-arm.urdf</code>——它把装配偏差抹平了</b>，方便你用计算器复现。真机跑的是 <code>config.py</code> 里的标定值，两者差在毫米级，这正是台阶七"手算 / 程序 / 卷尺三方对账"要量的事。
+</div>
 
 <div class="jacdemo">
   <div class="jd-head"><span class="lab">动画</span><b>先摆大臂，再在小臂上接着转，看累计角怎么长出来</b></div>

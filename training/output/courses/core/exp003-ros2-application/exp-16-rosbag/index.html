@@ -25,6 +25,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：只会来一次的现场故障</a>
   <a href="#s2">02 核心原理：一个 .db3 文件里到底有什么</a>
   <a href="#s3">03 动画：录包保真、回放复活</a>
@@ -51,6 +52,21 @@
 </div>
 
 <!-- 01 问题引入 -->
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清存储</div><div class="kt">为什么是 SQLite3</div><p>能阐述 rosbag2 基于 SQLite3 的存储架构——为什么选它而非二进制日志，以及 CDR 序列化、时间戳索引、话题元数据表如何支撑高效检索与随机访问。</p></div>
+  <div class="kcard"><div class="kd">② 掌握命令</div><div class="kt">record / info / play</div><p>能正确执行 <code>ros2 bag record -a</code> 全量录制、<code>record /topic1 /topic2</code> 选择性录制、<code>bag info</code> 看元数据、<code>bag play -r &lt;rate&gt;</code> 调速回放。</p></div>
+  <div class="kcard"><div class="kd">③ 独立设计</div><div class="kt">可追溯的数据集</div><p>能针对特定传感器组合设计采集策略（选择性录制 + 命名规范），建立可追溯的实验数据集。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">录放当标准流程</div><p>把"录制-回放"当成数据驱动开发的标准工作模式：录真实数据做离线算法开发与回归测试，减少对硬件的依赖。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：必须用 <code>Ctrl+C</code>（SIGINT）停止录制——<code>kill -9</code> 会丢缓存、不写 metadata，包直接废掉。<br>
+<b>难点</b>：理解 metadata.yaml 与 .db3 的关系：拆包时少了 yaml，<code>bag info</code> 就找不到它。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课的 <code>--clock</code> 回放，是 <b>EXP-11 时间 API</b> 的实战应用：回放要喂 <code>/clock</code> 给 <code>use_sim_time</code> 节点。</div>
+</section>
+
 <section class="blk" id="s1">
   <h2><span class="no">01</span>问题引入：只会来一次的现场故障<span class="fs">聚焦问题 · 激活旧知</span></h2>
   <div class="tip"><span class="lab">先回忆</span>EXP-06 的话题数据流过了就没了、EXP-11 的时间戳与 <code>use_sim_time</code>——本章解决的问题是：<b>数据流过就消失，怎么"录下来、倒回去"反复研究</b>。现场故障只发生一次，但录好的包可以回放一万次。</div>

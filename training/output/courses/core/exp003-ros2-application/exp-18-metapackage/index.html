@@ -16,6 +16,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：装个 navigation2，要背 20 个包名吗</a>
   <a href="#s2">02 核心原理：一个"空包"凭什么工作</a>
   <a href="#s3">03 动画：一条 apt 命令如何拉起全家桶</a>
@@ -39,6 +40,21 @@
   <p class="desc">有一种包永远不包含代码、编译只需 0.5 秒，却能让一条 apt 命令装齐 20 余个子包——这就是元功能包（metapackage）。本实验解剖 navigation2 的聚合结构，讲清 build_depend / exec_depend / depend 三种依赖的语义分野，并亲手打造属于自己的全家桶。</p>
   <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 元功能包 · exec_depend · 依赖传递 · nav2</span></div>
 </div>
+
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清初衷</div><div class="kt">为什么要空包</div><p>能阐述元功能包的设计初衷——为什么需要"不含代码、仅聚合依赖"的包类型，以及它与普通包集合的本质区别。</p></div>
+  <div class="kcard"><div class="kd">② 掌握创建</div><div class="kt">ament_cmake + exec_depend</div><p>能正确创建基于 <code>ament_cmake</code> 的元包，写只含 <code>&lt;exec_depend&gt;</code> 的 package.xml，并用 <code>colcon build</code> 验证。</p></div>
+  <div class="kcard"><div class="kd">③ 独立分析</div><div class="kt">解剖 navigation2</div><p>能用 <code>ros2 pkg xml</code> 查依赖树，以 navigation2 为例分析它聚合的子包结构与三层组织逻辑。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">打包成逻辑整体</div><p>当需要把传感器驱动包 + 数据处理包 + 可视化包作为一个整体发布时，能选择元包作为组织方案。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：元包只能用 <code>exec_depend</code>（不能写 build_depend），且必须带 <code>&lt;export&gt;&lt;build_type&gt;ament_cmake&lt;/build_type&gt;&lt;/export&gt;</code>。<br>
+<b>难点</b>：理解"元包不产生任何代码，它的价值全在依赖图上"——依赖即产品。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课与 <b>EXP-17 launch</b> 是"从单点到系统"的两块拼图：launch 管启动顺序，元包管安装单元。</div>
+</section>
 
 <section class="blk" id="s1">
   <h2><span class="no">01</span>问题引入：装个 navigation2，要背 20 个包名吗<span class="fs">聚焦问题 · 激活旧知</span></h2>

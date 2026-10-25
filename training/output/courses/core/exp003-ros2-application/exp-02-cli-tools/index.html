@@ -32,7 +32,8 @@
 
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#s1" class="now">01 问题引入：如何不读代码看懂一个系统</a>
+  <a href="#goal">★ 课程目标</a>
+  <a href="#s1" class="now">01 程序跑起来就变黑盒？ROS2 的答案</a>
   <a href="#s2">02 核心原理：命令体系与计算图动画</a>
   <a href="#s4">03 异步话题 vs 同步服务——两种通信模型的对比</a>
   <a href="#s6">04 实操中心：四关（试车台 · node · topic · bag）</a>
@@ -60,15 +61,157 @@
 </div>
 
 <!-- 01 -->
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清设计</div><div class="kt">一个入口统一全部</div><p>能阐述 ros2 CLI 的设计理念——为什么把 node / topic / service / param / action / bag / interface / launch / run / pkg 这些子命令收敛到 <code>ros2</code> 一个入口。</p></div>
+  <div class="kcard"><div class="kd">② 掌握主力命令</div><div class="kt">node / topic / service</div><p>熟练使用 <code>node list|info</code>、<code>topic list|echo|info|hz|pub</code>、<code>service list|type|call</code>。</p></div>
+  <div class="kcard"><div class="kd">③ 独立排查</div><div class="kt">param / interface / bag</div><p>能独立用 <code>ros2 param</code> 管理参数、<code>ros2 interface</code> 查消息定义、<code>ros2 bag</code> 录放数据。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移成习惯</div><div class="kt">遇事先敲命令</div><p>后续实验中遇到"这节点是什么""这话题有没有在发""这服务怎么调"，能第一反应想到对应的 CLI 工具，而不是先翻代码。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：<code>topic echo</code> / <code>hz</code> / <code>info</code> 三件套——它们是后面每一个实验的验收工具。<br>
+<b>难点</b>：建立"名词域 × 动作"的检索思维：先想"我要看的是哪类东西"（node/topic/service），再想"要对它做什么"（list/info/echo）。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课学的命令会在<b>后续 18 个实验里反复出现</b>。这里多敲几遍，后面能省几十遍。</div>
+</section>
+
 <section class="blk" id="s1">
-  <h2><span class="no">01</span>问题引入：如何不读代码看懂一个系统</h2>
-  <p>一台机器人摆在你面前，软件正在跑。要求：不看源码、不许改代码，<b>30 秒内说出"它的软件在干什么"</b>。靠什么？先把三个词说清楚：</p>
+  <h2><span class="no">01</span>问题引入：程序跑起来就变成黑盒？ROS2 给了一个不一样的答案</h2>
+
+  <p>先问一个几乎每个开发者都遇过的问题：<b>程序一旦跑起来，你还剩多少手段看清它在干什么？</b></p>
+  <p>不管写 Java、Python 还是嵌入式 C，程序运行后的"可观测手段"翻来覆去就那么几样：</p>
+
   <div class="kgrid">
-    <div class="kcard"><div class="kd">名词 · 计算图</div><div class="kt">系统长什么样，就是一张图</div><p>上一实验讲过：每个节点上线后会通过 DDS <b>自动互相发现</b>。把"谁在线、谁和谁连着、连线上流什么"全部画出来，就得到一张关系图——ROS2 管它叫<b>计算图（Graph）</b>。节点是图上的点，话题是图上的线。</p></div>
-    <div class="kcard"><div class="kd">名词 · CLI</div><div class="kt">命令行里敲的字，就是它</div><p>CLI = Command Line Interface，<b>命令行工具</b>。ROS2 自带一套 <code>ros2</code> 开头的 CLI 工具，专门向计算图提问。</p></div>
-    <div class="kcard"><div class="kd">关键 · 为什么能偷看</div><div class="kt">问图，而不是问进程</div><p>计算图这份"在场名单"由 DDS 统一保管，<b>对所有节点一视同仁</b>。所以你不需要看对方的代码——哪怕它是别人写的 C++ 黑盒，答案照样在图里。</p></div>
+    <div class="kcard"><div class="kd">手段一</div><div class="kt">看日志</div><p>最通用，也最原始。问题是：日志<b>是写代码的人预先决定要打印的</b>——他没想起来打的地方，你永远看不见。</p></div>
+    <div class="kcard"><div class="kd">手段二</div><div class="kt">断点调试 / 仿真器</div><p>单步执行很爽，但它要求能<b>停下来</b>。机器人正在跑、电机正在转、传感器 30Hz 在出数据——一旦停下来，现象就消失了。</p></div>
+    <div class="kcard"><div class="kd">手段三</div><div class="kt">抓包 / 中间件工具</div><p>能看到字节，但要<b>先知道去哪抓</b>：端口、协议、序列化格式都得事先搞清，还得会和业务字段对应上。</p></div>
+    <div class="kcard"><div class="kd">手段四</div><div class="kt">埋点 / 接口注入</div><p>最"正规"，代价是<b>要改代码、重新发布</b>。生产环境下往往根本不允许。</p></div>
   </div>
-  <p>有了这三个概念，30 秒体检其实就是<b>对着计算图连问四个问题</b>：</p>
+
+  <p>这四种手段有个共同的隐含前提：<b>你得先知道内部结构，才能去观察它</b>。于是出现一个尴尬局面——</p>
+
+  <div class="tip amber"><span class="lab">⚠ 传统开发的"黑盒时刻"</span>
+接手一份别人写的代码、或者一个已经在跑的系统，你常常要回答三个问题：<b>它现在在做什么？谁在给它发数据？它发出去的东西别人收到了吗？</b><br>
+而传统手段的答案往往分别是：<b>不知道（日志没打）、不知道（代码里没写）、不知道（只能靠猜）</b>。</div>
+
+  <h3>ROS2 的答案：让"内部结构"本身变成可查询的公开信息</h3>
+
+  <p>ROS2 之所以能跳出这个困境，是因为它在架构层面做了一件别家很少做的事：<b>把"谁存在、谁和谁连着、连线上流什么"这件事，从程序内部搬到了系统层面，并规定所有组件都必须如实登记。</b></p>
+
+  <p>这份登记表就是上一课讲过的<b>计算图（Graph）</b>。它不是某个人画出来的文档，而是 <b>DDS 在运行时实时维护的在场名单</b>：每个节点一上线就自动登记自己的名字、开放了哪些话题、提供哪些服务——谁来问都一样，<b>不区分是"自己人"还是"路过的工具"</b>。</p>
+
+  <p>于是 <code>ros2</code> 这套 CLI 工具，本质上就是<b>一批合法的"第三方观察者"</b>：它以普通参与者身份加入这张图，把图里已经登记好的信息读出来给你看。</p>
+
+  <div class="anim-box">
+    <svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="传统黑盒与 ROS2 可查询计算图的对比">
+      <rect x="0" y="0" width="720" height="250" rx="12" fill="#0f172a"/>
+      <line x1="360" y1="24" x2="360" y2="230" stroke="#334155" stroke-width="1" stroke-dasharray="5 5"/>
+
+      <!-- 左：传统黑盒 -->
+      <text x="180" y="34" text-anchor="middle" font-size="13" font-weight="700" fill="#f87171">传统程序：边界之内是黑盒</text>
+      <rect x="60" y="56" width="240" height="112" rx="12" fill="#111827" stroke="#7f1d1d" stroke-width="1.8"/>
+      <text x="180" y="82" text-anchor="middle" font-size="11.5" fill="#94a3b8">程序内部（模块互相调用）</text>
+      <rect x="84" y="96" width="66" height="34" rx="7" fill="#1e293b" stroke="#475569"/>
+      <text x="117" y="117" text-anchor="middle" font-size="10.5" fill="#cbd5e1">模块A</text>
+      <rect x="170" y="96" width="66" height="34" rx="7" fill="#1e293b" stroke="#475569"/>
+      <text x="203" y="117" text-anchor="middle" font-size="10.5" fill="#cbd5e1">模块B</text>
+      <rect x="256" y="96" width="30" height="34" rx="7" fill="#1e293b" stroke="#475569"/>
+      <text x="271" y="117" text-anchor="middle" font-size="10.5" fill="#cbd5e1">C</text>
+      <line x1="150" y1="113" x2="170" y2="113" stroke="#475569" stroke-width="1.6"/>
+      <text x="180" y="152" text-anchor="middle" font-size="10.5" fill="#f87171">调用关系 / 数据流向 —— 外部看不见</text>
+      <text x="180" y="192" text-anchor="middle" font-size="11" fill="#94a3b8">你只能：看日志、加埋点、停下来调试</text>
+      <text x="180" y="212" text-anchor="middle" font-size="10.5" fill="#64748b">→ 都得先知道内部结构，或先改代码</text>
+
+      <!-- 右：ROS2 计算图 -->
+      <text x="540" y="34" text-anchor="middle" font-size="13" font-weight="700" fill="#4ade80">ROS2：结构本身可被查询</text>
+      <rect x="420" y="56" width="240" height="112" rx="12" fill="#0b1220" stroke="#164e63" stroke-width="1.8" stroke-dasharray="6 5"/>
+      <text x="540" y="80" text-anchor="middle" font-size="11.5" fill="#94a3b8">计算图（DDS 实时维护）</text>
+      <rect x="444" y="94" width="62" height="32" rx="7" fill="#1e293b" stroke="#4ade80" stroke-width="1.4"/>
+      <text x="475" y="114" text-anchor="middle" font-size="10.5" fill="#4ade80">talker</text>
+      <rect x="574" y="94" width="62" height="32" rx="7" fill="#1e293b" stroke="#60a5fa" stroke-width="1.4"/>
+      <text x="605" y="114" text-anchor="middle" font-size="10.5" fill="#60a5fa">listener</text>
+      <line x1="506" y1="110" x2="574" y2="110" stroke="#fbbf24" stroke-width="2"/>
+      <text x="540" y="104" text-anchor="middle" font-size="9.5" fill="#fbbf24">/chatter</text>
+      <text x="540" y="150" text-anchor="middle" font-size="10.5" fill="#86efac">节点 / 话题 / 服务 —— 已登记，可随时问</text>
+      <text x="540" y="192" text-anchor="middle" font-size="11" fill="#cbd5e1">你可以：<tspan font-family="Consolas,monospace" fill="#6ee7a8">ros2 topic echo</tspan> 直接旁听</text>
+      <text x="540" y="212" text-anchor="middle" font-size="10.5" fill="#64748b">→ 不改代码、不改配置、不打断运行</text>
+
+      <!-- 中间箭头 -->
+      <text x="360" y="118" text-anchor="middle" font-size="18" fill="#475569">→</text>
+      <text x="360" y="140" text-anchor="middle" font-size="9.5" fill="#64748b">架构</text>
+      <text x="360" y="154" text-anchor="middle" font-size="9.5" fill="#64748b">改变</text>
+    </svg>
+  </div>
+  <div class="anim-cap">图 1-1｜差别不在于"工具更强"，而在于<b>结构信息归谁保管</b>：传统程序的调用关系藏在进程内部，ROS2 把它提升成了系统级的公开事实。</div>
+
+  <p>这就是 ROS2 相对传统开发方式最实质的一个优势：<b>它把"可观测性"做进了架构，而不是靠开发者事后补日志。</b>你可以对着一台完全陌生的机器人，不读一行源码，30 秒内问清"谁在线、谁给谁发数据、发的是什么、多快"。</p>
+
+  <h3>横向对比：五种开发场景，各自怎么看运行中的系统</h3>
+  <p>把话说准一点——<b>不是 ROS2 在所有方面都更强</b>。不同场景各有各的成熟手段，只是在"运行时结构可见性"这一项上，ROS2 的做法有天然优势。下面这张表按同一组维度横向摆开：</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:96px">场景</th>
+        <th style="width:23%">运行时主要靠什么看</th>
+        <th style="width:18%">能否不读代码看清结构</th>
+        <th style="width:18%">能否不改程序拿到数据</th>
+        <th>主要瓶颈</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>服务端 / 后端</b></td>
+        <td>日志 + APM 链路追踪 + 接口文档</td>
+        <td>部分可以（靠 OpenAPI/Swagger 文档）</td>
+        <td>较难（要加日志或埋点）</td>
+        <td>文档与代码易脱节；调用链跨服务后靠 trace 拼</td>
+      </tr>
+      <tr>
+        <td><b>网页前端</b></td>
+        <td>浏览器 DevTools（网络面板、元素检查、Performance）</td>
+        <td>可以（DOM / Network 直接可见）</td>
+        <td><b>可以</b>（Network 面板就能抓请求）</td>
+        <td>只管得了浏览器内；跨端、跨设备后断链</td>
+      </tr>
+      <tr>
+        <td><b>小程序</b></td>
+        <td>开发者工具 + vConsole + 平台真机调试</td>
+        <td>较难（需在开发者工具内运行）</td>
+        <td>较难（真机环境受限）</td>
+        <td>真机与模拟器行为不一致，线上问题难复现</td>
+      </tr>
+      <tr>
+        <td><b>嵌入式 C/C++</b></td>
+        <td>串口打印 + J-Link/ST-Link 调试器 + 逻辑分析仪</td>
+        <td>难（结构在编译期就定死了）</td>
+        <td>难（要占用串口或加探针）</td>
+        <td>资源紧张放不下日志；打断点即改变时序</td>
+      </tr>
+      <tr style="background:#f0fdfa">
+        <td><b>ROS2 应用</b></td>
+        <td><code>ros2</code> CLI + rqt + rviz2 + rosbag2（后续实验逐个展开）</td>
+        <td><b>可以</b>（计算图由 DDS 实时登记）</td>
+        <td><b>可以</b>（CLI 以第三方参与者旁听）</td>
+        <td>前提是所有组件都遵守 ROS2 规范并入同一通信域</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="tip tealb"><span class="lab">💡 一句话读懂这张表</span>
+前端有 DevTools、服务端有链路追踪、嵌入式调试器——<b>每种开发都有自己的"透视镜"</b>。ROS2 的特别之处在于：它的透视镜不是附加工具，而是<b>架构自带的</b>。因为节点之间的通信本来就走统一的中间件，所以"旁听"和"查图"是白送的，不需要你提前埋任何东西。</div>
+
+  <div class="tip amber"><span class="lab">⚠ 但要记住 ROS2 的前提与代价</span>
+这个优势不是没有条件的：<b>①</b> 所有组件必须都按 ROS2 规范写、在同一 <code>ROS_DOMAIN_ID</code> 下运行——一个用私有 socket 通信的模块，CLI 一样看不到它；<b>②</b> 这套机制本身有开销（序列化、发现流量），所以对微秒级实时性要求极高的环节，往往仍要绕开它直接操作寄存器；<br><b>③</b> "能看见"不等于"能理解"——图上告诉你 <code>/cmd_vel</code> 在发数据，但为什么发这个值，还得看算法。</div>
+
+  <h3>那具体怎么"看"？先认两个词</h3>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">名词 · 计算图</div><div class="kt">系统长什么样，就是一张图</div><p>节点是图上的<b>点</b>，话题是图上的<b>线</b>。把"谁在线、谁和谁连着、连线上流什么"全画出来，就是计算图（Graph）。它由 DDS 实时维护，不是谁画出来的文档。</p></div>
+    <div class="kcard"><div class="kd">名词 · CLI</div><div class="kt">命令行里敲的那套工具</div><p>CLI = Command Line Interface。<code>ros2</code> 开头的一整套命令，专门用来向计算图提问——它就是那把"翻通讯录的手"。</p></div>
+  </div>
+
+  <p>有了这两个概念，"30 秒看懂一个陌生系统"其实就是<b>对着计算图连问四个问题</b>：</p>
   <div class="flow">
     <div class="step"><span class="n">1</span><code>ros2 node list</code>：先看有哪些<b>进程单元</b>（谁活着）</div>
     <div class="arr"></div>
@@ -78,7 +221,8 @@
     <div class="arr"></div>
     <div class="step"><span class="n">4</span><code>ros2 topic info /chatter</code> 看<b>谁发谁收</b>、<code>ros2 node info /talker</code> 看节点全貌（谁和谁认识）</div>
   </div>
-  <div class="tip amber"><span class="lab">💡 一句话总结</span>把 ROS2 系统当成人，计算图就是它的<b>通讯录</b>，CLI 就是翻通讯录的手——你不动任何人的脑子，只是把通讯录里已经记好的内容念出来。</div>
+
+  <div class="tip amber"><span class="lab">💡 一句话总结</span>把 ROS2 系统当成人，计算图就是它的<b>通讯录</b>，CLI 就是翻通讯录的手——你不动任何人的脑子，只是把通讯录里已经记好的内容念出来。<b>而这份通讯录之所以存在，是因为 ROS2 要求每个组件入职时都必须登记。</b></div>
 </section>
 
 <!-- 02 -->

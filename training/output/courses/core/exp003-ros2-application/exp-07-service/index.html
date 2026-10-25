@@ -81,6 +81,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 为什么需要服务：有些事必须"等到答案"</a>
   <a href="#s2">02 核心原理：一次 RPC 在 ROS2 里怎么跑</a>
   <a href="#s3">03 动画：一问一答的四个瞬间</a>
@@ -106,6 +107,21 @@
   <p class="desc">话题像广播：说完就走，不管谁在听。但"验证这根手指是不是主人"必须拿到一个明确的答复才能决定开不开门——这种<b>一对一、必须等到答案</b>的调用，就是服务（Service）。本课用指纹验证讲透 request/response 的每一拍，并把"采图 → 生成特征 → 搜索比对"的底层三步看明白。</p>
   <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">4 学时</span><span class="tag">设计性</span><span class="tag">关键词 service · call_async · UART</span><span class="tag">实验箱 B2</span></div>
 </div>
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清模型</div><div class="kt">同步 RPC</div><p>能阐述"客户端发 Request → 阻塞等待 → 服务端回调处理 → 返回 Response"的同步模型，并说清它与话题（异步一对多持续流）在语义与适用场景上的本质区别。</p></div>
+  <div class="kcard"><div class="kd">② 掌握链路</div><div class="kt">create → call → 等</div><p>掌握 <code>fingerprint_server</code> 与 <code>fingerprint_client</code> 从 <code>create_service</code>/<code>create_client</code>、<code>call_async</code> 到 <code>spin_until_future_complete</code> 的完整调用链。</p></div>
+  <div class="kcard"><div class="kd">③ 独立验证</div><div class="kt">命令行触发一次</div><p>能独立运行服务端与客户端，用 <code>ros2 service call</code> 触发并观察响应，理解指纹"采图 → 生成特征 → 搜索比对"三步。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">正确选型</div><p>能把「UART 传感器 → 服务封装 → 同步调用」迁移到继电器控制、单次状态查询等场景，并在服务 / 话题 / 动作间做出正确选型。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：服务回调里做阻塞操作会拖死整个节点——这是"同步"的代价，也是必须理解的边界。<br>
+<b>难点</b>：<code>spin_until_future_complete</code> 为什么不是"死循环等"；以及服务与话题的选型边界。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课是<b>三种通信范式的第二种</b>。学完 EXP-06 的异步，再学这里的同步，两者的差异才立得住。</div>
+</section>
+
 <section class="blk" id="s1">
 <h2><span class="no">01</span>为什么需要服务：有些事必须"等到答案"</h2>
 <p>想象你在公司前台值班，来了一个访客要进实验室。你<b>不能广播一句"有人要进门"</b>就转身干别的——你必须拿到一个明确的答复："他是张工，放行"或"查无此人，拦下"。这个答复<b>只回答你这一次的提问</b>，回答完这次对话就结束了。</p>

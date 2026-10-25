@@ -108,12 +108,13 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
 <section class="hero">
   <div class="eyebrow">CATEGORY 1 · 核心课程 / CORE-04</div>
   <h1>机器人 <span class="grad">SLAM 与自主导航</span></h1>
-  <p>7 个递进实验，从 SLAM 原理与 URDF 建模起步，用 SLAM Toolbox 遥控建图，深入 Nav2 导航栈与 AMCL 粒子滤波定位，以 DWA 局部避障、激光雷达多点任务调度收口，最终展望 RTAB-Map 三维 SLAM —— 每个实验均配原理讲解、动画演示与交互沙盒，基于 slam_practice 实验讲义改编。</p>
+  <p>7 个递进实验，从 SLAM 原理与 URDF 建模起步，用 SLAM Toolbox 遥控建图，深入 Nav2 导航栈与 AMCL 粒子滤波定位，以 DWB 局部避障、激光雷达多点任务调度收口，最终展望 RTAB-Map 三维 SLAM —— 每个实验均配原理讲解、动画演示与交互沙盒，基于 slam_practice 实验讲义与 car1 真实源码改写。</p>
   <div class="bades">
     <span class="bade">📚 7 个实验</span>
     <span class="bade">⏱️ 48 学时</span>
-    <span class="bade">🤖 激光雷达 + 底盘</span>
+    <span class="bade">🤖 激光雷达 + 麦轮底盘</span>
     <span class="bade">🎯 前置：ROS2 基础</span>
+    <span class="bade">🚗 仅适配小车 C1</span>
   </div>
 </section>
 
@@ -139,7 +140,7 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <p>每个实验的终端操作都遵循同一套节奏——先摆好环境，再动参数；先观察现象，再写结论。</p>
   </div>
   <div class="kgrid reveal">
-    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>① 起环境</h4><p>按 05 节清单核对硬件接线与话题（/scan、/odom、相机三件套），启动对应 launch；拿不准先 ros2 topic hz 确认数据在流动。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>① 起环境</h4><p>按 05 节清单核对硬件接线与话题（/scan、odom TF、相机四话题），启动对应 launch；拿不准先 ros2 topic hz 确认数据在流动。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>② 看原理</h4><p>动手前先过一遍 02 原理章节与 06 动画：知道"这一参数对应画面里哪个动作"，报错时才有排查方向。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>③ 跑基线</h4><p>用默认参数完整跑通一遍流程，记录"基准现象"——后面所有调参结论都以它为对照组。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#d97706"></span>④ 单变量调</h4><p>每次只改一个参数（改前抄下旧值），重启生效后复测同一场景；症状对不上就回滚，别叠加"盲改三连"。</p></div>
@@ -353,12 +354,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <p>全课程同一套底座：Ubuntu 22.04 + ROS 2 Humble + 具身智能实验箱（B2）/ 小车（C1）。</p>
   </div>
   <div class="kgrid reveal">
-    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>感知层</h4><p>COIN-D6 激光雷达（/dev/ttyUSB1，发布 /scan，10 Hz，Best Effort QoS）+ HP60C RGB-D 相机（/camera/rgb + /camera/depth，供 EXP-07）。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>本体层</h4><p>麦轮底盘编码器轮速 + IMU，经 EKF 融合输出 odom→base_footprint 变换；teleop_twist_keyboard 遥控，/cmd_vel 下发速度指令。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>地图与定位</h4><p>SLAM Toolbox 出 /map（occupancy grid：-1 未知 / 0 空闲 / 100 占据，0.05 m 格）；AMCL 出 /amcl_pose 与粒子云 /particlecloud。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#d97706"></span>导航栈</h4><p>car1_navigation 的 navigation.launch.py 一键起 Nav2；参数集中在 config/nav2_params.yaml（planner/controller/bt/costmap 全在里面）。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>感知层</h4><p>COIN-D6 激光雷达（设备节点 /dev/lidar，发布 /scan，frame_id laser_link，0.05~12 m，10 Hz，Best Effort QoS）+ HP60C RGB-D 相机（/ascamera_hp60c/... 命名空间，供 EXP-07）。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>本体层</h4><p>麦轮底盘轮速 + BMI088 IMU，经 EKF（robot_localization）融合输出 odom→base_footprint；ω 取 IMU、vx 取轮速（麦轮旋转打滑约 45%，故不取轮速航向）。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>地图与定位</h4><p>SLAM Toolbox 出 /map（occupancy grid：-1 未知 / 0 空闲 / 100 占据，0.05 m 格，存盘后变成 205/254/0 灰度）；AMCL 出 /amcl_pose 与粒子云 /particle_cloud。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#d97706"></span>导航栈</h4><p>car1_navigation 的 navigation.launch.py 一键起 Nav2；参数集中在 config/nav2_params.yaml（planner/controller/bt/costmap 全在里面），行为树另有 2 个 XML。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>TF 主干</h4><p>map → odom（AMCL 修正）→ base_footprint（EKF 里程计）→ 各传感器 link（URDF 定义）。TF 一断，建图导航全部报错。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#334155"></span>调试工具箱</h4><p>RViz2（看 /scan /map /path /costmap /particlecloud）、ros2 topic hz/echo、rqt_image_view、view_frames 查 TF 树。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#334155"></span>调试工具箱</h4><p>RViz2（看 /scan /map /plan /costmap /particle_cloud）、ros2 topic hz/echo、rqt_image_view、view_frames 查 TF 树、/behavior_tree_log 看行为树分支。</p></div>
   </div>
 
   <div class="sec-head reveal">
@@ -387,18 +388,18 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <p>以下症状在历届上机中反复出现——每条都对应课内某章节的排障入口。</p>
   </div>
   <div class="kgrid reveal">
-    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 1 · TF 树断链</h4><p>现象：RViz 全线飘红"No transform"。入口：EXP-01 08 实操——核对 display 四件套与 view_frames 输出，确认 base_footprint 挂根。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 2 · 地图重影"双墙"</h4><p>现象：建图回环后墙变两层。入口：EXP-02——回环没闭合或遥控过快，降速重逛并检查 loop_match 响应阈值。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 3 · 初始位姿没给</h4><p>现象：粒子一锅粥，小车发疯。入口：EXP-04——RViz「2D Pose Estimate」按真实位姿给初值，或开 set_initial_pose。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 4 · 目标点在墙里</h4><p>现象：action 返回 ABORTED。入口：EXP-03——目标必须落在 map 系空闲区且在膨胀层之外；pxtc 拖点后 zoom 确认。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 1 · TF 树断链</h4><p>现象：RViz 全线飘红"No transform"。入口：EXP-01 08 实操——核对 display 三件套与 view_frames 输出，确认 base_footprint 挂根。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 2 · 地图重影"双墙"</h4><p>现象：建图回环后墙变两层。入口：EXP-02——回环没闭合或遥控过快，降速重逛并检查 loop_match_minimum_response_fine（0.45）。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 3 · 初始位姿没给</h4><p>现象：粒子散成一地，小车发疯。入口：EXP-04——RViz「2D Pose Estimate」按真实位姿给初值，或开 set_initial_pose。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 4 · 目标点在墙里</h4><p>现象：action 返回 ABORTED。入口：EXP-03——目标必须落在 map 系空闲区且在膨胀层之外；拖点后 zoom 确认。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 5 · 改参不重启</h4><p>现象：yaml 改了没反应。入口：EXP-05——Nav2 各 server 启动时读参，改完必须重启 navigation.launch。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 6 · 途经点贴太近</h4><p>现象：多点导航跳点/抖动。入口：EXP-06——相邻点间距 &gt;0.5 m，frame_id 统一写 map。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>坑 6 · 途经点贴太近</h4><p>现象：多点导航跳过中间点。入口：EXP-06——行为树会剔除 0.7 m 内的途经点，相邻点间距请拉开到 &gt;1.0 m，frame_id 统一写 map。</p></div>
   </div>
 
   <div class="sec-head reveal">
     <div class="k">GLOSSARY</div>
     <h2>术语速查表</h2>
-    <p>十二个贯穿全课程的关键词，第一次读到不懂没关系——先混个脸熟，实验里会反复遇见。</p>
+    <p>十六个贯穿全课程的关键词，第一次读到不懂没关系——先混个脸熟，实验里会反复遇见。</p>
   </div>
   <div class="grid reveal" style="display:block">
     <article class="card">
@@ -407,15 +408,17 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
         <tr><td>SLAM</td><td>Simultaneous Localization And Mapping：边走边画地图 + 同时知道自己在哪</td><td>EXP-01</td></tr>
         <tr><td>URDF / Xacro</td><td>用 XML 描述机器人的连杆与关节，Xacro 支持宏展开复用</td><td>EXP-01</td></tr>
         <tr><td>TF</td><td>坐标变换树：任意两帧之间的平移/旋转关系，ROS 的"定位坐标系语法"</td><td>EXP-01</td></tr>
-        <tr><td>里程计 odom</td><td>由轮速/IMU 推算的"走了多远"，会漂移，必须靠 AMCL 校正</td><td>EXP-01</td></tr>
-        <tr><td>占据栅格</td><td>把世界切成 0.05 m 的格子：100 占据 / 0 空闲 / -1 未知</td><td>EXP-02</td></tr>
+        <tr><td>mimic 关节</td><td>从动关节，不独立驱动而是按倍数跟随主动关节——car1 夹爪 5 个指节跟 1 个 r_joint</td><td>EXP-01</td></tr>
+        <tr><td>里程计 odom</td><td>由轮速/IMU 融合同步推算的"走了多远"，会漂移，靠 AMCL 校正</td><td>EXP-01</td></tr>
+        <tr><td>占据栅格</td><td>把世界切成 0.05 m 的格子：话题里 100 占据 / 0 空闲 / -1 未知；存成 .pgm 后是 0 / 254 / 205 灰度</td><td>EXP-02</td></tr>
         <tr><td>回环检测</td><td>认出"我来过这里"，把累积漂移一次性修掉（地图闭合的关键）</td><td>EXP-02</td></tr>
-        <tr><td>代价地图 costmap</td><td>在地图上叠"离障碍越远越便宜"的代价层，规划只走低代价区</td><td>EXP-03</td></tr>
-        <tr><td>行为树 BT</td><td>Nav2 的任务剧本：算路径→跟踪→到达，失败时翻到恢复分支</td><td>EXP-03</td></tr>
+        <tr><td>代价地图 costmap</td><td>在地图上叠"离障碍越远越便宜"的代价层（0 / 1-252 / 254 / 255），规划只走低代价区</td><td>EXP-03</td></tr>
+        <tr><td>行为树 BT</td><td>Nav2 的任务剧本：算路径→跟踪→到达，失败时翻到恢复分支（清图 / Spin / Wait）</td><td>EXP-03</td></tr>
         <tr><td>AMCL</td><td>撒一群粒子各自"假设我在哪"，用扫描打分、重采样优胜劣汰</td><td>EXP-04</td></tr>
-        <tr><td>膨胀半径 inflation</td><td>障碍外扩一圈"别靠太近"的缓冲带，半径 = 安全距 vs 通过性的权衡</td><td>EXP-05</td></tr>
-        <tr><td>DWA / 动态窗口</td><td>只在"刹得住"的速度里采样短轨迹，打分选最优——局部避障的心脏</td><td>EXP-05</td></tr>
+        <tr><td>膨胀半径 inflation</td><td>障碍外扩一圈"别靠太近"的缓冲带（默认 0.18 m），半径 = 安全距 vs 通过性的权衡</td><td>EXP-05</td></tr>
+        <tr><td>DWA / 动态窗口</td><td>只在"刹得住"的速度里采样短轨迹（最多 20×40 条），打分选最优——局部避障的心脏</td><td>EXP-05</td></tr>
         <tr><td>Action</td><td>goal/feedback/result 三段式通信，专为"跑很久还要看进度"的任务</td><td>EXP-06</td></tr>
+        <tr><td>RemovePassedGoals</td><td>多点导航里"进到途经点 0.7 m 内就剔除该点"的行为树节点，决定"经过"的判定方式</td><td>EXP-06</td></tr>
         <tr><td>词袋 Bag-of-Words</td><td>把图像特征聚类成"词汇"，凭词汇相似度判断"回到旧地"</td><td>EXP-07</td></tr>
         <tr><td>OctoMap</td><td>把三维空间切成立方体体素的可压缩地图，导航避障的三维底图</td><td>EXP-07</td></tr>
       </table>
@@ -428,21 +431,21 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
     <p>把历届同学最高频的疑问前置到首页，省下你翻论坛的功夫。</p>
   </div>
   <div class="kgrid reveal">
-    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>Q1 · RViz 里看不到 /scan？</h4><p>九成是话题没数据或 QoS 不匹配：先 ros2 topic hz /scan 确认 10 Hz，再在 RViz 里把 Reliability 改为 Best Effort。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>Q2 · 建图时小车开多快？</h4><p>逛圈要"慢而不停"：转角减速、短暂停留；开太快扫描配准跟不上，墙会画重影（EXP-02 有专门的逛圈手法演练台）。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>Q3 · 地图保存到哪里了？</h4><p>map_saver_cli 默认写到当前目录的 map.pgm + map.yaml；挪动文件后 navigation.launch 的 map:= 参数要跟着改。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>Q4 · AMCL 粒子越多越准？</h4><p>不一定：粒子翻倍算力也翻倍；500-2000 是常用带宽，关键是"收敛后是否假收敛"（EXP-04 互动台可试）。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>Q1 · RViz 里看不到 /scan？</h4><p>九成是话题没数据或 QoS 不匹配：先 ros2 topic hz /scan 确认 10 Hz，再在 RViz 里把 LaserScan 的 Reliability 改为 Best Effort。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>Q2 · 建图时小车开多快？</h4><p>逛圈要"慢而不停"：转角减速、短暂停留；slam_teleop 默认 0.2 m/s、0.5 rad/s 已经比较稳，别再加速——开太快扫描配准跟不上，墙会画重影。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>Q3 · 地图保存到哪里了？</h4><p>car1_slam 的 map_save 默认写到包的 maps 目录，文件名由参数决定：<code>-p map_name:=map_01</code>。挪动文件后 navigation.launch 的 map:= 参数要跟着改。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>Q4 · AMCL 粒子越多越准？</h4><p>不一定：粒子翻倍算力也翻倍；500~2000 是常用带宽，关键是"收敛后是否假收敛"（EXP-04 互动台可试）。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>Q5 · 目标点总是 ABORTED？</h4><p>依次排查：目标是否在墙里/膨胀层内 → 定位是否已收敛 → 全局代价地图有没有静态层。八成出在第一步。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>Q6 · 避障测试总撞箱子？</h4><p>箱子放得太近（进局部窗口才被发现）或速度过快刹不住：往远放、降 max_vel_x，见 EXP-05 坑表第一行。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>Q7 · 多点导航跳过了中间点？</h4><p>途经点间距小于 0.5 m 或容差过大：拉开点距、核对 poses[] 顺序与 frame_id（必须是 map）。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>Q8 · 键盘遥控方向是反的？</h4><p>teleop 的"前后"默认对齐机器人 +X；若反了检查 URDF 里 base link 的朝向约定，或用 TF 确认车头方向。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>Q7 · 多点导航跳过了中间点？</h4><p>行为树会剔除 0.7 m 内已通过的途经点：把间距拉到 &gt;1.0 m，核对 poses[] 顺序与 frame_id（必须是 map）。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>Q8 · 键盘遥控方向是反的？</h4><p>teleop 的"前后"对齐机器人 +X；若反了检查 URDF 里 base link 的朝向约定，或用 TF 确认车头方向。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#d97706"></span>Q9 · 改了 yaml 没生效？</h4><p>Nav2 各 server 启动时读参：Ctrl+C 重启 navigation.launch；只 lifecycle reload 单节点未必覆盖全部参数。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#d97706"></span>Q10 · TEB 要不要装？</h4><p>不用：本项目 controller_plugins 固定为 DWB，TEB 是知识扩展；理解差异即可，动手对照见 EXP-05 互动台。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#d97706"></span>Q10 · TEB 要不要装？</h4><p>不用：本项目 controller_plugins 固定为 FollowPath→DWB，TEB 属知识扩展；理解差异即可，动手对照见 EXP-05 互动台。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>Q11 · EXP-07 没有配套源码怎么考？</h4><p>原理 + 通用流程型：交付反投影验算、数据链路验证记录、二维/三维选型报告；页面 05 节已写明验收标准。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#e11d48"></span>Q12 · 实验报告写什么？</h4><p>固定骨架：目标 → 环境 → 步骤（命令截图）→ 数据表 → 参数→现象对照 → 思考题作答。数据务必来自你自己的终端。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#0d9488"></span>Q13 · 地图和真实房间对不上？</h4><p>九成是没设初始位姿：先 rviz2 的 2D Pose Estimate 拉一次；还不准就遥控走一段直角路径让 AMCL 收敛。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>Q14 · 发了 /cmd_vel 车不动？</h4><p>按链路排查：echo 看有无速度 → 底盘使能/急停是否松开 → 话题名是否被 remap 改过 → 是否与 teleop 抢同一个话题。</p></div>
-    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>Q15 · 键盘遥控没反应？</h4><p>焦点不在终端窗口时按键全部丢失：点一下 teleop 所在终端再按；确认 /cmd_vel 仍在发布，按 Ctrl+C 前别关窗口。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#2563eb"></span>Q14 · 发了 /cmd_vel 车不动？</h4><p>先分清两条链路：手动遥控走 /cmd_vel（限幅 ±0.3 m/s），Nav2 走 /controller/cmd_vel（不设限幅）。echo 对应话题看有没有速度，再查底盘使能、急停与 remap。</p></div>
+    <div class="kcard"><h4><span class="dot" style="background:#7c3aed"></span>Q15 · 键盘遥控没反应？</h4><p>slam_teleop 用 termios 读原始按键，必须跑在真终端（IDE 内嵌终端读不到）；点一下终端窗口再按，并确认 /cmd_vel 仍在发布。</p></div>
     <div class="kcard"><h4><span class="dot" style="background:#d97706"></span>Q16 · 保存的地图打不开？</h4><p>map_saver_cli 同时生成 .pgm + .yaml，yaml 里的 image 是相对路径——两个文件必须一起挪，或把 image 改成绝对路径。</p></div>
   </div>
 

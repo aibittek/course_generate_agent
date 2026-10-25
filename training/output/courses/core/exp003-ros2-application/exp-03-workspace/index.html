@@ -15,9 +15,10 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：项目越来越大了怎么办</a>
   <a href="#s11">02 演示：colcon build 构建复杂项目</a>
-  <a href="#s2">03 colcon 编译的基本流程</a>
+  <a href="#s2">03 核心原理：四层目录结构 + colcon 编译流程</a>
   <a href="#s7">04 实操：从零创建工作空间</a>
   <a href="#s8">05 实操：Overlay 覆盖规则</a>
   <a href="#s9">06 注意事项与验收清单</a>
@@ -35,6 +36,21 @@
   <p class="desc"><b>工作空间</b>：就是源代码工程管理的顶层目录，一般以 ros 前缀、_ws 后缀命名，我们的 ROS2 工程放在家目录下，命名为 <code>ros2_ws</code>，里面分开存放了代码（<code>src</code>）、构建（<code>build</code>）、安装（<code>install</code>）和运行日志（<code>log</code>）。<br><b>colcon</b>（全拼 collective construction，集体构建）：用于编译构建整个工程——站在工作空间根目录敲一条 <code>colcon build</code>，src 下所有带 <code>package.xml</code> 的包就全编进 install/ 了。<br>本章目标：<b>掌握使用 colcon build 构建和管理 ROS2 工程</b>——先看懂设备上的真实工作空间，再自己从零搭一个、把 C++ 与 Python 各编译验证一遍。第一次 build 万一报错也别担心——报错信息就是在告诉你缺什么，排查过程本身就是本章要练的。</p>
   <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 colcon · overlay · symlink</span></div>
 </div>
+
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清结构</div><div class="kt">四层目录各管什么</div><p>能阐述 src / build / install / log 四层目录各自的职责，以及 Underlay（<code>/opt/ros/humble</code>）与 Overlay（用户工作空间）通过 <code>source setup.bash</code> 叠加的机制。</p></div>
+  <div class="kcard"><div class="kd">② 掌握流程</div><div class="kt">建 → 编 → 载 → 验</div><p>能正确执行 <code>mkdir -p ~/ros2_ws/src</code> → 放源码 → <code>colcon build</code> → <code>source install/setup.bash</code> → 用 <code>ros2 pkg list</code> 确认包被识别。</p></div>
+  <div class="kcard"><div class="kd">③ 独立搭一个</div><div class="kt">从零建工作空间</div><p>能独立创建新工作空间、编译示例包，并验证层级覆盖（Overlay 覆盖 Underlay）确实生效。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移成习惯</div><div class="kt">新包放对地方</div><p>后续每次新建功能包，都能正确放到 <code>src/</code> 下，并完成编译与 <code>source</code> 加载。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：<code>colcon build</code> 必须在工作空间根目录执行、编译后必须重新 <code>source</code>——这两条是"包找不到"的两大来源。<br>
+<b>难点</b>：理解"后 source 者胜出"的覆盖顺序，以及为什么工作空间的 setup.bash 会自动带上底层。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课建的 <code>~/ros2_ws</code> 是<b>后续所有实验的家</b>；EXP-04 就要在这个空间里建自己的包。</div>
+</section>
 
 <section class="blk" id="s1">
 <h2><span class="no">01</span>问题引入：项目越来越大了，怎么办</h2>
@@ -165,7 +181,7 @@ demo_nodes_cpp/
 </section>
 
 <section class="blk" id="s2">
-<h2><span class="no">03</span>colcon 编译的基本流程</h2>
+<h2><span class="no">03</span>核心原理：四层目录结构 + colcon 编译流程</h2>
 <p>一次 <code>colcon build</code> 牵着三件事：产物落在哪（工作空间四层目录）、内部按什么顺序走（构建四阶段）、编完之后怎么被环境找到（Underlay / Overlay 叠层查找）。原理看完，最后一小节把最常用的命令收在一起——标准四步曲和高频选项，照着敲即可。</p>
 <h3>工作空间四层目录：产物落在哪</h3>
 <div class="kgrid">

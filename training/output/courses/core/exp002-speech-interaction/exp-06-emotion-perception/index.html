@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP-06 · 多模态语音情绪感知 — 机器人自然语言交互应用</title>
+<title>EXP-06 · 多模态视觉语言理解 — 机器人自然语言交互应用</title>
 <link rel="stylesheet" href="../shared/tutorial.css">
 <style>
 :root{
@@ -12,6 +12,7 @@
   --theme-bg:#ede9fe;
   --theme-bd:#ddd6fe;
 }
+pre code{background:none;border:none;border-radius:0;padding:0;font-size:1em;color:inherit}
 </style>
 </head>
 <body>
@@ -27,13 +28,13 @@
 
   <aside class="side">
     <h4>本页目录</h4>
-    <a href="#s1" class="now">01 问题引入：同样一句"没事"，意思可以完全相反</a>
-    <a href="#s2">02 原理通俗讲解：两个侦探一起断案</a>
+    <a href="#s1" class="now">01 问题引入：一个只会"听"的机器人，答不上"你看到什么"</a>
+    <a href="#s2">02 原理通俗讲解：给机器人装一只眼睛，要接四根管子</a>
     <a href="#s3">03 关联知识点</a>
     <a href="#s4">04 实验目标</a>
     <a href="#s5">05 实验环境与准备</a>
-    <a href="#s6">06 动画讲解：文字与声音的两条线</a>
-    <a href="#s7">07 互动讲解：调一调权重，看结论怎么翻</a>
+    <a href="#s6">06 动画讲解：四态状态机与图像通路</a>
+    <a href="#s7">07 互动讲解：四态流转与帧缓存实验台</a>
     <a href="#s8">08 实操步骤</a>
     <a href="#s9">09 重点与易错点</a>
     <a href="#s10">10 总结与思考</a>
@@ -42,340 +43,521 @@
     <a href="../exp-01-mic-array-wakeup/index.html">EXP-01 六麦阵列唤醒</a>
     <a href="../exp-02-asr/index.html">EXP-02 声学模型 ASR 语音识别</a>
     <a href="../exp-03-tts/index.html">EXP-03 TTS 语音合成</a>
-    <a href="../exp-04-voice-dialog/index.html">EXP-04 端到端语音对话</a>
-    <a href="../exp-05-llm-understanding/index.html">EXP-05 大模型语义理解</a>
-    <a href="../exp-06-emotion-perception/index.html">EXP-06 多模态语音情绪感知</a>
+    <a href="../exp-04-voice-dialog/index.html">EXP-04 大模型端到端对话</a>
+    <a href="../exp-05-llm-understanding/index.html">EXP-05 实时语音交互与工具调用</a>
+    <a href="../exp-06-emotion-perception/index.html">EXP-06 多模态视觉语言理解</a>
   </aside>
 
   <main class="content">
 
     <div class="exp-head">
-      <span class="code">EXP-06 · 第 2 章 · 综合性 · 4 学时</span>
-      <h1>多模态语音情绪感知：听出你的心情</h1>
-      <p class="desc">前面的实验让机器人听清了字、也听懂了意思；这一课补上最后一件事——听出你此刻是什么心情。用文字和声音两条线索，各自判断、再合起来定案。</p>
+      <span class="code">EXP-06 · 第 2 章 · 综合性 · 8 学时</span>
+      <h1>多模态视觉语言理解：让机器人一边听一边看</h1>
+      <p class="desc">前五个实验里，机器人只有"耳朵"和"嘴"。这一节给它装上一只<b>眼睛</b>：问"画面里有什么"，它要一边听你说话、一边抓一帧图、一边把图和问题一起交给视觉语言模型，最后把答案念出来。本实验的核心<b>不是训练模型</b>，而是理解"图像 + 文本 → 回答"这条通路怎么在 ROS2 里跑起来，以及为什么它比纯语音多一个状态。</p>
       <div class="meta">
-        <span class="tag hl">难度 ⭐⭐⭐ · 4 学时</span>
-        <span class="tag">文字看说了什么</span>
-        <span class="tag">声音听怎么说的</span>
-        <span class="tag">两路合并判断</span>
+        <span class="tag hl">难度 ⭐⭐⭐ · 8 学时</span>
+        <span class="tag">ROS2 话题订阅</span>
+        <span class="tag">CvBridge</span>
+        <span class="tag">四态状态机</span>
+        <span class="tag">Vision Encoder + LLM</span>
+        <span class="tag">流式 VLM 子进程</span>
       </div>
     </div>
 
+    <!-- 01 -->
     <section class="blk" id="s1">
-      <h2><span class="no">01</span>问题引入：同样一句"没事"，意思可以完全相反</h2>
-      <p>朋友跟你说"没事"。他要是抬着头、语气轻快，那就是真没事；可要是低着头、声音又轻又慢，你大概不会信。同一句话，情绪全藏在"怎么说"里。</p>
+      <h2><span class="no">01</span>问题引入：一个只会"听"的机器人，答不上"你看到什么"</h2>
+      <p>到这里，机器人已经能听、能说、能听话动手。但如果你问它——</p>
+      <p style="text-align:center;font-size:16px;font-weight:700;color:var(--head);background:var(--bg-soft);border-radius:10px;padding:14px;border:1px solid var(--border)">"<b>画面里有什么？</b>"　　"<b>桌上那个盒子是什么颜色的？</b>"　　"<b>我举的是几根手指？</b>"</p>
+      <p>它一个字都答不上来。原因很简单：<b>它的输入里根本没有图像</b>。语言模型再大，也不可能知道你眼前有什么。</p>
+      <p>要让它"看得见"，需要接上一条全新的通路。这条通路上有三个新麻烦：</p>
       <div class="flow">
-        <div class="step"><span class="n">1</span><div><b>用户："我没事。"</b><br>声音很轻、有点抖、说得断断续续。</div></div>
-        <div class="arr">→</div>
-        <div class="step"><span class="n">2</span><div><b>只看文字：判定"情绪正常"</b><br>机器人接着往下推销，用户直接挂断。</div></div>
-        <div class="arr">→</div>
-        <div class="step"><span class="n">3</span><div><b>再听语气：判定"很难过"</b><br>先安慰一句，再谈正事，体验完全不同。</div></div>
+        <div class="step"><span class="n">1</span><b>图像从哪来</b>：相机是另一个进程，它不"给你"图片，而是往话题里"发"图片。你得先学会 ROS2 的发布/订阅模型，才能拿到数据</div>
+        <div class="arr"></div>
+        <div class="step"><span class="n">2</span><b>图片怎么用</b>：相机发的是 ROS2 消息格式（带 header、encoding 等字段），不能直接喂给模型；而且它每秒发 25 帧，模型一次推理要 1~2 秒——<b>不可能逐帧处理</b></div>
+        <div class="arr"></div>
+        <div class="step"><span class="n">3</span><b>等模型的时候干什么</b>：语音交互里"说完就答"，最慢的是 LLM（1~3s）。现在多了一个视觉编码（约 1s），总延迟会到 4~6s。<b>这段时间状态机算"在听"还是"在说"？</b>两者都不对——于是必须新增一个状态</div>
       </div>
-      <p>再看三种日常说法，光看文字和加上语气，结论会差多远：</p>
-      <table>
-        <thead><tr><th>用户怎么说</th><th>只看文字</th><th>再加上声音</th></tr></thead>
-        <tbody>
-          <tr><td>"我没事"（很轻、很慢、带哽咽）</td><td>没事</td><td>难过，需要安慰</td></tr>
-          <tr><td>"好的好的，快点吧！"（又快又响）</td><td>挺配合</td><td>不耐烦，快要发火了</td></tr>
-          <tr><td>"太棒了……"（拖长、往下掉、没起伏）</td><td>开心</td><td>失望，说的其实是反话</td></tr>
-        </tbody>
-      </table>
-      <div class="tip amber"><span class="lab">💡 本节要点</span>情绪不只在"用了哪个词"里，还在"用了什么声音"里。只读文字，只能听懂内容；把声音的高低、大小、快慢也听进去，才听得出心情。</div>
+      <div class="tip amber"><span class="lab">💡 本节要点</span>多模态不是"把图片塞进模型"这么简单，而是<b>多了一条数据通路 + 多了一个状态 + 多了一组时序问题</b>。本实验的 8 学时主要花在这三件事上，VLM 推理本身反而是"调一个现成的服务"。</div>
     </section>
 
+    <!-- 02 -->
     <section class="blk" id="s2">
-      <h2><span class="no">02</span>原理通俗讲解：两个侦探一起断案</h2>
-      <p>听朋友诉苦时，你其实同时在用两条线索：<b>他说了哪些词</b>，以及<b>他是怎么说的</b>。把这两条线索分别交给两个侦探，各自给出判断和把握程度，最后一起合计定案——这就是多模态情绪感知的全部思路。</p>
+      <h2><span class="no">02</span>原理通俗讲解：给机器人装一只眼睛，要接四根管子</h2>
+      <p><b>生活比喻：看图说话的医生。</b>你拿着一张 X 光片问医生"这里有问题吗"。医生做的事分两步：<b>先看片</b>（视觉），<b>再结合你的问题给结论</b>（推理）。VLM 就是这两步的机器版，中间用"特征"作为交接物。</p>
       <table>
-        <thead><tr><th>生活里的做法</th><th>对应的概念</th><th>一句话解释</th></tr></thead>
+        <thead><tr><th>管子</th><th>医生类比</th><th>本实验对应</th></tr></thead>
         <tbody>
-          <tr><td>听他用了哪些词<br><small>"太好了" vs "随便吧"</small></td><td><b>文本通道</b></td><td>把识别出来的文字和一张情绪词表对照，算出这句话偏"好"还是偏"坏"。</td></tr>
-          <tr><td>听他怎么说<br><small>声音高不高、响不响、快不快</small></td><td><b>语音通道（韵律）</b></td><td>不用听懂内容，直接从声音里量出音高、音量、语速三个数，判断此刻有多激动。</td></tr>
-          <tr><td>两个侦探各自打分，再合计</td><td><b>双模态融合</b></td><td>按"谁更有把握"分配话语权，合出一个结论；两边打架时要降低把握，多问一句。</td></tr>
-          <tr><td>把结论标到一张情绪地图上</td><td><b>情绪坐标（二维）</b></td><td>横轴是心情好坏，纵轴是激动程度，任何情绪都能在这张图上找到位置。</td></tr>
+          <tr><td><b>① 图像来源</b></td><td>X 光机把片子拍出来挂到观片灯上</td><td>HP60C 相机节点发布 <code>/ascamera_hp60c/.../image</code> 话题</td></tr>
+          <tr><td><b>② 图像搬运</b></td><td>护士把片子递到医生手上</td><td>ROS2 回调 + <code>CvBridge</code> 把 <code>sensor_msgs/Image</code> 转成 OpenCV 数组</td></tr>
+          <tr><td><b>③ 看片</b></td><td>医生扫一眼片子，脑子里形成印象</td><td><b>Vision Encoder</b>（RKNN）：图片 → 一串特征向量</td></tr>
+          <tr><td><b>④ 结合问题下结论</b></td><td>医生结合"哪不舒服"给出判断</td><td><b>LLM</b>（RKLLM）：特征 + 你的问题 → 自然语言回答</td></tr>
         </tbody>
       </table>
 
-      <h3>语音侦探手里的三把尺子</h3>
-      <p>声音这一路不需要听懂字，只量三件事：</p>
-      <table>
-        <thead><tr><th>量什么</th><th>生活里的感觉</th><th>能看出什么</th></tr></thead>
-        <tbody>
-          <tr><td>音高（声音的高低）</td><td>嗓音往上翘，还是往下沉</td><td>往上翘、起伏大 → 激动、生气；压低变平 → 难过、压抑</td></tr>
-          <tr><td>音量（声音的大小）</td><td>说话有多响</td><td>一直很大声 → 生气、兴奋；突然变小 → 失落</td></tr>
-          <tr><td>语速（说得多快、停多久）</td><td>说得急不急，中间停多久</td><td>又快又不停 → 着急；又慢又常停顿 → 低落、犹豫</td></tr>
-        </tbody>
-      </table>
-      <p>怎么量？一句话带过：把一段录音切成很多小段，算平均音高、平均音量，再数一数每秒说了几个字。工具里都写好了，实验时直接调用即可，不需要背公式。</p>
-
-      <h3>这个实验在整条语音管线里的位置</h3>
-      <div class="flow">
-        <div class="step"><span class="n">1</span><div>拾音<br><small>声音里的情绪就藏在这段波形里</small></div></div>
-        <div class="arr">→</div>
-        <div class="step"><span class="n">2</span><div>唤醒<br><small>开始一次对话（EXP-01）</small></div></div>
-        <div class="arr">→</div>
-        <div class="step"><span class="n">3</span><div>识别出文字<br><small>文字进入文本通道（EXP-02）</small></div></div>
-        <div class="arr">→</div>
-        <div class="step"><span class="n">4</span><div>理解意思 + 判断情绪<br><small>两个结论一起交给大模型（EXP-05）</small></div></div>
-        <div class="arr">→</div>
-        <div class="step"><span class="n">5</span><div>合成回复<br><small>语气、语速跟着情绪走（EXP-03）</small></div></div>
+      <h3>为什么要"两个模型串联"</h3>
+      <p>一个 0.8B 的语言模型只会处理<b>文字</b>（更准确说，是 token 编号）。图片是像素，它读不懂。所以中间必须有一个"翻译官"：</p>
+      <div style="background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:16px;margin:14px 0;font-family:var(--font-mono);font-size:13px;line-height:2">
+        <span style="color:#7c3aed;font-weight:700">RGB 图像 (480,640,3)</span>
+        → resize 到 <b>448×448</b> → 归一化<br>
+        → <span style="color:#2563eb;font-weight:700">RKNN Vision Encoder</span> → <b>image embeddings</b>（图像变成一串数字）<br>
+        → 与问题文本的 token 拼在一起 → <span style="color:#059669;font-weight:700">RKLLM</span> → 逐 token 生成回答
       </div>
+      <p>这个"把图变成向量、再和文字拼在一起"的做法，就是 VLM 的核心思想。<b>视觉部分和语言部分可以分开部署、分开加速</b>——在 RK3576 上，视觉走 <b>RKNN</b>（NPU），语言走 <b>RKLLM</b>（NPU），两个模型都常驻内存。</p>
+      <div class="tip tealb"><span class="lab">🔍 源码里它是怎么串起来的</span><code>vlm_server.py</code> 用一个独立子进程加载两个模型（Vision 约 10 秒，LLM 更久），然后通过 <code>stdin/stdout</code> 收发 <b>JSON 行</b>：请求是 <code>{"image_path":…, "question":…}</code>，响应是一行行 <code>{"type":"token","text":…}</code>，最后 <code>{"type":"done"}</code>。<b>为什么要单独起一个子进程？</b>因为模型加载慢且吃内存，把它和 ROS2 节点隔开，节点崩了不会连带模型，模型也能被复用。</div>
 
-      <div class="tip tealb"><span class="lab">🎯 核心直觉</span>文本通道擅长说"这是哪一种情绪"，语音通道擅长说"这份情绪有多强烈"。融合就是：<b>用文字定性质，用声音定强度</b>。</div>
+      <h3>为什么多一个 PROCESSING 状态</h3>
+      <p>纯语音交互是三态；多模态是<b>四态</b>。多出来的这个 <code>PROCESSING</code> 不是装饰：</p>
+      <table>
+        <thead><tr><th>状态</th><th>含义</th><th>进入条件</th><th>离开条件</th></tr></thead>
+        <tbody>
+          <tr><td><b>IDLE</b></td><td>等唤醒</td><td>程序启动 / 上一轮结束</td><td>KWS 或 XFM 硬件唤醒命中</td></tr>
+          <tr><td><b>LISTENING</b></td><td>听你说话</td><td>唤醒后（提示音 + 排空队列）</td><td>ASR 端点检测触发</td></tr>
+          <tr><td><b>PROCESSING</b></td><td><b>看图 + 想想</b></td><td>识别出有效问题文本</td><td>VLM 首 token 到达 / 出错</td></tr>
+          <tr><td><b>SPEAKING</b></td><td>念答案</td><td>拿到回答内容</td><td>TTS 播完（<code>speaking_done</code>）</td></tr>
+        </tbody>
+      </table>
+      <div class="tip violet"><span class="lab">🔍 但源码有个反直觉之处（必须知道）</span>读 <code>multi_interaction_node.py</code> 你会发现：<code>_process_question</code> 里设了 <code>state = "PROCESSING"</code> 之后，<b>紧接着就把它改成了 <code>SPEAKING</code></b>，然后才启动 worker 线程。也就是说 <b>PROCESSING 在真实代码里只存在几毫秒</b>，实际"看图思考"的时间都发生在 SPEAKING 里（边生成边播报）。<br><br>这不是 bug，而是一个设计取舍：<b>VLM 是流式的</b>，第一个 token 出来后就可以开始合成播报，没必要"先想完再说"。理解了这一点，你就能回答思考题 2。<b>如果哪天换成非流式的 VLM，"先想完再说"，PROCESSING 才会变成真正的长状态。</b></div>
+
+      <h3>图像通路的三个关键设计</h3>
+      <div class="kgrid">
+        <div class="kcard">
+          <div class="kd">📥 只存最新帧</div>
+          <div class="kt">copy 一份，边来边覆盖</div>
+          <p>相机 25 FPS，VLM 一次 1~2 秒。不可能排队处理每一帧。正确做法：回调里只把<b>最新一帧</b>存到 <code>self.latest_rgb</code>。VLM 要的时候 <code>.copy()</code> 一份走。<b>不 copy 会被下一帧改写</b>。</p>
+        </div>
+        <div class="kcard">
+          <div class="kd">🔒 加锁</div>
+          <div class="kt">image_lock</div>
+          <p>ROS2 回调在 spinner 线程里跑，VLM 在主循环/worker 线程里跑。两个线程同时读写 <code>latest_rgb</code> 会读到"半个新帧 + 半个旧帧"。<code>threading.Lock</code> 保证读写互斥。</p>
+        </div>
+        <div class="kcard">
+          <div class="kd">⏱ 双重超时轮询</div>
+          <div class="kt">spin_once(0.01) + queue.get(0.1)</div>
+          <p>单线程里既要处理 ROS2 回调、又要取音频块。<code>spin_once(timeout=0.01)</code> 让 ROS2 事件不被饿死；<code>get(timeout=0.1)</code> 让音频不被拖慢。两个超时都很小，谁都不会饿着。</p>
+        </div>
+      </div>
     </section>
 
+    <!-- 03 -->
     <section class="blk" id="s3">
       <h2><span class="no">03</span>关联知识点</h2>
       <div class="kgrid">
-        <div class="kcard"><div class="kd">📝</div><div class="kt">文本情绪</div><p>从"说了哪些词"看情绪。入门用一张情绪词表给词打分（"太好了"+2、"烦死"-2），再落成积极 / 消极 / 中性 / 开心 / 愤怒 / 悲伤六个标签。</p></div>
-        <div class="kcard"><div class="kd">🎵</div><div class="kt">韵律三特征</div><p>音高、音量、语速。不用听懂内容就能量出来，但对麦克风远近和录音音量很敏感——所以所有样本要在同一条件下录。</p></div>
-        <div class="kcard"><div class="kd">🔗</div><div class="kt">双模态融合</div><p>两个通道各出一个分数，按权重合成一个结论。谁更有把握就多听谁；两边结论相反时，降低把握度并追问一句。</p></div>
-        <div class="kcard"><div class="kd">📐</div><div class="kt">情绪坐标</div><p>横轴心情好坏（消极 → 积极），纵轴激动程度（平静 → 激动）：开心在右上、生气在左上、难过在左下、平静在右下。</p></div>
+        <div class="kcard"><div class="kd">🧩 ROS2</div><div class="kt">节点 / 话题 / 订阅</div>
+          <p><b>节点</b>是独立进程，<b>话题</b>是通信频道，<b>发布者</b>往里发、<b>订阅者</b>从里取。三者靠 <b>DDS 中间件自动发现</b>（不需要先起哪一个），但订阅者启动时话题还没数据，所以<b>先起相机更省事</b>。</p></div>
+        <div class="kcard"><div class="kd">📷 相机</div><div class="kt">HP60C + camera_web_viewer</div>
+          <p><code>camera_viewer.launch.py</code> 一键拉起两个节点：<code>ascamera_node</code>（推 RGB/Depth/点云）和 <code>camera_web_server</code>（Flask+SocketIO 把画面推到浏览器 <code>:8000</code>）。</p></div>
+        <div class="kcard"><div class="kd">🖼 消息</div><div class="kt">sensor_msgs/Image</div>
+          <p>字段含 <code>height/width/encoding/data</code>，<code>data</code> 是一整块字节数组。<b>它不像 JPEG 那样自带尺寸</b>——尺寸在单独字段里，所以不能直接丢给图片库。</p></div>
+        <div class="kcard"><div class="kd">🌉 转换</div><div class="kt">CvBridge</div>
+          <p><code>bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')</code> → 得到 <code>numpy.ndarray (H,W,3)</code>。注意 OpenCV 默认 <b>BGR</b> 而不是 RGB，多模态里最常见的色差 bug 就来自这里。</p></div>
+        <div class="kcard"><div class="kd">🎬 相机参数</div><div class="kt">640×480 @ 25 FPS</div>
+          <p>RGB 与深度都是 640×480。启动参数在 launch 文件里。改分辨率要<b>同时改相机和 VLM 预处理</b>（VLM 内部会 resize 到 448×448，但你变相机不影响它）。</p></div>
+        <div class="kcard"><div class="kd">🧠 Vision Encoder</div><div class="kt">RKNN + RKNNLite</div>
+          <p><code>Qwen3.5-0.8B_vision_rk3576.rknn</code>，用 <code>RKNNLite</code> 加载，<code>core_mask=NPU_CORE_0_1</code>（占两个 NPU 核）。输入 resize 到 448×448 并归一化。</p></div>
+        <div class="kcard"><div class="kd">💬 LLM</div><div class="kt">RKLLM + ImageInput</div>
+          <p><code>Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm</code>，<code>max_context_len=2048</code>、<code>max_new_tokens=256</code>。视觉特征通过 <code>RKLLMImageInput.image_embed</code> 注入，和文本 token 一起解码。</p></div>
+        <div class="kcard"><div class="kd">🔀 子进程协议</div><div class="kt">stdin/stdout JSON 行</div>
+          <p>一行请求、多行响应（<code>token</code>… → <code>done</code>）。<b>为什么用 JSON 行而不是 pickle/HTTP？</b>跨进程最简单、可人工调试、不怕版本冲突。</p></div>
+        <div class="kcard"><div class="kd">🔊 播报</div><div class="kt">流式 TTS + 常驻 aplay</div>
+          <p>VLM 边出 token，<code>SENTENCE_RE</code> 边切句，<code>_clean_for_tts</code> 清掉 markdown/emoji 后立刻合成 PCM 写入常驻 aplay。<b>和 EXP-05 是同一套做法。</b></p></div>
+        <div class="kcard"><div class="kd">⚠️ 待改进</div><div class="kt">打断未实现</div>
+          <p><code>_handle_speaking</code> 里只有一句 <code># TODO: 支持打断</code>。也就是说本实验的 SPEAKING 状态<b>不能</b>被唤醒词打断——这是留给你的扩展题（见思考题 3）。</p></div>
       </div>
     </section>
 
+    <!-- 04 -->
     <section class="blk" id="s4">
       <h2><span class="no">04</span>实验目标</h2>
       <ul class="check">
-        <li>会用一张情绪词表，给识别出来的文字贴上一个情绪标签</li>
-        <li>会从一段录音里量出音高、音量、语速，并说出这三项偏向哪种情绪</li>
-        <li>会调融合权重，让文字和声音合成一个结论，并能解释结论为什么翻转</li>
-        <li>能把情绪结论变成一句得体的"回应语气建议"，写进对话上下文</li>
+        <li>能说清 ROS2 的"发布者/订阅者/话题/消息类型"四要素，并用 <code>ros2 topic list / hz / echo</code> 验证相机话题确实在发数据</li>
+        <li>用 <code>ros2 launch camera_web_viewer camera_viewer.launch.py</code> 拉起相机，浏览器 <code>:8000</code> 看到 25 FPS 实时画面</li>
+        <li>能画出四态状态机，并解释<b>为什么多模态比纯语音多一个 PROCESSING 状态</b>（再读源码，说明它为什么实际很短）</li>
+        <li>能解释 <code>CvBridge</code> 的作用、<code>desired_encoding='bgr8'</code> 的含义，以及为什么必须 <code>.copy()</code> + <code>image_lock</code></li>
+        <li>跑通端到端：唤醒 → "画面里有什么" → 听到对图像的描述，日志依次出现四态切换</li>
+        <li>能说清 VLM "Vision Encoder + LLM"两段的分工，以及为什么必须"先把图变向量、再和文字拼在一起"</li>
+        <li>能解释 <code>vlm_server.py</code> 为什么单独起子进程、为什么用 JSON 行通信</li>
+        <li>找出代码里 <code># TODO: 支持打断</code> 的位置，说清补齐它需要改哪几处（不必真的实现，但要能说清）</li>
       </ul>
     </section>
 
+    <!-- 05 -->
     <section class="blk" id="s5">
       <h2><span class="no">05</span>实验环境与准备</h2>
       <table>
         <thead><tr><th>类别</th><th>配置</th></tr></thead>
         <tbody>
-          <tr><td>硬件</td><td>具身智能实验箱 B2（RK3576）+ 讯飞六麦阵列</td></tr>
-          <tr><td>复用模块</td><td>EXP-01~02 的录音与识别、EXP-05 的对话服务、EXP-03 的语音合成</td></tr>
-          <tr><td>文本通道</td><td>一张情绪词表，纯 Python 即可，不需要模型</td></tr>
-          <tr><td>语音通道</td><td>16kHz / 16 位 / 单声道录音，每句 2~4 秒</td></tr>
-          <tr><td>现成工具</td><td><code>audio_analyzer.py</code>（量音量、查爆音）、<code>asr_test.py --audio-file</code>（数出字数算语速）</td></tr>
-          <tr><td>素材</td><td><code>samples/</code> 目录：自己录平静 / 生气 / 难过 / 开心各 3 条</td></tr>
+          <tr><td>硬件</td><td>具身智能实验箱 B2 / 小车 C1（RK3576 NPU 6TOPS + HP60C 深度相机 + 讯飞 XFM 六麦阵列）</td></tr>
+          <tr><td>系统</td><td>Ubuntu 22.04 + ROS2 Humble，Python 3.10（推荐 <code>ros2_venv</code>）</td></tr>
+          <tr><td>核心库</td><td><code>rclpy</code>、<code>cv_bridge</code>、<code>opencv-python</code>、<code>sherpa_onnx</code>、<code>sensor_msgs</code></td></tr>
+          <tr><td>相机驱动</td><td><code>ascamera</code>（HP60C）+ <code>camera_web_viewer</code>（Flask + SocketIO @ :8000）</td></tr>
+          <tr><td>视觉模型</td><td><code>Qwen3.5-0.8B_vision_rk3576.rknn</code>（RKNN）</td></tr>
+          <tr><td>语言模型</td><td><code>Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm</code>（RKLLM）</td></tr>
+          <tr><td>主入口</td><td><code>camera_viewer.launch.py</code>（相机）+ <code>ros2 run car1_multi_interaction multi_interaction_node</code>（交互）</td></tr>
         </tbody>
       </table>
-      <pre><span class="c"># 0) 先确认前几站是通的（在 car1_speech/tools 下）</span>
-<span class="g">python3 asr_test.py --mic-array</span>       <span class="y"># 能出文字，文本通道才有原料</span>
-<span class="g">python3 llm_test.py --prompt "你好"</span>   <span class="y"># 对话服务在线，情绪结论才有人接</span>
+      <pre><span class="c"># ① 确认相机已通过 USB 连接（HP60C 常以 "3D Camera" 或厂商名出现）</span>
+<span class="g">lsusb</span> | grep -i -E "camera|hp60c|3d"
 
-<span class="c"># 1) 先录一条基准样本（正常语气），后面所有数值都跟它比</span>
-<span class="g">mkdir -p samples</span>
-<span class="g">arecord -D plughw:4,0 -r 16000 -f S16_LE -c 1 -d 3 samples/baseline.wav</span></pre>
-      <div class="tip"><span class="lab">✅ 准备检查</span>一次实验里，所有样本都用<b>同一个录音音量</b>、麦克风离嘴<b>差不多 30 厘米</b>。音量特征比的不是"有多响"，而是"比平时响多少"，录音条件一变，结论就全乱。</div>
-    </section>
+<span class="c"># ② 确认相机配置目录存在（launch 文件里写死的 confiPath）</span>
+<span class="g">ls</span> /home/iflytek/ros2_ws/src/xflz_eai_car1/examples/camera/HP60C/src/ascamera/configurationfiles
 
+<span class="c"># ③ 确认两个模型文件在位</span>
+<span class="g">ls</span> -lh /home/iflytek/models/rkllm/
+<span class="y">Qwen3.5-0.8B_vision_rk3576.rknn</span>
+<span class="y">Qwen3.5-0.8B_w4a16_g128_rk3576.rkllm</span>
+
+<span class="c"># ④ 确认功能包已编译（工作空间根目录）</span>
+<span class="g">cd</span> ros2_ws &amp;&amp; <span class="g">colcon</span> build --packages-select car1_multi_interaction camera_web_viewer
+<span class="g">source</span> install/setup.bash
+
+<span class="c"># ⑤ 确认 8000 端口没被占用</span>
+<span class="g">lsof</span> -i :8000</pre>
+  <div class="tip amber"><span class="lab">⚠️ HP60C 会独占 USB 端口</span>相机对 USB 带宽敏感。<b>先拔掉其他 USB 串口设备</b>（尤其是另一块串口转接板），否则相机可能识别失败或频繁掉帧。另外：<b>先启动相机、再启动交互节点</b>——顺序反了虽然 ROS2 也能连上（DDS 会自动发现），但交互节点启动时会发现"从没收到过图"，需要等你重新问一次才有画面。</div>
+</section>
+
+    <!-- 06 -->
     <section class="blk" id="s6">
-      <h2><span class="no">06</span>动画讲解：文字与声音的两条线</h2>
-      <p>看同一句话的两条命运线：上面一条读文字，下面一条量声音，两路判断一起进入中间的融合器，最后落到右边的情绪地图上。紫点是最终结论，4 秒一个循环：</p>
+      <h2><span class="no">06</span>动画讲解：四态状态机与图像通路</h2>
+      <p>看两条线并行：<b>下方</b>是图像通路（相机 → 话题 → 回调 → 缓存最新帧），<b>上方</b>是语音通路（唤醒 → 识别 → 抓帧 + VLM → 逐句播报）。注意中间那个"抓帧"的动作——它把两条线接在一起，而且抓的永远是<b>最新</b>那一帧。</p>
       <div class="anim-box">
         <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace" font-size="12">
           <rect x="0" y="0" width="720" height="300" fill="#111827"/>
-          <!-- 输入 -->
-          <rect x="16" y="122" width="96" height="52" rx="8" fill="#1f2937" stroke="#4b5563"/>
-          <text x="64" y="144" fill="#e5e7eb" text-anchor="middle">同一句</text>
-          <text x="64" y="162" text-anchor="middle" font-size="10" fill="#9ca3af">"我没事"</text>
-          <!-- 文本通道 -->
-          <rect x="150" y="34" width="150" height="60" rx="8" fill="#1f2937" stroke="#2563eb"/>
-          <text x="225" y="56" fill="#93c5fd" text-anchor="middle">文本通道</text>
-          <text x="225" y="74" fill="#9ca3af" text-anchor="middle" font-size="10">情感词典 + 六分类</text>
-          <text x="225" y="88" fill="#60a5fa" text-anchor="middle" font-size="10">→ 中性/积极 (+0.2)</text>
-          <path d="M112 138 C 130 100, 132 76, 148 64" stroke="#2563eb" stroke-width="2" fill="none" stroke-dasharray="6,5">
-            <animate attributeName="stroke-dashoffset" values="11;0" dur="1s" repeatCount="indefinite"/>
+
+          <!-- 图像通路（下方） -->
+          <text x="16" y="196" fill="#6b7280" font-size="10">图像通路（独立于语音，一直在跑）</text>
+          <rect x="16" y="206" width="112" height="46" rx="8" fill="#1f2937" stroke="#2563eb"/>
+          <text x="72" y="226" fill="#93c5fd" text-anchor="middle" font-size="10.5">ascamera_node</text>
+          <text x="72" y="241" fill="#6b7280" text-anchor="middle" font-size="9">HP60C · 25 FPS</text>
+
+          <path d="M130 229 L176 229" stroke="#2563eb" stroke-width="2" fill="none" stroke-dasharray="6,5">
+            <animate attributeName="stroke-dashoffset" values="11;0" dur="0.9s" repeatCount="indefinite"/>
           </path>
-          <!-- 语音通道 -->
-          <rect x="150" y="188" width="150" height="72" rx="8" fill="#1f2937" stroke="#0d9488"/>
-          <text x="225" y="210" fill="#5eead4" text-anchor="middle">语音通道</text>
-          <text x="225" y="227" fill="#9ca3af" text-anchor="middle" font-size="10">F0↓  RMS↓  语速↓</text>
-          <text x="225" y="243" fill="#2dd4bf" text-anchor="middle" font-size="10">→ 悲伤/低落 (−0.6)</text>
-          <path d="M112 160 C 130 186, 132 204, 148 216" stroke="#0d9488" stroke-width="2" fill="none" stroke-dasharray="6,5">
-            <animate attributeName="stroke-dashoffset" values="11;0" dur="1s" begin="0.4s" repeatCount="indefinite"/>
+          <rect x="180" y="206" width="146" height="46" rx="8" fill="#1f2937" stroke="#4b5563"/>
+          <text x="253" y="226" fill="#d1d5db" text-anchor="middle" font-size="9.5">.../rgb0/image</text>
+          <text x="253" y="241" fill="#6b7280" text-anchor="middle" font-size="9">话题（sensor_msgs/Image）</text>
+
+          <path d="M328 229 L374 229" stroke="#2563eb" stroke-width="2" fill="none" stroke-dasharray="6,5">
+            <animate attributeName="stroke-dashoffset" values="11;0" dur="0.9s" begin="0.4s" repeatCount="indefinite"/>
           </path>
-          <!-- 波形小图 -->
-          <path d="M158 252 q6 -12 12 0 t12 0 t12 0 t12 0" stroke="#2dd4bf" stroke-width="1.5" fill="none" opacity="0.7">
-            <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite"/>
+          <rect x="378" y="200" width="176" height="58" rx="8" fill="#1f2937" stroke="#2563eb" stroke-width="2"/>
+          <text x="466" y="219" fill="#93c5fd" text-anchor="middle" font-size="10">rgb_callback + CvBridge</text>
+          <text x="466" y="234" fill="#9ca3af" text-anchor="middle" font-size="9">imgmsg_to_cv2('bgr8')</text>
+          <text x="466" y="249" fill="#9ca3af" text-anchor="middle" font-size="9">with image_lock: latest_rgb = 帧</text>
+
+          <!-- 帧缓存 -->
+          <rect x="578" y="200" width="126" height="58" rx="8" fill="#0b1120" stroke="#d97706"/>
+          <text x="641" y="219" fill="#fcd34d" text-anchor="middle" font-size="10">latest_rgb</text>
+          <text x="641" y="234" fill="#9ca3af" text-anchor="middle" font-size="9">(480,640,3) BGR</text>
+          <text x="641" y="249" fill="#9ca3af" text-anchor="middle" font-size="9">旧帧被新帧覆盖</text>
+          <path d="M556 229 L576 229" stroke="#2563eb" stroke-width="2" fill="none" stroke-dasharray="6,5">
+            <animate attributeName="stroke-dashoffset" values="11;0" dur="0.9s" begin="0.8s" repeatCount="indefinite"/>
           </path>
-          <!-- 融合器 -->
-          <rect x="340" y="112" width="140" height="72" rx="8" fill="#1f2937" stroke="#7c3aed" stroke-width="2">
-            <animate attributeName="stroke" values="#4b5563;#7c3aed;#4b5563" keyTimes="0;0.4;1" dur="4s" repeatCount="indefinite"/>
+
+          <!-- 状态机（上方） -->
+          <rect x="16" y="40" width="118" height="46" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2">
+            <animate attributeName="stroke" values="#4b5563;#4b5563;#7c3aed;#4b5563" keyTimes="0;0.12;0.28;1" dur="4s" repeatCount="indefinite"/>
           </rect>
-          <text x="410" y="136" fill="#c4b5fd" text-anchor="middle">双模态融合器</text>
-          <text x="410" y="154" fill="#9ca3af" text-anchor="middle" font-size="10">w·text + (1−w)·voice</text>
-          <text x="410" y="170" fill="#a78bfa" text-anchor="middle" font-size="10">w=0.5 冲突则降置信</text>
-          <path d="M300 66 C 322 78, 328 118, 338 132" stroke="#2563eb" stroke-width="2" fill="none" stroke-dasharray="6,5">
-            <animate attributeName="stroke-dashoffset" values="11;0" dur="1s" begin="0.8s" repeatCount="indefinite"/>
+          <text x="75" y="60" fill="#e5e7eb" text-anchor="middle" font-size="10.5" font-weight="bold">IDLE</text>
+          <text x="75" y="75" fill="#6b7280" text-anchor="middle" font-size="9">等唤醒</text>
+
+          <path d="M136 63 L172 63" stroke="#7c3aed" stroke-width="2" fill="none" stroke-dasharray="7,5">
+            <animate attributeName="stroke-dashoffset" values="12;0" dur="1s" repeatCount="indefinite"/>
           </path>
-          <path d="M300 222 C 322 206, 328 178, 338 164" stroke="#0d9488" stroke-width="2" fill="none" stroke-dasharray="6,5">
-            <animate attributeName="stroke-dashoffset" values="11;0" dur="1s" begin="1.2s" repeatCount="indefinite"/>
+          <rect x="176" y="40" width="128" height="46" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2">
+            <animate attributeName="stroke" values="#4b5563;#7c3aed;#7c3aed;#4b5563" keyTimes="0;0.3;0.46;0.52" dur="4s" repeatCount="indefinite"/>
+          </rect>
+          <text x="240" y="60" fill="#e5e7eb" text-anchor="middle" font-size="10.5" font-weight="bold">LISTENING</text>
+          <text x="240" y="75" fill="#6b7280" text-anchor="middle" font-size="9">ASR + 端点检测</text>
+
+          <path d="M306 63 L342 63" stroke="#7c3aed" stroke-width="2" fill="none" stroke-dasharray="7,5">
+            <animate attributeName="stroke-dashoffset" values="12;0" dur="1s" begin="0.4s" repeatCount="indefinite"/>
           </path>
-          <!-- 情绪坐标 -->
-          <rect x="520" y="30" width="184" height="230" rx="8" fill="#0b1120" stroke="#4b5563"/>
-          <line x1="540" y1="145" x2="688" y2="145" stroke="#374151" stroke-width="1.5"/>
-          <line x1="614" y1="50" x2="614" y2="240" stroke="#374151" stroke-width="1.5"/>
-          <text x="686" y="138" fill="#6b7280" font-size="10" text-anchor="end">效价 +</text>
-          <text x="618" y="44" fill="#6b7280" font-size="10">唤醒 +</text>
-          <text x="566" y="80" fill="#f87171" font-size="11">愤怒</text>
-          <text x="648" y="80" fill="#fbbf24" font-size="11">开心</text>
-          <text x="560" y="226" fill="#93c5fd" font-size="11">悲伤</text>
-          <text x="644" y="226" fill="#6ee7b7" font-size="11">平静</text>
-          <!-- 融合点移动 -->
-          <circle cx="656" cy="74" r="7" fill="#7c3aed" opacity="0.9">
-            <animate attributeName="cx" values="656;572;646;656" keyTimes="0;0.4;0.75;1" dur="4s" repeatCount="indefinite"/>
-            <animate attributeName="cy" values="74;78;216;74" keyTimes="0;0.4;0.75;1" dur="4s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0.4;1;1;0.4" dur="4s" repeatCount="indefinite"/>
-          </circle>
-          <text x="410" y="288" fill="#6b7280" text-anchor="middle" font-size="10">冲突时输出"悲伤(低置信)"并将标签写入 LLM 上下文，回复语气随之下沉</text>
-          <path d="M480 148 L518 148" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6,5" fill="none">
-            <animate attributeName="stroke-dashoffset" values="11;0" dur="1s" begin="1.6s" repeatCount="indefinite"/>
+          <rect x="346" y="34" width="150" height="58" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2">
+            <animate attributeName="stroke" values="#4b5563;#fbbf24;#fbbf24;#4b5563" keyTimes="0;0.5;0.56;0.62" dur="4s" repeatCount="indefinite"/>
+          </rect>
+          <text x="421" y="54" fill="#fcd34d" text-anchor="middle" font-size="10.5" font-weight="bold">PROCESSING</text>
+          <text x="421" y="69" fill="#6b7280" text-anchor="middle" font-size="8.5">源码里只存续几毫秒</text>
+          <text x="421" y="83" fill="#6b7280" text-anchor="middle" font-size="8.5">抓帧 → 起 worker → 转 SPEAKING</text>
+
+          <path d="M498 63 L534 63" stroke="#7c3aed" stroke-width="2" fill="none" stroke-dasharray="7,5">
+            <animate attributeName="stroke-dashoffset" values="12;0" dur="1s" begin="0.7s" repeatCount="indefinite"/>
           </path>
+          <rect x="538" y="34" width="166" height="58" rx="8" fill="#1f2937" stroke="#059669" stroke-width="2">
+            <animate attributeName="stroke" values="#4b5563;#059669;#059669;#4b5563" keyTimes="0;0.62;0.94;1" dur="4s" repeatCount="indefinite"/>
+          </rect>
+          <text x="621" y="54" fill="#6ee7b7" text-anchor="middle" font-size="10.5" font-weight="bold">SPEAKING</text>
+          <text x="621" y="69" fill="#9ca3af" text-anchor="middle" font-size="8.5">VLM 流式 → 切句 → TTS</text>
+          <text x="621" y="83" fill="#9ca3af" text-anchor="middle" font-size="8.5">（真正的"看图思考"在这里）</text>
+
+          <!-- 抓帧连线：从缓存指向 PROCESSING -->
+          <path d="M641 198 C 641 140, 500 130, 430 96" stroke="#d97706" stroke-width="2" fill="none" stroke-dasharray="6,5">
+            <animate attributeName="stroke-dashoffset" values="11;0" dur="1.1s" begin="0.5s" repeatCount="indefinite"/>
+          </path>
+          <text x="530" y="140" fill="#fbbf24" font-size="9.5" text-anchor="middle">capture_current_frame().copy()</text>
+
+          <!-- 回 IDLE -->
+          <path d="M621 92 C 621 176, 120 180, 75 88" stroke="#34d399" stroke-width="1.6" fill="none" stroke-dasharray="5,4" opacity="0.55">
+            <animate attributeName="stroke-dashoffset" values="9;0" dur="1.2s" repeatCount="indefinite"/>
+          </path>
+          <text x="360" y="172" fill="#34d399" font-size="9.5" text-anchor="middle">speaking_done → IDLE（打断未实现，见 TODO）</text>
+
+          <text x="16" y="282" fill="#6b7280" font-size="10">关键：抓帧抓的是"最新一帧"，不是"提问那一刻的帧"——延迟 1~2 秒内画面可能已经变了</text>
         </svg>
-        <div class="anim-cap">动画 6-1：同一句"我没事"——文字这边看是"中性偏积极"，声音这边听是"低落"，两边合起来后，紫点从右上滑向左下，结论变成"难过"（4 秒循环）。字面可以逞强，声音却很难撒谎。</div>
+        <div class="anim-cap">动画 6-1：四态状态机（上）与图像通路（下）并行（4 秒循环）——相机 25 FPS 持续刷新 <code>latest_rgb</code>；PROCESSING 时 <code>copy()</code> 抓走最新帧，VLM 流式生成、逐句播报，最后回 IDLE。</div>
       </div>
     </section>
 
+    <!-- 07 -->
     <section class="blk" id="s7">
-      <h2><span class="no">07</span>互动讲解：调一调权重，看结论怎么翻</h2>
-      <p>下面的 w 是"文字通道的话语权"：w=1 完全听字面，w=0 完全听语气。选一个样例、换一档权重，看结论怎么变：</p>
+      <h2><span class="no">07</span>互动讲解：四态流转与帧缓存实验台</h2>
+      <p>点按钮走一遍四态，同时观察下方"帧编号"是怎么变的——这能直观解释两个最容易出错的现象。</p>
       <div class="ix-panel">
-        <div class="ix-title">情绪融合权重台 · Fusion Mixer</div>
+        <div class="ix-title">四态流转与帧缓存实验台 · Multimodal FSM Lab</div>
         <div class="ctl-row">
-          <button class="btn" onclick="emoCase('fine',0.5)">"我没事" · w=0.5</button>
-          <button class="btn" onclick="emoCase('fine',0.2)">"我没事" · 文本权重 0.2</button>
-          <button class="btn" onclick="emoCase('great',0.5)">"太棒了……" · w=0.5</button>
-          <button class="btn" onclick="emoCase('rush',0.5)">"快点吧！" · w=0.5</button>
-          <button class="btn ghost" onclick="emoReset()">↺ 复位</button>
+          <button class="btn" onclick="mmStep('wake')">① 唤醒</button>
+          <button class="btn" onclick="mmStep('ask')">② 问"画面里有什么"</button>
+          <button class="btn" onclick="mmStep('vlm')">③ VLM 看图（流式）</button>
+          <button class="btn" onclick="mmStep('late')">④ 相机晚启动（故障）</button>
+          <button class="btn ghost" onclick="mmStep('stale')">⑤ 帧过期（故障）</button>
+          <button class="btn ghost" onclick="mmReset()">↺ 复位</button>
         </div>
-        <div class="io" id="emoIo">$ 就绪：选择样例与文本通道权重 w（0=全听语气，1=全看字面）…</div>
+        <div class="io" id="mmIo">$ 就绪：state=IDLE，相机 25 FPS 持续刷新 latest_rgb（帧号自动增加）</div>
       </div>
-      <div class="tip violet"><span class="lab">🔍 观察点</span>同一句"我没事"：w=0.5 时系统综合出"中性"，把文字的"没事"和声音的"低落"中和掉了；把 w 降到 0.2（更信语气），结论直接翻成"悲伤"。真实系统里 w 不是固定值——文字里有明确情绪词就多信文字，只有"哦""嗯"这类空话时就多信语气。</div>
+      <div class="tip violet"><span class="lab">🔍 三个必看的点</span>
+        ① 第 ② 步之后 <b>PROCESSING 一闪而过</b>——源码里设完立刻改成 SPEAKING，因为 VLM 是流式的。<br>
+        ② 第 ④ 步模拟"先起交互节点、后起相机"：<code>latest_rgb is None</code> → 只能回"相机还没准备好"。<b>这是最常见的时间顺序坑。</b><br>
+        ③ 第 ⑤ 步模拟"帧过期"：如果你在抓帧前先花 3 秒做别的事，抓到的帧已经是 3 秒前的画面——<b>抓帧必须紧挨着提问</b>，中间别插耗时操作。
+      </div>
     </section>
 
+    <!-- 08 -->
     <section class="blk" id="s8">
       <h2><span class="no">08</span>实操步骤</h2>
       <div class="flow">
-        <div class="step"><span class="n">1</span><div>跑文字情绪，换几句话看标签</div></div>
+        <div class="step"><span class="n">1</span><b>启动相机</b>（终端 1），浏览器验证画面在动</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">2</span><div>录一段语音，量出三特征</div></div>
+        <div class="step"><span class="n">2</span><b>验证话题</b>：<code>topic list / hz / echo</code>，确认数据真的在流</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">3</span><div>调融合权重，看结论翻转</div></div>
+        <div class="step"><span class="n">3</span><b>启动交互节点</b>（终端 2），看四个模型依次初始化</div>
         <div class="arr">→</div>
-        <div class="step"><span class="n">4</span><div>给出一条回应语气建议</div></div>
+        <div class="step"><span class="n">4</span><b>端到端提问</b>：唤醒 → "画面里有什么" → 听到描述</div>
+        <div class="arr">→</div>
+        <div class="step"><span class="n">5</span><b>多轮测试</b>：换问题、换物体、换距离，记录延迟</div>
+        <div class="arr">→</div>
+        <div class="step"><span class="n">6</span><b>读代码验证三处设计</b>：copy、image_lock、双重超时</div>
       </div>
 
-      <h3>步骤 0：先备好课堂脚本</h3>
-      <p>这个实验的逻辑很短——文字查表、声音量三个数、两边加权，一共不到 50 行。把下面这段存成 <code>car1_speech/tools/emotion_demo.py</code>，后面三步都用它。</p>
-      <pre><span class="c">#!/usr/bin/env python3</span>
-<span class="c">"""EXP-06 课堂脚本：文字查表 / 语音三特征 / 两路融合"""</span>
-<span class="b">import</span> argparse, math, wave
-<span class="b">import</span> numpy <span class="b">as</span> np
+      <p><b>步骤 1：启动 HP60C 相机与 Web 可视化</b>（终端 1）</p>
+      <pre><span class="g">ros2</span> launch camera_web_viewer camera_viewer.launch.py
 
-WORDS = {<span class="y">"太棒了"</span>: 2.0, <span class="y">"谢谢"</span>: 1.0, <span class="y">"开心"</span>: 1.5, <span class="y">"好的"</span>: 0.5,
-         <span class="y">"随便"</span>: -1.0, <span class="y">"烦死"</span>: -2.0, <span class="y">"别再"</span>: -1.5, <span class="y">"算了"</span>: -1.0}
+<span class="c"># 预期输出：</span>
+<span class="y">[INFO] [ascamera_hp60c.ascamera_node-1]: process started</span>
+<span class="y">[INFO] [ascamera_node]: ascamera_node started</span>
+<span class="y">[INFO] [camera_web_server-2]: process started</span>
+<span class="y">[INFO] [camera_web_server-2]: Camera Web Server started on http://0.0.0.0:8000</span>
 
-<span class="b">def</span> text_score(text):                       <span class="c"># 文字：查表累加，范围 −2 ~ +2</span>
-    s = sum(v <span class="b">for</span> k, v <span class="b">in</span> WORDS.items() <span class="b">if</span> k <span class="b">in</span> text)
-    <span class="b">return</span> max(-2.0, min(2.0, s))
+<span class="c"># 浏览器访问（把 <board-ip> 换成板子的局域网 IP）</span>
+<span class="c">#   http://<board-ip>:8000</span>
+<span class="c"># 应看到 25 FPS 实时 RGB 画面 + 3D 点云（鼠标拖动可旋转）</span></pre>
+      <div class="tip tealb"><span class="lab">✅ 判断"相机真的好了"的三个标准</span>① 浏览器画面<b>在动</b>（你挥手它跟着动）；② 终端没有持续报错刷屏；③ 画面不是全黑/全绿（全绿通常是 USB 带宽不足或编码问题）。三条都满足再往下走。</div>
 
-<span class="b">def</span> load(path):
-    <span class="b">with</span> wave.open(path, <span class="y">"rb"</span>) <span class="b">as</span> w:
-        <span class="b">return</span> np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16) / 32768.0
+      <p><b>步骤 2：验证话题确实在发数据</b>（终端 3，别关前两个）</p>
+      <pre><span class="c"># ① 列出相机话题（注意命名空间与真实名字）</span>
+<span class="g">ros2</span> topic list | grep ascamera
+<span class="y">/ascamera_hp60c/camera_publisher/rgb0/image        ← 交互节点订阅的是这个</span>
+<span class="y">/ascamera_hp60c/camera_publisher/depth0/image_raw</span>
+<span class="y">/ascamera_hp60c/camera_publisher/depth0/points</span>
 
-<span class="b">def</span> voice_score(wav, base, text=<span class="y">""</span>):
-    a, b = load(wav), load(base)
-    rms  = 20 * math.log10(np.sqrt(np.mean(a ** 2)) + 1e-9)      <span class="c"># 音量</span>
-    rms0 = 20 * math.log10(np.sqrt(np.mean(b ** 2)) + 1e-9)
-    zcr  = np.mean(np.abs(np.diff(np.sign(a))))                  <span class="c"># 音高代理：越尖越大</span>
-    zcr0 = np.mean(np.abs(np.diff(np.sign(b))))
-    loud, pitch = rms - rms0, zcr / (zcr0 + 1e-9)
-    rate = len(text) / (len(a) / 16000) <span class="b">if</span> text <span class="b">else</span> 0     <span class="c"># 语速：字/秒</span>
-    s = (1 <span class="b">if</span> loud > 3 <span class="b">else</span> -1 <span class="b">if</span> loud < -3 <span class="b">else</span> 0)
-    s += (1 <span class="b">if</span> pitch > 1.15 <span class="b">else</span> -1 <span class="b">if</span> pitch < 0.85 <span class="b">else</span> 0)
-    s += (1 <span class="b">if</span> rate > 5 <span class="b">else</span> -1 <span class="b">if</span> 0 <span class="b">&lt;</span> rate <span class="b">&lt;</span> 3 <span class="b">else</span> 0)
-    <span class="b">return</span> s * 0.7, loud, pitch, rate
+<span class="c"># ② 看帧率（应接近 25）</span>
+<span class="g">ros2</span> topic hz /ascamera_hp60c/camera_publisher/rgb0/image
+<span class="y">average rate: 25.0</span>
 
-<span class="b">if</span> __name__ == <span class="y">"__main__"</span>:
-    p = argparse.ArgumentParser(); p.add_argument(<span class="y">"cmd"</span>)
-    p.add_argument(<span class="y">"--text"</span>, default=<span class="y">""</span>); p.add_argument(<span class="y">"--wav"</span>)
-    p.add_argument(<span class="y">"--base"</span>); p.add_argument(<span class="y">"--w"</span>, type=float, default=0.5)
-    a = p.parse_args()
-    <span class="b">if</span> a.cmd == <span class="y">"text"</span>:
-        t = text_score(a.text); <span class="b">print</span>(<span class="y">f"文字分 {t:+.1f} → "</span>, <span class="y">"积极"</span> <span class="b">if</span> t > 0.5 <span class="b">else</span> <span class="y">"消极"</span> <span class="b">if</span> t < -0.5 <span class="b">else</span> <span class="y">"中性"</span>)
-    <span class="b">elif</span> a.cmd == <span class="y">"voice"</span>:
-        v, loud, pitch, rate = voice_score(a.wav, a.base, a.text)
-        <span class="b">print</span>(<span class="y">f"音量 {loud:+.1f}dB  音高 {pitch:.2f}×  语速 {rate:.1f}字/秒 → 语音分 {v:+.1f}"</span>)
-    <span class="b">else</span>:
-        t = text_score(a.text); v, loud, pitch, rate = voice_score(a.wav, a.base, a.text)
-        f = a.w * t + (1 - a.w) * v
-        <span class="b">print</span>(<span class="y">f"文字 {t:+.1f} × {a.w:.1f} + 语音 {v:+.1f} × {1-a.w:.1f} = {f:+.2f}"</span>)
-        <span class="b">print</span>(<span class="y">"结论："</span>, <span class="y">"开心"</span> <span class="b">if</span> f > 0.7 <span class="b">else</span> <span class="y">"消极/难过"</span> <span class="b">if</span> f < -0.7 <span class="b">else</span> <span class="y">"中性（把握不高）"</span>)</pre>
+<span class="c"># ③ 看一帧的内容（只看关键字段）</span>
+<span class="g">ros2</span> topic echo /ascamera_hp60c/camera_publisher/rgb0/image --once | head -20
+<span class="y">height: 480</span>
+<span class="y">width: 640</span>
+<span class="y">encoding: bgr8        ← 注意！相机直接给的就是 bgr8</span>
+<span class="y">step: 1920</span>
+<span class="y">data: [ ... ]</span>
 
-      <h3>步骤 1：文字情绪——换几种说法看看</h3>
-      <pre><span class="g">python3 emotion_demo.py text --text "太棒了，谢谢你"</span>
-<span class="g">python3 emotion_demo.py text --text "随便吧，都行"</span>
-<span class="g">python3 emotion_demo.py text --text "烦死了，别再打了"</span></pre>
-      <p><b>预期输出：</b>依次打印 <code>文字分 +2.0 → 积极</code>、<code>文字分 -1.0 → 消极</code>、<code>文字分 -2.0 → 消极</code>。换三到四句不同情绪的话，观察哪种话容易判错——只要句子里没有词表里的词（比如"我没事"），就一律判"中性"。</p>
+<span class="c"># ④ 看节点的发布/订阅关系（确认 driver 是 publisher）</span>
+<span class="g">ros2</span> node info /ascamera_hp60c.ascamera_node
+<span class="y">Publishers:</span>
+<span class="y">  /ascamera_hp60c/camera_publisher/rgb0/image: sensor_msgs/msg/Image</span>
+<span class="y">  /ascamera_hp60c/camera_publisher/depth0/image_raw: sensor_msgs/msg/Image</span></pre>
 
-      <h3>步骤 2：语音情绪——量出音量、音高、语速</h3>
-      <pre><span class="c"># 录一条难过样本（离麦 30cm，正常音量说完整一句）</span>
-<span class="g">arecord -D plughw:4,0 -r 16000 -f S16_LE -c 1 -d 3 samples/sad_01.wav</span>
-<span class="g">python3 emotion_demo.py voice --wav samples/sad_01.wav --base samples/baseline.wav --text "我没事"</span></pre>
-      <p><b>预期输出：</b>打印三项数值与一个语音分，例如 <code>音量 −4.2dB  音高 0.79×  语速 2.6字/秒 → 语音分 −2.1</code>。换成生气样本，三项应同时反向：更响（大于 +3dB）、更尖（大于 1.15×）、更快（大于 5 字/秒）。</p>
-      <div class="tip"><span class="lab">💡 为什么音高用"过零率"</span>严格算音高要先找基频，代码会翻好几倍。这里用"声音波形穿过零点的频率"当替身：声音越尖，过零越密，数值越大。绝对值不用管，只比它和基准样本的倍数。</div>
+      <p><b>步骤 3：启动多模态交互节点</b>（终端 2）</p>
+      <pre><span class="g">ros2</span> run car1_multi_interaction multi_interaction_node --mic-array
 
-      <h3>步骤 3：融合——调权重，找翻转点</h3>
-      <pre><span class="g">python3 emotion_demo.py fuse --text "我没事" --wav samples/sad_01.wav --base samples/baseline.wav --w 0.8</span>
-<span class="g">python3 emotion_demo.py fuse --text "我没事" --wav samples/sad_01.wav --base samples/baseline.wav --w 0.5</span>
-<span class="g">python3 emotion_demo.py fuse --text "我没事" --wav samples/sad_01.wav --base samples/baseline.wav --w 0.2</span></pre>
-      <p><b>预期输出：</b>文字分 0.0（词表里没有"没事"），语音分约 −2.1。w=0.8 时融合分 −0.42，结论"中性（把握不高）"；w=0.5 时 −1.05，翻成"消极/难过"；w=0.2 时 −1.68，更确定是难过。翻转点大约在 w≈0.67——文字分不到 0.7 时，只要语音足够消极，权重一降就翻。这就是这台机器人的"信任分界线"。</p>
+<span class="c"># 预期启动日志（注意模型加载顺序，VLM 子进程最慢）：</span>
+<span class="y">[Main ] 已订阅相机话题，等待图像...</span>
+<span class="y">[Main ] 检测讯飞麦克风阵列...</span>
+<span class="y">[Main ] 找到录音设备: plughw:4,0 (XFM-DP-V0.0.18)</span>
+<span class="y">[KWS  ] KWS 初始化完成</span>
+<span class="y">[ASR  ] ASR 初始化完成</span>
+<span class="y">[TTS  ] TTS 初始化完成</span>
+<span class="y">[VLM  ] 启动 VLM server（预加载模型，约需 10 秒）...</span>
+<span class="y">[VLM  ] VLM server 就绪（模型已预加载）</span>
+<span class="y">[Main ] 初始化完成</span>
+<span class="y">==================================================</span>
+<span class="y">多模态交互就绪 — 说唤醒词开始对话</span>
+<span class="y">==================================================</span></pre>
+      <div class="tip amber"><span class="lab">⚠️ 卡在"启动 VLM server"超过 30 秒</span>源码里子进程启动超时是 30s，超时会报 <code>VLM server 启动超时(30s)</code>。常见原因：模型路径不对、<code>librkllmrt.so</code> 缺失、NPU 被别的进程占着（比如同时开着一个 RKLLM 服务）。先 <code>ps aux | grep vlm_server</code> 看进程活没活，再单独 <code>python3 vlm_server.py</code> 看报错。</div>
 
-      <h3>步骤 4：把结论变成一句回应语气</h3>
-      <p>情绪标签的最终用途，是让回复的语气跟着变——写进对话上下文即可：</p>
-      <pre><span class="c"># 放在人设之后、用户问题之前，作为一句叮嘱</span>
-<span class="g">system</span> = <span class="b">"你是客服助手。用户当前情绪：难过（把握中等）。</span>
-<span class="b">          请先安抚一句，再处理问题；语气放慢放软，不要推销。"</span></pre>
-      <pre><span class="c"># 再让语音合成把语气也放慢（tts_test.py 在 car1_speech/tools 下）</span>
-<span class="g">python3 tts_test.py --text "别急，我马上帮您处理。" --speed 0.9</span></pre>
-      <p><b>预期输出：</b>同一句用户问题，加上这段叮嘱前后各跑一次，能明显听出/看出语气差别：加之前是标准客服腔，加之后先安抚再办事。</p>
+      <p><b>步骤 4：端到端提问（本实验的核心体验）</b></p>
+      <pre><span class="c"># 把一件物品放到相机前（比如一个红色杯子），然后：</span>
+<span class="y">唤醒："小飞小飞"</span>
+<span class="y">[KWS ] 硬件唤醒检测</span>
+<span class="y">[Main] IDLE → LISTENING</span>
 
-      <div class="tip tealb"><span class="lab">⏱ 完成标准</span>四类样本各自能被判对；"我没事"这类逞强句在调整权重后结论能翻转；最后能一句话说清"系统为什么这样回应"。</div>
-    </section>
+<span class="y">说话："画面里有什么？"</span>
+<span class="y">[ASR ] 识别: 画面里有什么</span>
+<span class="y">[Main] LISTENING → PROCESSING (画面里有什么)</span>
+<span class="y">[VLM ] 画面尺寸: (480, 640, 3)</span>
+<span class="c"># ↑ 这一行说明：抓到了帧、而且形状对（480 高 × 640 宽 × 3 通道 BGR）</span>
 
-    <section class="blk" id="s9">
-      <h2><span class="no">09</span>重点与易错点</h2>
-      <p>情绪识别最麻烦的地方是：它很少报错，只会<b>悄悄判错</b>。下面三个坑几乎每组都会踩：</p>
+<span class="y">[Main] PROCESSING → SPEAKING</span>
+<span class="c"># ↑ 注意：这两行几乎同时出现，PROCESSING 只存在几毫秒</span>
+
+<span class="c"># 回答会逐词打印并逐句播报（流式）：</span>
+<span class="y">画面中有一个红色的杯子，放在白色的桌面上。</span>
+<span class="y">[Main] SPEAKING → IDLE</span></pre>
+      <div class="tip tealb"><span class="lab">⏱ 记录三个延迟（写进实验报告）</span>
+        ① <b>唤醒响应</b>：说唤醒词到提示音 —— XFM 硬件应 &lt; 1s；<br>
+        ② <b>识别耗时</b>：说完到出现 <code>[ASR] 识别: …</code> —— 取决于端点检测（rule2 = 1.5s 为主）；<br>
+        ③ <b>VLM 首字延迟</b>：<code>[Main] PROCESSING</code> 到第一个词打印出来 —— 视觉编码约 1s + 首 token，合计 1~2s。<br>
+        三条加起来就是多模态端到端延迟，目标 &lt; 5s。
+      </div>
+
+      <p><b>步骤 5：多轮测试清单</b></p>
       <table>
-        <thead><tr><th>现象</th><th>原因</th><th>怎么改</th></tr></thead>
+        <thead><tr><th>说什么</th><th>期望行为</th><th>考察什么</th></tr></thead>
         <tbody>
-          <tr><td>音量特征忽大忽小，生气和难过分不开</td><td>麦克风太远、太近，或每次录音音量不一样</td><td>固定 30cm 左右、一次实验只用一个录音音量；音量只看"相对平时"的变化，不看绝对值</td></tr>
-          <tr><td>"太棒了……"被判成开心</td><td>文字只认字面，读不出反讽</td><td>文字和声音结论相反时别硬判：降低把握度、按语气给结论，或直接追问"听起来不太顺利？"</td></tr>
-          <tr><td>两个通道调了半天，跟只用一个没区别</td><td>权重一边倒（w=1 或 w=0）</td><td>保留两路并让 w 有变化：文字里没有情绪词就把 w 调小，有明确情绪词再调大</td></tr>
+          <tr><td>"画面里有什么？"</td><td>描述主要物体与位置</td><td>基础视觉理解</td></tr>
+          <tr><td>"这个东西是什么颜色？"</td><td>报出颜色</td><td>是否真的在看图（换成别的颜色物体再问一次验证）</td></tr>
+          <tr><td>"桌上有几个物品？"</td><td>报数字</td><td>计数能力（小模型较弱，答错属正常）</td></tr>
+          <tr><td>遮住相机再问同一个问题</td><td>应说"画面很暗/看不清"</td><td><b>关键验证</b>：证明它真的依赖图像，而不是在编</td></tr>
+          <tr><td>把物体换成另一个再问</td><td>答案应变化</td><td><b>关键验证</b>：排除"固定模板回复"的可能</td></tr>
+          <tr><td>"今天天气怎么样？"</td><td>会说不知道 / 转移话题</td><td>无图像依赖的问题表现</td></tr>
         </tbody>
       </table>
-      <div class="tip amber"><span class="lab">⚠️ 一句话提醒</span>结论永远带上"有多大把握"。把握低时问一句"听起来您有点着急，是吗？"，比硬猜一个标签要安全得多。</div>
+      <div class="tip violet"><span class="lab">🔬 这两个"关键验证"是本实验的精髓</span>很多同学跑完觉得"它答得挺像"，但其实是模型在<b>根据问题编答案</b>。遮住镜头、换物体这两招，能立刻分辨"真的在看"还是"在猜"。<b>任何多模态系统验收，都要做这两个反例测试。</b></div>
+
+      <p><b>步骤 6：读代码验证三处关键设计</b></p>
+      <pre><span class="c"># ① 订阅了什么话题（注意实际话题名与讲义/文档可能不一致，以代码为准）</span>
+<span class="g">grep</span> -n -A 4 "create_subscription" \
+  ros2_ws/src/xflz_eai_car1/interaction/car1_multi_interaction/car1_multi_interaction/multi_interaction_node.py
+
+<span class="c"># ② CvBridge 转换 + 加锁写入缓存</span>
+<span class="g">grep</span> -n -A 8 "def rgb_callback" \
+  .../multi_interaction_node.py
+
+<span class="c"># ③ 抓帧时 copy + 加锁</span>
+<span class="g">grep</span> -n -A 6 "def capture_current_frame" .../multi_interaction_node.py
+
+<span class="c"># ④ 双重超时主循环</span>
+<span class="g">grep</span> -n -B 2 -A 12 "spin_once" .../multi_interaction_node.py
+
+<span class="c"># ⑤ PROCESSING 为什么"闪一下就没了"</span>
+<span class="g">grep</span> -n -A 24 "def _process_question" .../multi_interaction_node.py
+<span class="c">#   你会看到：state = "PROCESSING" → ... → state = "SPEAKING" → 起 worker</span>
+
+<span class="c"># ⑥ 打断的 TODO 在哪</span>
+<span class="g">grep</span> -n -A 8 "def _handle_speaking" .../multi_interaction_node.py
+<span class="y">    def _handle_speaking(self, chunk):</span>
+<span class="y">        """SPEAKING 状态：播报中，检测打断"""</span>
+<span class="y">        # TODO: 支持打断</span>
+
+<span class="c"># ⑦ VLM 子进程的 JSON 行协议</span>
+<span class="g">grep</span> -n -A 12 "def generate_stream" .../multi_interaction_node.py</pre>
+
+      <p><b>步骤 7：改造一 —— 给 SPEAKING 补上打断（选做，8 学时够做）</b></p>
+      <p>这是本实验最值得动手的扩展。思路和 EXP-05 完全一样，只需在三处各加几行：</p>
+<pre><span class="c"># 位置 1：_handle_speaking 里加唤醒检测（对应上面 ⑥ 找到的 TODO）</span>
+<span class="b">def</span> _handle_speaking(self, chunk):
+    <span class="c"># ① 播报中仍检测唤醒（XFM 硬件事件或板载 KWS）</span>
+    <span class="b">if</span> self.use_mic_array <span class="b">and</span> self.mic_array_wakeup_detected.is_set():
+        self.mic_array_wakeup_detected.clear()
+        log_kws.info(<span class="y">"打断: 硬件唤醒"</span>)
+        self.interrupt_event.set()          <span class="c"># 通知 worker 停</span>
+        self.playback.interrupt()           <span class="c"># 杀掉当前 aplay 并重开</span>
+        self._start_listening()             <span class="c"># 回到 LISTENING</span>
+        <span class="b">return</span>
+    <span class="c"># ② 正常播完（原有逻辑）</span>
+    <span class="b">if</span> self.speaking_done.is_set():
+        self.state = <span class="y">"IDLE"</span>
+        log.info(<span class="y">"SPEAKING → IDLE"</span>)
+
+<span class="c"># 位置 2：_vlm_tts_worker 里每个 token 后检查事件（源码已有，确认即可）</span>
+<span class="b">for</span> token <span class="b">in</span> self.vlm.generate_stream(rgb, question):
+    <span class="b">if</span> self.interrupt_event.is_set():
+        <span class="b">break</span>          <span class="c"># ← 已有，别删</span>
+
+<span class="c"># 位置 3：进入新一轮前必须清事件（否则下一轮一进来就"已被打断"）</span>
+<span class="b">def</span> _start_listening(self):
+    self.interrupt_event.clear()        <span class="c"># ← 加这一行</span>
+    self.speaking_done.clear()
+    ...</pre>
+      <div class="tip amber"><span class="lab">⚠️ 只改位置 1 会失败</span>如果你只加"检测到唤醒就设事件"，会发现打断后<b>再也无法对话</b>——因为 <code>interrupt_event</code> 一直保持"已设置"，worker 一启动就立刻退出。这就是位置 3 存在的理由，也是 EXP-04 思考题 3 问的那个竞态。</div>
     </section>
 
+    <!-- 09 -->
+    <section class="blk" id="s9">
+      <h2><span class="no">09</span>重点与易错点</h2>
+      <div class="tip amber"><span class="lab">⚠️ 排错顺序</span>① <b>浏览器有画面吗</b>（相机活着）→ ② <b><code>topic hz</code> 有 25 吗</b>（数据在流）→ ③ <b>日志里 <code>画面尺寸: (480, 640, 3)</code> 出现了吗</b>（抓帧成功）→ ④ <b>VLM server 就绪了吗</b>（模型加载完）→ ⑤ 才去怀疑模型答得好不好。<b>前四步都是"有没有数据"，不是"答得对不对"</b>——顺序搞反会浪费大量时间。</div>
+      <table>
+        <thead><tr><th>现象</th><th>原因</th><th>怎么办</th></tr></thead>
+        <tbody>
+          <tr><td><b>启动后一直"等待图像"，提问答"相机未就绪"</b></td><td>相机 launch 没启动，或启动顺序反了</td><td>先 <code>ros2 launch camera_web_viewer camera_viewer.launch.py</code>，确认 <code>topic hz</code> 有数据，再重启交互节点</td></tr>
+          <tr><td><b>浏览器 <code>:8000</code> 打不开</b></td><td>Web 服务未起 / 端口被占 / 防火墙</td><td>看 launch 日志里是否有 <code>Camera Web Server started</code>；<code>lsof -i :8000</code>；换端口</td></tr>
+          <tr><td><b>相机节点启动即退出</b></td><td><code>confiPath</code> 路径不存在</td><td>核对 launch 里的路径，确认 <code>.../ascamera/configurationfiles</code> 目录存在</td></tr>
+          <tr><td><b>画面全绿/花屏/频繁掉帧</b></td><td>USB 带宽不足</td><td>拔掉其他 USB 串口设备；换 USB 3.0 口；降低分辨率或帧率</td></tr>
+          <tr><td><b>VLM server 启动超时</b></td><td>模型路径错 / <code>librkllmrt.so</code> 缺失 / NPU 被占</td><td>单独跑 <code>python3 vlm_server.py</code> 看真实报错；<code>ls /usr/lib/librkllmrt.so</code>；先关掉其他 RKLLM 服务</td></tr>
+          <tr><td><b>答得"很流利但和画面无关"</b></td><td>模型在根据问题编答案；或抓帧被旧帧污染</td><td>做"遮住镜头"和"换物体"两个反例测试；确认抓帧时调了 <code>.copy()</code></td></tr>
+          <tr><td><b>颜色说错（红说成蓝）</b></td><td>BGR / RGB 通道搞反</td><td><code>imgmsg_to_cv2</code> 用 <code>desired_encoding='bgr8'</code>，OpenCV 就是 BGR；若模型要 RGB，需 <code>cv2.cvtColor(img, cv2.COLOR_BGR2RGB)</code></td></tr>
+          <tr><td><b>偶尔崩溃 / 读到半帧</b></td><td>没加 <code>image_lock</code> 或忘了 <code>copy()</code></td><td>回调写、抓帧读都必须 <code>with self.image_lock:</code>；抓帧时必须 <code>.copy()</code></td></tr>
+          <tr><td><b>图像延迟大（答的是几秒前的画面）</b></td><td><code>spin_once</code> 超时太长，回调喂不进来</td><td>确认 <code>spin_once(timeout_sec=0.01)</code>；别在回调里做重活</td></tr>
+          <tr><td><b>TTS 念出"星号 星号"</b></td><td>VLM 输出含 markdown/符号，没清洗就送 TTS</td><td>确认 <code>_clean_for_tts</code> 在合成前被调用</td></tr>
+          <tr><td><b>说完很久才开始播</b></td><td>切句太粗（等到整句结束才合成）</td><td>检查 <code>SENTENCE_RE</code> 是否含逗号/顿号（本仓库用的就是"细粒度切分"）</td></tr>
+          <tr><td><b>播报中插话无效</b></td><td>打断功能<b>本实验未实现</b>（源码是 TODO）</td><td>不是 bug，是待扩展点。按第 08 节步骤 7 补齐</td></tr>
+          <tr><td><b>端到端 &gt; 5s</b></td><td>瓶颈在视觉编码 + LLM 首 token</td><td>先用 <code>--fix-freq</code> 类脚本锁频；检查 NPU 是否被多核抢占；这是架构级限制，只能缓解</td></tr>
+        </tbody>
+      </table>
+      <ul class="check">
+        <li>能说出 ROS2 四要素，并用三条 <code>ros2 topic</code> 命令验证数据在流</li>
+        <li>能画出四态状态机，并解释 PROCESSING 在源码里为什么"一闪而过"</li>
+        <li>能解释 <code>.copy()</code> 与 <code>image_lock</code> 各自防的是哪种错（覆盖 vs 撕裂）</li>
+        <li>能说清 VLM 两段分工：Vision Encoder 出向量、LLM 结合问题出文字</li>
+        <li>做过"遮住镜头"和"换物体"两个反例测试，并记录结果</li>
+        <li>找到了 <code># TODO: 支持打断</code>，能说清补齐它要改哪三处</li>
+      </ul>
+    </section>
+
+    <!-- 10 -->
     <section class="blk" id="s10">
       <h2><span class="no">10</span>总结与思考</h2>
       <div class="kgrid">
-        <div class="kcard"><div class="kd">🏁</div><div class="kt">完成成果</div><p>一小套四类情绪录音；文字通道与声音通道各能独立判情；可调权重的融合结论；一句写进对话的回应语气建议。</p></div>
-        <div class="kcard"><div class="kd">🧠</div><div class="kt">原理收获</div><p>文字定性质、声音定强度，两者互补；情绪可以放在"心情好坏 × 激动程度"这张二维地图上；两路冲突时降把握、多追问。</p></div>
+        <div class="kcard"><div class="kd">🏁 完成成果</div><div class="kt">"听 + 看 + 说"闭环</div><p>相机 <code>:8000</code> 实时可见；四态状态机跑通；唤醒 →"画面里有什么"→ 听到对图像的描述；模态端到端 &lt; 5s。</p></div>
+        <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">多模态 = 多一条通路 + 多一个状态</div><p>图像通路（话题 → CvBridge → 缓存 → 抓帧）与语音通路并行；VLM 两段式（Vision Encoder + LLM）用"特征"做交接物。</p></div>
+        <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">ROS2 订阅 + 线程安全 + 跨进程协议</div><p>订阅回调、CvBridge、锁与 copy、stdin/stdout JSON 行——这些是机器人多模态集成的通用底座。</p></div>
+        <div class="kcard"><div class="kd">➡ 去向</div><div class="kt">从课程到项目</div><p>六个实验串起来，就是一台完整的"能听、能说、能听话、能看图"的交互机器人。接下来是把它接到你的具体场景上。</p></div>
       </div>
-      <div class="tip violet"><span class="lab">💭 思考题</span>
-        <p><b>1.</b> 家里人打电话说"我没事，你忙你的"。你会从哪几处听出他其实不太好？如果让机器人学你，它该采集什么、又该跟什么做比较？</p>
-        <p><b>2.</b> 如果机器人把"累了不想说话"的平淡语气误判成"生气"，会带来什么后果？你会怎样设计，让它宁可多问一句，也不乱下结论？</p>
-      </div>
+      <div class="tip violet"><span class="lab">💭 思考题 1</span>ROS2 的发布者和订阅者是靠 DDS 自动发现的，理论上"先订后发"也能连上。那为什么本实验仍强调"先起相机"？请从<b>用户体验</b>（而不是技术可行性）的角度回答：第一轮提问会发生什么？</div>
+      <div class="tip violet"><span class="lab">💭 思考题 2</span>多模态状态机为什么比纯语音多一个 PROCESSING 状态？能否把它合并进 LISTENING 或 SPEAKING？请分别分析"合并进 LISTENING"和"合并进 SPEAKING"会带来什么问题。再读源码，说明为什么当前实现<b>实际上</b>把它压缩到了几毫秒——这样做合理吗？在什么情况下会变得不合理？</div>
+      <div class="tip violet"><span class="lab">💭 思考题 3</span>补齐"打断"功能需要改哪三处？如果只改"检测到唤醒就设 <code>interrupt_event</code>"这一处，会出现什么后果？请画出时序图说明 <code>interrupt_event</code> 没被 <code>clear()</code> 时下一轮会发生什么。</div>
+      <div class="tip violet"><span class="lab">💭 思考题 4</span>"抓最新帧"策略在什么场景下会出错？请举两个具体例子（提示：快速运动的物体、用户指着某个位置说"这个"）。你能想到比"抓最新帧"更好的策略吗？代价是什么？</div>
+      <div class="tip violet"><span class="lab">💭 思考题 5</span>如果把 VLM 换成"目标检测 + 模板回复"（比如检测到杯子就回"这是一个杯子"），在什么场景下反而更合适？请从延迟、可解释性、成本、泛化能力四个维度做对比。</div>
     </section>
 
     <nav class="expnav">
-      <a href="../exp-05-llm-understanding/index.html"><span class="lb">← 上一个</span>EXP-05 大模型语义理解</a>
+      <a href="../exp-05-llm-understanding/index.html"><span class="lb">← 上一个</span>EXP-05 实时语音交互与工具调用</a>
       <a href="../index.html" class="next"><span class="lb">全部完成 →</span>返回课程总览 · CORE-03</a>
     </nav>
 
     <footer>
-      <span>CORE-03 · 机器人自然语言交互应用 · EXP-06 多模态语音情绪感知</span>
-      <span>4 学时 · 综合性 · 基于 speech_practice 实验讲义改编</span>
+      <span>CORE-03 · 机器人自然语言交互应用 · EXP-06 多模态视觉语言理解</span>
+      <span>8 学时 · 综合性 · 基于 speech_practice 实验讲义改编</span>
     </footer>
 
   </main>
@@ -383,40 +565,62 @@ WORDS = {<span class="y">"太棒了"</span>: 2.0, <span class="y">"谢谢"</span
 
 <script>
 (function(){
-  var io = document.getElementById('emoIo');
+  var io = document.getElementById('mmIo');
+  var st = 'IDLE', frame = 128;
   function emit(s, cls){
     io.innerHTML += '\n<span class="' + (cls||'dim') + '">' + s + '</span>';
     io.scrollTop = io.scrollHeight;
   }
-  var cases = {
-    fine: { text: 0.2, voice: -0.6, tlab: '中性/偏积极', vlab: '悲伤(低能量·慢语速·F0平)', txt: '"我没事"' },
-    great: { text: 1.6, voice: -0.4, tlab: '开心', vlab: '失望(降调·拖长·无起伏)', txt: '"太棒了……"' },
-    rush: { text: 0.4, voice: 1.4, tlab: '配合/积极', vlab: '愤怒(高能量·语速快·音量大)', txt: '"好的好的，快点吧！"' }
-  };
-  window.emoCase = function(kind, w){
-    var c = cases[kind];
-    emit('$ ' + c.txt + '   文本权重 w=' + w.toFixed(2), 'dim');
-    emit('  文本通道: ' + c.tlab + ' → ' + c.text.toFixed(1), 'dim');
-    emit('  语音通道: ' + c.vlab + ' → ' + c.voice.toFixed(1), 'dim');
-    var f = w * c.text + (1 - w) * c.voice;
-    var conflict = (c.text > 0.3 && c.voice < -0.3) || (c.text < -0.3 && c.voice > 0.3);
-    var conf = conflict ? 0.48 : 0.86;
-    var label;
-    if(conflict) label = (c.voice < 0) ? '悲伤（低置信，按韵律裁决）' : '愤怒（低置信，按韵律裁决）';
-    else if(f > 1.0) label = '开心';
-    else if(f > 0.3) label = '积极';
-    else if(f > -0.3) label = '中性';
-    else label = (c.voice < -0.4) ? '悲伤' : '消极';
-    if(conflict){
-      emit('  融合: ' + f.toFixed(2) + ' → ' + label + '  置信度×0.5=' + conf.toFixed(2), 'warn');
-      emit('   ⚠ 两通道异号冲突：建议澄清话术"听起来您不是太顺利，对吗？"', 'bad');
-    } else {
-      emit('  融合: ' + f.toFixed(2) + ' → ' + label + '  置信度=' + conf.toFixed(2), 'ok');
-      emit('   ✓ 写入 LLM 上下文 → 回复语气与 TTS 风格随之调整', 'ok');
+  function tick(){ frame = (frame + 1) % 1000; }
+  window.mmStep = function(k){
+    if(k === 'wake'){
+      if(st !== 'IDLE'){ emit('当前 state=' + st + '，请先复位', 'bad'); return; }
+      tick();
+      emit('[KWS ] 硬件唤醒命中（XFM 串口 AIUI 事件）', 'ok');
+      emit('[Main] 播放提示音 → 排空队列两轮 → 新建 ASR stream', 'dim');
+      emit('[Main] IDLE → LISTENING  (latest_rgb 帧号 #' + frame + '，仍在刷新)', 'ok');
+      st = 'LISTENING';
+      return;
+    }
+    if(k === 'ask'){
+      if(st !== 'LISTENING'){ emit('需要先唤醒（点 ①）', 'bad'); return; }
+      tick();
+      emit('[ASR ] 识别: 画面里有什么', 'dim');
+      emit('[Main] LISTENING → PROCESSING (画面里有什么)', 'ok');
+      emit('[VLM ] 画面尺寸: (480, 640, 3)   ← 抓到第 #' + frame + ' 帧', 'ok');
+      emit('[Main] PROCESSING → SPEAKING   ← 立刻切换！PROCESSING 只存在几毫秒', 'warn');
+      st = 'SPEAKING';
+      return;
+    }
+    if(k === 'vlm'){
+      if(st !== 'SPEAKING'){ emit('需要先提问（点 ②）', 'bad'); return; }
+      emit('[VLM ] "画面中" → "有一个" → "红色的杯子" → "，" → 命中切句符 → TTS 合成', 'ok');
+      emit('[TTS ] 第一句已经开始播，VLM 还在继续生成后续内容（流式）', 'ok');
+      emit('[VLM ] 全部生成完毕 → {"type":"done"}', 'dim');
+      emit('[Main] speaking_done.set() → SPEAKING → IDLE', 'ok');
+      st = 'IDLE';
+      return;
+    }
+    if(k === 'late'){
+      emit('[故障复现] 先起交互节点、后起相机：', 'warn');
+      emit('  [Main ] 已订阅相机话题，等待图像...', 'dim');
+      emit('  latest_rgb is None  →  capture_current_frame() 返回 (None, None)', 'bad');
+      emit('  [Answer] "抱歉，相机未就绪，请稍后再试。"', 'bad');
+      emit('  → ROS2 会自动重连，等相机起来后再问一次就好了', 'ok');
+      return;
+    }
+    if(k === 'stale'){
+      emit('[故障复现] 抓帧前插了一个耗时 3 秒的操作：', 'warn');
+      emit('  代码里先 sleep(3) 再 capture_current_frame().copy()', 'bad');
+      emit('  → 抓到的画面是 3 秒前的（帧率 25FPS，已过去 ~75 帧）', 'bad');
+      emit('  → 用户说"这个"时手已经移开，VLM 看到的是旧位置', 'bad');
+      emit('  → 正确做法：抓帧必须紧挨着提问，中间不做任何耗时操作', 'ok');
+      return;
     }
   };
-  window.emoReset = function(){
-    io.innerHTML = '$ 就绪：选择样例与文本通道权重 w（0=全听语气，1=全看字面）…';
+  window.mmReset = function(){
+    st = 'IDLE';
+    io.innerHTML = '$ 就绪：state=IDLE，相机 25 FPS 持续刷新 latest_rgb（帧号自动增加）';
   };
 })();
 </script>

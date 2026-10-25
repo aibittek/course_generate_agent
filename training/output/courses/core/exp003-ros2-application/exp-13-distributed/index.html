@@ -32,9 +32,10 @@ h3{scroll-margin-top:82px}
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：好好的机器人为什么会"串台"</a>
   <a href="#s2">02 核心原理：一个数字如何隔离整张网</a>
-  <a href="#s3">03 动画：多播发现与域隔离的物理过程</a>
+  <a href="#s3">03 动画：组播发现与域隔离的物理过程</a>
   <a href="#s4">04 原理专题：两种发现模式与通信安全</a>
   <a href="#s5">05 交互实验：双机组网诊断台</a>
   <a href="#s6">06 命令精讲：环境变量的三种给法</a>
@@ -50,19 +51,34 @@ h3{scroll-margin-top:82px}
 <div class="exp-head">
   <span class="code">EXP-13 · 第三章 · 验证性 · 2 学时</span>
   <h1>ROS2 分布式通讯：域隔离、组网与安全</h1>
-  <p class="desc">同一个教室里三台机器人全用默认配置，A 车的操作命令竟被 B 车执行了——这不是 bug，是"串台"。本课从 DDS 多播发现的底层原理讲清 ROS_DOMAIN_ID 如何划分通信域，掌握双机组网、防火墙排查、DISCOVERY_SERVER 与 SROS2 安全通信。</p>
-  <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 DOMAIN_ID · 多播发现 · 组网 · SROS2</span></div>
+  <p class="desc">同一个教室里三台机器人全用默认配置，A 车的操作命令竟被 B 车执行了——这不是 bug，是"串台"。本课从 DDS 组播发现的底层原理讲清 ROS_DOMAIN_ID 如何划分通信域，掌握双机组网、防火墙排查、DISCOVERY_SERVER 与 SROS2 安全通信。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 DOMAIN_ID · 组播发现 · 组网 · SROS2</span></div>
 </div>
 
 <!-- 01 问题引入 -->
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清机制</div><div class="kt">域号如何隔离</div><p>能阐述 <code>ROS_DOMAIN_ID</code> 在 DDS 通信域隔离中的作用——为什么不同域号能在同一物理网络上实现逻辑隔离，以及它与 VLAN 等网络隔离技术的本质区别。</p></div>
+  <div class="kcard"><div class="kd">② 掌握配置</div><div class="kt">两台设备互通</div><p>能正确配置两台设备（或同机两组终端）的 <code>ROS_DOMAIN_ID</code> 与网络，完成跨设备节点发现与话题 / 服务通信全流程验证。</p></div>
+  <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">部署发现服务器</div><p>能独立部署 <code>ROS_DISCOVERY_SERVER</code> 实现中心化发现，并用 <code>ros2 daemon</code>、<code>fastdds discovery</code> 监控参与者与端点状态。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">多机规划域号</div><p>能在多机器人场景中合理规划域号：每台机器人独立域号避免干扰，监控节点用发现服务器实现跨域桥接。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：域号 → 组播地址（<code>239.255.0.(N+1)</code>）与端口（<code>7400 + 250×N</code>）的物理映射——这是"隔离"最硬的证据。<br>
+<b>难点</b>：区分两种发现模式（组播自主发现 vs 发现服务器单播）的适用边界与各自故障特征。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课是 <b>EXP-12 域模型的实际应用</b>；也是后面做多机器人协作时的必备配置。</div>
+</section>
+
 <section class="blk" id="s1">
   <h2><span class="no">01</span>问题引入：好好的机器人为什么会"串台"<span class="fs">聚焦问题 · 激活旧知</span></h2>
-  <div class="tip"><span class="lab">先回忆</span>EXP-05 讲过节点靠"网络多播"互相发现、EXP-06 讲过话题不经过任何中心服务器——这些设计在单机上是优势，连上同一 WiFi 后就变成了隐患：<b>没有隔离圈，同网段所有人都听得见</b>。本章解决"怎么划圈"。</div>
+  <div class="tip"><span class="lab">先回忆</span>EXP-05 讲过节点靠"网络组播"互相发现、EXP-06 讲过话题不经过任何中心服务器——这些设计在单机上是优势，连上同一 WiFi 后就变成了隐患：<b>没有隔离圈，同网段所有人都听得见</b>。本章解决"怎么划圈"。</div>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>场景</b><p>同一教室三台 B2 实验车同时开机，全部使用 ROS2 默认配置</p></div>
     <div class="step"><div class="n">2</div><b>怪事</b><p>给 1 号车发 <code>ros2 topic pub /cmd_vel</code>，2 号车竟然也动了</p></div>
     <div class="step"><div class="n">3</div><b>排查</b><p>两台车 <code>echo $ROS_DOMAIN_ID</code> 都是空（默认 0），在同一网络里互相"听得见"</p></div>
-    <div class="step"><div class="n">4</div><b>本质</b><p>ROS2 没有中心注册表，靠<b>网络多播</b>互相发现——同域 = 同一个"频道"</p></div>
+    <div class="step"><div class="n">4</div><b>本质</b><p>ROS2 没有中心注册表，靠<b>网络组播</b>互相发现——同域 = 同一个"频道"</p></div>
   </div>
   <div class="tip">
     <span class="lab">定义</span>
@@ -88,7 +104,7 @@ h3{scroll-margin-top:82px}
   </div>
   <div class="tip"><span class="lab">本课的三个问题</span>
     ① 域号到底是什么、凭什么能"划圈"？（02 节原理）<br>
-    ② 划圈之后，两台设备怎么才能<b>看见彼此</b>？（02 节组网三前提：同段、同 ID、多播通）<br>
+    ② 划圈之后，两台设备怎么才能<b>看见彼此</b>？（02 节组网三前提：同段、同 ID、组播通）<br>
     ③ 同一个 WiFi 下，"不被别人看见"和"能看见自己人"如何同时成立？（05/06/07 节实操）
   </div>
 </section>
@@ -97,14 +113,14 @@ h3{scroll-margin-top:82px}
 <section class="blk" id="s2">
   <h2><span class="no">02</span>核心原理：一个数字如何隔离整张网<span class="fs">示证新知</span></h2>
   <div class="kgrid">
-    <div class="kcard"><div class="kd">物理层根因</div><div class="kt">多播地址跟着 ID 走</div><p>Fast-DDS 根据域号计算出专属多播地址 <code>239.255.0.N</code> 和端口 <code>7400 + N×250</code>。发往不同域的发现报文在<b>网卡层就被分流</b>，根本不会送到对方协议栈——这就是隔离的第一道防线。</p></div>
-    <div class="kcard"><div class="kd">发现流程</div><div class="kt">SPDP 宣告 → SEDP 交换</div><p>节点启动即向域内多播地址周期发送 SPDP 发现报文；收到回应后双方通过 SEDP 交换"我有哪些话题/服务/动作端点"，才建立点对点的正式传输链。</p></div>
+    <div class="kcard"><div class="kd">物理层根因</div><div class="kt">组播地址跟着 ID 走</div><p>Fast-DDS 根据域号计算出专属组播地址 <code>239.255.0.N</code> 和端口 <code>7400 + N×250</code>。发往不同域的发现报文在<b>网卡层就被分流</b>，根本不会送到对方协议栈——这就是隔离的第一道防线。</p></div>
+    <div class="kcard"><div class="kd">发现流程</div><div class="kt">SPDP 宣告 → SEDP 交换</div><p>节点启动即向域内组播地址周期发送 SPDP 发现报文；收到回应后双方通过 SEDP 交换"我有哪些话题/服务/动作端点"，才建立点对点的正式传输链。</p></div>
     <div class="kcard"><div class="kd">对比 ROS1</div><div class="kt">去中心化的天然优势</div><p>ROS1 靠唯一的 ROS_MASTER_URI 注册中心，改域要换 Master 地址、全部节点重启；ROS2 每个节点自主发现，改 DOMAIN_ID 就是各改各的环境变量，Master 单点故障问题也随之消失。</p></div>
-    <div class="kcard"><div class="kd">组网三前提</div><div class="kt">同段、同 ID、多播通</div><p>跨机通信只依赖三件事：① IP 同网段（能互相 ping 通）② 双方 ROS_DOMAIN_ID 相同 ③ 组播没有被防火墙/交换机拦截。没有 Master、没有配置文件，就这三条。</p></div>
+    <div class="kcard"><div class="kd">组网三前提</div><div class="kt">同段、同 ID、组播通</div><p>跨机通信只依赖三件事：① IP 同网段（能互相 ping 通）② 双方 ROS_DOMAIN_ID 相同 ③ 组播没有被防火墙/交换机拦截。没有 Master、没有配置文件，就这三条。</p></div>
   </div>
   <table>
     <tr><th>对比维度</th><th>ROS1</th><th>ROS2（DDS）</th></tr>
-    <tr><td>发现方式</td><td>所有节点向 ROSMaster 注册/查询</td><td>域内多播 SPDP 自主互发现</td></tr>
+    <tr><td>发现方式</td><td>所有节点向 ROSMaster 注册/查询</td><td>域内组播 SPDP 自主互发现</td></tr>
     <tr><td>"隔离"手段</td><td>改 Master URI + 全节点重启</td><td>改 ROS_DOMAIN_ID，即时生效</td></tr>
     <tr><td>取值范围</td><td>无域概念（一台机器一个 Master）</td><td>0~232，共 233 个逻辑隔离域</td></tr>
     <tr><td>单点故障</td><td>Master 挂了新节点进不来</td><td>无中心，任意节点退出不影响他人</td></tr>
@@ -118,37 +134,37 @@ h3{scroll-margin-top:82px}
 
 <!-- 03 动画 -->
 <section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：多播发现与域隔离的物理过程<span class="fs">示证新知</span></h2>
+  <h2><span class="no">03</span>动画：组播发现与域隔离的物理过程<span class="fs">示证新知</span></h2>
   <div class="anim-box">
     <svg viewBox="0 0 760 330" width="100%">
       <defs>
         <marker id="a13" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#34d399"/></marker>
         <marker id="x13" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#f87171"/></marker>
       </defs>
-      <text x="380" y="24" text-anchor="middle" fill="#94a3b8" font-size="13">上：同域（ID=0）→ 多播互通　│　下：异域（0 / 5）→ 地址不同物理隔离</text>
+      <text x="380" y="24" text-anchor="middle" fill="#94a3b8" font-size="13">上：同域（ID=0）→ 组播互通　│　下：异域（0 / 5）→ 地址不同物理隔离</text>
       <!-- 同域 -->
       <rect x="40" y="46" width="170" height="96" rx="10" fill="none" stroke="#34d399" stroke-width="2"/>
       <text x="125" y="76" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold">设备 A（笔记本）</text>
       <text x="125" y="100" text-anchor="middle" fill="#34d399" font-size="12">DOMAIN_ID = 0</text>
-      <text x="125" y="124" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.0 : 7400</text>
+      <text x="125" y="124" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.1 : 7400</text>
       <rect x="550" y="46" width="170" height="96" rx="10" fill="none" stroke="#34d399" stroke-width="2"/>
       <text x="635" y="76" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold">设备 B（机器人）</text>
       <text x="635" y="100" text-anchor="middle" fill="#34d399" font-size="12">DOMAIN_ID = 0</text>
-      <text x="635" y="124" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.0 : 7400</text>
+      <text x="635" y="124" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.1 : 7400</text>
       <line x1="214" y1="94" x2="546" y2="94" stroke="#34d399" stroke-width="2" marker-end="url(#a13)"/>
       <circle r="5" fill="#34d399"><animateMotion path="M214,94 L546,94" dur="1.6s" repeatCount="indefinite"/></circle>
-      <text x="380" y="82" text-anchor="middle" fill="#34d399" font-size="12">SPDP 多播宣告（同地址同端口 → 收得到）</text>
+      <text x="380" y="82" text-anchor="middle" fill="#34d399" font-size="12">SPDP 组播宣告（同地址同端口 → 收得到）</text>
       <rect x="270" y="104" width="220" height="30" rx="6" fill="none" stroke="#38bdf8" stroke-dasharray="5 4"/>
       <text x="380" y="124" text-anchor="middle" fill="#38bdf8" font-size="12">SEDP 交换端点 → 建立正式链路 ✓</text>
       <!-- 异域 -->
       <rect x="40" y="196" width="170" height="96" rx="10" fill="none" stroke="#94a3b8" stroke-width="2"/>
       <text x="125" y="226" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold">设备 A</text>
       <text x="125" y="250" text-anchor="middle" fill="#f87171" font-size="12">DOMAIN_ID = 0</text>
-      <text x="125" y="274" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.0 : 7400</text>
+      <text x="125" y="274" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.1 : 7400</text>
       <rect x="550" y="196" width="170" height="96" rx="10" fill="none" stroke="#94a3b8" stroke-width="2"/>
       <text x="635" y="226" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold">设备 C</text>
       <text x="635" y="250" text-anchor="middle" fill="#f87171" font-size="12">DOMAIN_ID = 5</text>
-      <text x="635" y="274" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.5 : 7650</text>
+      <text x="635" y="274" text-anchor="middle" fill="#94a3b8" font-size="11">239.255.0.6 : 7650</text>
       <line x1="214" y1="244" x2="546" y2="244" stroke="#f87171" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#x13)" opacity="0.45"/>
       <line x1="352" y1="212" x2="408" y2="276" stroke="#f87171" stroke-width="4" stroke-linecap="round">
         <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite"/>
@@ -156,22 +172,26 @@ h3{scroll-margin-top:82px}
       <line x1="408" y1="212" x2="352" y2="276" stroke="#f87171" stroke-width="4" stroke-linecap="round">
         <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite"/>
       </line>
-      <text x="380" y="316" text-anchor="middle" fill="#f87171" font-size="12">多播地址 / 端口都不同 → 报文在网卡层就被分流，互不可见</text>
+      <text x="380" y="316" text-anchor="middle" fill="#f87171" font-size="12">组播地址 / 端口都不同 → 报文在网卡层就被分流，互不可见</text>
       <circle r="4" fill="#f87171" opacity="0.8"><animateMotion path="M214,244 L340,244" dur="1.8s" repeatCount="indefinite"/></circle>
     </svg>
   </div>
-  <p class="anim-cap">动画：上半为同域两设备，SPDP 多播宣告命中同一地址 239.255.0.0:7400，随后 SEDP 交换端点信息建立正式链路；下半为异域两设备，ID 不同导致多播地址（.0 vs .5）和端口（7400 vs 7650）全不同，隔离发生在网卡分流层，无需任何应用层过滤。</p>
+  <p class="anim-cap">动画：上半为同域两设备，SPDP 组播宣告命中同一地址 239.255.0.1:7400，随后 SEDP 交换端点信息建立正式链路；下半为异域两设备，ID 不同导致组播地址（域 0 → .1，域 5 → .6）和端口（7400 vs 7650）全都不同，隔离发生在网卡分流层，无需任何应用层过滤。</p>
 
   <div class="tip tealb"><span class="lab">EXP-12 实测对上号</span>
     上一章的端口证据在这里继续用：<b>发现端口 = 7400 + 250 × 域号</b>。域 7 实测就是 9150/9161（EXP-12 实操 A-1 亲测），不是理论值——域号一变，端口<b>物理上</b>就换了，这是"网卡层分流"最硬的证据。
   </div>
+  <div class="tip amber"><span class="lab">⚠ 组播地址别记错成 239.255.0.0</span>
+    ROS 2 默认在 <b>239.255.0.0/24</b> 这个网段上划分子网，但每个域的地址都从 <b>.1</b> 起算：<b>域号 N → 239.255.0.(N+1)</b>。所以域 0 是 <code>239.255.0.1</code>，域 5 是 <code>239.255.0.6</code>。<br>
+    网段第一个地址（.0）与最后一个地址（.255）在 IPv4 组播里不分配给主机，这也是"域号最大只能到 232"的原因之一。<b>记法：地址末位 = 域号 + 1。</b>
+  </div>
   <table>
-    <tr><th>ROS_DOMAIN_ID</th><th>多播地址</th><th>发现端口</th><th>被谁用</th></tr>
-    <tr><td>0（默认）</td><td>239.255.0.0</td><td>7400 / 7411</td><td>出厂默认 → <b>串台的根源</b></td></tr>
-    <tr><td>1</td><td>239.255.0.1</td><td>7650 / 7661</td><td>多机车间第 1 组</td></tr>
-    <tr><td>5</td><td>239.255.0.5</td><td>8650 / 8661</td><td>本节演示用</td></tr>
-    <tr><td>7</td><td>239.255.0.7</td><td><b>9150 / 9161</b></td><td>EXP-12 实操实测值</td></tr>
-    <tr><td>42</td><td>239.255.0.42</td><td>17900 / 17911</td><td>实操 A 用（42 = 实验编号，好记）</td></tr>
+    <tr><th>ROS_DOMAIN_ID</th><th>组播地址</th><th>发现端口（组播 / 单播）</th><th>被谁用</th></tr>
+    <tr><td>0（默认）</td><td>239.255.0.1</td><td>7400 / 7411</td><td>出厂默认 → <b>串台的根源</b></td></tr>
+    <tr><td>1</td><td>239.255.0.2</td><td>7650 / 7661</td><td>多机车间第 1 组</td></tr>
+    <tr><td>5</td><td>239.255.0.6</td><td>8650 / 8661</td><td>本节演示用</td></tr>
+    <tr><td>7</td><td>239.255.0.8</td><td><b>9150 / 9161</b></td><td>EXP-12 实操实测值</td></tr>
+    <tr><td>42</td><td>239.255.0.43</td><td>17900 / 17911</td><td>实操 A 用（42 = 实验编号，好记）</td></tr>
   </table>
   <div class="tip amber"><span class="lab">算一遍就知道上限</span>
     域号最大 232，对应端口 7400 + 250×232 = <b>65400</b>，已经贴着系统端口上限 65535。所以域号<b>不能乱挑大数字</b>——实验室给 20 个组分配域号，从 <code>1~20</code> 顺序发牌即可，既避开默认域 0，又留足余量。
@@ -182,13 +202,13 @@ h3{scroll-margin-top:82px}
 <section class="blk" id="s4">
   <h2><span class="no">04</span>原理专题：两种发现模式与通信安全<span class="fs">示证新知</span></h2>
   <div class="kgrid">
-    <div class="kcard"><div class="kd">模式一 · 默认</div><div class="kt">多播自主发现</div><p>开局域网、机器人数量少（&lt;50 节点）时的默认选择。零配置、即开即用，但依赖组播——部分企业网/云环境交换机禁用了组播，就全军覆没。</p></div>
+    <div class="kcard"><div class="kd">模式一 · 默认</div><div class="kt">组播自主发现</div><p>开局域网、机器人数量少（&lt;50 节点）时的默认选择。零配置、即开即用，但依赖组播——部分企业网/云环境交换机禁用了组播，就全军覆没。</p></div>
     <div class="kcard"><div class="kd">模式二 · 进阶</div><div class="kt">ROS_DISCOVERY_SERVER 单播</div><p>指定一台"发现服务器"，所有节点改为向它单播注册。不受组播限制，适合 50~500 节点、跨子网、云端混合部署。代价是要先启动并维护 server 进程。</p></div>
     <div class="kcard"><div class="kd">安全层</div><div class="kt">DDS-Security / SROS2</div><p>DDS 标准定义的安全扩展：governance（哪些域要加密）+ permissions（谁能发/收哪个话题）+ passwords（密钥），ROS2 封装为 sros2 工具包，未授权节点连"看到话题"都做不到。</p></div>
     <div class="kcard"><div class="kd">成本意识</div><div class="kt">加密是有代价的</div><p>SROS2 Enforce 模式带来约 5~15% CPU 开销。教学小车资源有限，建议：内网实验默认不开，涉及远程遥控/OTA 升级的产品化场景再启用。</p></div>
   </div>
   <table>
-    <tr><th>维度</th><th>多播发现（默认）</th><th>DISCOVERY_SERVER</th></tr>
+    <tr><th>维度</th><th>组播发现（默认）</th><th>DISCOVERY_SERVER</th></tr>
     <tr><td>传输方式</td><td>组播 239.255.0.N</td><td>单播到指定 IP:11811</td></tr>
     <tr><td>配置成本</td><td>零（只改域号）</td><td>先跑 fastdds discovery，每终端 export 服务器地址</td></tr>
     <tr><td>跨子网/云</td><td>组播通常被路由丢弃 → 不通</td><td>单播可路由 → 通</td></tr>
@@ -305,7 +325,7 @@ export ROS_DOMAIN_ID=5
   <div class="termbar"><span class="tl">终端 2</span><b>同域验证（预期：能收到）</b><span class="note">新终端</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">2</span><b>同域 listener → 收到数据</b><span class="cs-where">终端 2</span></div>
-    <p class="cs-why">域号相同 = 多播地址端口相同 → SPDP 命中 → SEDP 撮合 → 数据到达：</p>
+    <p class="cs-why">域号相同 = 组播地址端口相同 → SPDP 命中 → SEDP 撮合 → 数据到达：</p>
     <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">42</span>
 <span class="g">ros2</span> topic list               <span class="c"># 能看到 /chatter</span>
 <span class="g">ros2</span> run demo_nodes_cpp listener</pre>
@@ -363,14 +383,14 @@ export ROS_DOMAIN_ID=5
     <li>验收 1：单机三终端——<code>talker</code> 与 <code>listener</code> 实测<b>同域互通、异域隔离、切回默认域串台重现</b>，三步截图齐全</li>
     <li>验收 2：能算出任意域号的发现端口（<code>7400 + 250×域号</code>），并说明域 232 为何贴着上限</li>
     <li>验收 3：三种给法各跑一次，能说清导出范围差异（当前终端 / 单条命令 / 开机后新终端）</li>
-    <li>验收 4：能说出跨机组网三前提（同网段 → 同域号 → 多播畅通），并按序排查（ID → ping → multicast → 防火墙）</li>
+    <li>验收 4：能说出跨机组网三前提（同网段 → 同域号 → 组播畅通），并按序排查（ID → ping → multicast → 防火墙）</li>
     <li>验收 5：画得出 SPDP→SEDP 发现两阶段流程图</li>
-    <li>验收 6：能对比多播发现与 DISCOVERY_SERVER 单播两种模式的适用场景与代价</li>
+    <li>验收 6：能对比组播发现与 DISCOVERY_SERVER 单播两种模式的适用场景与代价</li>
   </ul>
   <table>
     <tr><th>坑</th><th>症状</th><th>解法</th></tr>
     <tr><td>环境变量没生效</td><td>改了 bashrc 但当前终端还是老域号</td><td>source 后开新终端；老终端手动 export；或用 env 前缀式当场验证</td></tr>
-    <tr><td>防火墙拦组播</td><td>域号一致、ping 通，就是互相看不到</td><td>ufw allow 7400:8399/udp；云服务器还要在安全组放行 UDP 多播段</td></tr>
+    <tr><td>防火墙拦组播</td><td>域号一致、ping 通，就是互相看不到</td><td>ufw allow 7400:8399/udp；云服务器还要在安全组放行 UDP 组播段</td></tr>
     <tr><td>虚拟机 NAT 模式</td><td>虚拟机内节点与宿主机互发现失败</td><td>VMware/VirtualBox 改"桥接模式"，让虚拟机拿到同网段真实 IP</td></tr>
     <tr><td>script 命令被截断</td><td>记录会话时 \ 转义链接失效、话题被硬换行截开</td><td>cmd 写成数组 script -qec "ros2 topic pub -r 1 /a std_msgs/msg/String '{data: hello}'" log</td></tr>
     <tr><td>fastdds 工具不存在</td><td>command not found: fastdds</td><td>sudo apt install ros-humble-rmw-fastrtps-cpp</td></tr>
@@ -382,9 +402,9 @@ export ROS_DOMAIN_ID=5
 <section class="blk" id="s9">
   <h2><span class="no">09</span>本课总结<span class="fs">融会贯通</span></h2>
   <div class="kgrid">
-    <div class="kcard"><div class="kd">概念</div><div class="kt">域 = DDS 层逻辑隔离圈</div><p>ROS_DOMAIN_ID 0~232，同号互通、异号隔离，对应专属多播地址与端口。</p></div>
-    <div class="kcard"><div class="kd">组网</div><div class="kt">只要三个前提</div><p>同网段、同域号、多播畅通。排查顺序：ID → ping → multicast → 防火墙 → 换 RMW。</p></div>
-    <div class="kcard"><div class="kd">进阶</div><div class="kt">两套发现 + 一层安全</div><p>多播发现适合单网段小系统；DISCOVERY_SERVER 跨网大规模；SROS2 产品化加密。</p></div>
+    <div class="kcard"><div class="kd">概念</div><div class="kt">域 = DDS 层逻辑隔离圈</div><p>ROS_DOMAIN_ID 0~232，同号互通、异号隔离，对应专属组播地址与端口。</p></div>
+    <div class="kcard"><div class="kd">组网</div><div class="kt">只要三个前提</div><p>同网段、同域号、组播畅通。排查顺序：ID → ping → multicast → 防火墙 → 换 RMW。</p></div>
+    <div class="kcard"><div class="kd">进阶</div><div class="kt">两套发现 + 一层安全</div><p>组播发现适合单网段小系统；DISCOVERY_SERVER 跨网大规模；SROS2 产品化加密。</p></div>
     <div class="kcard"><div class="kd">工程化</div><div class="kt">隔离要落到镜像里</div><p>每台机器人出厂烧录独立域号，中央站多 ID 接入——这是多机车间的标准姿势。</p></div>
   </div>
   <div class="tip violet"><span class="lab">回扣事故复盘</span>
@@ -392,7 +412,7 @@ export ROS_DOMAIN_ID=5
   </div>
   <div class="tip violet">
     <span class="lab">思考题</span>
-    <p>① 多播地址 239.255.0.N 与端口 7400+N×250 是如何实现"同一物理网络、多个逻辑隔离域"的？若公司要求"20 个域既要隔离又要两两互通"，你会设计什么桥接方案？</p>
+    <p>① 组播地址 239.255.0.N 与端口 7400+N×250 是如何实现"同一物理网络、多个逻辑隔离域"的？若公司要求"20 个域既要隔离又要两两互通"，你会设计什么桥接方案？</p>
     <p>② 工厂部署 20 台机器人 + 1 个中央监控站：每台独立 DOMAIN_ID 已定，监控站要同时订阅所有车的 /robot_status，有哪几种可行架构？各自的成本与故障半径如何？</p>
   </div>
 </section>
@@ -410,11 +430,11 @@ export ROS_DOMAIN_ID=5
 
 <script>
 var NET = {
-  base: '<span class="ok">✅ 互通</span>\nA、B 同为域 0，都监听同一多播地址 239.255.0.0:7400。\nSPDP 宣告互达 → SEDP 交换端点 → echo 正常。\n⚠ 注意：能互通也意味着 <b>cmd_vel 会串台</b>——多机环境应立即分配独立域号。',
-  diffid: '<span class="warn">🚫 不通（隔离生效）</span>\nA 在 239.255.0.0:7400，B 在 239.255.0.5:7650——\n多播地址和端口全都不同，发现报文在<b>网卡分流层</b>就被丢弃。\nros2 topic list 看不到对端话题，epdump/wireshark 也抓不到对端 SPDP。\n这正是"每台机器人独立域号"方案的原理。',
-  fw: '<span class="bad">🚫 不通（防火墙拦组播）</span>\n域号一致但 UDP 多播被 ufw/iptables/交换机 IGMP 过滤丢弃。\n特征：ping 通、echo ROS_DOMAIN_ID 相同，topic list 却为空——"路是通的，频道被掐了"。\n排障：sudo ufw status → ufw allow 7400:8399/udp → 交换机开 IGMP Snooping 放行组播。',
-  vm: '<span class="bad">🚫 不通（虚拟机 NAT）</span>\nNAT 模式下虚拟机收不到宿主机的组播帧：多播不跨 NAT 边界。\n特征：宿主机之间正常，一进虚拟机就"失联"。\n排障：VMware 改桥接模式（Bridge）/ VirtualBox 改桥接并勾选"混杂模式"，让虚拟机拿到同网段真实 IP。',
-  fixid: '<span class="ok">✅ 互通（修复成立）</span>\nB 重新 export ROS_DOMAIN_ID=0 后又回到同一多播地址。\n新节点发起 SPDP → A 应答 → 3 秒内 topic list 恢复。\n<pre>建议同时把域号写进镜像 ~/.bashrc，避免开机又回到各自为政。</pre>',
+  base: '<span class="ok">✅ 互通</span>\nA、B 同为域 0，都监听同一组播地址 239.255.0.1:7400。\nSPDP 宣告互达 → SEDP 交换端点 → echo 正常。\n⚠ 注意：能互通也意味着 <b>cmd_vel 会串台</b>——多机环境应立即分配独立域号。',
+  diffid: '<span class="warn">🚫 不通（隔离生效）</span>\nA 在 239.255.0.1:7400（域 0），B 在 239.255.0.6:7650（域 5）——\n组播地址和端口全都不同，发现报文在<b>网卡分流层</b>就被丢弃。\nros2 topic list 看不到对端话题，epdump/wireshark 也抓不到对端 SPDP。\n这正是"每台机器人独立域号"方案的原理。',
+  fw: '<span class="bad">🚫 不通（防火墙拦组播）</span>\n域号一致但 UDP 组播被 ufw/iptables/交换机 IGMP 过滤丢弃。\n特征：ping 通、echo ROS_DOMAIN_ID 相同，topic list 却为空——"路是通的，频道被掐了"。\n排障：sudo ufw status → ufw allow 7400:8399/udp → 交换机开 IGMP Snooping 放行组播。',
+  vm: '<span class="bad">🚫 不通（虚拟机 NAT）</span>\nNAT 模式下虚拟机收不到宿主机的组播帧：组播不跨 NAT 边界。\n特征：宿主机之间正常，一进虚拟机就"失联"。\n排障：VMware 改桥接模式（Bridge）/ VirtualBox 改桥接并勾选"混杂模式"，让虚拟机拿到同网段真实 IP。',
+  fixid: '<span class="ok">✅ 互通（修复成立）</span>\nB 重新 export ROS_DOMAIN_ID=0 后又回到同一组播地址。\n新节点发起 SPDP → A 应答 → 3 秒内 topic list 恢复。\n<pre>建议同时把域号写进镜像 ~/.bashrc，避免开机又回到各自为政。</pre>',
   server: '<span class="ok">✅ 通（单播发现接管）</span>\n组播不通时改走发现服务器：\n1. fastdds discovery --server-id 0 --ip-address 192.168.1.100 --port 11811\n2. 每个节点终端 export ROS_DISCOVERY_SERVER=192.168.1.100:11811\n所有注册改为对 11811 的单播，可跨子网、可过禁组播的云网络。\n注意：服务器是新单点，挂了则新节点无法加入（已建链的仍工作）。'
 };
 function diag(){ document.getElementById('out').innerHTML = NET[document.getElementById('sc').value]; }

@@ -76,12 +76,12 @@
   <h2><span class="no">02</span>原理通俗讲解：前端配准与回环</h2>
   <div class="tip tealb"><span class="lab">🧩 拼撕碎的地图</span>把户型图撕成 360 张碎纸叠在一起（每 0.1 秒一张扫描），最后<b>只留一小叠（关键帧）</b>。每次拿新碎纸和上一张对齐——这叫<b>前端扫描配准</b>（像玩"大家来找茬"：平移旋转着挪，直到两张图严丝合缝）。等你逛回起点，发现最后一张和第一张原本就是同一面墙——这叫<b>回环检测</b>，把整叠地图"首尾一捋"，之前累计的手抖全被摊平。地图从"歪扭"变"方正"，靠的就是这一捋。</div>
   <div class="kgrid">
-    <div class="kcard"><div class="kd">前端</div><div class="kt">Scan Matching 扫描配准</div><p>在 ±0.5 m、±0.01 m 精度的搜索空间里微调位姿，让新一帧扫描与当前地图最吻合（correlation_search_space_dimension 0.5）。</p></div>
-    <div class="kcard"><div class="kd">后端</div><div class="kt">Ceres 图优化</div><p>把关键帧当节点、匹配与回环当边，用 LEVENBERG_MARQUARDT 求解器整体调位置，误差被摊到每一条边上。</p></div>
-    <div class="kcard"><div class="kd">回环</div><div class="kt">Loop Closure</div><p>回到旧地_RC：在 ±8 m 大范围搜索（loop_search_space_dimension 8.0），精细匹配度过 0.45 响应阈值才认账，防"认错墙"。</p></div>
+    <div class="kcard"><div class="kd">前端</div><div class="kt">Scan Matching 扫描配准</div><p>在 ±0.5 m 的搜索窗（correlation_search_space_dimension 0.5）、1 cm 步进（resolution 0.01）内微调位姿，让新一帧扫描与当前地图最吻合。</p></div>
+    <div class="kcard"><div class="kd">后端</div><div class="kt">Ceres 图优化</div><p>把关键帧当节点、匹配与回环当边，用 Ceres（LEVENBERG_MARQUARDT 信赖域 + SPARSE_NORMAL_CHOLESKY 求解）整体调位置，误差被摊到每一条边上。</p></div>
+    <div class="kcard"><div class="kd">回环</div><div class="kt">Loop Closure</div><p>回到旧地时在 8 m 范围（loop_search_space_dimension 8.0）内搜索候选，粗匹配响应 &gt;0.35、细匹配响应 &gt;0.45 才认账，防"认错墙"。</p></div>
     <div class="kcard"><div class="kd">关键帧</div><div class="kt">不是每帧都存</div><p>走超 0.01 m 或转超 0.02 rad 才开新关键帧——存太密图臃肿算不动，存太疏拼不上。</p></div>
     <div class="kcard"><div class="kd">频率</div><div class="kt">地图 10 Hz 刷新</div><p>mode: mapping，map_update_interval 0.1 s：RViz 里能看到地图"实时长出来"。</p></div>
-    <div class="kcard"><div class="kd">量程</div><div class="kt">max_laser_range 12.0</div><p>与 COIN-D6 雷达一致；超范围的点直接丢弃，避免把无关远处噪声当地标。</p></div>
+    <div class="kcard"><div class="kd">量程</div><div class="kt">max_laser_range 12.0</div><p>与 COIN-D6 雷达一致；超范围的点直接丢弃，避免把远处无关噪声当地标。</p></div>
   </div>
 </section>
 
@@ -91,9 +91,9 @@
   <div class="kgrid">
     <div class="kcard"><div class="kd">知识点 1</div><div class="kt">位姿图</div><p>关键帧节点 + 约束边构成的图，SLAM 后端优化的就是它；回环边是"首尾相接"的那根超强约束。</p></div>
     <div class="kcard"><div class="kd">知识点 2</div><div class="kt">odom → base_footprint</div><p>建图期间 TF 链：map→odom 由 slam_toolbox 发，odom→base_footprint 由轮式里程计（EKF）发，缺一不可。</p></div>
-    <div class="kcard"><div class="kd">知识点 3</div><div class="kt">map 文件二件套</div><p>.pgm 是像素图片（255 空闲 / 0 墙 / 205 未知），.yaml 记分辨率 0.05、origin 原点、阈值——成对才能被 Nav2 加载。</p></div>
-    <div class="kcard"><div class="kd">知识点 4</div><div class="kt">QoS 匹配</div><p>/scan 是 Best Effort（尽力而为）：订阅端若用 Reliable 会收不到数据，rviz 里订阅 QoS 要改成 Best Effort。</p></div>
-    <div class="kcard"><div class="kd">知识点 5</div><div class="kt">launch 延迟启动</div><p>TimerAction period=10.0：等底盘与雷达先"热身"10 秒再起 slam，避免开机瞬间 TF 不全报错。</p></div>
+    <div class="kcard"><div class="kd">知识点 3</div><div class="kt">map 文件二件套</div><p>.pgm 是灰度位图（<b>254 空闲 / 0 占据 / 205 未知</b>），.yaml 记分辨率 0.05、origin 原点、occupied_thresh 0.65 / free_thresh 0.25——成对才能被 Nav2 加载。</p></div>
+    <div class="kcard"><div class="kd">知识点 4</div><div class="kt">QoS 匹配</div><p>/scan 是 Best Effort（尽力而为）：订阅端若用 Reliable 会收不到数据，RViz 里 LaserScan 的 Reliability Policy 必须改成 Best Effort。</p></div>
+    <div class="kcard"><div class="kd">知识点 5</div><div class="kt">launch 延迟启动</div><p>TimerAction period=10.0：等 bringup 的 odom/TF 与雷达 /scan 稳定 10 秒再起 slam，避免刚上电 TF 不全报错。</p></div>
     <div class="kcard"><div class="kd">知识点 6</div><div class="kt">好地图四标准</div><p>墙单线（厚 &lt; 0.1 m）、尺寸误差 &lt; 2%、四角直角 ≈90°、闭环处无错位。地图不过关，导航全白搭。</p></div>
   </div>
 </section>
@@ -104,7 +104,7 @@
   <ul class="check">
     <li>跑通 <span class="ok">slam.launch.py</span> 建图节点，RViz 中地图随遥控实时生长</li>
     <li>用 <span class="ok">slam_teleop</span>（w/s/a/d/空格，0.2 m/s、0.5 rad/s）遥控逛完整圈并完成闭环</li>
-    <li>用 <span class="ok">map_save</span> / map_saver_cli 保存出 map_01.pgm + map_01.yaml</li>
+    <li>用 <span class="ok">map_save</span>（<code>-p map_name:=</code>）或 map_saver_cli 保存出 map_01.pgm + map_01.yaml</li>
     <li>按四标准验收地图：墙单线、尺寸 &lt; 2%、直角、<span class="ok">闭环错位 &lt; 0.1 m</span></li>
     <li>会诊断 5 类常见问题：QoS、地图不更新、双墙、回环不触发、保存失败</li>
   </ul>
@@ -117,13 +117,13 @@
     <thead><tr><th>项目</th><th>要求</th></tr></thead>
     <tbody>
       <tr><td>系统</td><td>Ubuntu 22.04 + ROS2 Humble，car1_slam 功能包已编译（含 slam/teleop/map_save 节点与 launch）</td></tr>
-      <tr><td>硬件</td><td>小车 C1 满电（逛圈耗电）、COIN-D6 雷（/scan 10 Hz Best Effort）、平整 3 m × 3 m 以上场地</td></tr>
-      <tr><td>参数文件</td><td>slam.yaml（mode: mapping、do_loop_closing: true、max_laser_range: 12.0）</td></tr>
+      <tr><td>硬件</td><td>小车 C1 满电（逛圈耗电）、COIN-D6 雷达（/scan 10 Hz Best Effort）、平整 3 m × 3 m 以上场地</td></tr>
+      <tr><td>参数文件</td><td>car1_slam/config/slam.yaml（mode: mapping、do_loop_closing: true、max_laser_range: 12.0）</td></tr>
       <tr><td>前置实验</td><td>EXP-01 TF 树正常（base_footprint 为根），否则建图节点起不来</td></tr>
-      <tr><td>RViz 配置</td><td>Fixed Frame = map，加 Map（/map）+ LaserScan（/scan，QoS 选 Best Effort）+ TF</td></tr>
+      <tr><td>RViz 配置</td><td>launch 已自带 slam.rviz：Fixed Frame = map，Map（/map，Transient Local）+ LaserScan（/scan，Best Effort）+ TF 已配好</td></tr>
     </tbody>
   </table>
-  <div class="tip"><span class="lab">💡 关键参数速记</span>resolution 0.05 · map_update_interval 0.1 · minimum_travel_distance 0.01 · minimum_travel_heading 0.02 · loop_search_space_dimension 8.0 · loop_match_minimum_response_fine 0.45。</div>
+  <div class="tip"><span class="lab">💡 关键参数速记</span>resolution 0.05 · map_update_interval 0.1 · minimum_travel_distance 0.01 · minimum_travel_heading 0.02 · correlation_search_space_dimension 0.5 · loop_search_space_dimension 8.0 · loop_match_minimum_response_coarse 0.35 · loop_match_minimum_response_fine 0.45（均取自 car1_slam/config/slam.yaml）。</div>
 </section>
 
 <!-- 06 -->
@@ -216,19 +216,22 @@
     <div class="step"><span class="n">2</span>终端 2：启动键盘遥控；RViz 确认 Fixed Frame = map、/scan 点云随车移动</div>
     <div class="arr"></div>
     <div class="step"><span class="n">3</span>慢速逛完整圈回到出发点，看到回环连线跳动、双墙合一后，先存图再停车</div>
-  </div>
-  <pre><span class="c"># ① 启动 SLAM 建图（含 rviz 与 10 秒延迟）</span>
+  </div>  <pre><span class="c"># ① 启动 SLAM 建图（含底盘 bringup、雷达、10 秒延迟起的 slam_toolbox 与 rviz）</span>
 <span class="g">ros2</span> launch car1_slam slam.launch.py
+<span class="c">#   不想开 rviz：追加 use_rviz:=false</span>
 
-<span class="c"># ② 另开终端：键盘遥控（w/s 前后 0.2m/s，a/d 转向 0.5rad/s，空格停）</span>
+<span class="c"># ② 另开终端：键盘遥控（w/s 前后 0.2m/s，a/d 左右转 0.5rad/s，空格停）</span>
 <span class="g">ros2</span> run car1_slam slam_teleop
+<span class="c">#   注意：必须在真终端（tty）里运行，IDE 内嵌终端读不到按键</span>
 
 <span class="c"># ③ 逛圈前自检：雷达 10Hz、里程计 TF 正常</span>
 <span class="g">ros2</span> topic hz /scan
 <span class="g">ros2</span> run tf2_ros tf2_echo odom base_footprint
 
-<span class="c"># ④ 保存地图（推荐方式一；逛完圈再执行！）</span>
-<span class="g">ros2</span> run car1_slam map_save map_01
+<span class="c"># ④ 保存地图（逛完圈、触发回环之后再执行）</span>
+<span class="g">ros2</span> run car1_slam map_save <span class="y">--ros-args -p map_name:=map_01</span>
+<span class="c">#   默认写到 install/.../car1_slam/maps/ ；想改目录再加 -p map_dir:=/绝对/路径</span>
+<span class="c">#   注意 map_save 读的是参数 map_name，不是位置参数——直接写 map_01 不会生效</span>
 
 <span class="c"># 方式二：nav2 官方 CLI（transient_local 才能收到 latched 的 /map）</span>
 <span class="g">ros2</span> run nav2_map_server map_saver_cli -f map_01 \
@@ -236,7 +239,7 @@
 
 <span class="c"># ⑤ 停掉遥控（Ctrl+C 前先保存）</span>
 <span class="g">pkill</span> -f slam_teleop</pre>
-  <p>保存产物 <code>map_01.yaml</code> 关键字段：image: map_01.pgm · mode: trinary · resolution: 0.05 · origin: [-0.381, -0.482, 0.0] · occupied_thresh: 0.65 · free_thresh: 0.25。</p>
+  <p>保存产物 <code>map_01.yaml</code> 关键字段（与仓库示例 slam_map.yaml 一致）：image: map_01.pgm · mode: trinary · resolution: 0.05 · origin: [-0.381, -0.482, 0] · negate: 0 · occupied_thresh: 0.65 · free_thresh: 0.25。其中 origin 是地图左下角在 map 坐标系里的位姿。</p>
 </section>
 
 <!-- 09 -->
@@ -251,7 +254,8 @@
       <tr><td>墙出现双影</td><td>回环没触发/配准失败 → 降低车速、走规则大圈、回起点停一停再看</td></tr>
       <tr><td>回环永不触发</td><td>闭环区域特征太弱或太快掠过 → 回起点减速正对原方向；检查 do_loop_closing: true</td></tr>
       <tr><td>保存失败</td><td>map_saver 等不到 /map → 加 <code>-p map_subscribe_transient_local:=true</code>，或用 car1_slam 的 map_save</td></tr>
-      <tr><td>文件名踩坑</td><td>路径含中文/空格 → 改英文文件名，先保存再 Ctrl+C</td></tr>
+      <tr><td>存下来的还是旧名字</td><td>误把 <code>map_01</code> 当位置参数传 → 必须写成 <code>--ros-args -p map_name:=map_01</code></td></tr>
+      <tr><td>文件名踩坑</td><td>路径含中文/空格 → 改英文文件名；先保存再 Ctrl+C</td></tr>
     </tbody>
   </table>
   <ul class="check">
@@ -266,9 +270,9 @@
 <section class="blk" id="s10">
   <h2><span class="no">10</span>总结与思考</h2>
   <div class="kgrid">
-    <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">一张可用的户型图</div><p>slam.launch + slam_teleop 逛圈，map_save 产出 map_01.pgm/yaml 通过四标准验收。</p></div>
+    <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">一张可用的户型图</div><p>slam.launch + slam_teleop 逛圈，map_save 产出 map_01.pgm/yaml 并通过四标准验收。</p></div>
     <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">前端 + 后端 + 回环</div><p>扫描配准堆关键帧，Ceres 图优化摊误差，回环检测是"一捋正"的关键。</p></div>
-    <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">三步操作肌肉记忆</div><p>启动 → 遥控逛圈 → 保存；map_saver_cli 的 transient_local 参数套路。</p></div>
+    <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">三步操作肌肉记忆</div><p>启动 → 遥控逛圈 → 保存；map_save 的参数式调用与 map_saver_cli 的 transient_local 参数套路。</p></div>
     <div class="kcard"><div class="kd">❓ 排障思路</div><div class="kt">双墙排查链</div><p>QoS → /scan 频率 → 车速 → 闭环 → do_loop_closing 参数，逐级定位。</p></div>
   </div>
   <div class="tip violet"><span class="lab">📝 思考题 1</span>如果把 minimum_travel_distance 从 0.01 m 调大到 0.5 m，关键帧会变少还是变多？地图更新会变得"卡顿"还是"更丝滑"？对回环检测的精度又有什么影响？</div>

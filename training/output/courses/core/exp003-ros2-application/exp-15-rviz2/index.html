@@ -43,6 +43,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：机器人眼中的世界长什么样</a>
   <a href="#s2">02 核心原理：Fixed Frame 决定"上帝站在哪"</a>
   <a href="#s3">03 动画：一条雷达点如何画上屏</a>
@@ -69,6 +70,21 @@
 </div>
 
 <!-- 01 问题引入 -->
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清架构</div><div class="kt">OGRE + Display 插件</div><p>能阐述 rviz2 基于 OGRE 渲染引擎与 Display 插件体系的架构——为什么需要"以坐标系为容器、以 Display 为图层"的三维可视化，以及 Fixed Frame 的核心地位。</p></div>
+  <div class="kcard"><div class="kd">② 掌握配置</div><div class="kt">七大 Display</div><p>能正确设置 Fixed Frame，并依次添加配置 RobotModel、TF、LaserScan、PointCloud2、Image、Path、Marker 七种 Display。</p></div>
+  <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">配置可复现</div><p>能用 <code>rviz2 -d &lt;config&gt;</code> 加载配置，调整后通过 File → Save Config 保存，实现调试环境一键复现。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">当标准可视化前端</div><p>在后续 bag 回放、URDF 模型验证、仿真可视化中，能把 rviz2 作为标准三维前端按需配置。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：<b>Fixed Frame 选错 = 一片黑</b>。这是 rviz2 最高频的"故障"，其实根本不是故障。<br>
+<b>难点</b>：理解 rviz2 只是"消费者"——没有 TF 和 <code>/robot_description</code> 的发布者，它什么都画不出来。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课是 <b>EXP-19 TF2 与 EXP-20 URDF 的可视化出口</b>，两课都会用 rviz2 做验收。</div>
+</section>
+
 <section class="blk" id="s1">
   <h2><span class="no">01</span>问题引入：机器人眼中的世界长什么样<span class="fs">聚焦问题 · 激活旧知</span></h2>
   <div class="tip"><span class="lab">先回忆</span>EXP-06 里 <code>topic echo</code> 打出来的一串串数字（浓度、温度、坐标）、消息头里的 <code>frame_id</code>——这些抽象数据本章要变成<b>看得见的图形</b>。rviz2 就是所有话题数据的"显示器"，也是后面 TF、URDF、导航的可视化舞台。</div>

@@ -100,6 +100,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：时间不对齐，数据全白采</a>
   <a href="#s2">02 核心原理：一块表面，两套电池</a>
   <a href="#s3">03 专题：create_timer 的真实行为与 stamp 规范</a>
@@ -120,6 +121,21 @@
   <p class="desc">IMU 200Hz、相机 30Hz，时间戳差一点数据就对不上。本课讲清 ROS2 为什么自建时间抽象层、系统时钟与 /clock 仿真时钟如何透明切换，以及 create_timer 与 Header.stamp 的正确姿势。</p>
   <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 Clock · Timer · stamp</span></div>
 </div>
+
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清架构</div><div class="kt">一个开关、一个出口</div><p>能阐述 Clock 的双时间源机制：<code>use_sim_time</code> 是唯一开关，<code>get_clock().now()</code> 是唯一出口；系统时钟与 <code>/clock</code> 仿真时钟如何透明切换。</p></div>
+  <div class="kcard"><div class="kd">② 掌握 API</div><div class="kt">Time / Duration / Timer</div><p>能正确使用 <code>get_clock().now()</code>、<code>create_timer(period, callback)</code>，以及 <code>Time</code> 的 <code>nanoseconds</code> / <code>seconds_nanoseconds</code> 转换。</p></div>
+  <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">给数据盖上时刻</div><p>独立编写一个用定时器周期采样 MQ5、并为每条数据的 <code>Header.stamp</code> 打上<b>采集时刻</b>时间戳的发布节点。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">诊断时间问题</div><p>能分析"消息时间戳不一致"的成因（系统时钟 vs 传感器硬件时钟），并用 <code>ros2 topic delay</code> 测量端到端延迟、识别负延迟的含义。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：stamp 应该盖在"采集那一刻"，而不是"发布那一刻"；以及双时钟只用一个出口的意义。<br>
+<b>难点</b>：开着 <code>use_sim_time=true</code> 却没有 <code>/clock</code> 发布者时，节点会永久阻塞——这个现象很难自己猜出来。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课的时间模型是 <b>EXP-16 rosbag 回放</b>与 <b>EXP-17 launch 传 <code>use_sim_time</code></b> 的前提，务必学扎实。</div>
+</section>
 
 <section class="blk" id="s1">
 <h2><span class="no">01</span>问题引入：时间不对齐，数据全白采<span class="fs">聚焦问题 · 激活旧知</span></h2>
@@ -157,6 +173,12 @@
 <section class="blk" id="s2">
 <h2><span class="no">02</span>核心原理：一块表面，两套电池<span class="fs">示证新知</span></h2>
 <p>01 节说"全团看指挥"——<b>指挥手里那块表，就是这一节的主角 Clock</b>。它妙在哪？<b>表面只有一个</b>：无论真机还是仿真，你的代码永远只写 <code>now = self.get_clock().now()</code>；<b>电池有两套</b>：真机装「操作系统」电池（读墙上钟），仿真/回放装「/clock 话题」电池（听 Gazebo 或 rosbag play 播报）。电池一换，整条时间轴就换了一个世界——下面这个演示可以亲手换，<b>建议把每个按钮都点一遍</b>：</p>
+
+<div class="tip tealb"><span class="lab">先把术语对齐：ROS2 里没有 ROS_TIME / ROS_SYSTEM 两个常量</span>
+  不少资料（含早期讲义）会把两套时钟写成 <code>ROS_TIME</code> / <code>ROS_SYSTEM</code>，容易让人以为代码里要判断某种"时钟类型"。<b>实际上只有一个开关、一个出口：</b><br>
+  · <b>开关</b>：<code>use_sim_time</code> 参数（false / true）；<br>
+  · <b>出口</b>：<code>self.get_clock()</code> → 返回的 <code>Clock</code> 对象，内部已按开关选好时间源。<br>
+  你不需要、也不应该自己去分辨"现在读的是哪个钟"——那是 Clock 的内部实现。</div>
 
 <div class="clock-lab">
   <div class="cd-code"><b>now = self.get_clock().now()</b><span class="cd-note">← 你的代码从头到尾只有这一行，永远不改</span></div>
@@ -387,8 +409,7 @@ python3 time_demo_node.py --ros-args -p use_sim_time:=true</pre>
 </section>
 
 <section class="blk" id="s7">
-<h2><span class="no">07</span>注意事项与验收清单<span class="fs">融会贯通</span></h2>
-<div class="check">
+<h2><span class="no">07</span>注意事项与验收清单<span class="fs">融会贯通</span></h2><div class="check">
   <ul>
     <li>默画双时钟架构：use_sim_time 是源开关，get_clock().now() 是统一出口</li>
     <li>讲清 Time（API）与 builtin_interfaces/Time（消息）的互转关系</li>
@@ -406,6 +427,8 @@ python3 time_demo_node.py --ros-args -p use_sim_time:=true</pre>
   <tr><td>delay 出现负值</td><td>跨机测量越测越离谱</td><td>两机 NTP 对时；单机则查 stamp 是不是盖晚了</td></tr>
   <tr><td>运行中切换 use_sim_time</td><td>改了没反应</td><td>时钟模式须在初始化时确定——重启节点才能切</td></tr>
 </table>
+<div class="tip amber"><span class="lab">一句话记住本实验</span>
+  <b>时间只有一个出口（<code>get_clock()</code>），只有一个开关（<code>use_sim_time</code>）。</b>凡是绕过出口直接读 <code>time.time()</code> 的代码，在仿真与回放里一定会出错；凡是开着 <code>use_sim_time=true</code> 却没人发 <code>/clock</code> 的机器，节点一定会永久卡住。这两条覆盖了本课 90% 的故障。</div>
 </section>
 
 <section class="blk" id="s8">

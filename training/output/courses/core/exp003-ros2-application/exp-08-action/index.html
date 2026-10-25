@@ -81,6 +81,7 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 为什么需要动作：等待不该是黑盒</a>
   <a href="#s2">02 核心原理：三通道与隐藏端点</a>
   <a href="#s3">03 动画：一次完整 Action 生命周期</a>
@@ -106,6 +107,21 @@
   <p class="desc">服务能"等到答案"，但等待期间是<b>黑盒</b>：不知道进展、不能中途放弃。动作（Action）= 服务的目标语义 + 话题的持续流——Goal 发出立即返回，服务端边执行边发 Feedback，完成后回 Result，全程可取消。本课以 RFID 读卡为载体讲透三通道与三种结局。</p>
   <div class="meta"><span class="tag hl">难度 ⭐⭐⭐</span><span class="tag">4 学时</span><span class="tag">设计性</span><span class="tag">关键词 action · feedback · cancel</span><span class="tag">实验箱 B2</span></div>
 </div>
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清模型</div><div class="kt">三通道异步</div><p>能阐述 Goal / Feedback / Result 三通道模型：发目标后立即返回、执行期间周期反馈、完成后给结果且可随时取消，并说清它与服务（同步短调用）的本质区别。</p></div>
+  <div class="kcard"><div class="kd">② 掌握链路</div><div class="kt">服务端与客户端</div><p>掌握 <code>rfid_action_server</code> 与 <code>rfid_action_client</code> 从 <code>ActionServer</code>/<code>ActionClient</code>、<code>send_goal_async</code>、<code>publish_feedback</code> 到 <code>succeed()/abort()/canceled()</code> 的完整异步链路。</p></div>
+  <div class="kcard"><div class="kd">③ 独立验证</div><div class="kt">看清状态流转</div><p>能独立运行并观察 "SCANNING → CARD_FOUND → READING_UID → VERIFYING" 的状态反馈，用 <code>ros2 action send_goal --feedback</code> 调试并实现超时 / 取消。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">长任务都靠它</div><p>能把「长耗时等待 → 动作封装 → 异步反馈」迁移到导航、机械臂运动、长时间采集等场景，并理解 SPI 外设的驱动封装方法。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：服务端三个回调分别管什么（目标到达 / 取消请求 / 执行完毕），以及 <code>goal_handle</code> 的状态机。<br>
+<b>难点</b>：理解"一个动作在底层其实是 3 条服务线 + 2 条话题线"——这是本课难度最高的地方。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+到此 <b>三种通信范式（话题 / 服务 / 动作）全部学完</b>。EXP-09 会回头把它们的接口定义统一讲一遍。</div>
+</section>
+
 <section class="blk" id="s1">
 <h2><span class="no">01</span>为什么需要动作：等待不该是黑盒</h2>
 <p>想象你点了一份外卖。从下单到送达可能 20 分钟也可能 50 分钟——但你<b>一点也不焦虑</b>，因为 APP 给了你三样东西：<b>实时进度</b>（骑手到哪了）、<b>取消按钮</b>（临时有事可以退单）、<b>送达确认</b>（最终结果不会丢）。机器人世界里"等刷卡"就是同样的处境：发出"读卡"请求后等用户把卡贴上来——可能 1 秒，也可能 30 秒。</p>

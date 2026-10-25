@@ -42,6 +42,7 @@
 
 <aside class="side">
   <h4>本页目录</h4>
+  <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：机器人软件为什么需要这个 ROS"中间件"</a>
   <a href="#s2">02 核心原理：ROS2 的三大设计支柱</a>
   <a href="#s4">03 RMW 抽象层与 Humble 发行版</a>
@@ -71,6 +72,21 @@
 </div>
 
 <!-- 01 -->
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清本质</div><div class="kt">ROS2 到底解决了什么</div><p>能讲出 ROS 不是操作系统，而是"通信框架 + 工具集 + 包生态"；能用自己的话说清"为什么机器人开发需要这层中间件"。</p></div>
+  <div class="kcard"><div class="kd">② 对比架构</div><div class="kt">ROS1 vs ROS2</div><p>能说出 ROS2 相对 ROS1 在三个维度的核心改进：通信架构（DDS vs TCPROS）、编译系统（colcon vs catkin）、节点生命周期管理，并解释各自的工程意义。</p></div>
+  <div class="kcard"><div class="kd">③ 跑通第一个例子</div><div class="kt">talker / listener</div><p>能正确执行 <code>ros2 --help</code> 看可用命令组，用 <code>ros2 run</code> 起 talker 与 listener，亲眼看到"零配置互联"。</p></div>
+  <div class="kcard"><div class="kd">④ 独立观察</div><div class="kt">用命令看系统</div><p>能用 <code>ros2 node list</code> / <code>ros2 topic list</code> / <code>ros2 topic echo</code> 观察运行中的节点拓扑与消息内容。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：讲清"没有 Master 也能通信"这件事——它是后面所有实验的地基；以及 <code>source setup.bash</code> 为什么是每个终端的必做动作。<br>
+<b>难点</b>：理解"去中心化"不是"没有中心"，而是"中心被拆散到每一端"。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课是整门课的地基：后面所有实验都建立在"节点 + DDS 发现"这套模型上。<b>建议把 <code>source</code> 养成本能。</b></div>
+</section>
+
 <section class="blk" id="s1">
   <h2><span class="no">01</span>问题引入：机器人软件为什么需要这个 ROS"中间件"</h2>
   <p>把机器人比作一个人：<b>摄像头是眼睛、麦克风是耳朵、决策程序是大脑、机械臂和底盘是手脚</b>——那"中间件"就是这套<b>神经系统</b>，把不同器官的信号翻译成统一语言。</p>
@@ -205,12 +221,12 @@
 <section class="blk" id="s2">
   <h2><span class="no">02</span>核心原理：ROS2 的三大设计支柱</h2>
   <div class="kgrid">
-    <div class="kcard"><div class="kd">支柱一</div><div class="kt">去中心化的分布式图</div><p>没有 Master 单点。每个节点自带 DDS 参与者身份，通过<b>多播自动发现</b>彼此，组成一张"节点-话题"关系图。<b>就像一个微信群：谁上线大家自动看见，谁退群也不影响别人聊天。</b></p><p class="pillar-more">👉 本支柱专属展开：<b>见下方"总机 vs 群聊"对比</b></p></div>
+    <div class="kcard"><div class="kd">支柱一</div><div class="kt">去中心化的分布式图</div><p>没有 Master 单点。每个节点自带 DDS 参与者身份，通过<b>组播自动发现</b>彼此，组成一张"节点-话题"关系图。<b>就像一个微信群：谁上线大家自动看见，谁退群也不影响别人聊天。</b></p><p class="pillar-more">👉 本支柱专属展开：<b>见下方"总机 vs 群聊"对比</b></p></div>
     <div class="kcard"><div class="kd">支柱二</div><div class="kt">语言与框架无关</div><p>Python（rclpy）、C++（rclcpp）乃至 Swift/Java 都能发声——接口由 <b>IDL 消息定义</b>统一约束，与实现语言解耦。</p><p class="pillar-more">👉 本支柱专属展开：<a href="#s2b">见下方"同一份消息合同"图解</a></p></div>
     <div class="kcard"><div class="kd">支柱三</div><div class="kt">工具生态开箱即用</div><p>ros2 CLI、rqt、rviz2、rosbag2、launch——同一套图信息喂给全部工具，"看不见的系统"随时可自省。</p><p class="pillar-more">👉 本支柱专属展开：<a href="#s2c">下方三张真实运行截图</a> · 完整工具链见 EXP-02</p></div>
   </div>
 
-    <p class="lead">先看一个熟悉的场景再看机器：老式总机转接电话——<b>总机下班，全网失联</b>；微信群——<b>谁上线自动进群直接聊，谁退群都不影响别人</b>。ROS1 选了总机（Master），ROS2 选了群聊（DDS）：节点自己多播发现，任意一个挂掉，其余照常。下面左半边是总机模式的下场，右半边是群聊模式的底气：</p>
+    <p class="lead">先看一个熟悉的场景再看机器：老式总机转接电话——<b>总机下班，全网失联</b>；微信群——<b>谁上线自动进群直接聊，谁退群都不影响别人</b>。ROS1 选了总机（Master），ROS2 选了群聊（DDS）：节点自己组播发现，任意一个挂掉，其余照常。下面左半边是总机模式的下场，右半边是群聊模式的底气：</p>
   <div class="anim-box">
     <svg viewBox="0 0 720 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ROS1 中心化 Master 与 ROS2 去中心化 DDS 对比动画">
       <rect x="8" y="8" width="344" height="294" rx="12" fill="#111827" stroke="#334155"/>
@@ -263,7 +279,7 @@
         <circle r="4.5"><animate attributeName="cx" values="500;580" dur="1.8s" begin="1s" repeatCount="indefinite"/><animate attributeName="cy" values="112;216" dur="1.8s" begin="1s" repeatCount="indefinite"/></circle>
         <circle r="4.5" fill="#60a5fa"><animate attributeName="cx" values="580;500" dur="1.8s" begin="1.4s" repeatCount="indefinite"/><animate attributeName="cy" values="237;237" dur="1.8s" begin="1.4s" repeatCount="indefinite"/></circle>
       </g>
-      <text x="540" y="272" text-anchor="middle" font-size="12" fill="#86efac">SPDP 多播发现 → RTPS 点对点传输</text>
+      <text x="540" y="272" text-anchor="middle" font-size="12" fill="#86efac">SPDP 组播发现 → RTPS 点对点传输</text>
       <text x="540" y="288" text-anchor="middle" font-size="11" fill="#64748b">节点直接互连 · 无单点故障</text>
     </svg>
   </div>
@@ -304,8 +320,8 @@
     <thead><tr><th>对比维度</th><th>ROS1（Melodic 及以前）</th><th>ROS2（Foxy / Humble / …）</th></tr></thead>
     <tbody>
       <tr><td>通信架构</td><td>中心化：<code>Master(rosmaster)</code> 统一注册</td><td>去中心化：DDS 点对点，无中心进程</td></tr>
-      <tr><td>底层协议</td><td>TCPROS（自研 TCP 长连接）</td><td>RTPS（DDS 标准，UDP + 多播发现）</td></tr>
-      <tr><td>节点发现</td><td>启动必须先起 Master，向它注册</td><td>多播自动发现，谁先谁后无所谓</td></tr>
+      <tr><td>底层协议</td><td>TCPROS（自研 TCP 长连接）</td><td>RTPS（DDS 标准，UDP + 组播发现）</td></tr>
+      <tr><td>节点发现</td><td>启动必须先起 Master，向它注册</td><td>组播自动发现，谁先谁后无所谓</td></tr>
       <tr><td>编译系统</td><td>catkin_make 单一 CMake 大工程</td><td>colcon 每包独立构建，支持混合语言</td></tr>
       <tr><td>生命周期</td><td>节点崩了只能重启整个进程</td><td>Managed Node 四状态，可"待机-激活"恢复</td></tr>
       <tr><td>服务质量</td><td>无 QoS，可靠性不可配</td><td>QoS 三要素（可靠性/持久性/历史）可按话题配置</td></tr>
@@ -412,7 +428,7 @@
   <div class="flow">
     <div class="step"><span class="n">1</span>另开终端 B：<code>ros2 run demo_nodes_cpp listener</code>——无需任何"连接配置"</div>
     <div class="arr"></div>
-    <div class="step"><span class="n">2</span>DDS 多播自动发现 /chatter 的发布端，开始打印 <code>[INFO]: I heard: [Hello World: N]</code></div>
+    <div class="step"><span class="n">2</span>DDS 组播自动发现 /chatter 的发布端，开始打印 <code>[INFO]: I heard: [Hello World: N]</code></div>
     <div class="arr"></div>
     <div class="step"><span class="n">3</span>终端 C 四连自省：node list → topic list → topic info → topic echo / hz</div>
   </div>
@@ -516,7 +532,7 @@
     <tbody>
       <tr><td>未 source 环境</td><td><code>ros2: command not found</code> → <code>source /opt/ros/humble/setup.bash</code></td></tr>
       <tr><td>包未安装</td><td><code>Package 'demo_nodes_cpp' not found</code> → <code>sudo apt install ros-humble-demo-nodes-cpp</code></td></tr>
-      <tr><td>多播被阻断</td><td>虚拟机/容器内两终端互看不见 → 桥接网络放开多播，或临时用 <code>ROS_DOMAIN_ID=0</code> 统一域</td></tr>
+      <tr><td>组播被阻断</td><td>虚拟机/容器内两终端互看不见 → 桥接网络放开组播，或临时用 <code>ROS_DOMAIN_ID=0</code> 统一域</td></tr>
       <tr><td>域 ID 不一致</td><td>一边 <code>ROS_DOMAIN_ID=42</code> 一边默认 0 → 互相"隐身"，对齐环境变量</td></tr>
       <tr><td>GUI 无显示</td><td>turtlesim 黑屏 → 确认 X11 转发 / <code>echo $DISPLAY</code> 非空</td></tr>
     </tbody>
@@ -530,7 +546,7 @@
     <div class="kcard"><div class="kd">✅ 完成成果</div><div class="kt">跑通 talker / listener 双节点</div><p>用 node / topic 四件套俯瞰系统，完成第一次 ROS2 Hello World。</p></div>
     <div class="kcard"><div class="kd">🧠 原理收获</div><div class="kt">三大支柱 + 架构发展变化</div><p>去中心化、语言无关、工具生态；六维理解 ROS1 → ROS2 的必然性。</p></div>
     <div class="kcard"><div class="kd">🛠 技能收获</div><div class="kt">环境验证与自省命令</div><p>source 三板斧、ros2 run、node/topic list · info · echo · hz。</p></div>
-    <div class="kcard"><div class="kd">❓ 排障思路</div><div class="kt">command not found 家族</div><p>先查 source → 再查 apt 安装 → 再查 DOMAIN_ID 与多播。</p></div>
+    <div class="kcard"><div class="kd">❓ 排障思路</div><div class="kt">command not found 家族</div><p>先查 source → 再查 apt 安装 → 再查 DOMAIN_ID 与组播。</p></div>
   </div>
   <div class="tip violet"><span class="lab">📝 思考题 1</span>能否同时支持<b>多个 listener</b>？如果可以，两个 listener 接收到的数据会不会互相影响？如果同时开<b>多个 talker</b>，又是否会产生冲突呢？请动手分别在两个终端各起一个 listener、再起第二个 talker 验证你的判断。</div>
   <div class="tip violet"><span class="lab">📝 思考题 2</span>在同一个局域网下，一台设备运行 <code>ros2 run turtlesim turtlesim_node</code>，另一台设备执行 <code>ros2 run turtlesim turtle_teleop_key</code>，能控制这只海龟吗？<b>如果不希望对方能够控制</b>，应该怎么解决这个问题？</div>

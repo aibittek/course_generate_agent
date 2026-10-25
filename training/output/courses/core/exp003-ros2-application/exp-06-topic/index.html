@@ -229,6 +229,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
 
   <aside class="sidebar">
     <div class="st">本实验章节</div>
+    <a href="#goal">★ 课程目标</a>
     <a href="#s1" class="active"><span class="n">01</span>为什么需要话题：一份数据，四个听众</a>
     <a href="#s2"><span class="n">02</span>核心原理：消息如何走到回调里</a>
     <a href="#s3"><span class="n">03</span>原理动画：一条消息的分发之旅</a>
@@ -264,7 +265,22 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
     </div>
 
         <!-- 01 问题 -->
-    <section class="blk reveal" id="s1">
+    <section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清模型</div><div class="kt">异步发布 / 订阅</div><p>能阐述 Publisher 与 Subscriber 如何通过话题名解耦、DDS 如何自动完成发现与分发，并说明 QoS 三要素（Reliability / Durability / History Depth）如何影响通信行为。</p></div>
+  <div class="kcard"><div class="kd">② 掌握链路</div><div class="kt">从采样到回调</div><p>掌握 <code>gas_sensor_node</code>（发布）与 <code>gas_monitor</code>（订阅）从参数声明、QoS 配置到消息收发回调的完整编程链路。</p></div>
+  <div class="kcard"><div class="kd">③ 独立验证</div><div class="kt">自己造出证据</div><p>能独立运行 MQ5 收发节点，用 <code>topic echo/hz/info</code> 观察浓度、频率与类型，并用 <code>--ros-args -p</code> 动态改 <code>publish_period</code> 与报警阈值。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">换传感器照样套</div><p>能把「ADC 采集 → 物理量换算 → Float32 发布」这套模型迁移到温湿度、心率血氧等其它持续数据流传感器。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">本课的重点与难点</span>
+<b>重点</b>：QoS 的"请求 ≤ 提供"兼容规则——这是"两头都起了、数据却不来"最常见的原因。<br>
+<b>难点</b>：把 MQ5 的电压读数经对数换算成 ppm；以及理解"发布者根本不知道有几个订阅者"。</div>
+<div class="tip amber"><span class="lab">和前后的关系</span>
+本课的 <code>gas_sensor_node</code> 在 <b>EXP-05 已从"节点结构"角度拆过</b>；本课换到"话题"角度再看一遍，会发现同一份代码能讲出两层知识。</div>
+</section>
+
+<section class="blk reveal" id="s1">
       <h2><span class="sn">01</span>为什么需要话题：一份浓度数据，四个"想听的人"</h2>
       <p class="lead">想象你在自己家做一个"燃气安全管家"：厨房装了 <b>MQ5 可燃气体传感器</b>，一旦浓度超标要立刻做四件事——手机弹通知、客厅声光报警器响、云端留一份记录、物业大屏同步显示。传感器每秒读一次数据，这四个"想听的人"都要拿到<b>同一份</b>数据。</p>
 
@@ -435,7 +451,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
 
       <div class="kgrid">
         <div class="kcard"><div class="kt">① 注册端点</div><div class="kd"><code class="inline">create_publisher(Float32, '/gas_sensor', qos)</code> 只是向本机 DDS 登记了一个"我在这里发这种消息"的端点，此刻<b>还没有任何连接</b>。</div></div>
-        <div class="kcard"><div class="kt">② 发现并匹配</div><div class="kd">DDS 在后台自动广播"我在找/我在发 /gas_sensor"，把<b>话题名、类型、QoS</b> 三项都吻合的两端配对。代码里从来不需要写"连接服务器"。</div></div>
+        <div class="kcard"><div class="kt">② 发现并匹配</div><div class="kd">DDS 在后台通过<b>组播</b>宣告"我在找/我在发 /gas_sensor"，把<b>话题名、类型、QoS</b> 三项都吻合的两端配对。代码里从来不需要写"连接服务器"。</div></div>
         <div class="kcard"><div class="kt">③ 序列化传输</div><div class="kd"><code class="inline">publish(msg)</code> 把对象序列化成二进制（CDR），塞进发送队列后<b>立刻返回</b>——它不等任何订阅者。队列按 QoS 深度决定留多少条。</div></div>
         <div class="kcard"><div class="kt">④ 回调执行</div><div class="kd">订阅端 DDS 收到数据放进接收队列，<b>Executor（由 spin 驱动）</b>取出并调用你注册的 <code class="inline">callback(msg)</code>。事件驱动，不空转轮询。</div></div>
       </div>
