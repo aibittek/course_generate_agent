@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Add .nojekyll
-        run: touch training/output/courses/.nojekyll
+        run: touch training/output/.nojekyll
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -35,7 +35,7 @@ jobs:
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: training/output/courses
+          path: training/output
 
       - name: Deploy to GitHub Pages
         id: deployment
