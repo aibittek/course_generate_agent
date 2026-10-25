@@ -49,13 +49,17 @@ def datetime_now() -> str:
 
 
 def find_bridge_script() -> Path:
-    """定位 device_bridge.py：先找同目录，再回退到课程仓库相对路径。"""
+    """定位 device_bridge.py：先找同目录，再回退到课程仓库相对路径。
+
+    源码丢失时允许回退到同名的 .pyc（无源码导入），保证助手仍可启动。
+    """
     here = Path(__file__).resolve().parent
-    candidates = [here / "device_bridge.py"]
+    candidates = [here / "device_bridge.py", here / "device_bridge.pyc"]
     parents = here.parents
     # training/output/courses/device → 仓库根目录还要上溯 4 层
     if len(parents) >= 4:
-        candidates.append(parents[3] / "ros2_ws" / "fw" / "device_dev" / "device_bridge.py")
+        bridge_dir = parents[3] / "ros2_ws" / "fw" / "device_dev"
+        candidates += [bridge_dir / "device_bridge.py", bridge_dir / "device_bridge.pyc"]
     for c in candidates:
         if c.is_file():
             return c
