@@ -32,6 +32,14 @@ jobs:
         with:
           enablement: true
 
+      - name: 打包本机助手（eai-helper.zip）
+        run: |
+          cd training/output/courses/device
+          rm -f eai-helper.zip
+          zip -r eai-helper.zip . \
+            -x 'helper.log' '*/helper.log' '*__pycache__*' '*.pyc' 'eai-helper.zip'
+          unzip -l eai-helper.zip | tail -n 2
+
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:

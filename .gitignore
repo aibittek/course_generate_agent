@@ -32,6 +32,8 @@ courses_archive/
 !training/**/*.jpg
 # 分享打包 zip 不入库
 *.html.zip
+# 本机助手包（由 Pages 工作流构建时自动生成）
+eai-helper.zip
 
 # AI Models
 models/

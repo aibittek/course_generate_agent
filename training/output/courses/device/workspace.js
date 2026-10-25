@@ -2118,6 +2118,20 @@
     return p;
   }
 
+  /* 远程站点（https，且不是 127.0.0.1）无法直连本机助手：
+     助手只有明文 ws://（没有 TLS 证书，wss:// 握手失败），ws:// 又会被
+     浏览器按混合内容拦截。所以远程页只能：下载助手包 → 启动 → 切到
+     助手自托管的 http://127.0.0.1:端口/workspace.html。 */
+  function isRemotePage() {
+    if (location.protocol === 'file:') return false;
+    var h = location.hostname;
+    return !(h === '127.0.0.1' || h === 'localhost' || h === '::1' || h === '[::1]' || h === '');
+  }
+  function helperZipUrl() { return 'eai-helper.zip'; }
+  function localWorkspaceUrl() {
+    return bridgeBase() + '/workspace.html';
+  }
+
   function copyText_(t) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(t);
@@ -2136,15 +2150,46 @@
 
   function guideHtml() {
     var dir = guideDir();
+    var remote = isRemotePage();
     var h = '';
-    h += '<p class="guide-what">这台电脑还没初始化过「本机助手」。按下面的步骤<b>操作一次</b>即可，' +
-      '之后点「设备开发」会全自动静默启动，不再出现任何系统提示。</p>';
+    h += '<p class="guide-what">' + (remote
+      ? '这台电脑还没启动「本机助手」。当前页面在远程网站上，浏览器不允许它直连本机 SSH 通道，' +
+        '需要先下载并启动本机助手，再切到助手自带的本地页面。'
+      : '这台电脑还没初始化过「本机助手」。按下面的步骤<b>操作一次</b>即可，' +
+        '之后点「设备开发」会全自动静默启动，不再出现任何系统提示。') + '</p>';
     if (dir) {
       h += '<div class="guide-path">' +
         '<button class="guide-open" id="gCopy" type="button">复制路径</button>' +
         '<code id="gDir">' + esc(dir) + '</code></div>';
     }
+    if (remote) {
+      h += '<div class="guide-path">' +
+        '<a class="guide-open" id="gZip" href="' + esc(helperZipUrl()) + '" download>下载本机助手</a>' +
+        '<code>eai-helper.zip · 解压后即用</code></div>';
+    }
     h += '<ol class="guide-steps">';
+    if (remote) {
+      h += '<li>点上面的「<b>下载本机助手</b>」，保存 <b>eai-helper.zip</b> 并解压到一个固定目录' +
+        '<span class="fhint">压缩包里已含 start_helper.bat、device_bridge.py 和全部前端文件</span></li>';
+      if (OS.plat === 'win') {
+        h += '<li>双击解压出来的 <b>start_helper.bat</b>' +
+          '<span class="fhint">首次运行在线安装依赖约 1~2 分钟，窗口出现横幅后保持运行</span></li>';
+      } else if (OS.plat === 'mac' || OS.plat === 'linux') {
+        h += '<li>打开「终端」，进入解压目录后执行：<span class="guide-cmd">./start_helper.sh</span>' +
+          '<span class="fhint">首次运行自动注册 eai-helper:// 协议并安装依赖，约 1~2 分钟</span></li>';
+      } else {
+        h += '<li>运行解压目录里的启动脚本（' + esc(OS.reg || 'start_helper') + '）</li>';
+      }
+      h += '<li>等到出现横幅并保持运行：<span class="guide-cmd">具身智能课程 · 设备开发本机助手</span>' +
+        '<span class="fhint">此窗口别关（关了助手就停）</span></li>';
+      h += '</ol>';
+      h += '<div class="guide-ok"><b>怎么算成功：</b>看到横幅后点 <b>「我已完成，重试检测」</b>，' +
+        '检测通过会自动把这个页面切到本机助手地址 ' +
+        '<span class="guide-cmd">' + esc(localWorkspaceUrl()) + '</span></div>';
+      h += '<p class="guide-after home">往后请直接从 <code>http://127.0.0.1:' + helperPort() +
+        '/index.html</code> 进入，本机页面的入口会静默拉起助手，全程自动。</p>';
+      return h;
+    }
     if (OS.plat === 'win') {
       h += '<li>点「复制路径」，粘贴到<b>文件资源管理器</b>地址栏后回车，进入 device 目录' +
         '<span class="fhint">也可以：按 Win+R → 粘贴路径 → 回车</span></li>';
@@ -2196,6 +2241,12 @@
       if (ok) {
         S.helper.online = true;
         markHelperReady();              // 探测通过 = 注册+启动均已就绪，入口此后可静默发协议
+        if (isRemotePage()) {
+          // 远程页面即使助手在线也连不上明文 ws://，必须切到助手自托管的 http 页面
+          setStatus('本机助手已就绪，正在切换 …', 'busy');
+          location.href = localWorkspaceUrl();
+          return;
+        }
         closeGuide();
         setStatus('本机助手已就绪', 'on');
         toast('✓ 本机助手已就绪：' + bridgeBase());
@@ -2550,8 +2601,15 @@
       } else {
         setDeviceLabel('本机助手 ' + bridgeBase().replace(/^https?:\/\//, '') +
           ' 未启动 · 连接时会自动尝试启动');
-        // 全新环境（协议未注册）：开局即弹一次性初始化引导，杜绝系统「选择应用」弹框
-        if (helperReady() !== 1) showGuide();
+        if (isRemotePage()) {
+          // 远程页面：wss 无证书、ws 被混合内容拦截。助手若已在跑就直接切过去，
+          // 没跑则弹「下载本机助手」引导。
+          probeHelper().then(function (ok) { if (ok) location.href = localWorkspaceUrl(); });
+          showGuide();
+        } else if (helperReady() !== 1) {
+          // 全新环境（协议未注册）：开局即弹一次性初始化引导，杜绝系统「选择应用」弹框
+          showGuide();
+        }
       }
       if (!S.sessions.length && (!$('guideModal') || $('guideModal').hidden)) openModal();
     });

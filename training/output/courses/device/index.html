@@ -348,10 +348,14 @@ footer{max-width:1200px;margin:56px auto 0;padding:24px 40px 40px;border-top:1px
   <div class="steps">
 
     <div class="step">
-      <h4><span class="n">1</span>启动本机助手（两种方式任选）</h4>
-      <p>方式一：打开工作台，点「新建连接」→ 选择 SSH → 点「<b>启动本机助手</b>」按钮，页面会自动拉起服务。<br>
-        方式二：手动双击课程目录里的 <code>start_helper.bat</code>（仅监听 <code>127.0.0.1:8100</code>，关掉窗口即停止）。
+      <h4><span class="n">1</span>启动本机助手（三种方式任选）</h4>
+      <p>方式一：打开工作台，点「新建连接」→ 选择 SSH → 点「<b>启动本机助手</b>」按钮，页面会自动拉起服务。</p>
+      <p>方式二：手动双击课程目录里的 <code>start_helper.bat</code>（仅监听 <code>127.0.0.1:8100</code>，关掉窗口即停止）。
         首次运行会自动从清华源安装 aiohttp / paramiko / pyserial，约需十几秒。</p>
+      <p>方式三（在本远程网站上使用）：<a href="eai-helper.zip" download><b>下载本机助手 eai-helper.zip</b></a>，
+        解压到任意固定目录后双击 <code>start_helper.bat</code>。启动完成后用
+        <code>http://127.0.0.1:8100/workspace.html</code> 打开工作台——远程 https 页面受浏览器
+        混合内容限制，不能直接连本机的 <code>ws://</code> 助手。</p>
       <pre class="cmd"><span class="c"># 等价的手动方式（在 training/output/courses/device 目录）</span>
 python start_helper.py <span class="c"># 默认 127.0.0.1:8100；可用 --port 9000 改端口</span></pre>
     </div>

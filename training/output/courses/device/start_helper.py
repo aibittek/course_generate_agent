@@ -8,8 +8,8 @@
 
 链路：浏览器 → http://127.0.0.1:8100（本机助手） → 设备IP:22（sshd）
 
-本文件只是薄薄一层启动器，真正的服务逻辑复用课程仓库里的
-ros2_ws/fw/device_dev/device_bridge.py，启动时强制以下本地模式参数：
+本文件只是薄薄一层启动器，真正的服务逻辑在同目录的 device_bridge.py，
+启动时强制以下本地模式参数：
 
   --host 127.0.0.1        只监听本机回环地址，局域网内其他机器访问不到，安全
   --allow-remote-host     允许助手去登录“其它主机”（即设备 IP）
@@ -49,23 +49,13 @@ def datetime_now() -> str:
 
 
 def find_bridge_script() -> Path:
-    """定位 device_bridge.py：先找同目录，再回退到课程仓库相对路径。
-
-    源码丢失时允许回退到同名的 .pyc（无源码导入），保证助手仍可启动。
-    """
-    here = Path(__file__).resolve().parent
-    candidates = [here / "device_bridge.py", here / "device_bridge.pyc"]
-    parents = here.parents
-    # training/output/courses/device → 仓库根目录还要上溯 4 层
-    if len(parents) >= 4:
-        bridge_dir = parents[3] / "ros2_ws" / "fw" / "device_dev"
-        candidates += [bridge_dir / "device_bridge.py", bridge_dir / "device_bridge.pyc"]
-    for c in candidates:
-        if c.is_file():
-            return c
+    """定位 device_bridge.py：它必须与 start_helper.py 放在同一目录。"""
+    bridge = Path(__file__).resolve().parent / "device_bridge.py"
+    if bridge.is_file():
+        return bridge
     raise FileNotFoundError(
         "未找到 device_bridge.py。\n"
-        "请把 start_helper.py 放到 courses/device/ 目录，或与 device_bridge.py 放在同一目录。"
+        "请确认它与 start_helper.py 在同一个目录（courses/device/）。"
     )
 
 

@@ -22,6 +22,21 @@
   }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
 
+  function isLocalHost() {
+    var h = location.hostname;
+    return h === '127.0.0.1' || h === 'localhost' || h === '::1' || h === '[::1]' || h === '';
+  }
+
+  /* 远程 https 站点必须切到本机助手托管的同源页面：
+     — 本机助手只提供 ws://（没有 TLS 证书），https 页面改连 wss:// 会直接失败；
+     — 退回 ws:// 又会被浏览器当作混合内容拦截。
+     所以只有 file:// 与 127.0.0.1/localhost 上才原地打开工作台。 */
+  function resolveTarget(href) {
+    if (location.protocol !== 'https:' || isLocalHost()) return href;
+    var name = href.split('#')[0].split('?')[0].split('/').pop() || 'workspace.html';
+    return 'http://127.0.0.1:' + EAI.port() + '/' + name;
+  }
+
   window.EAI = {
     KEY_READY: KEY_READY,
     KEY_PENDING: KEY_PENDING,
@@ -65,8 +80,30 @@
     entry: function (href, newTab) {
       var willFire = EAI.ready() === 1;
       if (willFire) EAI.fire();          // 手势内同步发协议：已注册平台会静默拉起（幂等，在跑则秒退）
-      if (newTab) return;                // 新标签交给浏览器默认打开（仍在手势内，不会被弹窗拦截）
-      setTimeout(function () { location.href = href; }, willFire ? 450 : 60);
+
+      var target = resolveTarget(href);
+      if (target === href) {
+        if (newTab) return;              // 新标签交给浏览器默认打开（仍在手势内，不会被弹窗拦截）
+        setTimeout(function () { location.href = href; }, willFire ? 450 : 60);
+        return;
+      }
+
+      // 远程 https → 本地助手：先在手势内占住新标签（否则异步导航会被弹窗拦截），
+      // 轮询到助手就绪后再导航过去；始终没起来就退回远程工作台，由它弹「一次性初始化」引导。
+      var win = newTab ? window.open('about:blank', '_blank') : null;
+      var deadline = Date.now() + 4000;
+      (function wait() {
+        EAI.probe(600).then(function (ok) {
+          if (!ok && Date.now() < deadline) { setTimeout(wait, 250); return; }
+          if (ok) {
+            if (win) win.location.href = target;
+            else location.href = target;
+            return;
+          }
+          if (win) { try { win.close(); } catch (e) { } }
+          location.href = href;
+        });
+      })();
     }
   };
 })();
