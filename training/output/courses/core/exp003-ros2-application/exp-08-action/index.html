@@ -82,12 +82,12 @@
 <aside class="side">
   <h4>本页目录</h4>
   <a href="#goal">★ 课程目标</a>
-  <a href="#s1" class="now">01 为什么需要动作：等待不该是黑盒</a>
-  <a href="#s2">02 核心原理：三通道与隐藏端点</a>
-  <a href="#s3">03 动画：一次完整 Action 生命周期</a>
-  <a href="#s4">04 专题：三回调与反馈状态机</a>
-  <a href="#s5">05 动作实验台：亲眼看三种结局</a>
-  <a href="#s6">06 先看现象：一步步跑通 RFID 读卡</a>
+  <a href="#s6" class="now">01 先看现象：一步步跑通 RFID 读卡</a>
+  <a href="#s1">02 为什么需要动作：等待不该是黑盒</a>
+  <a href="#s2">03 核心原理：三通道与隐藏端点</a>
+  <a href="#s3">04 动画：一次完整 Action 生命周期</a>
+  <a href="#s4">05 专题：三回调与反馈状态机</a>
+  <a href="#s5">06 动作实验台：亲眼看三种结局</a>
   <a href="#s7">07 代码精讲：三份源码逐行读懂</a>
   <a href="#s8">08 动手任务：把现象变成证据</a>
   <a href="#s9">09 注意事项与验收清单</a>
@@ -122,8 +122,108 @@
 到此 <b>三种通信范式（话题 / 服务 / 动作）全部学完</b>。EXP-09 会回头把它们的接口定义统一讲一遍。</div>
 </section>
 
+<section class="blk" id="s6">
+<h2><span class="no">01</span>先看现象：一步步跑通 RFID 读卡</h2>
+<p>先别急着啃原理和读代码——按命令卡把"自检 → 服务端 → 客户端 → CLI 观察反馈流"四个现象亲手跑出来，特别是三种结局（成功 / 超时 / 取消）都要亲眼看到一遍。<b>现象对上了，再带着「为什么会这样」的疑问进入后面的原理与 07 代码精讲</b>，每一行你都知道自己在学什么。</p>
+
+<div class="termbar"><span class="tl">终端 0</span><b>编译 + 脱机自检驱动</b><span class="note">把硬件故障和 ROS 逻辑故障分开排查</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">1</span><b>编译两个包并加载环境</b><span class="cs-where">终端 0</span></div>
+  <p class="cs-why">接口包（<code>ros_sensor_interfaces</code>，.action 定义在里面）与节点包（<code>ros_sensor</code>）都要编。</p>
+  <pre>cd ~/ros2_ws
+source /opt/ros/humble/setup.bash
+colcon build --symlink-install --packages-select ros_sensor ros_sensor_interfaces
+source install/setup.bash</pre>
+  <p class="cs-see">✔ 编译后忘了 source，<code>ros2 run</code> 就找不到包——每次新开终端都要 source。</p>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">2</span><b>脱离 ROS 自检 MFRC522</b><span class="cs-where">终端 0</span></div>
+  <p class="cs-why">SPI 接线、GPIO、供电问题都会在这一步暴露，不会污染 ROS 层的判断。</p>
+  <pre>cd src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
+sudo python3 rc522_reader.py --test</pre>
+  <div class="io"><span class="dim">$ sudo python3 rc522_reader.py --test</span>
+RC522 RFID Reader on RK3588
+  SPI      : /dev/spidev1.0
+  CS GPIO  : 114
+  RST GPIO : 116
+  Speed    : 500000 Hz
+--------------------------------------
+  VersionReg(0x37) = <span class="g">0xB2</span>
+  TmodeReg write 0x8D -&gt; read 0x8D
+  <span class="g">PASS</span>
+初始化完成</div>
+  <p class="cs-see">✔ VersionReg 读出 <b>0x00 或 0xFF</b> = 芯片没应答：查 CS=114 / RST=116 接线、3.3V 供电、<code>python-periphery</code> 是否安装。</p>
+</div>
+<div class="figs-guide"><h4>📸 自检环节截图</h4><div class="figgrid">
+<figure class="fg wide" onclick="lbShow(this)"><img src="../assets/image-20260821183615295.png" alt="rc522_reader.py --test 自检输出：VersionReg=0xB2 PASS" loading="lazy"><figcaption>自检通过的样子：VersionReg(0x37)=0xB2、回读一致、PASS</figcaption></figure>
+<figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821183649865.png" alt="实验箱上的 RFID 模块与 MFRC522 芯片" loading="lazy"><figcaption>实验箱上的 RFID 模块（MFRC522 芯片位置）——刷卡时把卡轻贴天线区域</figcaption></figure>
+</div></div>
+
+<div class="termbar"><span class="tl">终端 A</span><b>启动动作服务端</b><span class="note">保持运行，别停</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">3</span><b>起 ActionServer</b><span class="cs-where">终端 A</span></div>
+  <pre>cd ~/ros2_ws
+source install/setup.bash
+ros2 run ros_sensor rfid_action_server</pre>
+  <div class="io"><span class="g">[INFO] RFID Action 服务端已启动 (action: /rfid_scan)</span>
+<span class="dim"># 服务端进入待命：等待 /rfid_scan 上的 Goal</span></div>
+</div>
+
+<div class="termbar"><span class="tl">终端 B</span><b>客户端发 Goal，边看反馈边刷卡</b><span class="note">30 秒窗口</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">4</span><b>发起读卡目标</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">参数 <code>30</code> 是 Goal 里的 <code>timeout_sec</code>。启动后<b>把 MIFARE 白卡贴上天线</b>，盯住反馈流的变化。</p>
+  <pre>cd ~/ros2_ws
+source install/setup.bash
+ros2 run ros_sensor rfid_action_client 30</pre>
+  <div class="io"><span class="g">[INFO] Goal 已接受</span>
+<span class="dim">Feedback: SCANNING</span>
+<span class="dim">Feedback: SCANNING</span>
+<span class="y">Feedback: CARD_FOUND</span>
+<span class="y">Feedback: READING_UID</span>
+<span class="y">Feedback: VERIFYING</span>
+<span class="g">结果: success=True uid=7E1A3B02 type=MIFARE Classic msg=读卡成功</span></div>
+  <p class="cs-see">✔ 反馈流从 SCANNING 一路推进到 VERIFYING——这就是 05 节图 8-3 状态机的实况。服务端终端同时会打印收到的 Goal 与读卡结果。</p>
+</div>
+<div class="figs-guide"><h4>📸 服务端读卡成功截图</h4><div class="figgrid">
+<figure class="fg wide" onclick="lbShow(this)"><img src="../assets/image-20260821183719195.png" alt="rfid_action_server 终端：收到 Goal、开始读卡、读卡成功" loading="lazy"><figcaption>服务端终端：收到 Goal（timeout_sec=30）→ 开始读卡 → 读卡成功 uid=B4D20307</figcaption></figure>
+</div></div>
+
+<div class="termbar"><span class="tl">终端 C</span><b>CLI 观察反馈流与三种结局</b><span class="note">终端 A 保持运行，一次只发一个 Goal</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">5</span><b>自省：列出动作与类型</b><span class="cs-where">终端 C</span></div>
+  <pre>ros2 action list
+ros2 action info /rfid_scan</pre>
+  <div class="io"><span class="g">/rfid_scan</span>
+<span class="dim">Action: ros_sensor_interfaces/action/RfidScan</span>
+<span class="dim">Action clients: 0</span>
+<span class="dim">Action servers: 1</span></div>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">6</span><b>不写一行客户端，直接发 Goal 并看反馈</b><span class="cs-where">终端 C</span></div>
+  <p class="cs-why"><code>--feedback</code> 是动作与服务<b>最直观的分界线</b>：服务 call 出来只有最终一行，动作能看到整条状态流。</p>
+  <pre>ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 30}" --feedback</pre>
+  <div class="io"><span class="dim">$ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 30}" --feedback</span>
+<span class="dim">Goal accepted with ID: …</span>
+<span class="dim">Feedback: SCANNING</span>
+<span class="dim">Feedback: SCANNING</span>
+<span class="g">Result: success=True uid=7E1A3B02 type=MIFARE Classic msg=读卡成功</span></div>
+  <p class="cs-see">✔ Goal 的 YAML 字段名必须与 .action 完全一致——是 <code>timeout_sec</code> 不是 timeout，写错直接解析失败（08 节任务 5 专门让你踩这个坑）。</p>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">7</span><b>复现另外两种结局</b><span class="cs-where">终端 C</span></div>
+  <p class="cs-why">超时与取消也要亲眼各看一遍——三种结局合起来才是完整的动作语义。</p>
+  <pre><span class="c"># 结局 2 · 超时 abort：故意不放卡，等 timeout_sec 秒</span>
+ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 10}" --feedback
+<span class="g"># → SCANNING 持续滚动 10s → Result: success=False msg=读卡超时</span>
+
+<span class="c"># 结局 3 · 取消 canceled：上一条跑起来后按 Ctrl+C（CLI 会发 cancel）</span>
+<span class="g"># → Feedback 中断 → Result: success=False msg=已取消</span></pre>
+</div>
+</section>
+
 <section class="blk" id="s1">
-<h2><span class="no">01</span>为什么需要动作：等待不该是黑盒</h2>
+<h2><span class="no">02</span>为什么需要动作：等待不该是黑盒</h2>
 <p>想象你点了一份外卖。从下单到送达可能 20 分钟也可能 50 分钟——但你<b>一点也不焦虑</b>，因为 APP 给了你三样东西：<b>实时进度</b>（骑手到哪了）、<b>取消按钮</b>（临时有事可以退单）、<b>送达确认</b>（最终结果不会丢）。机器人世界里"等刷卡"就是同样的处境：发出"读卡"请求后等用户把卡贴上来——可能 1 秒，也可能 30 秒。</p>
 
 <div class="tip">🏠 <b>生活里所有"长时间等待"都长这样</b>：导航软件随时告诉你"还剩 3 公里"，堵车了你还可以改路线甚至放弃；下载文件有进度条，可以暂停取消；洗衣机有剩余时间显示，中途也能按暂停。共同点是——<b>任务耗时长且不确定，所以必须有进度、能放弃、有最终交代</b>。</div>
@@ -163,7 +263,7 @@
   <rect x="40" y="44" width="260" height="150" rx="12" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5"/>
   <text x="170" y="70" font-size="12.5" fill="#9d174d" text-anchor="middle" font-weight="bold">call → 阻塞中…（什么也看不到）</text>
   <rect x="64" y="86" width="212" height="30" rx="7" fill="#1e293b"/>
-  <text x="170" y="106" fill="#64748b" font-size="11" text-anchor="middle">■ ■ ■ ■ ■ ■ ■ ■ 黑 ■ ■ ■ ■ ■ ■ ■</text>
+  <text x="170" y="106" fill="#64748b" font-size="11" text-anchor="middle">■ ■ ■ ■ ■ 黑 ■ ■ ■ ■</text>
   <text x="170" y="140" font-size="11.5" fill="#64748b" text-anchor="middle">进度？没有</text>
   <text x="170" y="160" font-size="11.5" fill="#64748b" text-anchor="middle">取消？没有入口</text>
   <text x="170" y="180" font-size="11.5" fill="#64748b" text-anchor="middle">结局：成功 or 失败，二选一</text>
@@ -178,7 +278,7 @@
   <text x="510" y="169" fill="#fff" font-size="11" text-anchor="middle">Result：success=True（必有，恰一次）</text>
   <text x="510" y="216" fill="#64748b" font-size="11.5" text-anchor="middle">进度可见 · 可放弃 · 结局有交代</text>
   <text x="170" y="216" fill="#64748b" font-size="11.5" text-anchor="middle">一行等到底 · 不可放弃</text>
-  <text x="340" y="286" fill="#94a3b8" font-size="11" text-anchor="middle">短任务用服务的"确定感"，长任务用动作的"透明感"——三机制选型见 02 末尾对比表</text>
+  <text x="340" y="286" fill="#94a3b8" font-size="11" text-anchor="middle">短任务用服务的"确定感"，长任务用动作的"透明感"——三机制选型见 03 末尾对比表</text>
 </svg>
 <figcaption>图 8-1｜同样的"等待"，服务是黑盒电话，动作是带进度条和取消按钮的外卖订单</figcaption>
 </div>
@@ -186,7 +286,7 @@
 <div class="tip"><span class="lab">定义 Action</span>客户端发送 <b>Goal</b>（目标）后立即返回，服务端在后台执行并周期发布 <b>Feedback</b>（反馈），执行结束回传 <b>Result</b>（结果）；执行期间客户端可随时请求 <b>Cancel</b>（取消）。它底层压在 ROS2 的通信原语之上：一个 Action 端点其实封装了 <b>5 个隐藏端点</b>（3 个服务：发目标/取消/取结果 + 2 个话题：反馈流/状态流）——下一节拆开看。</div>
 </section>
 <section class="blk" id="s2">
-<h2><span class="no">02</span>核心原理：三通道与藏在端点里的 5 条线</h2>
+<h2><span class="no">03</span>核心原理：三通道与藏在端点里的 5 条线</h2>
 <p class="cs-why" style="font-size:14.5px;color:#475569;line-height:1.9">你在代码里写的 <code>ActionClient</code>/<code>ActionServer</code> 各只是一个端点，但 ROS2 在底下悄悄建了 <b>5 条线</b>：3 条服务线（发 Goal、发 Cancel、取 Result）+ 2 条话题线（Feedback 流、Status 流）。也就是说——<b>你已经把前面三课全用上了</b>：动作 = 服务的配对语义 + 话题的流式能力，封装成一个好用的抽象。把两个节点拆开看全貌（图 8-2）：</p>
 
 <div class="fig-wrap">
@@ -240,7 +340,7 @@
   <text x="568" y="256" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">publish_feedback</text>
   <text x="568" y="272" font-size="10" fill="#64748b" text-anchor="middle">循环里周期推送</text>
   <rect x="488" y="294" width="160" height="44" rx="8" fill="#fff" stroke="#fdba74"/>
-  <text x="568" y="312" font-size="11.5" fill="#0f172a" text-anchor="middle" font-weight="bold">succeed / abort / canceled</text>
+  <text x="568" y="312" font-size="10" fill="#0f172a" text-anchor="middle" font-weight="bold">succeed / abort / canceled</text>
   <text x="568" y="328" font-size="10" fill="#64748b" text-anchor="middle">三种结局，Result 必达</text>
   <text x="568" y="358" font-size="10.5" fill="#c2410c" text-anchor="middle">一次只处理一个 Goal（抢卡问题）</text>
   <!-- 箭头 -->
@@ -274,7 +374,7 @@
 </section>
 
 <section class="blk" id="s3">
-<h2><span class="no">03</span>动画：一次完整 Action 生命周期</h2>
+<h2><span class="no">04</span>动画：一次完整 Action 生命周期</h2>
 <p>这张时序图 5.5 秒循环一次：①Goal 出发 → ②Feedback 反复流回 → ③（可选）Cancel 插队 → ④Result 终态。对照图 8-2 认线路：①走 Goal 服务线，②走 Feedback 话题线，④走 Result 服务线。</p>
 <div class="anim-box">
 <svg viewBox="0 0 760 250" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
@@ -303,13 +403,13 @@
   <polygon points="124,206 136,200 136,212" fill="#86efac"/>
   <text x="380" y="197" fill="#bbf7d0" font-size="12.5" text-anchor="middle">④ result：success=True uid=7E1A3B02 type=MIFARE Classic（恰好一次）</text>
   <circle r="6" fill="#86efac" cx="640" cy="206"><animate attributeName="cx" values="640;124" dur="1.1s" begin="4.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="5.5s" repeatCount="indefinite"/></circle>
-  <text x="380" y="240" fill="#64748b" font-size="11.5" text-anchor="middle">三种结局：succeed() 成功 · abort() 失败 · canceled() 被取消——Result 必有，Feedback 可零可多</text>
+  <text x="380" y="240" fill="#64748b" font-size="10.5" text-anchor="middle">三种结局：succeed() 成功 · abort() 失败 · canceled() 被取消——Result 必有，Feedback 可零可多</text>
 </svg>
 </div>
 <p class="anim-cap">Goal 立回、Feedback 流式、Result 一次性、Cancel 随时插队——四条时序合成一个"像打电话又像看下载进度条"的抽象。</p>
 </section>
 <section class="blk" id="s4">
-<h2><span class="no">04</span>专题：三回调与反馈状态机</h2>
+<h2><span class="no">05</span>专题：三回调与反馈状态机</h2>
 <p>服务端只有一个回调（收到请求就处理），动作服务端却拆成<b>三个</b>——因为一个长任务要回答三个问题：这个目标接不接？取消同不同意？活怎么干？</p>
 <div class="kgrid">
   <div class="kcard"><div class="kd">goal_callback</div><div class="kt">收不收这个目标</div><p>在 execute 之前被调：默认 ACCEPT，可拒绝（如已有任务在跑）。</p></div>
@@ -346,7 +446,8 @@
   <line x1="552" y1="86" x2="568" y2="86" stroke="#c2410c" stroke-width="2.2" marker-end="url(#c81)"/>
   <!-- SCANNING 自环 -->
   <path d="M79 60 C 79 24, 138 24, 139 56" fill="none" stroke="#94a3b8" stroke-width="1.8" stroke-dasharray="4 3" marker-end="url(#c82)"/>
-  <text x="109" y="20" font-size="10" fill="#64748b" text-anchor="middle">未寻到卡 → sleep(0.1) 原地循环（每圈都发一条 SCANNING 反馈）</text>
+  <text x="109" y="11" font-size="10" fill="#64748b" text-anchor="middle">未寻到卡 → sleep(0.1) 原地循环</text>
+  <text x="109" y="24" font-size="10" fill="#64748b" text-anchor="middle">每圈都发一条 SCANNING 反馈</text>
   <!-- cancel / abort 分支 -->
   <rect x="296" y="160" width="118" height="46" rx="10" fill="#fee2e2" stroke="#fecaca"/>
   <text x="355" y="180" font-size="12" font-weight="700" fill="#b91c1c" text-anchor="middle">canceled</text>
@@ -370,7 +471,7 @@
 </table>
 </section>
 <section class="blk" id="s5">
-<h2><span class="no">05</span>动作实验台：亲眼看三种结局</h2>
+<h2><span class="no">06</span>动作实验台：亲眼看三种结局</h2>
 <p>这个实验台完整复刻 <code>rfid_action_server</code> 的执行循环（0.3s 一轮寻卡）：选一种场景发 Goal，观察 Feedback 流怎么滚、三种结局（succeed / abort / canceled）分别在什么时候出现。特别留意——<b>Goal 发出后客户端没有被阻塞</b>，这正是它和服务的分水岭。</p>
 <div class="ix-panel">
   <div class="ix-title">Action Lab · 发送一个读卡 Goal</div>
@@ -452,105 +553,7 @@ function runActLab(){
 }
 runActLab();
 </script>
-<section class="blk" id="s6">
-<h2><span class="no">06</span>先看现象：一步步跑通 RFID 读卡</h2>
-<p>先不读代码——按命令卡把"自检 → 服务端 → 客户端 → CLI 观察反馈流"四个现象亲手跑出来，特别是三种结局（成功 / 超时 / 取消）都要亲眼看到一遍。<b>看到现象再回头看 07 的代码</b>。</p>
 
-<div class="termbar"><span class="tl">终端 0</span><b>编译 + 脱机自检驱动</b><span class="note">把硬件故障和 ROS 逻辑故障分开排查</span></div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">1</span><b>编译两个包并加载环境</b><span class="cs-where">终端 0</span></div>
-  <p class="cs-why">接口包（<code>ros_sensor_interfaces</code>，.action 定义在里面）与节点包（<code>ros_sensor</code>）都要编。</p>
-  <pre>cd ~/ros2_ws
-source /opt/ros/humble/setup.bash
-colcon build --symlink-install --packages-select ros_sensor ros_sensor_interfaces
-source install/setup.bash</pre>
-  <p class="cs-see">✔ 编译后忘了 source，<code>ros2 run</code> 就找不到包——每次新开终端都要 source。</p>
-</div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">2</span><b>脱离 ROS 自检 MFRC522</b><span class="cs-where">终端 0</span></div>
-  <p class="cs-why">SPI 接线、GPIO、供电问题都会在这一步暴露，不会污染 ROS 层的判断。</p>
-  <pre>cd src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
-sudo python3 rc522_reader.py --test</pre>
-  <div class="io"><span class="dim">$ sudo python3 rc522_reader.py --test</span>
-RC522 RFID Reader on RK3588
-  SPI      : /dev/spidev1.0
-  CS GPIO  : 114
-  RST GPIO : 116
-  Speed    : 500000 Hz
---------------------------------------
-  VersionReg(0x37) = <span class="g">0xB2</span>
-  TmodeReg write 0x8D -&gt; read 0x8D
-  <span class="g">PASS</span>
-初始化完成</div>
-  <p class="cs-see">✔ VersionReg 读出 <b>0x00 或 0xFF</b> = 芯片没应答：查 CS=114 / RST=116 接线、3.3V 供电、<code>python-periphery</code> 是否安装。</p>
-</div>
-<div class="figs-guide"><h4>📸 自检环节截图</h4><div class="figgrid">
-<figure class="fg wide" onclick="lbShow(this)"><img src="../assets/image-20260821183615295.png" alt="rc522_reader.py --test 自检输出：VersionReg=0xB2 PASS" loading="lazy"><figcaption>自检通过的样子：VersionReg(0x37)=0xB2、回读一致、PASS</figcaption></figure>
-<figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821183649865.png" alt="实验箱上的 RFID 模块与 MFRC522 芯片" loading="lazy"><figcaption>实验箱上的 RFID 模块（MFRC522 芯片位置）——刷卡时把卡轻贴天线区域</figcaption></figure>
-</div></div>
-
-<div class="termbar"><span class="tl">终端 A</span><b>启动动作服务端</b><span class="note">保持运行，别停</span></div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">3</span><b>起 ActionServer</b><span class="cs-where">终端 A</span></div>
-  <pre>cd ~/ros2_ws
-source install/setup.bash
-ros2 run ros_sensor rfid_action_server</pre>
-  <div class="io"><span class="g">[INFO] RFID Action 服务端已启动 (action: /rfid_scan)</span>
-<span class="dim"># 服务端进入待命：等待 /rfid_scan 上的 Goal</span></div>
-</div>
-
-<div class="termbar"><span class="tl">终端 B</span><b>客户端发 Goal，边看反馈边刷卡</b><span class="note">30 秒窗口</span></div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">4</span><b>发起读卡目标</b><span class="cs-where">终端 B</span></div>
-  <p class="cs-why">参数 <code>30</code> 是 Goal 里的 <code>timeout_sec</code>。启动后<b>把 MIFARE 白卡贴上天线</b>，盯住反馈流的变化。</p>
-  <pre>cd ~/ros2_ws
-source install/setup.bash
-ros2 run ros_sensor rfid_action_client 30</pre>
-  <div class="io"><span class="g">[INFO] Goal 已接受</span>
-<span class="dim">Feedback: SCANNING</span>
-<span class="dim">Feedback: SCANNING</span>
-<span class="y">Feedback: CARD_FOUND</span>
-<span class="y">Feedback: READING_UID</span>
-<span class="y">Feedback: VERIFYING</span>
-<span class="g">结果: success=True uid=7E1A3B02 type=MIFARE Classic msg=读卡成功</span></div>
-  <p class="cs-see">✔ 反馈流从 SCANNING 一路推进到 VERIFYING——这就是 04 节图 8-3 状态机的实况。服务端终端同时会打印收到的 Goal 与读卡结果。</p>
-</div>
-<div class="figs-guide"><h4>📸 服务端读卡成功截图</h4><div class="figgrid">
-<figure class="fg wide" onclick="lbShow(this)"><img src="../assets/image-20260821183719195.png" alt="rfid_action_server 终端：收到 Goal、开始读卡、读卡成功" loading="lazy"><figcaption>服务端终端：收到 Goal（timeout_sec=30）→ 开始读卡 → 读卡成功 uid=B4D20307</figcaption></figure>
-</div></div>
-
-<div class="termbar"><span class="tl">终端 C</span><b>CLI 观察反馈流与三种结局</b><span class="note">终端 A 保持运行，一次只发一个 Goal</span></div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">5</span><b>自省：列出动作与类型</b><span class="cs-where">终端 C</span></div>
-  <pre>ros2 action list
-ros2 action info /rfid_scan</pre>
-  <div class="io"><span class="g">/rfid_scan</span>
-<span class="dim">Action: ros_sensor_interfaces/action/RfidScan</span>
-<span class="dim">Action clients: 0</span>
-<span class="dim">Action servers: 1</span></div>
-</div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">6</span><b>不写一行客户端，直接发 Goal 并看反馈</b><span class="cs-where">终端 C</span></div>
-  <p class="cs-why"><code>--feedback</code> 是动作与服务<b>最直观的分界线</b>：服务 call 出来只有最终一行，动作能看到整条状态流。</p>
-  <pre>ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 30}" --feedback</pre>
-  <div class="io"><span class="dim">$ ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 30}" --feedback</span>
-<span class="dim">Goal accepted with ID: …</span>
-<span class="dim">Feedback: SCANNING</span>
-<span class="dim">Feedback: SCANNING</span>
-<span class="g">Result: success=True uid=7E1A3B02 type=MIFARE Classic msg=读卡成功</span></div>
-  <p class="cs-see">✔ Goal 的 YAML 字段名必须与 .action 完全一致——是 <code>timeout_sec</code> 不是 timeout，写错直接解析失败（08 节任务 5 专门让你踩这个坑）。</p>
-</div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">7</span><b>复现另外两种结局</b><span class="cs-where">终端 C</span></div>
-  <p class="cs-why">超时与取消也要亲眼各看一遍——三种结局合起来才是完整的动作语义。</p>
-  <pre><span class="c"># 结局 2 · 超时 abort：故意不放卡，等 timeout_sec 秒</span>
-ros2 action send_goal /rfid_scan ros_sensor_interfaces/action/RfidScan "{timeout_sec: 10}" --feedback
-<span class="g"># → SCANNING 持续滚动 10s → Result: success=False msg=读卡超时</span>
-
-<span class="c"># 结局 3 · 取消 canceled：上一条跑起来后按 Ctrl+C（CLI 会发 cancel）</span>
-<span class="g"># → Feedback 中断 → Result: success=False msg=已取消</span></pre>
-</div>
-</section>
 <section class="blk" id="s7">
 <h2><span class="no">07</span>代码精讲：三份源码，逐行读懂你刚才跑的东西</h2>
 <p>按数据流读三份源码：<b>① 驱动层</b>（怎么从射频场里拿到卡号）→ <b>② 动作服务端</b>（三回调 + 执行循环）→ <b>③ 动作客户端</b>（异步回调链）。源码都在 <code>~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor/</code>。</p>
@@ -657,7 +660,7 @@ result_cb(result_future)           <span class="c"># 第 2 环：读 Result，�
 
 <section class="blk" id="s8">
 <h2><span class="no">08</span>动手任务：把现象变成你自己的证据</h2>
-<p>边做边填证据表——这就是你实验报告的素材。做之前先回 06 节照着命令卡跑通一遍。</p>
+<p>边做边填证据表——这就是你实验报告的素材。做之前先回 01 节照着命令卡跑通一遍。</p>
 <div class="kgrid">
   <div class="kcard"><div class="kt">任务 1 · 自检分层排障</div><div class="kd">先 <code>rc522_reader.py --test</code> 正常自检；再把接线示意与 VersionReg 值记下来。<b>要记录</b>：VersionReg=0xB2 时各环节输出——它能帮你以后一眼区分"硬件层"还是"ROS 层"的故障。</div></div>
   <div class="kcard"><div class="kt">任务 2 · 成功结局全记录</div><div class="kd">终端 B 发 Goal 并刷卡，终端 C 同时用 <code>--feedback</code> 观察。<b>要记录</b>：SCANNING → CARD_FOUND → READING_UID → VERIFYING 的完整反馈流截图 + Result 一行。</div></div>

@@ -234,8 +234,18 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
 <section class="blk" id="s2">
   <h2><span class="no">02</span> 原理：TF2 树为什么长成一棵树<span class="fs">示证新知</span></h2>
 
+  <div class="tip"><span class="lab">先记住这一句</span>TF2 存的不是坐标点，而是<strong>坐标系与坐标系之间的"变换"</strong>：一段平移 (x,y,z) + 一段旋转四元数，并且<strong>每条变换都带时间戳</strong>。打个比方：坐标系是一把把尺子，一条 TF 变换就是告诉你"<strong>B 尺子摆在 A 尺子的什么位置、朝什么方向</strong>"；把所有尺子的摆放关系串成一张图，就是 <strong>TF 树</strong>。</div>
+
   <h3>2.1 树状结构：只记"直接父子"，路径唯一</h3>
-  <p>TF2 把所有坐标系组织成一棵<strong>有根树（严格说是 DAG 的树形约束）</strong>：每个坐标系最多一个父坐标系。机器人上的典型结构：</p>
+  <p>TF2 把机器人身上所有坐标系组织成一棵树：<strong>每个坐标系最多一个父坐标系，不能成环</strong>。典型结构长这样：</p>
+<pre><span class="c">map                              ← 世界原点（SLAM 维护）</span>
+ └── odom                         ← 里程计原点（会漂移）
+      └── base_link               ← 车体中心
+           ├── laser_frame        ← 雷达（安装位置 = 静态变换）
+           ├── camera_link        ← 相机
+           └── arm_base
+                └── gripper_link  ← 夹爪</pre>
+  <p>意思很直白：<strong>laser_frame 的父是 base_link，base_link 的父是 odom，odom 的父是 map</strong>。任何两个坐标系之间只有一条路——所以查变换永远有唯一解。</p>
   <div class="kgrid">
     <div class="kcard"><div class="kd">ROOT · 世界</div><div class="kt">map</div><p>全局地图原点，由 SLAM / 定位节点维护，漂移会被不断修正。</p></div>
     <div class="kcard"><div class="kd">里程计系</div><div class="kt">odom</div><p>轮式里程计原点，短时间平滑但会长期漂移。</p></div>
@@ -243,13 +253,14 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
     <div class="kcard"><div class="kd">传感器系</div><div class="kt">laser_frame / camera_link</div><p>雷达、相机各自的测量原点，安装位置即静态变换。</p></div>
   </div>
 
-  <h3>2.2 查询算法：沿树上溯，O(深度)</h3>
+  <h3>2.2 查询：沿树爬到"共同祖先"，把变换拼起来</h3>
+  <p>要问"雷达系里的点 (0.3, 0)，在 map 里是哪"——tf2 只干两件事：<strong>先向上爬，再向下拼</strong>，全程不用你手写矩阵：</p>
   <ol>
-    <li>要算 <code>A → B</code>，先沿树向上回溯，把 A 到<strong>根</strong>路径上所有变换收集起来；</li>
-    <li>再从 B 沿树回溯到根；</li>
-    <li>找到两条路径的<strong>汇合点</strong>，沿途变换按逆序 / 顺序连乘，即得 A→B 的合成变换。</li>
+    <li>从 <code>laser_frame</code> 沿父指针一路<strong>向上爬</strong>，收集沿途每一段变换；</li>
+    <li>从 <code>map</code> 也向上爬，找到两条路第一次相遇的<strong>共同祖先</strong>（汇合点）；</li>
+    <li>从汇合点<strong>按下回程</strong>，该取逆的取逆、该连乘的连乘，拼出 A→B 的总变换。</li>
   </ol>
-  <div class="tip tealb"><span class="lab">✦ 为什么禁止成环？</span>如果 A→B、B→C、C→A 构成环，汇合点算法将<strong>永远找不到终止</strong>，查询陷入死循环。所以 TF2 强制<strong>树形结构、每个 frame 只能有一个 parent</strong>——这是查询能在有限步内完成的前提。（发布两个节点抢同一个 child frame 的 parent， actively 报错警告。）</div>
+  <div class="tip tealb"><span class="lab">✦ 为什么禁止成环？</span>一旦 A 是 B 的父、B 又是 A 的父，上面"向上爬"就<strong>永远爬不到头</strong>，查询陷入死循环。所以 TF2 强制一棵树——树形结构正是查询能在有限步内结束的前提。（两个节点抢同一个 child 的 parent 时，TF2 会直接报错警告。）</div>
 
   <h3>2.3 两条话题，两种更新策略</h3>
   <table>
@@ -259,11 +270,25 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
   </table>
   <div class="tip violet"><span class="lab">🔁 和 EXP-06 QoS 的呼应（别和 EXP-10 参数搞混）</span><code>/tf_static</code> 的 latch 语义，用的就是 EXP-06 里讲过的 <b>QoS Durability = Transient Local</b>：发布者替"迟到的订阅者"保留最后一条。<b>注意它不是参数的机制</b>——参数走的是"参数服务 + 参数事件"这套独立设施，和话题 QoS 无关。这里真正要迁移的知识只有一个：<i>凡是"后加入的节点也必须拿到"的数据，就该给它 Transient Local。</i></div>
 
-  <h3>2.4 谁来发布？</h3>
-  <ul>
-    <li><strong>静态</strong>：自己写死的安装位姿 → 用 <code>StaticTransformBroadcaster</code> 发一次即可（驱动包通常已经发好）；</li>
-    <li><strong>动态</strong>：里程计节点发 <code>odom→base_link</code>，SLAM 发 <code>map→odom</code>，URDF 关节状态发 <code>base_link→各 link</code>——<strong>你不需要自己算全树，只需发布"你负责的那一段边"</strong>，其余由系统自动合成。</li>
-  </ul>
+  <h3>2.4 两个角色：一个广播，一个监听</h3>
+  <p>用 TF2 的程序就两类，分工和话题的 pub/sub 一模一样：</p>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">角色 1 · 广播器 Broadcaster</div><div class="kt">告诉所有人："父→子"的变换现在是多少</div><p>
+      <b>谁来发：</b>里程计节点发 <code>odom→base_link</code>；<code>robot_state_publisher</code> 读 URDF 发传感器安装位姿；机械臂控制器发关节变换；你自己标定好相机外参后发 <code>base_link→camera_link</code>。<br>
+      <b>发两种：</b><b>静态</b>（装好就不变）用 <code>StaticTransformBroadcaster</code> 或命令行 <code>static_transform_publisher</code>，<b>只发一次</b>；<b>动态</b>（一直在变）用 <code>TransformBroadcaster</code> <b>持续重发</b>。
+    </p></div>
+    <div class="kcard"><div class="kd">角色 2 · 监听器 Listener</div><div class="kt">订阅 TF，随时被问"A 到 B 的变换是多少"</div><p>
+      <b>谁来听：</b>SLAM 把点云转到 map；Nav2 判断"目标点相对车体多远"；视觉识别到物体后转到 base_link 做抓取。<br>
+      <b>查询要给三样：</b>目标坐标系（转到哪）、源坐标系（数据原来在哪）、<b>时间戳</b>（要哪个时刻的变换——TF 带时间缓存，可以回查过去几秒）。
+    </p></div>
+  </div>
+  <pre><span class="c"># 静态 TF 最快的发法：不用写代码，一行命令（雷达在车体前方 10cm、高 20cm）</span>
+ros2 run tf2_ros static_transform_publisher --x 0.1 --y 0 --z 0.2 \
+  --yaw 0 --pitch 0 --roll 0 base_link laser_frame</pre>
+  <div class="tip violet"><span class="lab">✦ 为什么这么设计？三句话</span>
+  ① <b>解耦</b>：雷达节点只管发雷达系的数据，装在哪、map 长什么样它不关心——坐标系关系全由 TF 统一维护，谁都能查；<br>
+  ② <b>自动链式</b>：你只发布"自己负责的那一条边"，连乘合成、跨树查询交给 tf2，永远不用手写 4×4 矩阵；<br>
+  ③ <b>带时间缓存</b>：传感器数据有延迟，查询时可以"回查"几秒内的历史变换，用<b>数据自己的时间戳</b>去对齐，点云才不会飘。</div>
 </section>
 
 <!-- ===== 03 ANIM ===== -->
@@ -536,6 +561,8 @@ ros2 run tf2_demo static_tf_pub</pre></div>
   <table>
     <tr><th style="width:170px">类别</th><th>说明</th></tr>
     <tr><td><strong>禁环防空转</strong></td><td>TF2 是有根树，<strong>严禁成环</strong>；同一 child_frame 被两个节点配不同 parent 发布时会报错警告（"frame conflicts"）。</td></tr>
+    <tr><td><strong>frame 名字一个字符都不能差</strong></td><td><code>laser_frame</code> 写成 <code>laser_Frame</code>（大小写）或多一个空格 → 报 <code>Frame does not exist</code>。排查时先 <code>ros2 run tf2_ros tf2_monitor</code> 或 view_frames 对名字。</td></tr>
+    <tr><td><strong>别把父子顺序写反</strong></td><td><code>lookup_transform(target, source)</code> 是"把 source 的数据转到 target"——写反等于求逆变换，坐标直接飞出地图。记法：<b>目标在前，源在后</b>（数据从后往前流）。</td></tr>
     <tr><td><strong>时间戳一致</strong></td><td>动态查询默认按<strong>最新时刻</strong>对齐；多源数据融合时显式传时间戳，否则插值错位会出现"点在地图上漂"。</td></tr>
     <tr><td><strong>静态用对 Broadcaster</strong></td><td>静态变换务必用 <code>StaticTransformBroadcaster</code>（/tf_static + latch）。用普通 TransformBroadcaster 循环重发静态值 → 占带宽、后加入节点仍可能漏。</td></tr>
     <tr><td><strong>四元数单位化</strong></td><td>rotation 必须满足 x²+y²+z²+w²=1；(0,0,0,1) 表示零旋转；自算角度后记得转四元数再塞进消息。</td></tr>

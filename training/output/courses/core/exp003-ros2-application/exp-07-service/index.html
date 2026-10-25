@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -82,12 +82,12 @@
 <aside class="side">
   <h4>本页目录</h4>
   <a href="#goal">★ 课程目标</a>
-  <a href="#s1" class="now">01 为什么需要服务：有些事必须"等到答案"</a>
-  <a href="#s2">02 核心原理：一次 RPC 在 ROS2 里怎么跑</a>
-  <a href="#s3">03 动画：一问一答的四个瞬间</a>
-  <a href="#s4">04 专题：指纹三步与"确认码"</a>
-  <a href="#s5">05 服务实验台：亲眼看同步阻塞</a>
-  <a href="#s6">06 先看现象：一步步跑通指纹验证</a>
+  <a href="#s6" class="now">01 先看现象：一步步跑通指纹验证</a>
+  <a href="#s1">02 为什么需要服务：有些事必须"等到答案"</a>
+  <a href="#s2">03 核心原理：一次 RPC 在 ROS2 里怎么跑</a>
+  <a href="#s3">04 动画：一问一答的四个瞬间</a>
+  <a href="#s4">05 专题：指纹三步与"确认码"</a>
+  <a href="#s5">06 服务实验台：亲眼看同步阻塞</a>
   <a href="#s7">07 代码精讲：三份源码逐行读懂</a>
   <a href="#s8">08 动手任务：把现象变成证据</a>
   <a href="#s9">09 注意事项与验收清单</a>
@@ -122,323 +122,9 @@
 本课是<b>三种通信范式的第二种</b>。学完 EXP-06 的异步，再学这里的同步，两者的差异才立得住。</div>
 </section>
 
-<section class="blk" id="s1">
-<h2><span class="no">01</span>为什么需要服务：有些事必须"等到答案"</h2>
-<p>想象你在公司前台值班，来了一个访客要进实验室。你<b>不能广播一句"有人要进门"</b>就转身干别的——你必须拿到一个明确的答复："他是张工，放行"或"查无此人，拦下"。这个答复<b>只回答你这一次的提问</b>，回答完这次对话就结束了。</p>
-
-<div class="tip">🏠 <b>生活里这种"一问一答"到处都是</b>：去银行柜台办卡，柜员处理完把卡递给你——这笔业务只属于你；点外卖下单，平台必须回你一句"接单成功"，你才会去等餐；打 120 急救电话，接线员必须明确回答"车已派出"，你才敢挂电话挂得安心。共同点是——<b>一个人问，一个人答，问的人必须等到答复才能做下一步决定</b>。</div>
-
-<p>上一课（EXP-06）的 MQ5 浓度是典型的话题场景：传感器每秒广播一次，<b>有没有人听无所谓</b>。但指纹验证完全不同，它是一次性提问，必须拿到"成功/失败"才能决定开门与否。</p>
-
-<div class="cmp-grid">
-  <div class="cmp-box bad">
-    <h5>📵 硬用话题做"验证手指"？四堵墙</h5>
-    <ul>
-      <li>得自己开两条话题："请求话题"+"响应话题"，还要<b>自己配对</b>——响应堆里哪条是回答我这条的？</li>
-      <li>广播是发给所有人的：系统里另一个程序也收到"验证请求"，它也去操作指纹模组 → <b>串口打架</b></li>
-      <li>"没人应答"没有任何机制兜底：发完就完了，<b>等多久算失败？</b></li>
-      <li>成功/失败/超时/设备错误全靠自定义字段约定，<b>每个节点各猜各的</b></li>
-    </ul>
-  </div>
-  <div class="cmp-box good">
-    <h5>✅ 用服务：这些 ROS2 都替你想好了</h5>
-    <ul>
-      <li><b>一次调用一次应答</b>，天然可配对，响应一定回到发起者手里</li>
-      <li>服务名全局唯一注册（<code>/verify_fingerprint</code>），<b>不会有两个客户端抢同一个模组</b>的局面由你设计</li>
-      <li><code>wait_for_service</code> 明确告诉你"服务在不在线"</li>
-      <li>应答字段（success / user_id / message）写进 <code>.srv</code> 接口，<b>语义统一</b></li>
-    </ul>
-  </div>
-</div>
-
-<div class="fig-wrap">
-<svg viewBox="0 0 680 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
-  <defs>
-    <marker id="a71" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#0891b2"/></marker>
-    <marker id="a72" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#db2777"/></marker>
-    <marker id="a73" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7c3aed"/></marker>
-  </defs>
-  <text x="170" y="24" font-size="14" font-weight="700" fill="#0e7490" text-anchor="middle">话题 = 小区广播</text>
-  <text x="510" y="24" font-size="14" font-weight="700" fill="#be185d" text-anchor="middle">服务 = 打客服电话</text>
-  <!-- 左：广播 -->
-  <rect x="60" y="44" width="220" height="40" rx="10" fill="#0e7490"/>
-  <text x="170" y="69" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">MQ5 传感器（广播站）</text>
-  <line x1="170" y1="84" x2="60" y2="150" stroke="#0891b2" stroke-width="2" marker-end="url(#a71)"/>
-  <line x1="170" y1="84" x2="170" y2="150" stroke="#0891b2" stroke-width="2" marker-end="url(#a71)"/>
-  <line x1="170" y1="84" x2="280" y2="150" stroke="#0891b2" stroke-width="2" marker-end="url(#a71)"/>
-  <text x="170" y="112" fill="#64748b" font-size="10.5" text-anchor="middle">同一份数据同时撒给所有人</text>
-  <rect x="24" y="152" width="72" height="34" rx="8" fill="#ecfeff" stroke="#0891b2"/><text x="60" y="174" font-size="11.5" fill="#0e7490" text-anchor="middle">报警器</text>
-  <rect x="134" y="152" width="72" height="34" rx="8" fill="#ecfeff" stroke="#0891b2"/><text x="170" y="174" font-size="11.5" fill="#0e7490" text-anchor="middle">云端记录</text>
-  <rect x="244" y="152" width="72" height="34" rx="8" fill="#ecfeff" stroke="#0891b2"/><text x="280" y="174" font-size="11.5" fill="#0e7490" text-anchor="middle">物业大屏</text>
-  <text x="170" y="216" fill="#64748b" font-size="11.5" text-anchor="middle">听不听、谁在听，说话的人不管</text>
-  <text x="170" y="236" fill="#0e7490" font-size="12" text-anchor="middle" font-weight="bold">持续 · 异步 · 一对多</text>
-  <!-- 中分隔 -->
-  <line x1="340" y1="36" x2="340" y2="260" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="6 5"/>
-  <!-- 右：电话 -->
-  <rect x="400" y="44" width="220" height="40" rx="10" fill="#db2777"/>
-  <text x="510" y="69" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">门禁程序（客户端）</text>
-  <line x1="470" y1="84" x2="470" y2="150" stroke="#db2777" stroke-width="2.4" marker-end="url(#a72)"/>
-  <text x="448" y="120" fill="#be185d" font-size="11.5" text-anchor="end">① Request：验证这根手指</text>
-  <line x1="552" y1="150" x2="552" y2="84" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#a73)"/>
-  <text x="574" y="120" fill="#6d28d9" font-size="11.5" text-anchor="start">② Response：成功 user_id=1</text>
-  <rect x="400" y="152" width="220" height="40" rx="10" fill="#9d174d"/>
-  <text x="510" y="177" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">指纹服务端（接线员）</text>
-  <text x="510" y="216" fill="#64748b" font-size="11.5" text-anchor="middle">这条线只属于这一次通话，答复必达</text>
-  <text x="510" y="236" fill="#be185d" font-size="12" text-anchor="middle" font-weight="bold">单次 · 同步 · 一对一</text>
-  <text x="340" y="286" fill="#94a3b8" font-size="11" text-anchor="middle">广播说完就走；电话不拿到答复，事情就办不成</text>
-</svg>
-<figcaption>图 7-1｜话题像广播（发完即走，不管谁听），服务像打客服电话（一对一，必须等到明确答复）</figcaption>
-</div>
-
-<div class="tip"><span class="lab">定义 Service</span>客户端发送 Request 后进入等待，服务端收到请求调用回调、产出 Response 回传——一次调用一次应答，<b>天然可配对、天然知道成败</b>。也称 RPC（远程过程调用）：你像调用本机函数一样发起调用，真正干活的代码可能跑在另一台机器上。</div>
-</section>
-<section class="blk" id="s2">
-<h2><span class="no">02</span>核心原理：一次 RPC 在 ROS2 里怎么跑起来</h2>
-<p class="cs-why" style="font-size:14.5px;color:#475569;line-height:1.9">一个容易误会的地方先说破：<b>ROS2 的服务不是"客户端直接调用服务端的函数"</b>。把两个节点拆开看，中间隔着 DDS 和序列化——服务在底层其实是"两个方向的通道 + 一个配对约定"：请求沿一条通道去，应答沿另一条通道回，ROS2 靠请求里自带的<b>客户端标识 + 序号</b>把应答精确配回给发起者。下面这张图就是它内部的全貌（图 7-2）。</p>
-
-<div class="fig-wrap">
-<svg viewBox="0 0 680 360" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
-  <defs>
-    <marker id="b71" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#db2777"/></marker>
-    <marker id="b72" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7c3aed"/></marker>
-  </defs>
-  <!-- 客户端节点 -->
-  <rect x="16" y="30" width="188" height="300" rx="14" fill="#fdf2f8" stroke="#db2777" stroke-width="1.6"/>
-  <text x="110" y="54" font-size="13.5" font-weight="700" fill="#9d174d" text-anchor="middle">客户端节点 fingerprint_client</text>
-  <rect x="34" y="72" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
-  <text x="110" y="91" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">① create_client</text>
-  <text x="110" y="108" font-size="10.5" fill="#64748b" text-anchor="middle">wait_for_service 确认在线</text>
-  <rect x="34" y="134" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
-  <text x="110" y="153" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">② call_async(Request)</text>
-  <text x="110" y="170" font-size="10.5" fill="#64748b" text-anchor="middle">立即返回 Future，不卡发送</text>
-  <rect x="34" y="196" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
-  <text x="110" y="215" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">③ spin_until_future_complete</text>
-  <text x="110" y="232" font-size="10.5" fill="#64748b" text-anchor="middle">驱动执行器，同步等到回包</text>
-  <rect x="34" y="258" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
-  <text x="110" y="277" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">④ future.result()</text>
-  <text x="110" y="294" font-size="10.5" fill="#64748b" text-anchor="middle">取出 Response，按 success 分支</text>
-  <text x="110" y="322" font-size="10.5" fill="#be185d" text-anchor="middle">请求自带 client_gid + 序号（配对凭证）</text>
-  <!-- DDS 中间 -->
-  <rect x="236" y="30" width="208" height="300" rx="14" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="6 4"/>
-  <text x="340" y="54" font-size="13.5" font-weight="700" fill="#334155" text-anchor="middle">DDS 全局数据空间</text>
-  <rect x="256" y="76" width="168" height="52" rx="9" fill="#fff" stroke="#db2777"/>
-  <text x="340" y="97" font-size="11.5" fill="#9d174d" text-anchor="middle" font-weight="bold">Request 通道（→）</text>
-  <text x="340" y="115" font-size="10" fill="#64748b" text-anchor="middle">序列化后的请求帧</text>
-  <rect x="256" y="232" width="168" height="52" rx="9" fill="#fff" stroke="#7c3aed"/>
-  <text x="340" y="253" font-size="11.5" fill="#6d28d9" text-anchor="middle" font-weight="bold">Response 通道（←）</text>
-  <text x="340" y="271" font-size="10" fill="#64748b" text-anchor="middle">带同一序号的应答帧</text>
-  <text x="340" y="170" font-size="10.5" fill="#94a3b8" text-anchor="middle">两个方向各走各的通道，</text>
-  <text x="340" y="188" font-size="10.5" fill="#94a3b8" text-anchor="middle">配对靠序号，不靠"记性"</text>
-  <!-- 服务端节点 -->
-  <rect x="476" y="30" width="188" height="300" rx="14" fill="#fdf2f8" stroke="#9d174d" stroke-width="1.6"/>
-  <text x="570" y="54" font-size="13.5" font-weight="700" fill="#9d174d" text-anchor="middle">服务端节点 fingerprint_server</text>
-  <rect x="494" y="76" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
-  <text x="570" y="95" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">⑤ create_service</text>
-  <text x="570" y="112" font-size="10.5" fill="#64748b" text-anchor="middle">名字+类型+回调 注册进计算图</text>
-  <rect x="494" y="150" width="152" height="60" rx="8" fill="#fff" stroke="#f9a8d4"/>
-  <text x="570" y="170" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">⑥ 执行器派发回调</text>
-  <text x="570" y="188" font-size="10.5" fill="#64748b" text-anchor="middle">handle_request(request, response)</text>
-  <rect x="494" y="238" width="152" height="66" rx="8" fill="#fff" stroke="#f9a8d4"/>
-  <text x="570" y="258" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">⑦ 填 response 并 return</text>
-  <text x="570" y="276" font-size="10.5" fill="#64748b" text-anchor="middle">采图 → 特征 → 比对</text>
-  <text x="570" y="293" font-size="10.5" fill="#64748b" text-anchor="middle">返回值即回传内容</text>
-  <!-- 箭头 -->
-  <line x1="190" y1="102" x2="252" y2="102" stroke="#db2777" stroke-width="2.6" marker-end="url(#b71)"/>
-  <line x1="428" y1="102" x2="490" y2="170" stroke="#db2777" stroke-width="2.6" marker-end="url(#b71)"/>
-  <line x1="490" y1="270" x2="428" y2="258" stroke="#7c3aed" stroke-width="2.6" marker-end="url(#b72)"/>
-  <line x1="252" y1="258" x2="190" y2="282" stroke="#7c3aed" stroke-width="2.6" marker-end="url(#b72)"/>
-</svg>
-<figcaption>图 7-2｜服务的内部结构：请求、应答各走一条通道，配对靠请求自带的序号凭证——四步在客户端、三步在服务端</figcaption>
-</div>
-
-<h3>四拍流程：把图 7-2 走一遍</h3>
-<div class="flow">
-  <div class="step"><div class="n">1</div><b>服务端注册</b>：<code>create_service(类型, '名字', 回调)</code>——向计算图宣告"我提供此服务"，然后等被调。</div>
-  <div class="arr"></div>
-  <div class="step"><div class="n">2</div><b>客户端就绪</b>：<code>create_client</code> + <code>wait_for_service</code> 循环——确认服务在线才敢发请求。</div>
-  <div class="arr"></div>
-  <div class="step"><div class="n">3</div><b>异步发送</b>：<code>call_async(Request)</code> 立即返回 Future——发送本身不阻塞（名字里的 async 名副其实）。</div>
-  <div class="arr"></div>
-  <div class="step"><div class="n">4</div><b>同步等待</b>：<code>spin_until_future_complete</code> 驱动执行器直到回包，<code>future.result()</code> 取应答。</div>
-</div>
-
-<div class="tip amber"><span class="lab">async 与"同步"矛盾吗</span>不矛盾。<b>call_async 只负责"发不卡"</b>——如果发送时就卡住，执行器被占死，回包来了也没人处理；<b>spin_until_future_complete 负责"等到"</b>。两者合起来，才是"异步发送、同步语义"的标准写法：从调用者的视角看，这一行执行完，答案就在手里。</div>
-
-<table>
-  <tr><th>话题 vs 服务</th><th>话题（EXP-06）</th><th>服务（本课）</th></tr>
-  <tr><td>调用语义</td><td>持续数据流，一对多</td><td>单次请求/响应，一对一</td></tr>
-  <tr><td>时间性</td><td>异步，发完即走</td><td>同步，答到才回</td></tr>
-  <tr><td>可取消</td><td>否</td><td>否（阻塞中只能等或超时）</td></tr>
-  <tr><td>中间反馈</td><td>无（值到了就是反馈）</td><td>无（这正是动作要补的短板，EXP-08）</td></tr>
-  <tr><td>典型场景</td><td>MQ5 浓度持续发布</td><td>指纹验证、继电器控制、单次状态查询</td></tr>
-</table>
-</section>
-<section class="blk" id="s3">
-<h2><span class="no">03</span>动画：一问一答的四个瞬间</h2>
-<p>下面这张时序图把一次完整调用压缩成 4.8 秒循环：①请求出发 → 服务端回调干活 → ②应答返回。盯着<b>粉色小球</b>（请求）和<b>紫色小球</b>（应答）各走一遍，就掌握了服务的全部时序。</p>
-<div class="anim-box">
-<svg viewBox="0 0 760 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
-  <!-- 生命线 -->
-  <rect x="40" y="30" width="150" height="46" rx="10" fill="#1e293b" stroke="#db2777" stroke-width="2"/>
-  <text x="115" y="59" fill="#fff" font-size="14.5" text-anchor="middle" font-weight="bold">client 节点</text>
-  <rect x="570" y="30" width="150" height="46" rx="10" fill="#1e293b" stroke="#db2777" stroke-width="2"/>
-  <text x="645" y="59" fill="#fff" font-size="14.5" text-anchor="middle" font-weight="bold">server 节点</text>
-  <line x1="115" y1="76" x2="115" y2="272" stroke="#334155" stroke-width="1.5" stroke-dasharray="5 5"/>
-  <line x1="645" y1="76" x2="645" y2="272" stroke="#334155" stroke-width="1.5" stroke-dasharray="5 5"/>
-  <!-- Request 箭头 -->
-  <line x1="120" y1="110" x2="638" y2="110" stroke="#f472b6" stroke-width="2.5"/>
-  <polygon points="638,110 626,104 626,116" fill="#f472b6"/>
-  <text x="380" y="100" fill="#f9a8d4" font-size="13" text-anchor="middle">① call_async → /verify_fingerprint Request（带序号）</text>
-  <circle r="7" fill="#f472b6" cx="120" cy="110">
-    <animate attributeName="cx" values="120;638" dur="1.2s" begin="0s" repeatCount="indefinite"/>
-    <animate attributeName="opacity" values="1;1;0;0" dur="4.8s" repeatCount="indefinite"/>
-  </circle>
-  <!-- 回调 -->
-  <rect x="596" y="126" width="98" height="58" rx="6" fill="#4c1d3e" stroke="#db2777" stroke-dasharray="4 3"/>
-  <text x="645" y="147" fill="#f9a8d4" font-size="11.5" text-anchor="middle">handle_request()</text>
-  <text x="645" y="164" fill="#f9a8d4" font-size="11" text-anchor="middle">采图→特征→比对</text>
-  <text x="645" y="178" fill="#f9a8d4" font-size="10" text-anchor="middle">（可能耗时数秒）</text>
-  <!-- Response 箭头 -->
-  <line x1="640" y1="208" x2="122" y2="208" stroke="#a78bfa" stroke-width="2.5"/>
-  <polygon points="122,208 134,202 134,214" fill="#a78bfa"/>
-  <text x="380" y="198" fill="#c4b5fd" font-size="13" text-anchor="middle">② Response（success / user_id / message）</text>
-  <circle r="7" fill="#a78bfa" cx="640" cy="208">
-    <animate attributeName="cx" values="640;122" dur="1.2s" begin="2.4s" repeatCount="indefinite"/>
-    <animate attributeName="opacity" values="0;0;1;1;0" dur="4.8s" repeatCount="indefinite"/>
-  </circle>
-  <!-- 阻塞窗口标注 -->
-  <rect x="120" y="238" width="518" height="26" rx="7" fill="#312e81" opacity=".85"/>
-  <text x="380" y="256" fill="#c7d2fe" font-size="11.5" text-anchor="middle">客户端阻塞窗口：①发出 → ②收到（期间执行器仍在为它服务，future 完成即解锁）</text>
-  <text x="380" y="286" fill="#94a3b8" font-size="12" text-anchor="middle">一发一收之间没有第三拍：没有中间反馈、不可取消——要"边干边报进度"就得升级为动作（EXP-08）</text>
-</svg>
-</div>
-<p class="anim-cap">对照图 7-2 看：① = 步骤②③（发送+等待的起点），服务端暗格 = 步骤⑥⑦，② = 应答通道回程。</p>
-</section>
-
-<section class="blk" id="s4">
-<h2><span class="no">04</span>专题：指纹模组的三步与"确认码"</h2>
-<p>ROS 层之下，指纹模组走 UART 主从协议（包头 <code>0xEF01</code> + 指令 + 校验）。它是个"一问一答"的老实人：主机发一条指令，模组回一个<b>确认码</b>。验证一次要走三步：</p>
-
-<div class="fig-wrap">
-<svg viewBox="0 0 680 210" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
-  <defs><marker id="c71" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#be185d"/></marker></defs>
-  <rect x="20" y="30" width="192" height="120" rx="12" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5"/>
-  <text x="116" y="56" font-size="13" font-weight="700" fill="#9d174d" text-anchor="middle">第 1 步 · PS_GetImage</text>
-  <text x="116" y="76" font-size="11.5" fill="#be185d" text-anchor="middle" font-family="monospace">指令码 0x01</text>
-  <text x="116" y="98" font-size="11.5" fill="#475569" text-anchor="middle">循环轮询等手指按下</text>
-  <text x="116" y="116" font-size="10.5" fill="#64748b" text-anchor="middle">0x02 无手指 → sleep(0.2) 再试</text>
-  <text x="116" y="132" font-size="10.5" fill="#64748b" text-anchor="middle">共 retries=50 次 ≈ 10s 窗口</text>
-  <line x1="216" y1="90" x2="248" y2="90" stroke="#be185d" stroke-width="2.4" marker-end="url(#c71)"/>
-  <rect x="252" y="30" width="176" height="120" rx="12" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5"/>
-  <text x="340" y="56" font-size="13" font-weight="700" fill="#9d174d" text-anchor="middle">第 2 步 · PS_GenChar</text>
-  <text x="340" y="76" font-size="11.5" fill="#be185d" text-anchor="middle" font-family="monospace">指令码 0x02</text>
-  <text x="340" y="98" font-size="11.5" fill="#475569" text-anchor="middle">把图像转成特征向量</text>
-  <text x="340" y="116" font-size="10.5" fill="#64748b" text-anchor="middle">指纹的"数学指纹"</text>
-  <text x="340" y="132" font-size="10.5" fill="#64748b" text-anchor="middle">（不是存图片！）</text>
-  <line x1="432" y1="90" x2="464" y2="90" stroke="#be185d" stroke-width="2.4" marker-end="url(#c71)"/>
-  <rect x="468" y="30" width="192" height="120" rx="12" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5"/>
-  <text x="564" y="56" font-size="13" font-weight="700" fill="#9d174d" text-anchor="middle">第 3 步 · PS_Search</text>
-  <text x="564" y="76" font-size="11.5" fill="#be185d" text-anchor="middle" font-family="monospace">指令码 0x04</text>
-  <text x="564" y="98" font-size="11.5" fill="#475569" text-anchor="middle">与 Flash 中模板比对</text>
-  <text x="564" y="116" font-size="10.5" fill="#64748b" text-anchor="middle">命中 → user_id（页码）</text>
-  <text x="564" y="132" font-size="10.5" fill="#64748b" text-anchor="middle">+ score 匹配分</text>
-  <text x="340" y="182" fill="#64748b" font-size="11.5" text-anchor="middle">录入（写 Flash，人工按两次）用独立脚本；验证（高频程序化）走 ROS 服务——职责各归其位</text>
-</svg>
-<figcaption>图 7-3｜指纹验证三步：每一步都是"发指令 → 等确认码"，ROS 服务端只是这三步的调用者</figcaption>
-</div>
-
-<h3>确认码：状态 ≠ 错误（高频考点）</h3>
-<table>
-  <tr><th>确认码</th><th>含义</th><th>处理策略</th></tr>
-  <tr><td><code>0x00</code></td><td>成功</td><td>进入下一步</td></tr>
-  <tr><td><code>0x01</code></td><td>收包有错</td><td><b>真错误</b>：校验失败/帧格式问题，返回失败</td></tr>
-  <tr><td><code>0x02</code></td><td>无手指</td><td><b>不是错误，是状态</b>——继续轮询等待</td></tr>
-</table>
-
-<div class="tip tealb">🚪 <b>类比："门铃没人按" ≠ "门铃坏了"</b>。0x02 是"还没人按门铃"——你该继续等；0x01 才是"门铃坏了"——该报修了。把 0x02 当失败立即返回，用户手指还没放稳，调用就"验证失败"了。把<b>可恢复状态</b>与<b>真错误</b>区分开，是传感器轮询鲁棒性的第一课。</div>
-
-<p>轮询参数的账：<code>retries=50</code> 次 × <code>sleep(0.2)</code> 秒 ≈ <b>10 秒等待窗口</b>——给用户留出"看到提示 → 放手指"的反应时间。想看这个策略实际怎么跑，直接去 05 的实验台试。</p>
-</section>
-<section class="blk" id="s5">
-<h2><span class="no">05</span>服务实验台：亲眼看"同步阻塞"是怎么发生的</h2>
-<p>原理读十遍，不如亲手"卡"一次。下面的实验台完整复刻 <code>fingerprint_server</code> 的轮询逻辑（0.2s 一轮、retries=50）：选一种手指状态，点"发起验证"，看请求出去之后客户端在等什么、服务端在干什么。</p>
-<div class="ix-panel">
-  <div class="ix-title">Service Lab · 发起一次指纹验证</div>
-  <div class="lab-row">
-    <div class="lab-box">
-      <h5>手指状态</h5>
-      <label>什么时候放手指
-        <select id="fpWhen">
-          <option value="now">一上来就放好了</option>
-          <option value="later">第 5 轮才放上去</option>
-          <option value="never">始终不放（等满窗口）</option>
-        </select>
-      </label>
-    </div>
-    <div class="lab-box">
-      <h5>服务端写法（做个对照）</h5>
-      <label class="switch-row" style="margin:6px 0">
-        <input type="checkbox" id="fpErr"> 把 0x02 当作错误立即返回（错误示范）
-      </label>
-    </div>
-  </div>
-  <div class="btn-row"><button class="btn" onclick="runSrvLab()">发起验证 call_async →</button></div>
-  <div id="srvCells" class="tl-cells" style="margin-top:14px"></div>
-  <div class="lab-log" id="srvLog"><span class="d">// 选择场景后点「发起验证」，观察轮询与阻塞窗口…</span></div>
-  <div class="lab-verdict warn" id="srvVerdict" style="display:none"></div>
-</div>
-<p class="ix-caption">时间轴每一格 ≈ 一次 0.2s 轮询（为演示只画出前几轮，实际 retries=50）。黄色 = 等待（0x02），粉色 = 干活，绿色 = 拿到结果，红色 = 失败。</p>
-</section>
-
-<script>
-function runSrvLab(){
-  var t=document.getElementById('fpWhen').value;
-  var asErr=document.getElementById('fpErr').checked;
-  var cells=[],log=[];
-  log.push('<span class="d">$ [client] call_async(/verify_fingerprint) 请求已发出，进入 spin_until_future_complete 等待…</span>');
-  var vEl=document.getElementById('srvVerdict'), vCls='ok', vTxt='';
-  if(asErr){
-    cells.push({t:'0x02',c:'bad'});
-    log.push('<span class="r">[server] 第 1 轮 get_image → 确认码 0x02（无手指）→ 被当作错误处理</span>');
-    log.push('<span class="r">[client] 收到 Response：success=false  message="采集图像失败(code=0x02)"</span>');
-    log.push('<span class="d">// 总耗时 &lt;0.2s——快是快了，但用户手指还没放稳</span>');
-    vCls='bad';
-    vTxt='✘ 状态被误当错误：10 秒等待窗口完全失效，用户必然"验证失败"。区分 0x02（状态，继续等）与 0x01（错误，返回失败）是鲁棒性第一课。';
-  }else if(t==='never'){
-    for(var i=0;i<10;i++) cells.push({t:'0x02',c:'wait'});
-    cells.push({t:'…',c:'wait'});
-    cells.push({t:'超时',c:'bad'});
-    log.push('<span class="y">[server] 第 1~50 轮 get_image 全部返回 0x02（无手指）→ sleep(0.2) 继续等</span>');
-    log.push('<span class="y">[server] 轮询计数 50/50 耗尽，退出循环</span>');
-    log.push('<span class="r">[client] 约 10s 后收到 Response：success=false  message="超时，未检测到手指"</span>');
-    log.push('<span class="d">// 这 10 秒里客户端一行代码都没法执行——同步阻塞的全部代价</span>');
-    vCls='warn';
-    vTxt='⚠ 等待窗口给了用户反应时间，但客户端也整整卡了 10 秒。如果这种"长时间等待 + 想中途放弃"成为常态，就该升级成动作了（EXP-08）。';
-  }else{
-    var n=(t==='later')?5:1;
-    for(var j=1;j<n;j++) cells.push({t:'0x02',c:'wait'});
-    cells.push({t:'0x00',c:'act'});
-    cells.push({t:'特征',c:'act'});
-    cells.push({t:'比对',c:'act'});
-    cells.push({t:'✓',c:'ok'});
-    if(n>1) log.push('<span class="d">[server] 第 1~'+(n-1)+' 轮 get_image → 0x02（无手指）→ sleep(0.2) 继续</span>');
-    log.push('<span class="g">[server] 第 '+n+' 轮 get_image → 0x00 ✓ 采到指纹图像</span>');
-    log.push('<span class="g">[server] gen_char(1) 生成特征 → search() 命中：user_id=1  score=1151</span>');
-    log.push('<span class="g">[client] 收到 Response：success=true  user_id=1  message="匹配成功 score=1151"</span>');
-    log.push('<span class="d">// 从发出到拿结果的全部时间里，客户端都阻塞在等待上——这就是"同步"</span>');
-    vCls='ok';
-    vTxt='✓ 一问一答完成：应答语义内建，success/user_id 直接可判定。代价是等待期间客户端什么都做不了——短耗时场景这正是想要的确定性。';
-  }
-  var cEl=document.getElementById('srvCells'); cEl.innerHTML='';
-  cells.forEach(function(c){var d=document.createElement('div');d.className='c '+c.c;d.textContent=c.t;cEl.appendChild(d);});
-  document.getElementById('srvLog').innerHTML=log.join('\n');
-  vEl.className='lab-verdict '+vCls; vEl.textContent=vTxt; vEl.style.display='block';
-}
-runSrvLab();
-</script>
 <section class="blk" id="s6">
-<h2><span class="no">06</span>先看现象：一步步跑通指纹验证</h2>
-<p>先不读代码——按下面的命令卡一条条敲，把"录入 → 服务端 → 客户端 → CLI 直调"四个现象亲手跑出来。<b>看到现象再回头看 07 的代码</b>，每一行你都知道自己在学什么。</p>
+<h2><span class="no">01</span>先看现象：一步步跑通指纹验证</h2>
+<p>先别急着看原理和代码——按下面的命令卡一条条敲，把「录入 → 服务端 → 客户端 → CLI 直调」四个现象亲手跑出来。<b>现象对上了，再带着疑问进入后面的原理与 07 代码精讲</b>，每一行你都知道自己在学什么。</p>
 
 <div class="termbar"><span class="tl">终端 P</span><b>录入指纹</b><span class="note">⚠ 录入前先确认服务端没有在运行（两者抢同一个串口）</span></div>
 <div class="cmdstep">
@@ -526,6 +212,321 @@ ros2 run ros_sensor fingerprint_client</pre>
   <p class="cs-see">✔ 三连的价值：<b>排障时先 CLI、再代码</b>——CLI 能调通说明服务端没问题，问题在客户端；反之先查服务端。</p>
 </div>
 </section>
+
+<section class="blk" id="s1">
+<h2><span class="no">02</span>为什么需要服务：有些事必须"等到答案"</h2>
+<p>想象你在公司前台值班，来了一个访客要进实验室。你<b>不能广播一句"有人要进门"</b>就转身干别的——你必须拿到一个明确的答复："他是张工，放行"或"查无此人，拦下"。这个答复<b>只回答你这一次的提问</b>，回答完这次对话就结束了。</p>
+
+<div class="tip">🏠 <b>生活里这种"一问一答"到处都是</b>：去银行柜台办卡，柜员处理完把卡递给你——这笔业务只属于你；点外卖下单，平台必须回你一句"接单成功"，你才会去等餐；打 120 急救电话，接线员必须明确回答"车已派出"，你才敢挂电话挂得安心。共同点是——<b>一个人问，一个人答，问的人必须等到答复才能做下一步决定</b>。</div>
+
+<p>上一课（EXP-06）的 MQ5 浓度是典型的话题场景：传感器每秒广播一次，<b>有没有人听无所谓</b>。但指纹验证完全不同，它是一次性提问，必须拿到"成功/失败"才能决定开门与否。</p>
+
+<div class="cmp-grid">
+  <div class="cmp-box bad">
+    <h5>📵 硬用话题做"验证手指"？四堵墙</h5>
+    <ul>
+      <li>得自己开两条话题："请求话题"+"响应话题"，还要<b>自己配对</b>——响应堆里哪条是回答我这条的？</li>
+      <li>广播是发给所有人的：系统里另一个程序也收到"验证请求"，它也去操作指纹模组 → <b>串口打架</b></li>
+      <li>"没人应答"没有任何机制兜底：发完就完了，<b>等多久算失败？</b></li>
+      <li>成功/失败/超时/设备错误全靠自定义字段约定，<b>每个节点各猜各的</b></li>
+    </ul>
+  </div>
+  <div class="cmp-box good">
+    <h5>✅ 用服务：这些 ROS2 都替你想好了</h5>
+    <ul>
+      <li><b>一次调用一次应答</b>，天然可配对，响应一定回到发起者手里</li>
+      <li>服务名全局唯一注册（<code>/verify_fingerprint</code>），<b>不会有两个客户端抢同一个模组</b>的局面由你设计</li>
+      <li><code>wait_for_service</code> 明确告诉你"服务在不在线"</li>
+      <li>应答字段（success / user_id / message）写进 <code>.srv</code> 接口，<b>语义统一</b></li>
+    </ul>
+  </div>
+</div>
+
+<div class="fig-wrap">
+<svg viewBox="0 0 680 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <defs>
+    <marker id="a71" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#0891b2"/></marker>
+    <marker id="a72" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#db2777"/></marker>
+    <marker id="a73" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7c3aed"/></marker>
+  </defs>
+  <text x="170" y="24" font-size="14" font-weight="700" fill="#0e7490" text-anchor="middle">话题 = 小区广播</text>
+  <text x="510" y="24" font-size="14" font-weight="700" fill="#be185d" text-anchor="middle">服务 = 打客服电话</text>
+  <!-- 左：广播 -->
+  <rect x="60" y="44" width="220" height="40" rx="10" fill="#0e7490"/>
+  <text x="170" y="69" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">MQ5 传感器（广播站）</text>
+  <line x1="170" y1="84" x2="60" y2="150" stroke="#0891b2" stroke-width="2" marker-end="url(#a71)"/>
+  <line x1="170" y1="84" x2="170" y2="150" stroke="#0891b2" stroke-width="2" marker-end="url(#a71)"/>
+  <line x1="170" y1="84" x2="280" y2="150" stroke="#0891b2" stroke-width="2" marker-end="url(#a71)"/>
+  <text x="170" y="112" fill="#64748b" font-size="10.5" text-anchor="middle">同一份数据同时撒给所有人</text>
+  <rect x="24" y="152" width="72" height="34" rx="8" fill="#ecfeff" stroke="#0891b2"/><text x="60" y="174" font-size="11.5" fill="#0e7490" text-anchor="middle">报警器</text>
+  <rect x="134" y="152" width="72" height="34" rx="8" fill="#ecfeff" stroke="#0891b2"/><text x="170" y="174" font-size="11.5" fill="#0e7490" text-anchor="middle">云端记录</text>
+  <rect x="244" y="152" width="72" height="34" rx="8" fill="#ecfeff" stroke="#0891b2"/><text x="280" y="174" font-size="11.5" fill="#0e7490" text-anchor="middle">物业大屏</text>
+  <text x="170" y="216" fill="#64748b" font-size="11.5" text-anchor="middle">听不听、谁在听，说话的人不管</text>
+  <text x="170" y="236" fill="#0e7490" font-size="12" text-anchor="middle" font-weight="bold">持续 · 异步 · 一对多</text>
+  <!-- 中分隔 -->
+  <line x1="340" y1="36" x2="340" y2="260" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <!-- 右：电话 -->
+  <rect x="400" y="44" width="220" height="40" rx="10" fill="#db2777"/>
+  <text x="510" y="69" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">门禁程序（客户端）</text>
+  <line x1="470" y1="84" x2="470" y2="150" stroke="#db2777" stroke-width="2.4" marker-end="url(#a72)"/>
+  <text x="448" y="120" fill="#be185d" font-size="11.5" text-anchor="end">① Request：验证这根手指</text>
+  <line x1="552" y1="150" x2="552" y2="84" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#a73)"/>
+  <text x="574" y="120" fill="#6d28d9" font-size="11.5" text-anchor="start">② Response：成功 user_id=1</text>
+  <rect x="400" y="152" width="220" height="40" rx="10" fill="#9d174d"/>
+  <text x="510" y="177" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">指纹服务端（接线员）</text>
+  <text x="510" y="216" fill="#64748b" font-size="11.5" text-anchor="middle">这条线只属于这一次通话，答复必达</text>
+  <text x="510" y="236" fill="#be185d" font-size="12" text-anchor="middle" font-weight="bold">单次 · 同步 · 一对一</text>
+  <text x="340" y="286" fill="#94a3b8" font-size="11" text-anchor="middle">广播说完就走；电话不拿到答复，事情就办不成</text>
+</svg>
+<figcaption>图 7-1｜话题像广播（发完即走，不管谁听），服务像打客服电话（一对一，必须等到明确答复）</figcaption>
+</div>
+
+<div class="tip"><span class="lab">定义 Service</span>客户端发送 Request 后进入等待，服务端收到请求调用回调、产出 Response 回传——一次调用一次应答，<b>天然可配对、天然知道成败</b>。也称 RPC（远程过程调用）：你像调用本机函数一样发起调用，真正干活的代码可能跑在另一台机器上。</div>
+</section>
+<section class="blk" id="s2">
+<h2><span class="no">03</span>核心原理：一次 RPC 在 ROS2 里怎么跑起来</h2>
+<p class="cs-why" style="font-size:14.5px;color:#475569;line-height:1.9">一个容易误会的地方先说破：<b>ROS2 的服务不是"客户端直接调用服务端的函数"</b>。把两个节点拆开看，中间隔着 DDS 和序列化——服务在底层其实是"两个方向的通道 + 一个配对约定"：请求沿一条通道去，应答沿另一条通道回，ROS2 靠请求里自带的<b>客户端标识 + 序号</b>把应答精确配回给发起者。下面这张图就是它内部的全貌（图 7-2）。</p>
+
+<div class="fig-wrap">
+<svg viewBox="0 0 680 360" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <defs>
+    <marker id="b71" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#db2777"/></marker>
+    <marker id="b72" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7c3aed"/></marker>
+  </defs>
+  <!-- 客户端节点 -->
+  <rect x="16" y="30" width="188" height="300" rx="14" fill="#fdf2f8" stroke="#db2777" stroke-width="1.6"/>
+  <text x="110" y="54" font-size="13.5" font-weight="700" fill="#9d174d" text-anchor="middle">客户端节点 fingerprint_client</text>
+  <rect x="34" y="72" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="110" y="91" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">① create_client</text>
+  <text x="110" y="108" font-size="10.5" fill="#64748b" text-anchor="middle">wait_for_service 确认在线</text>
+  <rect x="34" y="134" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="110" y="153" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">② call_async(Request)</text>
+  <text x="110" y="170" font-size="10.5" fill="#64748b" text-anchor="middle">立即返回 Future，不卡发送</text>
+  <rect x="34" y="196" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="110" y="215" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">③ spin_until_future_complete</text>
+  <text x="110" y="232" font-size="10.5" fill="#64748b" text-anchor="middle">驱动执行器，同步等到回包</text>
+  <rect x="34" y="258" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="110" y="277" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">④ future.result()</text>
+  <text x="110" y="294" font-size="10.5" fill="#64748b" text-anchor="middle">取出 Response，按 success 分支</text>
+  <text x="110" y="322" font-size="10.5" fill="#be185d" text-anchor="middle">请求自带 client_gid + 序号（配对凭证）</text>
+  <!-- DDS 中间 -->
+  <rect x="236" y="30" width="208" height="300" rx="14" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="6 4"/>
+  <text x="340" y="54" font-size="13.5" font-weight="700" fill="#334155" text-anchor="middle">DDS 全局数据空间</text>
+  <rect x="256" y="76" width="168" height="52" rx="9" fill="#fff" stroke="#db2777"/>
+  <text x="340" y="97" font-size="11.5" fill="#9d174d" text-anchor="middle" font-weight="bold">Request 通道（→）</text>
+  <text x="340" y="115" font-size="10" fill="#64748b" text-anchor="middle">序列化后的请求帧</text>
+  <rect x="256" y="232" width="168" height="52" rx="9" fill="#fff" stroke="#7c3aed"/>
+  <text x="340" y="253" font-size="11.5" fill="#6d28d9" text-anchor="middle" font-weight="bold">Response 通道（←）</text>
+  <text x="340" y="271" font-size="10" fill="#64748b" text-anchor="middle">带同一序号的应答帧</text>
+  <text x="340" y="170" font-size="10.5" fill="#94a3b8" text-anchor="middle">两个方向各走各的通道，</text>
+  <text x="340" y="188" font-size="10.5" fill="#94a3b8" text-anchor="middle">配对靠序号，不靠"记性"</text>
+  <!-- 服务端节点 -->
+  <rect x="476" y="30" width="188" height="300" rx="14" fill="#fdf2f8" stroke="#9d174d" stroke-width="1.6"/>
+  <text x="570" y="54" font-size="13.5" font-weight="700" fill="#9d174d" text-anchor="middle">服务端节点 fingerprint_server</text>
+  <rect x="494" y="76" width="152" height="46" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="570" y="95" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">⑤ create_service</text>
+  <text x="570" y="112" font-size="10.5" fill="#64748b" text-anchor="middle">名字+类型+回调 注册进计算图</text>
+  <rect x="494" y="150" width="152" height="60" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="570" y="170" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">⑥ 执行器派发回调</text>
+  <text x="570" y="188" font-size="10.5" fill="#64748b" text-anchor="middle">handle_request(request, response)</text>
+  <rect x="494" y="238" width="152" height="66" rx="8" fill="#fff" stroke="#f9a8d4"/>
+  <text x="570" y="258" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="bold">⑦ 填 response 并 return</text>
+  <text x="570" y="276" font-size="10.5" fill="#64748b" text-anchor="middle">采图 → 特征 → 比对</text>
+  <text x="570" y="293" font-size="10.5" fill="#64748b" text-anchor="middle">返回值即回传内容</text>
+  <!-- 箭头 -->
+  <line x1="190" y1="102" x2="252" y2="102" stroke="#db2777" stroke-width="2.6" marker-end="url(#b71)"/>
+  <line x1="428" y1="102" x2="490" y2="170" stroke="#db2777" stroke-width="2.6" marker-end="url(#b71)"/>
+  <line x1="490" y1="270" x2="428" y2="258" stroke="#7c3aed" stroke-width="2.6" marker-end="url(#b72)"/>
+  <line x1="252" y1="258" x2="190" y2="282" stroke="#7c3aed" stroke-width="2.6" marker-end="url(#b72)"/>
+</svg>
+<figcaption>图 7-2｜服务的内部结构：请求、应答各走一条通道，配对靠请求自带的序号凭证——四步在客户端、三步在服务端</figcaption>
+</div>
+
+<h3>四拍流程：把图 7-2 走一遍</h3>
+<div class="flow">
+  <div class="step"><div class="n">1</div><b>服务端注册</b>：<code>create_service(类型, '名字', 回调)</code>——向计算图宣告"我提供此服务"，然后等被调。</div>
+  <div class="arr"></div>
+  <div class="step"><div class="n">2</div><b>客户端就绪</b>：<code>create_client</code> + <code>wait_for_service</code> 循环——确认服务在线才敢发请求。</div>
+  <div class="arr"></div>
+  <div class="step"><div class="n">3</div><b>异步发送</b>：<code>call_async(Request)</code> 立即返回 Future——发送本身不阻塞（名字里的 async 名副其实）。</div>
+  <div class="arr"></div>
+  <div class="step"><div class="n">4</div><b>同步等待</b>：<code>spin_until_future_complete</code> 驱动执行器直到回包，<code>future.result()</code> 取应答。</div>
+</div>
+
+<div class="tip amber"><span class="lab">async 与"同步"矛盾吗</span>不矛盾。<b>call_async 只负责"发不卡"</b>——如果发送时就卡住，执行器被占死，回包来了也没人处理；<b>spin_until_future_complete 负责"等到"</b>。两者合起来，才是"异步发送、同步语义"的标准写法：从调用者的视角看，这一行执行完，答案就在手里。</div>
+
+<table>
+  <tr><th>话题 vs 服务</th><th>话题（EXP-06）</th><th>服务（本课）</th></tr>
+  <tr><td>调用语义</td><td>持续数据流，一对多</td><td>单次请求/响应，一对一</td></tr>
+  <tr><td>时间性</td><td>异步，发完即走</td><td>同步，答到才回</td></tr>
+  <tr><td>可取消</td><td>否</td><td>否（阻塞中只能等或超时）</td></tr>
+  <tr><td>中间反馈</td><td>无（值到了就是反馈）</td><td>无（这正是动作要补的短板，EXP-08）</td></tr>
+  <tr><td>典型场景</td><td>MQ5 浓度持续发布</td><td>指纹验证、继电器控制、单次状态查询</td></tr>
+</table>
+</section>
+<section class="blk" id="s3">
+<h2><span class="no">04</span>动画：一问一答的四个瞬间</h2>
+<p>下面这张时序图把一次完整调用压缩成 4.8 秒循环：①请求出发 → 服务端回调干活 → ②应答返回。盯着<b>粉色小球</b>（请求）和<b>紫色小球</b>（应答）各走一遍，就掌握了服务的全部时序。</p>
+<div class="anim-box">
+<svg viewBox="0 0 760 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <!-- 生命线 -->
+  <rect x="40" y="30" width="150" height="46" rx="10" fill="#1e293b" stroke="#db2777" stroke-width="2"/>
+  <text x="115" y="59" fill="#fff" font-size="14.5" text-anchor="middle" font-weight="bold">client 节点</text>
+  <rect x="570" y="30" width="150" height="46" rx="10" fill="#1e293b" stroke="#db2777" stroke-width="2"/>
+  <text x="645" y="59" fill="#fff" font-size="14.5" text-anchor="middle" font-weight="bold">server 节点</text>
+  <line x1="115" y1="76" x2="115" y2="272" stroke="#334155" stroke-width="1.5" stroke-dasharray="5 5"/>
+  <line x1="645" y1="76" x2="645" y2="272" stroke="#334155" stroke-width="1.5" stroke-dasharray="5 5"/>
+  <!-- Request 箭头 -->
+  <line x1="120" y1="110" x2="638" y2="110" stroke="#f472b6" stroke-width="2.5"/>
+  <polygon points="638,110 626,104 626,116" fill="#f472b6"/>
+  <text x="380" y="100" fill="#f9a8d4" font-size="13" text-anchor="middle">① call_async → /verify_fingerprint Request（带序号）</text>
+  <circle r="7" fill="#f472b6" cx="120" cy="110">
+    <animate attributeName="cx" values="120;638" dur="1.2s" begin="0s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;1;0;0" dur="4.8s" repeatCount="indefinite"/>
+  </circle>
+  <!-- 回调 -->
+  <rect x="596" y="126" width="98" height="58" rx="6" fill="#4c1d3e" stroke="#db2777" stroke-dasharray="4 3"/>
+  <text x="645" y="147" fill="#f9a8d4" font-size="11.5" text-anchor="middle">handle_request()</text>
+  <text x="645" y="164" fill="#f9a8d4" font-size="11" text-anchor="middle">采图→特征→比对</text>
+  <text x="645" y="178" fill="#f9a8d4" font-size="10" text-anchor="middle">（可能耗时数秒）</text>
+  <!-- Response 箭头 -->
+  <line x1="640" y1="208" x2="122" y2="208" stroke="#a78bfa" stroke-width="2.5"/>
+  <polygon points="122,208 134,202 134,214" fill="#a78bfa"/>
+  <text x="380" y="198" fill="#c4b5fd" font-size="13" text-anchor="middle">② Response（success / user_id / message）</text>
+  <circle r="7" fill="#a78bfa" cx="640" cy="208">
+    <animate attributeName="cx" values="640;122" dur="1.2s" begin="2.4s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;0;1;1;0" dur="4.8s" repeatCount="indefinite"/>
+  </circle>
+  <!-- 阻塞窗口标注 -->
+  <rect x="120" y="238" width="518" height="26" rx="7" fill="#312e81" opacity=".85"/>
+  <text x="380" y="256" fill="#c7d2fe" font-size="11.5" text-anchor="middle">客户端阻塞窗口：①发出 → ②收到（期间执行器仍在为它服务，future 完成即解锁）</text>
+  <text x="380" y="286" fill="#94a3b8" font-size="12" text-anchor="middle">一发一收之间没有第三拍：没有中间反馈、不可取消——要"边干边报进度"就得升级为动作（EXP-08）</text>
+</svg>
+</div>
+<p class="anim-cap">对照图 7-2 看：① = 步骤②③（发送+等待的起点），服务端暗格 = 步骤⑥⑦，② = 应答通道回程。</p>
+</section>
+
+<section class="blk" id="s4">
+<h2><span class="no">05</span>专题：指纹模组的三步与"确认码"</h2>
+<p>ROS 层之下，指纹模组走 UART 主从协议（包头 <code>0xEF01</code> + 指令 + 校验）。它是个"一问一答"的老实人：主机发一条指令，模组回一个<b>确认码</b>。验证一次要走三步：</p>
+
+<div class="fig-wrap">
+<svg viewBox="0 0 680 210" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <defs><marker id="c71" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#be185d"/></marker></defs>
+  <rect x="20" y="30" width="192" height="120" rx="12" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5"/>
+  <text x="116" y="56" font-size="13" font-weight="700" fill="#9d174d" text-anchor="middle">第 1 步 · PS_GetImage</text>
+  <text x="116" y="76" font-size="11.5" fill="#be185d" text-anchor="middle" font-family="monospace">指令码 0x01</text>
+  <text x="116" y="98" font-size="11.5" fill="#475569" text-anchor="middle">循环轮询等手指按下</text>
+  <text x="116" y="116" font-size="10.5" fill="#64748b" text-anchor="middle">0x02 无手指 → sleep(0.2) 再试</text>
+  <text x="116" y="132" font-size="10.5" fill="#64748b" text-anchor="middle">共 retries=50 次 ≈ 10s 窗口</text>
+  <line x1="216" y1="90" x2="248" y2="90" stroke="#be185d" stroke-width="2.4" marker-end="url(#c71)"/>
+  <rect x="252" y="30" width="176" height="120" rx="12" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5"/>
+  <text x="340" y="56" font-size="13" font-weight="700" fill="#9d174d" text-anchor="middle">第 2 步 · PS_GenChar</text>
+  <text x="340" y="76" font-size="11.5" fill="#be185d" text-anchor="middle" font-family="monospace">指令码 0x02</text>
+  <text x="340" y="98" font-size="11.5" fill="#475569" text-anchor="middle">把图像转成特征向量</text>
+  <text x="340" y="116" font-size="10.5" fill="#64748b" text-anchor="middle">指纹的"数学指纹"</text>
+  <text x="340" y="132" font-size="10.5" fill="#64748b" text-anchor="middle">（不是存图片！）</text>
+  <line x1="432" y1="90" x2="464" y2="90" stroke="#be185d" stroke-width="2.4" marker-end="url(#c71)"/>
+  <rect x="468" y="30" width="192" height="120" rx="12" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5"/>
+  <text x="564" y="56" font-size="13" font-weight="700" fill="#9d174d" text-anchor="middle">第 3 步 · PS_Search</text>
+  <text x="564" y="76" font-size="11.5" fill="#be185d" text-anchor="middle" font-family="monospace">指令码 0x04</text>
+  <text x="564" y="98" font-size="11.5" fill="#475569" text-anchor="middle">与 Flash 中模板比对</text>
+  <text x="564" y="116" font-size="10.5" fill="#64748b" text-anchor="middle">命中 → user_id（页码）</text>
+  <text x="564" y="132" font-size="10.5" fill="#64748b" text-anchor="middle">+ score 匹配分</text>
+  <text x="340" y="182" fill="#64748b" font-size="11.5" text-anchor="middle">录入（写 Flash，人工按两次）用独立脚本；验证（高频程序化）走 ROS 服务——职责各归其位</text>
+</svg>
+<figcaption>图 7-3｜指纹验证三步：每一步都是"发指令 → 等确认码"，ROS 服务端只是这三步的调用者</figcaption>
+</div>
+
+<h3>确认码：状态 ≠ 错误（高频考点）</h3>
+<table>
+  <tr><th>确认码</th><th>含义</th><th>处理策略</th></tr>
+  <tr><td><code>0x00</code></td><td>成功</td><td>进入下一步</td></tr>
+  <tr><td><code>0x01</code></td><td>收包有错</td><td><b>真错误</b>：校验失败/帧格式问题，返回失败</td></tr>
+  <tr><td><code>0x02</code></td><td>无手指</td><td><b>不是错误，是状态</b>——继续轮询等待</td></tr>
+</table>
+
+<div class="tip tealb">🚪 <b>类比："门铃没人按" ≠ "门铃坏了"</b>。0x02 是"还没人按门铃"——你该继续等；0x01 才是"门铃坏了"——该报修了。把 0x02 当失败立即返回，用户手指还没放稳，调用就"验证失败"了。把<b>可恢复状态</b>与<b>真错误</b>区分开，是传感器轮询鲁棒性的第一课。</div>
+
+<p>轮询参数的账：<code>retries=50</code> 次 × <code>sleep(0.2)</code> 秒 ≈ <b>10 秒等待窗口</b>——给用户留出"看到提示 → 放手指"的反应时间。想看这个策略实际怎么跑，直接去 05 的实验台试。</p>
+</section>
+<section class="blk" id="s5">
+<h2><span class="no">06</span>服务实验台：亲眼看"同步阻塞"是怎么发生的</h2>
+<p>原理读十遍，不如亲手"卡"一次。下面的实验台完整复刻 <code>fingerprint_server</code> 的轮询逻辑（0.2s 一轮、retries=50）：选一种手指状态，点"发起验证"，看请求出去之后客户端在等什么、服务端在干什么。</p>
+<div class="ix-panel">
+  <div class="ix-title">Service Lab · 发起一次指纹验证</div>
+  <div class="lab-row">
+    <div class="lab-box">
+      <h5>手指状态</h5>
+      <label>什么时候放手指
+        <select id="fpWhen">
+          <option value="now">一上来就放好了</option>
+          <option value="later">第 5 轮才放上去</option>
+          <option value="never">始终不放（等满窗口）</option>
+        </select>
+      </label>
+    </div>
+    <div class="lab-box">
+      <h5>服务端写法（做个对照）</h5>
+      <label class="switch-row" style="margin:6px 0">
+        <input type="checkbox" id="fpErr"> 把 0x02 当作错误立即返回（错误示范）
+      </label>
+    </div>
+  </div>
+  <div class="btn-row"><button class="btn" onclick="runSrvLab()">发起验证 call_async →</button></div>
+  <div id="srvCells" class="tl-cells" style="margin-top:14px"></div>
+  <div class="lab-log" id="srvLog"><span class="d">// 选择场景后点「发起验证」，观察轮询与阻塞窗口…</span></div>
+  <div class="lab-verdict warn" id="srvVerdict" style="display:none"></div>
+</div>
+<p class="ix-caption">时间轴每一格 ≈ 一次 0.2s 轮询（为演示只画出前几轮，实际 retries=50）。黄色 = 等待（0x02），粉色 = 干活，绿色 = 拿到结果，红色 = 失败。</p>
+</section>
+
+<script>
+function runSrvLab(){
+  var t=document.getElementById('fpWhen').value;
+  var asErr=document.getElementById('fpErr').checked;
+  var cells=[],log=[];
+  log.push('<span class="d">$ [client] call_async(/verify_fingerprint) 请求已发出，进入 spin_until_future_complete 等待…</span>');
+  var vEl=document.getElementById('srvVerdict'), vCls='ok', vTxt='';
+  if(asErr){
+    cells.push({t:'0x02',c:'bad'});
+    log.push('<span class="r">[server] 第 1 轮 get_image → 确认码 0x02（无手指）→ 被当作错误处理</span>');
+    log.push('<span class="r">[client] 收到 Response：success=false  message="采集图像失败(code=0x02)"</span>');
+    log.push('<span class="d">// 总耗时 &lt;0.2s——快是快了，但用户手指还没放稳</span>');
+    vCls='bad';
+    vTxt='✘ 状态被误当错误：10 秒等待窗口完全失效，用户必然"验证失败"。区分 0x02（状态，继续等）与 0x01（错误，返回失败）是鲁棒性第一课。';
+  }else if(t==='never'){
+    for(var i=0;i<10;i++) cells.push({t:'0x02',c:'wait'});
+    cells.push({t:'…',c:'wait'});
+    cells.push({t:'超时',c:'bad'});
+    log.push('<span class="y">[server] 第 1~50 轮 get_image 全部返回 0x02（无手指）→ sleep(0.2) 继续等</span>');
+    log.push('<span class="y">[server] 轮询计数 50/50 耗尽，退出循环</span>');
+    log.push('<span class="r">[client] 约 10s 后收到 Response：success=false  message="超时，未检测到手指"</span>');
+    log.push('<span class="d">// 这 10 秒里客户端一行代码都没法执行——同步阻塞的全部代价</span>');
+    vCls='warn';
+    vTxt='⚠ 等待窗口给了用户反应时间，但客户端也整整卡了 10 秒。如果这种"长时间等待 + 想中途放弃"成为常态，就该升级成动作了（EXP-08）。';
+  }else{
+    var n=(t==='later')?5:1;
+    for(var j=1;j<n;j++) cells.push({t:'0x02',c:'wait'});
+    cells.push({t:'0x00',c:'act'});
+    cells.push({t:'特征',c:'act'});
+    cells.push({t:'比对',c:'act'});
+    cells.push({t:'✓',c:'ok'});
+    if(n>1) log.push('<span class="d">[server] 第 1~'+(n-1)+' 轮 get_image → 0x02（无手指）→ sleep(0.2) 继续</span>');
+    log.push('<span class="g">[server] 第 '+n+' 轮 get_image → 0x00 ✓ 采到指纹图像</span>');
+    log.push('<span class="g">[server] gen_char(1) 生成特征 → search() 命中：user_id=1  score=1151</span>');
+    log.push('<span class="g">[client] 收到 Response：success=true  user_id=1  message="匹配成功 score=1151"</span>');
+    log.push('<span class="d">// 从发出到拿结果的全部时间里，客户端都阻塞在等待上——这就是"同步"</span>');
+    vCls='ok';
+    vTxt='✓ 一问一答完成：应答语义内建，success/user_id 直接可判定。代价是等待期间客户端什么都做不了——短耗时场景这正是想要的确定性。';
+  }
+  var cEl=document.getElementById('srvCells'); cEl.innerHTML='';
+  cells.forEach(function(c){var d=document.createElement('div');d.className='c '+c.c;d.textContent=c.t;cEl.appendChild(d);});
+  document.getElementById('srvLog').innerHTML=log.join('\n');
+  vEl.className='lab-verdict '+vCls; vEl.textContent=vTxt; vEl.style.display='block';
+}
+runSrvLab();
+</script>
 <section class="blk" id="s7">
 <h2><span class="no">07</span>代码精讲：三份源码，逐行读懂你刚才跑的东西</h2>
 <p>按数据流的方向读三份源码：<b>① 协议层</b>（怎么跟模组说话）→ <b>② 服务端</b>（怎么接请求、回应答）→ <b>③ 客户端</b>（怎么发请求、等结果）。源码都在 <code>~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor/</code>。</p>
@@ -560,7 +561,7 @@ result = fp.search()              <span class="c"># 搜索库：result.page=命�
   <tr><th>逐行看点</th><th>它在干什么</th></tr>
   <tr><td>帧尾的校验和</td><td>串口线上防传输出错的唯一手段——校验不过模组直接回 0x01"收包有错"</td></tr>
   <tr><td><code>_send</code> 的收发超时</td><td>发帧后等应答帧带超时保护——串口不像网络有重传，没应答基本就是模组掉线</td></tr>
-  <tr><td><code>get_image → gen_char → search</code></td><td>正好是 04 节图 7-3 的三步——协议层把每步各封一个方法，服务端按顺序调用</td></tr>
+  <tr><td><code>get_image → gen_char → search</code></td><td>正好是 05 节图 7-3 的三步——协议层把每步各封一个方法，服务端按顺序调用</td></tr>
   <tr><td>录入四步 <code>get_image×2 + reg_model + store_char</code></td><td>录入脚本专用：两次特征 + 合并 + 写 Flash——这就是录入和验证分成两个程序的原因</td></tr>
 </table>
 
@@ -642,7 +643,7 @@ resp = future.result()
 
 <section class="blk" id="s8">
 <h2><span class="no">08</span>动手任务：把现象变成你自己的证据</h2>
-<p>边做边填证据表——这就是你实验报告的素材。做之前先回 06 节照着命令卡跑通一遍。</p>
+<p>边做边填证据表——这就是你实验报告的素材。做之前先回 01 节照着命令卡跑通一遍。</p>
 <div class="kgrid">
   <div class="kcard"><div class="kt">任务 1 · 录入与失败录入</div><div class="kd">用同一根手指完成录入（<code>enroll -i 1</code>）；再故意用两根不同手指录一次，记录报错文案。<b>要记录</b>："合并模板失败"的完整终端输出。</div></div>
   <div class="kcard"><div class="kt">任务 2 · 成功与失败验证</div><div class="kd">客户端分别用已录入 / 未录入手指验证，截两张图。<b>要记录</b>：<code>user_id=1 score=…</code> 与 <code>user_id=-1 未匹配到指纹</code> 两条日志。</div></div>
