@@ -108,7 +108,7 @@
 </div>
 <div class="tip tealb"><span class="lab">本课的重点与难点</span>
 <b>重点</b>：<code>class XxxNode(Node)</code> 的继承写法，以及构造函数里"注册节点 → 声明参数 → 创建发布者/定时器"的顺序。<br>
-<b>难点</b>：① 为什么<b>不调用 <code>rclpy.spin()</code> 就等于没开机</b>；② "一个节点 = 一个独立进程"这条设计原则，在工程上到底买到了什么好处。</div>
+<b>难点</b>：① 为什么<b>不调用 <code>rclpy.spin()</code> 就等于没开机</b>；② "一个节点 = 一个独立进程"这条设计原则，在工程上到底有什么好处。</div>
 <div class="tip amber"><span class="lab">和前后的关系</span>
 上一课（EXP-04）讲了怎么建包，这一课讲包里最核心的东西怎么写。本课用的 <code>gas_sensor_node</code> <b>正是 EXP-06 的主角</b>——这里从"<b>节点</b>"角度拆它的结构和生命周期，EXP-06 再从"<b>话题</b>"角度拆它怎么发数据。</div>
 </section>
@@ -152,7 +152,7 @@ ROS2 干的事一模一样：把上面那五个程序各封成一个岗位，<b>
     </tr>
     <tr>
       <td>"岗位只讲分工"</td>
-      <td>分工只是一半。节点的核心能力是<b>通过话题 / 服务与其它节点通信，共同组成计算图</b>——没有通信，孤立的节点毫无意义。</td>
+      <td>分工只是一半。节点的核心能力是<b>通过话题 / 服务与其它节点通信，共同组成计算图</b>（把正在跑的节点和连线画成一张"谁连谁"的图，下面就画一张看看）。没有通信，孤立的节点毫无意义。</td>
       <td>只记"拆"，不记"连"，后面学话题/服务时接不上。</td>
     </tr>
   </tbody>
@@ -162,10 +162,35 @@ ROS2 干的事一模一样：把上面那五个程序各封成一个岗位，<b>
 <b>ROS2 节点是参与 ROS 计算图通信的基础单元</b>，依托 <code>rcl</code> / <code>rclpy</code> 库创建，在 DDS 发现网络里表现为一个<b>参与者</b>（Participant 侧的端点集合）。<br>
 它具备的能力是：<b>有名字</b>（可被图查询）、<b>有通信端点</b>（可发布/订阅/提供服务）、<b>由执行器驱动</b>（spin 才能干活）。三者缺一，就不算一个"活着的节点"。</div>
 
+<div class="tip tealb"><span class="lab">🔍 "计算图"是什么：先拿上一课的例子画一张</span>
+定义里那句"参与 <b>ROS 计算图</b>通信"，拆开说：<b>计算图就是把正在运行的节点、话题和它们之间的连线画成一张图</b>。椭圆是一个节点，矩形是一条话题，箭头是数据流动的方向；谁发布了、谁订阅了、哪条线断了，图上一眼全露馅。光背定义没用，拿 EXP-01 跑过的 talker / listener 当例子，三个终端按序开，亲手画一次：</div>
+<div class="cmdstep" style="margin-top:8px">
+  <div class="cs-hd"><span class="cs-no">0.1</span><b>开两个老朋友：talker 和 listener</b><span class="cs-where">终端 A / B</span></div>
+  <p class="cs-why">每个新开终端都先加载环境，这是 EXP-01 养成的老规矩。</p>
+  <pre><span class="c"># 终端 A：发布者</span>
+<span class="g">source</span> /opt/ros/humble/setup.bash
+<span class="g">ros2</span> run demo_nodes_cpp talker
+
+<span class="c"># 终端 B：订阅者</span>
+<span class="g">source</span> /opt/ros/humble/setup.bash
+<span class="g">ros2</span> run demo_nodes_cpp listener</pre>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">0.2</span><b>把计算图画出来</b><span class="cs-where">终端 C</span></div>
+  <p class="cs-why"><code>rqt_graph</code> 是 ROS2 自带的"看图窗口"，完整用法 EXP-14 细讲，这里只要会打开、会读箭头。</p>
+  <pre><span class="g">source</span> /opt/ros/humble/setup.bash
+<span class="g">sudo</span> apt install ros-humble-rqt-graph   <span class="c"># 报 command not found 才需要装，装过跳过</span>
+<span class="g">ros2</span> run rqt_graph rqt_graph</pre>
+  <p class="cs-see">✔ 三个观察点逐个对：① 图里有两个椭圆 <code>/talker</code>、<code>/listener</code>；② 中间是矩形 <code>/chatter</code>，左边一支箭头从 talker 指进来，右边一支从它指去 listener（发布 → 话题 → 订阅）；③ 回终端 A 按 <code>Ctrl+C</code>，talker 的椭圆和箭头立刻从图上消失，重新 run 又自己连回来。</p>
+</div>
+<div class="tip amber"><span class="lab">这一步其实证明了什么</span>
+你亲眼见到了"计算图"三个字的分量：<b>节点是死是活、连没连上，ROS2 自己心里有数，随时能整张画给你看</b>。杀掉 talker 图就缺一块，说明图反映的是<b>此刻真实的连接</b>，不是文档里的设计稿。<br>
+没有图形界面的机器（纯 SSH）画不了图，用 <code>ros2 node list</code> 加 <code>ros2 topic info /chatter</code> 看"Publisher count: 1, Subscription count: 1"，结论完全一样；图形环境怎么配，回看 EXP-01 turtlesim 冒烟测试那段。</div>
+
 <div class="tip amber"><span class="lab">📌 先记住这三句，后面逐步兑现</span>
 ① <b>职责内聚 ≠ 一事一节点</b>——怎么划边界，02 节用 <code>gas_sensor_node</code> 演示（它同时有发布者、定时器、参数）。<br>
 ② <b>进程 ≠ 节点</b>——EXP-05 全程按"一进程一节点"练手，但要知道这只是常见做法，不是规定。<br>
-③ <b>节点真正的价值在"连"</b>——话题在 EXP-06、服务在 EXP-07、动作在 EXP-08，计算图在 02 节的发现建连动画里再展开一遍。</div>
+③ <b>节点真正的价值在"连"</b>——话题在 EXP-06、服务在 EXP-07、动作在 EXP-08；计算图上面刚画过一张，02 节的发现建连动画里再展开一遍。</div>
 
 <h3>那这 20 多个节点，是随便乱拆的吗</h3><p>不是。真实机器人里的节点有一条约定的分工纪律，按"信号往哪个方向走"分成四层。<b>上层只做判断、不碰硬件；下层只碰硬件、不做判断</b>——记住这一句，下面这张图就全看懂了。</p>
 
@@ -387,7 +412,7 @@ ROS2 干的事一模一样：把上面那五个程序各封成一个岗位，<b>
   <text x="44" y="392" fill="#cbd5e1" font-size="11.8">· <tspan fill="#f87171" font-weight="bold">节奏</tspan>：相机 30Hz、雷达 10Hz、底盘 100Hz、导航 1Hz。四种节奏塞进一个循环，只能按最慢的走。</text>
   <text x="58" y="411" fill="#94a3b8" font-size="11.5">要么 100Hz 的电机被 1Hz 的导航拖住，要么快的抢光 CPU、把慢的饿死。</text>
   <text x="44" y="434" fill="#cbd5e1" font-size="11.8">· <tspan fill="#f87171" font-weight="bold">语言</tspan>：点云处理要 C++ 的性能，业务逻辑想用 Python 的灵活。同一个进程只能选一种，<tspan fill="#94a3b8">要么牺牲性能，要么牺牲开发效率。</tspan></text>
-  <text x="44" y="457" fill="#86efac" font-size="11.5">拆成独立进程后：崩溃不传播、节奏各自定、语言各自选 —— 这就是"拆"买到的三样东西。</text>
+  <text x="44" y="457" fill="#86efac" font-size="11.5">拆成独立进程后：崩溃不传播、节奏各自定、语言各自选 —— 这就是"拆"换来的三样东西。</text>
 </svg>
 </div>
 <p class="anim-cap">图 1-2｜拆与不拆，差别不在"代码好不好看"，而在于<b>故障会不会扩散、节奏会不会互相拖累</b>。这也解释了为什么机器人软件几乎一定得多进程。</p>
@@ -657,7 +682,7 @@ ROS2 把这两件事分开设计，是为了让你<b>按需选择</b>：传感�
   <div class="kcard"><div class="kd">要更细的控制</div><div class="kt">回调组 CallbackGroup</div><p><code>MutuallyExclusiveCallbackGroup</code>（同组互斥，同一时刻只跑一个）/ <code>ReentrantCallbackGroup</code>（同组可重入，可并发）。用来"哪些回调允许并行、哪些必须排队"。</p></div>
 </div>
 <div class="tip amber"><span class="lab">⚠ 一条铁律：回调里别阻塞</span>
-单线程下只有一个回调在跑。如果 <code>timer_cb</code> 里写了 <code>sleep(5)</code> 或一个慢查询，<b>这 5 秒内所有别的回调都停在队列里动不了</b>——现象就是"节点卡住了"。<b>回调要短</b>；真要干重活，丢给独立线程或另一个节点。同理：服务回调里如果调用了还要等 spin 才能完成的东西（比如同步等待），会直接死锁——这就是 EXP-07 要讲的坑。</div>
+单线程下只有一个回调在跑。如果 <code>timer_cb</code> 里写了 <code>sleep(5)</code> 或一个慢查询，<b>这 5 秒内所有别的回调都停在队列里动不了</b>，现象就是"节点卡住了"。<b>回调要短</b>；真要干重活，丢给独立线程或另一个节点。同理：服务回调里如果调用了还要等 spin 才能完成的东西（比如同步等待），会直接死锁——这就是 EXP-07 要讲的坑。</div>
 
 <h3>问题五：节点之间怎么"接上头"</h3>
 <p>现在 <code>gas_sensor_node</code> 已经能在柜台后正常干活了。可它发出的 <code>/gas_sensor</code>，怎么保证被 <code>gas_monitor</code> 收到？<b>代码里从来没写过对方的 IP 或端口</b>——这层事完全由 DDS 代办：</p>
@@ -911,7 +936,7 @@ ROS2 把这两件事分开设计，是为了让你<b>按需选择</b>：传感�
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">2.1</span><b>打开源码文件</b><span class="cs-where">终端 1</span></div>
   <p class="cs-why">节点源码在 <code>ros_sensor</code> 包里。用编辑器或 <code>cat</code> 打开即可。</p>
-  <pre><span class="b">cd</span> ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor
+  <pre><span class="b">cd</span> ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
 <span class="g">cat</span> gas_sensor_node.py</pre>
 </div>
 

@@ -125,6 +125,13 @@ figure{margin:0}
 .mq5-calc{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
 .mq5-calc input{font-family:var(--font-mono);font-size:14px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;width:140px}
 .mq5-out{font-family:var(--font-mono);font-size:14px;color:var(--accent-teal);font-weight:700}
+.mq5-chart{margin-top:12px;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.mq5-chart svg{display:block;width:100%}
+.mq5-range{flex:1;min-width:180px;accent-color:#0891b2}
+.mq5-btn{font:inherit;font-size:13px;font-weight:600;color:var(--accent-teal);background:#f0fdfa;border:1px solid #ccfbf1;border-radius:8px;padding:7px 14px;cursor:pointer;transition:.15s}
+.mq5-btn:hover{background:#ccfbf1}
+.mq5-reads{margin-top:10px;font-family:var(--font-mono);font-size:13px;color:var(--text-body);background:var(--bg-soft);border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+.mq5-verdict{margin-top:10px;font-size:13.5px;line-height:1.75;color:var(--text-body);border-left:3px solid var(--accent-teal);background:rgba(13,148,136,.06);border-radius:0 8px 8px 0;padding:9px 13px}
 .expnav{display:flex;justify-content:space-between;gap:14px;margin-top:44px;padding-top:22px;border-top:1px solid var(--border)}
 .expnav a{flex:1;text-decoration:none;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
   padding:15px 18px;transition:.28s}
@@ -282,7 +289,7 @@ code.inline{font-family:var(--font-mono);font-size:13px;color:var(--accent-blue)
 </div>
 <div class="tip tealb"><span class="lab">本课的重点与难点</span>
 <b>重点</b>：QoS 的"请求 ≤ 提供"兼容规则——这是"两头都起了、数据却不来"最常见的原因。<br>
-<b>难点</b>：把 MQ5 的电压读数经对数换算成 ppm；以及理解"发布者根本不知道有几个订阅者"。</div>
+<b>难点</b>：把 MQ5 的电压读数经对数换算成 ppm（浓度单位，百万分之一）；以及理解"发布者根本不知道有几个订阅者"。</div>
 <div class="tip amber"><span class="lab">和前后的关系</span>
 本课的 <code>gas_sensor_node</code> 在 <b>EXP-05 已从"节点结构"角度拆过</b>；本课换到"话题"角度再看一遍，会发现同一份代码能讲出两层知识。</div>
 </section>
@@ -298,23 +305,23 @@ code.inline{font-family:var(--font-mono);font-size:13px;color:var(--accent-blue)
         <p class="cs-why"><code>ros_sensor</code> 是存放所有传感器节点的功能包。第一次使用、或改过源码之后都要编译一次；<code>source</code> 的作用是让当前终端<b>知道去哪儿找这个包</b>——每新开一个终端都要重新 source 一次，这是初学者"提示找不到包"的头号原因。</p>
         <pre>cd ~/ros2_ws
 source /opt/ros/humble/setup.bash                    <span class="c"># ① 先加载 ROS2 本体（underlay）</span>
-colcon build --symlink-install --packages-select ros_sensor ros_sensor_interfaces
+colcon build --symlink-install
 source install/setup.bash                            <span class="c"># ② 再加载本工作空间（overlay）</span></pre>
-        <p class="cs-see">✔ 结尾出现 <code>Summary: 1 package finished</code> 或 <code>2 packages finished</code>；<code>source</code> 本身没有任何输出（沉默即成功）</p>
+        <p class="cs-see">✔ 结尾出现 <code>Summary: N packages finished</code>（N = 你工作空间里的包总数，全编了就行）；<code>source</code> 本身没有任何输出（沉默即成功）</p>
       </div>
 
       <div class="termbar"><span class="tl">终端 A</span><b>启动发布端</b><span class="note">（这个终端会被一直占住，别关）</span></div>
 
       <div class="cmdstep">
         <div class="cs-hd"><span class="cs-no">2</span><b>运行 MQ5 采集节点</b><span class="cs-where">终端 A</span></div>
-        <p class="cs-why">这就是数据的源头：它每秒读一次 ADC，换算成 ppm，然后把数值"喊"到 <code>/gas_sensor</code> 这个话题上。</p>
+        <p class="cs-why">这就是数据的源头：它每秒读一次 ADC，换算成 ppm（气体浓度单位，百万分之一），然后把数值"喊"到 <code>/gas_sensor</code> 这个话题上。</p>
         <pre>cd ~/ros2_ws
 source install/setup.bash                            <span class="c"># 新终端，必须重新 source</span>
 ros2 run ros_sensor gas_sensor_node                  <span class="c"># 不需要 sudo</span></pre>
         <div class="io"><span class="dim">$ ros2 run ros_sensor gas_sensor_node</span>
-<span class="g">[INFO]</span> [1728000001.123] [gas_sensor_node]: raw=1234 voltage=1.201V ppm=312.45
-<span class="g">[INFO]</span> [1728000002.124] [gas_sensor_node]: raw=1238 voltage=1.205V ppm=309.12
-<span class="g">[INFO]</span> [1728000003.126] [gas_sensor_node]: raw=1236 voltage=1.203V ppm=310.87
+<span class="g">[INFO]</span> [1728000001.123] [gas_sensor_node]: raw=1404 voltage=1.714V ppm=312.91
+<span class="g">[INFO]</span> [1728000002.124] [gas_sensor_node]: raw=1405 voltage=1.715V ppm=313.68
+<span class="g">[INFO]</span> [1728000003.126] [gas_sensor_node]: raw=1403 voltage=1.713V ppm=312.15
 <span class="dim">…每秒一行，持续滚动</span></div>
         <p class="cs-see">✔ 每秒稳定打印一行 <code>raw=… voltage=…V ppm=…</code>：raw 是 ADC 原始值、voltage 是换算出的电压、ppm 是最终浓度。<b>光标停住不返回，正是节点在持续工作的样子</b>，停止请按 <code>Ctrl+C</code>。</p>
       </div>
@@ -328,9 +335,9 @@ ros2 run ros_sensor gas_sensor_node                  <span class="c"># 不需要
 source install/setup.bash
 ros2 run ros_sensor gas_monitor</pre>
         <div class="io"><span class="dim">$ ros2 run ros_sensor gas_monitor</span>
-<span class="g">[INFO]</span> [gas_monitor]: 浓度正常: 312.45 ppm
-<span class="g">[INFO]</span> [gas_monitor]: 浓度正常: 309.12 ppm
-<span class="g">[INFO]</span> [gas_monitor]: 浓度正常: 310.87 ppm</div>
+<span class="g">[INFO]</span> [gas_monitor]: 浓度正常: 312.91 ppm
+<span class="g">[INFO]</span> [gas_monitor]: 浓度正常: 313.68 ppm
+<span class="g">[INFO]</span> [gas_monitor]: 浓度正常: 312.15 ppm</div>
         <p class="cs-see">✔ 数值与终端 A 的 <code>ppm</code> <b>一一对应</b>——这就是消息真的走通了。默认阈值 500 ppm，所以此刻打印的是"浓度正常"。</p>
       </div>
 
@@ -376,9 +383,9 @@ Subscription count: <span class="w">1</span></div>
         <p class="cs-why">这是话题调试最重要的命令：<b>不改任何代码</b>，直接把自己变成第三个订阅者。发布端完全不知道你的存在——这正是话题"位置透明"的体现。</p>
         <pre>ros2 topic echo /gas_sensor     <span class="c"># 按 Ctrl+C 停止</span></pre>
         <div class="io"><span class="dim">$ ros2 topic echo /gas_sensor</span>
-data: 312.45
+data: 312.91
 ---
-data: 309.12
+data: 313.68
 ---</div>
         <p class="cs-see">✔ 每秒打印一条 <code>data: …</code>，与终端 A、B 的数值同步</p>
       </div>
@@ -411,8 +418,8 @@ average rate: <span class="w">2.000</span>          <span class="w">← 频率�
         <pre><span class="c"># 在终端 B 按 Ctrl+C 停掉，再用参数重启</span>
 ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=<span class="b">100.0</span></pre>
         <div class="io"><span class="dim">$ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=100.0</span>
-<span class="w">[WARN]</span> [gas_monitor]: [报警] 气体浓度超标: 312.45 ppm >= 100.0 ppm
-<span class="w">[WARN]</span> [gas_monitor]: [报警] 气体浓度超标: 309.12 ppm >= 100.0 ppm</div>
+<span class="w">[WARN]</span> [gas_monitor]: [报警] 气体浓度超标: 312.91 ppm >= 100.0 ppm
+<span class="w">[WARN]</span> [gas_monitor]: [报警] 气体浓度超标: 313.68 ppm >= 100.0 ppm</div>
         <p class="cs-see">✔ 日志从 <code>INFO 浓度正常</code> 变成 <code>WARN [报警]</code>——同一个话题、同一份数据，阈值一变，行为立刻改变</p>
       </div>
 
@@ -422,8 +429,8 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=<span class="b">1
       <table>
         <thead><tr><th>操作</th><th>你应该看到</th></tr></thead>
         <tbody>
-          <tr><td><code>ros2 run ros_sensor gas_sensor_node</code></td><td>每秒一行 <code>raw=1234 voltage=1.20V ppm=312.45</code></td></tr>
-          <tr><td><code>ros2 run ros_sensor gas_monitor</code></td><td>每秒一行 <code>浓度正常: 312.45 ppm</code>（与发布端数值一致）</td></tr>
+          <tr><td><code>ros2 run ros_sensor gas_sensor_node</code></td><td>每秒一行 <code>raw=1404 voltage=1.714V ppm=312.91</code></td></tr>
+          <tr><td><code>ros2 run ros_sensor gas_monitor</code></td><td>每秒一行 <code>浓度正常: 312.91 ppm</code>（与发布端数值一致）</td></tr>
           <tr><td><code>ros2 node list</code></td><td><code>/gas_sensor_node</code> 与 <code>/gas_monitor</code> 同时出现</td></tr>
           <tr><td><code>ros2 topic info /gas_sensor</code></td><td>Type: <code>std_msgs/msg/Float32</code>，Publisher 1，Subscription ≥1</td></tr>
           <tr><td><code>ros2 topic hz /gas_sensor</code></td><td>default 下 <code>1.000 Hz</code>；<code>publish_period:=0.5</code> 后 <code>2.000 Hz</code></td></tr>
@@ -571,7 +578,7 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=<span class="b">1
           <rect x="254" y="172" width="172" height="30" rx="7" fill="#fff" stroke="#bfdbfe"/>
           <text x="340" y="191" text-anchor="middle" font-size="10.5" fill="#334155">QoS 合同 RELIABLE / 10</text>
           <rect x="254" y="208" width="172" height="30" rx="7" fill="#fff" stroke="#bfdbfe"/>
-          <text x="340" y="227" text-anchor="middle" font-size="10.5" fill="#334155">消息：Float32(312.45)</text>
+          <text x="340" y="227" text-anchor="middle" font-size="10.5" fill="#334155">消息：Float32(312.91)</text>
           <text x="340" y="262" text-anchor="middle" font-size="10" fill="#64748b">没有中心服务器，各自维护</text>
           <text x="340" y="278" text-anchor="middle" font-size="10" fill="#64748b">"同名同类型"的收发管道</text>
           <text x="340" y="294" text-anchor="middle" font-size="9.5" fill="#94a3b8">话题 = 名字 + 类型 + QoS</text>
@@ -610,7 +617,7 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=<span class="b">1
         <div class="kcard"><div class="kt">④ 回调执行</div><div class="kd">订阅端 DDS 收到数据放进接收队列，<b>Executor（由 spin 驱动）</b>取出并调用你注册的 <code class="inline">callback(msg)</code>。事件驱动，不空转轮询。</div></div>
       </div>
 
-      <div class="tip amber">⚠️ <b>最容易误解的一点</b>：<code class="inline">publish()</code> 不是"发给某个订阅者"，而是"把消息交给话题"。所以——没有订阅者在线时发布也照样成功；订阅者处理得慢，发布的频率也不会被拖慢。这就是"异步"的全部含义。</div>
+      <div class="tip amber">⚠️ <b>最容易误解的一点</b>：<code class="inline">publish()</code> 做的事是"把消息交给话题"，全程并不关心有没有订阅者在线。所以没有订阅者时发布照样成功；订阅者处理得慢，发布的频率也不会被拖慢。这就是"异步"的全部含义。</div>
       <p class="lead">带着这四个环节去看下一节的动画：注意消息进入话题后是<b>同时</b>流向所有订阅者的，话题没有"排队依次通知"的概念。</p>
 
       <table>
@@ -858,10 +865,11 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=<span class="b">1
       <h2><span class="sn">07</span>代码精讲：三份源码，逐行读懂你刚才跑的东西</h2>
       <p class="lead">刚才屏幕上的一切，来自三份代码：<code class="inline">common.py</code>（数据从哪来）、<code class="inline">gas_sensor_node.py</code>（怎么发出去）、<code class="inline">gas_monitor.py</code>（怎么收下来）。这一节按<b>数据流动的顺序</b>把它们逐段拆开——每段代码后面都写清楚：它在干什么、为什么要这么写、哪一行对应你看到的现象。</p>
 
-      <div class="tip">📍 <b>三份代码在同一个包里</b>：<code class="inline">~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/</code>，其中 <code class="inline">common.py</code> 被两个节点共用。建议边看边打开源码对照。</div>
+      <div class="tip">📍 <b>三份代码在同一个模块目录里</b>：<code class="inline">~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor/</code>（外层 <code class="inline">ros_sensor/</code> 是包，里层同名目录才是放 .py 的），其中 <code class="inline">common.py</code> 被两个节点共用。建议边看边打开源码对照。</div>
 
       <h3 style="font-size:17px;color:var(--text-primary);margin:28px 0 0">第一站 common.py：ppm 是算出来的，不是读出来的</h3>
-      <p>MQ5 是<b>半导体气敏元件</b>：接触可燃气体时内阻下降。电路通过分压把这个电阻变化变成电压，但"电压"和"浓度"<b>不是线性关系</b>——它的灵敏特性曲线只有在双对数坐标下才近似直线，所以必须在对数域里插值反推。</p>
+      <p>先把 <code class="inline">ppm</code> 说清楚：<b>parts per million 的缩写，字面意思就是"百万分之一"</b>，用在气体浓度上，指一百万份空气里混了多少份目标气体。日志里的 312.91 ppm 换成百分比约等于 0.031%，报警阈值 500 ppm 也才 0.05%，都属于很低的浓度，靠闻是闻不出来的。</p>
+      <p>MQ5 是半导体气敏元件：接触可燃气体时内阻下降。电路通过分压把这个电阻变化变成电压，但"电压"和"浓度"<b>不是线性关系</b>——它的灵敏特性曲线只有在双对数坐标下才近似直线，所以必须在对数域里插值反推。</p>
       <div class="flow">
         <div class="step"><div class="t">① ADC 原始值</div><div class="d">raw × scale ÷ 1000</div></div>
         <div class="ar">→</div>
@@ -871,6 +879,69 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=<span class="b">1
         <div class="ar">→</div>
         <div class="step"><div class="t">④ ppm 浓度</div><div class="d">10^((lg ratio−B)/M)</div></div>
       </div>
+
+      <div class="tip tealb">🔍 <b>raw 和 scale 各管一半</b>：<code class="inline">raw</code> 是 ADC 数出来的"格数"，12 位的一刀把量程切成 4096 格，取值 0~4095，本身不带单位；<code class="inline">scale</code> 是内核驱动按"满量程毫伏 ÷ 4096"提前算好、放进 sysfs 的系数，含义是 1 格等于多少毫伏（5 V 满量程约为 1.2207）。<b>两者相乘得到毫伏，再 ÷1000 才是伏特</b>：v = raw × scale ÷ 1000。拿日志验算一遍：1404 × 1.2207 ≈ 1714 mV，正是那行的 <code class="inline">voltage=1.714</code>。板子上的真值可以现场读：<code class="inline">cat /sys/bus/iio/devices/iio:device0/in_voltage_scale</code> 和 <code class="inline">…/in_voltage7_raw</code>，各板参考电压不同，以你 cat 出来的数为准。</div>
+
+      <div class="tip">🧭 <b>下面四步里第④步那行长公式，是这样推出来的</b>：<br>
+        ① 手册的灵敏度特性曲线放在双对数纸上近似一条直线，横轴 lg(ppm)、纵轴 lg(ratio)，套直线方程得 <code class="inline">lg(ratio) = M × lg(ppm) + B</code>；<br>
+        ② 把浓度反解出来：<code class="inline">lg(ppm) = (lg ratio − B) ÷ M</code>；<br>
+        ③ 两边同时取 10 的幂：<code class="inline">ppm = 10^((lg ratio − B) ÷ M)</code>。<br>
+        代入拟合系数 B = 0.186、M = −0.362，就是④显示的那一行。整条链上 B、M 是查手册曲线拟合来的固定值，每次采样真正变的只有 <code class="inline">ratio</code>。</div>
+
+      <figure class="img-block" onclick="lbShow(this)" style="cursor:zoom-in">
+        <img src="../assets/mq5-sensitivity-curve.png" alt="MQ-5 灵敏度特性曲线（双对数坐标）：横轴气体浓度 100~10000 ppm，纵轴 Rs/R0，含丙烷、空气、甲烷、乙醇四条线" loading="lazy">
+        <figcaption>图 6-4｜手册原图：MQ5 灵敏度特性曲线（双对数坐标）。横轴是气体浓度，纵轴是电阻比 Rs/R0；"空气"那条水平线就是标定点，三条往下走的斜线就是能拟合成直线的曲线，B = 0.186、M = −0.362 从这类斜线上拟合而来。想对照原文可以点开 <a href="https://datasheet.sisoog.com/MQ-5/file/7a657573/datasheet/79701185ea1f27506c945c417b151c44449520e2.pdf" target="_blank" rel="noopener">郑州炜盛《可燃气体传感器 MQ-5 使用说明书》PDF</a>（备用镜像：<a href="https://www.lcsc.com/datasheet/C99297.pdf" target="_blank" rel="noopener">LCSC</a>）</figcaption>
+      </figure>
+
+      <figure class="anim2d-block">
+        <svg viewBox="0 0 760 356" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MQ5 分压电路与 ppm 四步换算图解">
+          <rect width="760" height="356" fill="#ffffff"/>
+          <text x="24" y="32" font-size="14" font-weight="700" fill="#0f172a">电压 v 是怎么来的：分压电路</text>
+          <line x1="70" y1="64" x2="300" y2="64" stroke="#334155" stroke-width="2"/>
+          <text x="70" y="54" font-size="12" font-weight="700" fill="#e11d48" text-anchor="middle">+5 V</text>
+          <line x1="170" y1="64" x2="170" y2="96" stroke="#334155" stroke-width="2"/>
+          <rect x="144" y="96" width="52" height="64" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+          <text x="170" y="120" font-size="14" font-weight="700" fill="#b45309" text-anchor="middle">Rs</text>
+          <text x="170" y="140" font-size="10.5" fill="#b45309" text-anchor="middle">MQ5 气敏</text>
+          <text x="206" y="126" font-size="11" fill="#94a3b8">浓度↑ → Rs↓</text>
+          <line x1="170" y1="160" x2="170" y2="194" stroke="#334155" stroke-width="2"/>
+          <circle cx="170" cy="196" r="5" fill="#2563eb"/>
+          <line x1="170" y1="196" x2="248" y2="196" stroke="#2563eb" stroke-width="2"/>
+          <rect x="248" y="170" width="94" height="52" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+          <text x="295" y="191" font-size="12" font-weight="700" fill="#1d4ed8" text-anchor="middle">ADC 采样</text>
+          <text x="295" y="209" font-size="11" fill="#1d4ed8" text-anchor="middle">示例 v = 1.714 V</text>
+          <line x1="170" y1="198" x2="170" y2="222" stroke="#334155" stroke-width="2"/>
+          <rect x="144" y="222" width="52" height="56" rx="8" fill="#f1f5f9" stroke="#475569" stroke-width="1.5"/>
+          <text x="170" y="244" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">RL</text>
+          <text x="170" y="262" font-size="10.5" fill="#64748b" text-anchor="middle">1 kΩ</text>
+          <line x1="170" y1="278" x2="170" y2="294" stroke="#334155" stroke-width="2"/>
+          <g stroke="#334155" stroke-width="2">
+            <line x1="154" y1="294" x2="186" y2="294"/>
+            <line x1="159" y1="300" x2="181" y2="300"/>
+            <line x1="164" y1="306" x2="176" y2="306"/>
+          </g>
+          <text x="70" y="300" font-size="12" font-weight="700" fill="#94a3b8">GND</text>
+          <text x="170" y="338" font-size="12" fill="#475569" text-anchor="middle">v = 5 × RL / (Rs + RL)：Rs 越小，v 越大</text>
+          <line x1="360" y1="44" x2="360" y2="330" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="6 5"/>
+          <text x="384" y="32" font-size="14" font-weight="700" fill="#0f172a">ppm 是怎么算的：拿 1.714 V 代一遍</text>
+          <rect x="384" y="50" width="352" height="58" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="1.5"/>
+          <text x="400" y="76" font-size="13" font-weight="700" fill="#0e7490">① 电压 v = 1.714 V</text>
+          <text x="400" y="96" font-size="11" fill="#64748b">raw=1404 × 1.2207 ÷ 1000，毫伏换伏特</text>
+          <polygon points="556,114 564,114 560,126" fill="#94a3b8"/>
+          <rect x="384" y="130" width="352" height="58" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+          <text x="400" y="156" font-size="13" font-weight="700" fill="#b45309">② Rs = 1 × (5 − 1.714) / 1.714 ≈ 1.917 kΩ</text>
+          <text x="400" y="176" font-size="11" fill="#64748b">分压关系反推气敏电阻</text>
+          <polygon points="556,194 564,194 560,206" fill="#94a3b8"/>
+          <rect x="384" y="210" width="352" height="58" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+          <text x="400" y="236" font-size="13" font-weight="700" fill="#6d28d9">③ ratio = 1.917 / 10 ≈ 0.192</text>
+          <text x="400" y="256" font-size="11" fill="#64748b">与标定点 R0 = 10 kΩ 的比值</text>
+          <polygon points="556,274 564,274 560,286" fill="#94a3b8"/>
+          <rect x="384" y="290" width="352" height="58" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="1.5"/>
+          <text x="400" y="316" font-size="13" font-weight="700" fill="#0f766e">④ ppm = 10^((lg ratio − 0.186) / −0.362)</text>
+          <text x="400" y="336" font-size="11" fill="#64748b">ratio 取未舍入值代入 = 312.91 ppm，就是日志那一行</text>
+        </svg>
+        <figcaption>图 6-5｜电压与浓度的完整换算：左图是硬件，气敏电阻的变化被分压成电压；右图是代码，从 raw=1404 乘 scale 换出 1.714 V，再四步算出 312.91 ppm</figcaption>
+      </figure>
 
       <pre><span class="c"># 来源：ros_sensor/common.py L13-33</span>
 V_REF, RL, R0 = <span class="b">5.0</span>, <span class="b">1.0</span>, <span class="b">10.0</span>      <span class="c"># 参考电压、负载电阻 kΩ、标定电阻 kΩ</span>
@@ -889,22 +960,22 @@ CURVE_B, CURVE_M = <span class="b">0.186</span>, <span class="b">-0.362</span>  
           <tr><td><code>if v &lt;= 0 or v &gt;= V_REF: return 0.0</code></td><td>电压落在量程外（未接线、短路）直接返回 0，并让调用方看到"这次读数无效"</td><td>分母趋近 0 → <code>ZeroDivisionError</code> 或天文数字</td></tr>
           <tr><td><code>rs = RL*(V_REF-v)/v</code></td><td>分压电路：v 越低说明传感器内阻越大，反推出 Rs</td><td>拿电压当浓度用，读数完全错误</td></tr>
           <tr><td><code>ratio = rs / R0</code></td><td>归一化：把"当前电阻"表示成"标定电阻的几倍"，去掉元件个体差异</td><td>换一块传感器就要重新标定整套算法</td></tr>
-          <tr><td><code>10 ** ((lg(ratio)-B)/M)</code></td><td>在双对数坐标的直线上反解浓度：这是 MQ5 数据手册给出的特性曲线</td><td>线性插值会严重低估高浓度区间</td></tr>
+          <tr><td><code>10 ** ((lg(ratio)-B)/M)</code></td><td>在双对数坐标的直线上反解浓度。直线来自手册的灵敏度特性曲线（手册只给图不给公式），B、M 是对这条曲线拟合出的截距和斜率</td><td>线性插值会严重低估高浓度区间</td></tr>
         </tbody>
       </table>
 
       <div class="kgrid">
         <div class="kcard"><div class="kt">为什么 M 是负数</div><div class="kd">M = −0.362 意味着 ppm 与 ratio <b>反向变化</b>：浓度越高 → 气敏电阻越小 → ratio 越小 → 代入公式后 ppm 越大。数学方向和"浓度越高内阻越低"的物理直觉是一致的。</div></div>
-        <div class="kcard"><div class="kt">原始值 ≠ 电压</div><div class="kd">ADC 读到的是整数 <code class="inline">raw</code>，必须先乘 <code class="inline">in_voltage_scale</code> 再除以 1000 才是伏特。忘了这一步，后面全错。</div></div>
+        <div class="kcard"><div class="kt">原始值 ≠ 电压</div><div class="kd">ADC 是 12 位的，<code class="inline">raw</code> 只是 0~4095 的"格数"，本身不是伏特。每格到底等于多少毫伏，内核驱动已经算好写进 <code class="inline">in_voltage_scale</code>：格数 × 毫伏/格得到毫伏，再 ÷1000 才是伏特。换算式里不用出现 4096，因为它已经被封进 scale 里了，板上 <code class="inline">cat in_voltage_scale</code> 一眼可见。</div></div>
       </div>
 
       <h3 style="font-size:17px;color:var(--text-primary);margin:26px 0 0">采集入口：read_mq5_once() 每秒钟被调用一次</h3>
       <pre><span class="c"># 来源：ros_sensor/common.py L36-47</span>
 <span class="g">def</span> read_mq5_once():
     <span class="g">try</span>:
-        scale = float(read_adc_attr(<span class="y">"in_voltage_scale"</span>))      <span class="c"># ① 读量程系数</span>
-        raw   = int(read_adc_attr(f<span class="y">"in_voltage{MQ5_CH}_raw"</span>))   <span class="c"># ② 读原始值（通道 7）</span>
-        v = raw * scale / <span class="b">1000.0</span>                          <span class="c"># ③ 换算成电压(V)</span>
+        scale = float(read_adc_attr(<span class="y">"in_voltage_scale"</span>))      <span class="c"># ① 量程系数：1 格 = 多少毫伏</span>
+        raw   = int(read_adc_attr(f<span class="y">"in_voltage{MQ5_CH}_raw"</span>))   <span class="c"># ② 原始格数（12 bit，0~4095）</span>
+        v = raw * scale / <span class="b">1000.0</span>                          <span class="c"># ③ 格数×毫伏/格=毫伏，÷1000→伏特</span>
         <span class="g">return</span> raw, v, voltage_to_ppm(v), <span class="y">""</span>            <span class="c"># ④ 一次返回四件事</span>
     <span class="g">except</span> Exception <span class="g">as</span> e:
         <span class="g">return</span> None, None, None, f<span class="y">"{type(e).__name__}: {e}"</span>   <span class="c"># 失败信息交给调用方</span></pre>
@@ -912,15 +983,63 @@ CURVE_B, CURVE_M = <span class="b">0.186</span>, <span class="b">-0.362</span>  
 
       <div class="ix-block">
         <div class="ix-panel">
-          <b style="font-size:14px">🔬 换算计算器：输入电压 → 实时算 ppm</b>
+          <b style="font-size:14px">🔬 换算曲线：输入电压，看当前点在曲线上怎么走</b>
+          <div class="mq5-chart">
+            <svg id="mq5svg" viewBox="0 0 640 336" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MQ5 电压到 ppm 的换算曲线，红点为当前输入对应的点">
+              <rect width="640" height="336" fill="#ffffff"/>
+              <g stroke="#e2e8f0" stroke-width="1">
+                <line x1="60" y1="286" x2="618" y2="286"/>
+                <line x1="60" y1="249" x2="618" y2="249"/>
+                <line x1="60" y1="212" x2="618" y2="212"/>
+                <line x1="60" y1="175" x2="618" y2="175"/>
+                <line x1="60" y1="137" x2="618" y2="137"/>
+                <line x1="60" y1="100" x2="618" y2="100"/>
+                <line x1="60" y1="63" x2="618" y2="63"/>
+                <line x1="60" y1="26" x2="618" y2="26"/>
+              </g>
+              <line x1="60" y1="26" x2="60" y2="286" stroke="#94a3b8" stroke-width="1.5"/>
+              <line x1="60" y1="286" x2="618" y2="286" stroke="#94a3b8" stroke-width="1.5"/>
+              <g font-size="11" fill="#94a3b8" text-anchor="end">
+                <text x="54" y="290">0.1</text>
+                <text x="54" y="253">1</text>
+                <text x="54" y="216">10</text>
+                <text x="54" y="179">100</text>
+                <text x="54" y="141">1k</text>
+                <text x="54" y="104">10k</text>
+                <text x="54" y="67">100k</text>
+                <text x="54" y="30">1M</text>
+              </g>
+              <g font-size="11" fill="#94a3b8" text-anchor="middle">
+                <text x="60" y="304">0</text>
+                <text x="172" y="304">1</text>
+                <text x="283" y="304">2</text>
+                <text x="395" y="304">3</text>
+                <text x="506" y="304">4</text>
+                <text x="618" y="304">5</text>
+              </g>
+              <text x="339" y="326" font-size="12" fill="#64748b" text-anchor="middle">电压 v（V）</text>
+              <text x="60" y="16" font-size="12" fill="#64748b">ppm（纵轴每格 ×10，log 刻度）</text>
+              <text x="118" y="264" font-size="11.5" fill="#94a3b8">低浓度端：曲线几乎贴着走</text>
+              <text x="452" y="46" font-size="11.5" fill="#94a3b8">高浓度端：越来越陡</text>
+              <path id="mq5path" fill="none" stroke="#0891b2" stroke-width="2.5"/>
+              <line id="mq5lx" stroke="#e11d48" stroke-width="1" stroke-dasharray="4 3" y2="286" opacity="0"/>
+              <line id="mq5ly" stroke="#e11d48" stroke-width="1" stroke-dasharray="4 3" x1="60" opacity="0"/>
+              <circle id="mq5dot" r="6" fill="#e11d48" stroke="#fff" stroke-width="2" opacity="0"/>
+              <text id="mq5tip" font-size="12" font-weight="700" fill="#e11d48" opacity="0"></text>
+            </svg>
+          </div>
           <div class="mq5-calc">
             <span style="font-size:13.5px;color:#64748b">电压 v =</span>
-            <input id="mv" type="number" step="0.05" min="0.05" max="4.95" value="2.50">
-            <span style="font-size:13.5px;color:#64748b">V →</span>
-            <span class="mq5-out" id="mppm">ratio=?, ppm=?</span>
+            <input id="mv" type="number" step="0.001" min="0" max="5" value="1.714">
+            <input id="mslider" type="range" min="0" max="5" step="0.001" value="1.714" class="mq5-range" aria-label="电压滑杆">
+            <span style="font-size:13.5px;color:#64748b">V</span>
+            <span class="mq5-out" id="mppm">ppm = …</span>
+            <button class="mq5-btn" id="mreset" type="button">↺ 回到 1.714</button>
           </div>
+          <div class="mq5-reads" id="mreads">…</div>
+          <div class="mq5-verdict" id="mverdict"></div>
         </div>
-        <p class="ix-caption">互动 6-2｜试出量程边界：输入 0.05 与 4.95 附近的值，看"除零保护"如何生效</p>
+        <p class="ix-caption">互动 6-2｜拖滑杆或直接输入电压（0~5 V）：红点就是当前输入在曲线上的位置；输入 0 或 5，亲手触发代码里的量程保护</p>
       </div>
 
       <h3 style="font-size:17px;color:var(--text-primary);margin:30px 0 0">第二站 gas_sensor_node.py：发布端做四件事</h3>
@@ -1094,7 +1213,7 @@ CURVE_B, CURVE_M = <span class="b">0.186</span>, <span class="b">-0.362</span>  
 <script>
 /* ================= QoS 实验台：兼容性检查 + 消息流模拟 ================= */
 var SIM_N = 10;          // 模拟发布 10 条消息
-var SIM_LATE_AT = 5;     // "订阅端晚到"时，从第几条消息起才算在线
+var SIM_LATE_AT = 5;     // 「订阅端晚到」时，从第几条消息起才算在线
 
 function qosVals(){
   function v(id){ return document.getElementById(id).value; }
@@ -1108,7 +1227,7 @@ function relName(x){ return x === 'R' ? 'RELIABLE' : 'BEST_EFFORT'; }
 function durName(x){ return x === 'T' ? 'TRANSIENT_LOCAL' : 'VOLATILE'; }
 function depName(x){ return x === '0' ? 'KEEP_ALL' : 'KEEP_LAST(' + x + ')'; }
 
-/* 兼容规则：订阅端"请求"不得高于发布端"提供" */
+/* 兼容规则：订阅端「请求」不得高于发布端「提供」 */
 function compatReasons(c){
   var r = [];
   if(c.subRel === 'R' && c.pubRel === 'B')
@@ -1134,7 +1253,7 @@ function checkQos(){
   }
 }
 
-/* 生成一次模拟的"逐条结果" */
+/* 生成一次模拟的「逐条结果」 */
 function buildPlan(){
   var c = qosVals();
   var reasons = compatReasons(c);
@@ -1156,7 +1275,7 @@ function buildPlan(){
     if(i < start){ sub[i-1] = 'miss'; plan.missed.push(i); continue; }
     sub[i-1] = (pub[i-1] === 'lost') ? 'lost' : 'recv';
   }
-  /* ③ 晚到 + TRANSIENT_LOCAL：把加入前的"最后一条"补发过来 */
+  /* ③ 晚到 + TRANSIENT_LOCAL：把加入前的「最后一条」补发过来 */
   if(c.late && c.pubDur === 'T' && start > 1){
     var k = start - 1;
     if(sub[k-1] === 'miss'){
@@ -1221,7 +1340,7 @@ function simulateQos(){
   var vd = document.getElementById('simVerdict');
   log.innerHTML = logHeader(c) + '<span class="d">模拟推进中……</span>';
 
-  /* 逐条播放：先亮"发出"，再亮"收到/丢弃" */
+  /* 逐条播放：先亮「发出」，再亮「收到/丢弃」 */
   for(var i = 1; i <= SIM_N; i++){
     (function(i){
       setTimeout(function(){
@@ -1279,19 +1398,72 @@ document.addEventListener('DOMContentLoaded', function(){
   checkQos();
 });
 
-// MQ5 换算计算器
+// MQ5 换算计算器与曲线（互动 6-2）
+var MQ5CFG={Vr:5,RL:1,R0:10,B:0.186,M:-0.362,DEF:1.714};
+function mq5ppmOf(v){
+  if(!(v>0&&v<MQ5CFG.Vr)) return 0;
+  var rs=MQ5CFG.RL*(MQ5CFG.Vr-v)/v;
+  var ratio=rs/MQ5CFG.R0;
+  if(ratio<=0) return 0;
+  return Math.pow(10,(Math.log10(ratio)-MQ5CFG.B)/MQ5CFG.M);
+}
+var MQ5G={x0:60,x1:618,y0:26,y1:286,Lmin:-1,Lmax:6};
+function mq5px(v){return MQ5G.x0+(v/5)*(MQ5G.x1-MQ5G.x0);}
+function mq5py(p){
+  var L=Math.log10(p);
+  if(!isFinite(L)) L=MQ5G.Lmin;
+  if(L<MQ5G.Lmin) L=MQ5G.Lmin;
+  if(L>MQ5G.Lmax) L=MQ5G.Lmax;
+  return MQ5G.y1-((L-MQ5G.Lmin)/(MQ5G.Lmax-MQ5G.Lmin))*(MQ5G.y1-MQ5G.y0);
+}
+function mq5curve(){
+  var d='',v;
+  for(v=0.05;v<4.951;v+=0.02){
+    d+=(d?'L':'M')+mq5px(v).toFixed(1)+' '+mq5py(mq5ppmOf(v)).toFixed(1)+' ';
+  }
+  var el=document.getElementById('mq5path');
+  if(el) el.setAttribute('d',d);
+}
 function mq5calc(){
-  var v=parseFloat(document.getElementById('mv').value);
-  var V_REF=5.0, RL=1.0, R0=10.0, B=0.186, M=-0.362;
-  var out=document.getElementById('mppm');
-  if(!(v>0.05 && v<4.95)){ out.textContent='v 超出有效量程（除零保护返回 0.0）'; out.style.color='#e11d48'; return; }
-  var rs = RL*(V_REF-v)/v;
-  var ratio = rs/R0;
-  var ppm = Math.pow(10,(Math.log10(ratio)-B)/M);
+  var inEl=document.getElementById('mv'),sl=document.getElementById('mslider');
+  var v=parseFloat(inEl.value);
+  if(isNaN(v)) return;
+  if(sl&&Math.abs(parseFloat(sl.value)-v)>0.0005) sl.value=v;
+  var out=document.getElementById('mppm'),reads=document.getElementById('mreads'),vd=document.getElementById('mverdict');
+  var dot=document.getElementById('mq5dot'),lx=document.getElementById('mq5lx'),ly=document.getElementById('mq5ly'),tip=document.getElementById('mq5tip');
+  if(!(v>0&&v<5)){
+    out.style.color='#e11d48';
+    out.textContent='量程保护：return 0.0';
+    reads.textContent='v = '+v.toFixed(3)+' V 不在开区间 (0, 5) 内，voltage_to_ppm 直接走第一个分支';
+    vd.style.color='#e11d48';
+    vd.innerHTML='✘ 这就是代码里 <b>v &lt;= 0 or v &gt;= V_REF</b> 拦住的情况：保护分支返回 0.0，日志和话题里都表现为 ppm = 0。把电压拖回 (0, 5) 内继续。';
+    if(dot){dot.setAttribute('opacity','0');lx.setAttribute('opacity','0');ly.setAttribute('opacity','0');tip.setAttribute('opacity','0');}
+    return;
+  }
+  var rs=MQ5CFG.RL*(MQ5CFG.Vr-v)/v,ratio=rs/MQ5CFG.R0,ppm=Math.pow(10,(Math.log10(ratio)-MQ5CFG.B)/MQ5CFG.M);
   out.style.color='#0d9488';
-  out.textContent='Rs='+rs.toFixed(2)+' kΩ, ratio='+ratio.toFixed(3)+', ppm='+ppm.toFixed(1);
+  out.textContent='ppm = '+ppm.toFixed(2);
+  reads.textContent='Rs = '+rs.toFixed(3)+' kΩ · ratio = '+ratio.toFixed(3)+' · lg(ratio) = '+(Math.log10(ratio)).toFixed(3);
+  var cx=mq5px(v),cy=mq5py(ppm);
+  dot.setAttribute('cx',cx.toFixed(1));dot.setAttribute('cy',cy.toFixed(1));dot.setAttribute('opacity','1');
+  lx.setAttribute('x1',cx.toFixed(1));lx.setAttribute('x2',cx.toFixed(1));lx.setAttribute('y1',cy.toFixed(1));lx.setAttribute('opacity','1');
+  ly.setAttribute('y1',cy.toFixed(1));ly.setAttribute('y2',cy.toFixed(1));ly.setAttribute('x2',cx.toFixed(1));ly.setAttribute('opacity','1');
+  tip.setAttribute('x',Math.min(cx+10,504).toFixed(1));tip.setAttribute('y',Math.max(cy-12,40).toFixed(1));
+  tip.textContent=v.toFixed(3)+' V → '+ppm.toFixed(2)+' ppm';tip.setAttribute('opacity','1');
+  vd.style.color='#0d9488';
+  vd.innerHTML='✔ 当前点 ('+v.toFixed(3)+' V，'+ppm.toFixed(2)+' ppm) 已标在曲线上，和上方日志是同一套公式。曲线越往右越陡：同样是 +0.5 V，1 V 附近跳的 ppm 和 4 V 附近跳的 ppm 差着数量级，表格里「线性插值会严重低估高浓度区间」说的就是这个形状。';
 }
 document.getElementById('mv').addEventListener('input',mq5calc);
+document.getElementById('mslider').addEventListener('input',function(){
+  document.getElementById('mv').value=this.value;
+  mq5calc();
+});
+document.getElementById('mreset').addEventListener('click',function(){
+  document.getElementById('mv').value=MQ5CFG.DEF;
+  document.getElementById('mslider').value=MQ5CFG.DEF;
+  mq5calc();
+});
+mq5curve();
 mq5calc();
 
 // 侧边栏高亮 + reveal

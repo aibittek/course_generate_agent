@@ -80,7 +80,7 @@
   <a href="#goal">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：机器人软件为什么需要这个 ROS"中间件"</a>
   <a href="#s2">02 核心原理：ROS2 的三大设计支柱</a>
-  <a href="#s4">03 RMW 抽象层与 Humble 发行版</a>
+  <a href="#s4">03 ROS2 的架构与设计特点</a>
   <a href="#s7">04 实操 1 · ROS2 的 Hello World：talker</a>
   <a href="#s8">05 实操 2 · 零配置互联：listener 与系统监控</a>
   <a href="#s9a">06 源码一撇：发布订阅关键代码逻辑</a>
@@ -261,7 +261,7 @@
     <div class="kcard"><div class="kd">支柱三</div><div class="kt">工具生态开箱即用</div><p>ros2 CLI、rqt、rviz2、rosbag2、launch——同一套图信息喂给全部工具，"看不见的系统"随时可自省。</p><p class="pillar-more">👉 本支柱专属展开：<a href="#s2c">下方三张真实运行截图</a> · 完整工具链见 EXP-02</p></div>
   </div>
 
-    <p class="lead">先看一个熟悉的场景再看机器：老式总机转接电话——<b>总机下班，全网失联</b>；微信群——<b>谁上线自动进群直接聊，谁退群都不影响别人</b>。ROS1 选了总机（Master），ROS2 选了群聊（DDS）：节点自己组播发现，任意一个挂掉，其余照常。下面左半边是总机模式的下场，右半边是群聊模式的底气：</p>
+    <p class="lead">先看一个熟悉的场景再看机器：老式总机转接电话，总机一下班，全网失联；微信群里谁上线自动进群直接聊，谁退群都不影响别人。ROS1 选了总机（Master），ROS2 选了群聊（DDS）：节点自己组播发现，任意一个挂掉，其余照常。下面左半边是总机模式的下场，右半边是群聊模式的底气：</p>
   <div class="anim-box">
     <svg viewBox="0 0 720 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ROS1 中心化 Master 与 ROS2 去中心化 DDS 对比动画">
       <rect x="8" y="8" width="344" height="294" rx="12" fill="#111827" stroke="#334155"/>
@@ -380,7 +380,7 @@
   </div>
   <p style="margin-top:10px;font-size:13.5px;color:#475569">还有更多"开箱即用"在等你：<b>rqt</b> 图形化大全家、<b>turtlesim</b> 教学小海龟、<b>rosbag2</b> 录放时间机器、<b>launch</b> 一键拉起全系统——同一张计算图喂给所有工具，EXP-02 起逐个上手。</p>
 
-  <div class="tip tealb"><span class="lab">🔍 关键跃迁</span>ROS1 的 Master 是"电话总机"——总机不在，全网瘫痪；ROS2 的 DDS 是"群聊"——任何两个人先加上好友（发现），之后直接私聊（P2P 传输）。<b>这决定了 ROS2 天生适合多机、车载与机器人集群场景。</b></div>
+  <div class="tip tealb"><span class="lab">🔍 关键跃迁</span>ROS1 的 Master 是"电话总机"，总机不在，全网瘫痪；ROS2 的 DDS 是"群聊"：任何两个人先加上好友（发现），之后直接私聊（P2P 传输）。<b>这决定了 ROS2 天生适合多机、车载与机器人集群场景。</b></div>
 
   <h3 style="margin-top:26px">拼图收尾：三根柱子拼回整张图 —— ROS2 整体框架（中文版）</h3>
   <p class="lead" style="font-size:14.5px">三根柱子讲完了，现在拼回<b>整机</b>。穿针引线的"针"就是你两个小节后要亲手跑的那条 <code>Hello World: 1</code>：<b>楼越往下越靠近硬件，右栏的工具站在图外读图</b>。任意点一层看它此刻在干什么，点 <b>▶ 播放</b> 看这条消息怎么"下楼 → 过河 → 上楼"。</p>
@@ -486,16 +486,95 @@
 
 <!-- 03 -->
 <section class="blk" id="s4">
-  <h2><span class="no">03</span>RMW 抽象层与 Humble 发行版</h2>
-  <div class="tip tealb"><span class="lab">🔗 承接上一节</span>整体框架图里第 <b>4</b> 层"RMW · 标准插座"现在单独放大：上面是 rcl（语言无关内核），下面是各家 DDS（运输队）——<b>换插头不换电器</b>说的就是这一层。</div>
-  <p>ROS2 在应用与 DDS 实现之间插入了 <b>RMW（ROS MiddleWare）抽象层</b>，同一份代码可以运行在不同 DDS 实现上：</p>
-  <div class="flow">
-    <div class="step"><span class="n">1</span><b>rcl 语言客户端层</b>：rclpy（Python）/ rclcpp（C++），API 完全一致</div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">2</span><b>rmw 抽象接口层</b>：统一的发布/订阅/服务接口定义</div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">3</span><b>dds 具体实现</b>：rmw_fastrtps（默认）/ rmw_cyclonedds / rmw_connextdds</div>
+  <h2><span class="no">03</span>ROS2 的架构与设计特点</h2>
+  <p class="lead">第 02 节末尾那张可播放的框架图，是跟着一条 Hello World 把楼走了个来回。这节换成工程师查房的视角：官方把 ROS2 从上到下切成<b>五层</b>。先看整栋楼的楼层表，再把第 02 节的三根设计支柱拿过来对照，看它们各站在哪一层。</p>
+
+  <div class="anim-box">
+    <svg viewBox="0 0 760 432" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ROS2 五层架构：应用层、客户端库层、DDS 接口层、DDS 实现层、操作系统层">
+      <rect x="8" y="8" width="744" height="416" rx="14" fill="#111827" stroke="#334155"/>
+      <text x="380" y="34" text-anchor="middle" font-size="14.5" font-weight="700" fill="#e2e8f0">ROS2 五层架构 · 越往下越靠近硬件</text>
+
+      <!-- 左：调用方向箭头 -->
+      <line x1="42" y1="76" x2="42" y2="368" stroke="#475569" stroke-width="2"/>
+      <path d="M42 378 L35 364 L49 364 Z" fill="#475569"/>
+      <text x="42" y="226" text-anchor="middle" font-size="10.5" fill="#94a3b8" transform="rotate(-90 42 226)">调用往下走 · 数据回程往上走</text>
+
+      <!-- 第 1 层 · 应用层 -->
+      <rect x="70" y="54" width="470" height="62" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="1.6"/>
+      <rect x="80" y="71" width="28" height="28" rx="8" fill="#0ea5e9"/>
+      <text x="94" y="90" text-anchor="middle" font-size="13.5" font-weight="700" fill="#ffffff">1</text>
+      <text x="120" y="79" font-size="14" font-weight="700" fill="#7dd3fc">应用层</text>
+      <text x="120" y="101" font-size="11.5" fill="#cbd5e1">你写的节点：talker · listener · turtlesim · 规划与控制程序</text>
+
+      <!-- 第 2 层 · 客户端库层 -->
+      <rect x="70" y="122" width="470" height="62" rx="10" fill="#1e293b" stroke="#4ade80" stroke-width="1.6"/>
+      <rect x="80" y="139" width="28" height="28" rx="8" fill="#16a34a"/>
+      <text x="94" y="158" text-anchor="middle" font-size="13.5" font-weight="700" fill="#ffffff">2</text>
+      <text x="120" y="147" font-size="14" font-weight="700" fill="#86efac">客户端库层</text>
+      <text x="120" y="169" font-size="11.5" fill="#cbd5e1">rclpy（Python）· rclcpp（C++）· 共用 rcl 这个语言无关内核</text>
+
+      <!-- 第 3 层 · DDS 接口层（RMW，高亮） -->
+      <rect x="70" y="190" width="470" height="62" rx="10" fill="#292114" stroke="#fbbf24" stroke-width="2.2"/>
+      <rect x="80" y="207" width="28" height="28" rx="8" fill="#d97706"/>
+      <text x="94" y="226" text-anchor="middle" font-size="13.5" font-weight="700" fill="#ffffff">3</text>
+      <text x="120" y="215" font-size="14" font-weight="700" fill="#fcd34d">DDS 接口层（RMW）</text>
+      <text x="120" y="237" font-size="11.5" fill="#fde68a">标准插座：换插头不换电器，上层只认统一的发布 / 订阅 / 服务接口</text>
+
+      <!-- 第 4 层 · DDS 实现层 -->
+      <rect x="70" y="258" width="470" height="62" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="1.6"/>
+      <rect x="80" y="275" width="28" height="28" rx="8" fill="#7c3aed"/>
+      <text x="94" y="294" text-anchor="middle" font-size="13.5" font-weight="700" fill="#ffffff">4</text>
+      <text x="120" y="283" font-size="14" font-weight="700" fill="#c4b5fd">DDS 实现层</text>
+      <text x="120" y="305" font-size="11.5" fill="#cbd5e1">Fast DDS（默认）· Cyclone DDS · Connext DDS，组播发现 + 点对点传输</text>
+
+      <!-- 第 5 层 · 操作系统层 -->
+      <rect x="70" y="326" width="470" height="62" rx="10" fill="#1e293b" stroke="#94a3b8" stroke-width="1.6"/>
+      <rect x="80" y="343" width="28" height="28" rx="8" fill="#475569"/>
+      <text x="94" y="362" text-anchor="middle" font-size="13.5" font-weight="700" fill="#ffffff">5</text>
+      <text x="120" y="351" font-size="14" font-weight="700" fill="#cbd5e1">操作系统层</text>
+      <text x="120" y="373" font-size="11.5" fill="#cbd5e1">Ubuntu 22.04 · Linux / Windows / macOS · 网卡与网络</text>
+
+      <!-- 右：三块分组 -->
+      <rect x="556" y="54" width="172" height="130" rx="10" fill="none" stroke="#38bdf8" stroke-dasharray="6 5" opacity="0.75"/>
+      <text x="642" y="112" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7dd3fc">ROS2 客户端侧</text>
+      <text x="642" y="132" text-anchor="middle" font-size="11" fill="#94a3b8">你和"母语窗口"打交道</text>
+
+      <rect x="556" y="190" width="172" height="130" rx="10" fill="none" stroke="#fbbf24" stroke-dasharray="6 5" opacity="0.8"/>
+      <text x="642" y="248" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fcd34d">DDS 中间件世界</text>
+      <text x="642" y="268" text-anchor="middle" font-size="11" fill="#94a3b8">标准插座 + 运输队</text>
+
+      <rect x="556" y="326" width="172" height="62" rx="10" fill="none" stroke="#94a3b8" stroke-dasharray="6 5" opacity="0.75"/>
+      <text x="642" y="352" text-anchor="middle" font-size="12.5" font-weight="700" fill="#cbd5e1">操作系统与硬件</text>
+      <text x="642" y="372" text-anchor="middle" font-size="11" fill="#94a3b8">网卡 · 网络 · Ubuntu</text>
+
+      <text x="380" y="410" text-anchor="middle" font-size="11.5" fill="#94a3b8">换语言只动第 2 层，换 DDS 实现只动第 4 层，上面的代码一个字不用改</text>
+    </svg>
   </div>
+  <p class="anim-cap" style="margin-top:8px">图 1-4｜ROS2 五层架构：左侧箭头是调用方向，右侧虚线把五层归成三块，第 3 层（标准插座）特意高亮</p>
+
+  <p class="lead" style="font-size:14.5px;margin-top:16px">逐层用一句话说清各自干什么，以及你在课程的哪一节会碰到它：</p>
+  <table>
+    <thead><tr><th>层</th><th>这层干什么</th><th>你会在哪里碰到它</th></tr></thead>
+    <tbody>
+      <tr><td><b>1 应用层</b></td><td>写节点、定话题、发消息收消息，完全不碰网络细节</td><td>talker / listener（第 04 节），EXP-05 起的所有节点代码</td></tr>
+      <tr><td><b>2 客户端库层</b></td><td>每种语言一个母语窗口（rclpy / rclcpp），底下共用 rcl 这个语言无关内核</td><td>"同一份消息合同"动画（动画 1-2）讲的就是这层怎么把语言差异吃掉</td></tr>
+      <tr><td><b>3 DDS 接口层（RMW）</b></td><td>画一条标准插座线：上层只认统一的发布 / 订阅 / 服务接口，不认插座下面插的是谁</td><td><code>RMW_IMPLEMENTATION</code> 一个环境变量换 DDS，见下方卡片</td></tr>
+      <tr><td><b>4 DDS 实现层</b></td><td>真正干活的运输队：组播把节点互相喊出来，RTPS 点对点送消息</td><td>支柱①的落点，动画 1-1 右半边那张网；EXP-12 把整层拆开讲</td></tr>
+      <tr><td><b>5 操作系统层</b></td><td>Ubuntu 22.04 与网络设施，ROS2 只是跑在它上面的普通程序</td><td>本节下半的 source 三板斧，验证的就是这层环境通没通</td></tr>
+    </tbody>
+  </table>
+  <div class="tip tealb"><span class="lab">💡 一句话复述</span>五层从上到下：写代码只碰前两层，第 3 层是标准插座，第 4 层是运输队，最底下是操作系统。<b>换语言动第 2 层，换 DDS 实现动第 4 层，其余层原封不动。</b>说得出这句话，这张图就算看懂了。</div>
+
+  <h3>设计特点：三大设计支柱各站在哪一层</h3>
+  <p class="lead" style="font-size:14.5px">第 02 节的三根柱子落到这张五层图上，每根都有自己的楼层，彼此不重叠也不缺位：</p>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">支柱一 · 落在第 4 层</div><div class="kt">去中心化分布式图</div><p>发现与传输都在 DDS 实现层完成：组播喊一嗓子互相找到，之后点对点直送，没有 Master 这个总机。<br><a href="#s2">回看"总机 vs 群聊"对比</a></p></div>
+    <div class="kcard"><div class="kd">支柱二 · 贯穿第 2 ~ 3 层</div><div class="kt">语言与框架无关</div><p>rclpy / rclcpp 在第 2 层各说母语，到进第 3 层之前已被 rcl 收敛成一套动作，消息格式由 IDL 合同统一约束。<br><a href="#s2b">回看"同一份消息合同"图解</a></p></div>
+    <div class="kcard"><div class="kd">支柱三 · 站在楼外</div><div class="kt">工具生态开箱即用</div><p>ros2 CLI、rviz2、rosbag2 读的都是同一张计算图，不进你任何一层的代码。<br><a href="#s2c">回看三张实机运行截图</a></p></div>
+  </div>
+
+  <h3>发行版、开关与节点生命周期</h3>
+  <p class="lead" style="font-size:14.5px">楼层和支柱对上之后，还差三件落地的事：本课程用哪个发行版、换 DDS 怎么换、节点怎么"待机而不退出"。</p>
   <div class="kgrid">
     <div class="kcard"><div class="kd">发行版字母表</div><div class="kt">Humble Hawksbill（本课程）</div><p>2022.05 发布的 <b>LTS 版本，支持至 2027.05</b>；此前 Foxy（2020）、Galactic（2021），此后 Iron、Jazzy。配套 Ubuntu 22.04。</p></div>
     <div class="kcard"><div class="kd">切换 DDS 实现</div><div class="kt">一个环境变量完成</div><p><code>RMW_IMPLEMENTATION=rmw_cyclonedds_cpp</code>——排障时用来隔离"是不是 DDS 实现的锅"，无需改一行代码。</p></div>
@@ -579,7 +658,7 @@
 <span class="c"># Type: std_msgs/msg/String   Publisher count: 1   Subscription count: 1</span>
 <span class="g">ros2</span> topic echo /chatter        <span class="c"># 第三方"匿名"订阅，实时看到 data</span>
 <span class="g">ros2</span> topic hz /chatter          <span class="c"># average rate: 1.000</span></pre>
-  <div class="tip"><span class="lab">💡 弹性验证（试一下）</span>① 先启动 listener 再启动 talker——照样通（发现无顺序）；② Ctrl+C 杀掉 talker 重启——listener 自动恢复接收。<b>把 Master 概念从脑子里删掉，这就是 DDS。</b></div>
+  <div class="tip"><span class="lab">💡 弹性验证（试一下）</span>① 先启动 listener 再启动 talker，照样通（发现无顺序）；② Ctrl+C 杀掉 talker 重启，listener 自动恢复接收。<b>把 Master 概念从脑子里删掉，这就是 DDS。</b></div>
 </section>
 
 <!-- 06 源码速览 -->
