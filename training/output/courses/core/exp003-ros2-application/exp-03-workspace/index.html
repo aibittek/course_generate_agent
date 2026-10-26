@@ -365,27 +365,35 @@ ros2 pkg prefix demo_nodes_py     <span class="g"># Python 版同理 ✅</span><
 
 <section class="blk" id="s8">
 <h2><span class="no">05</span>实操：动手验证 Overlay 覆盖规则</h2>
-<p>纯终端实操，全程在设备上执行。验证"后 source 者胜"与"Underlay 不可跳过"，请严格按顺序执行并记录每步输出：</p>
-<pre><span class="c"># ① 正确顺序：系统层先，自己层后</span>
+<p>纯终端实操，全程在设备上执行。要验证的两条铁律：<b>① 谁排在前谁赢</b>——加载顺序决定 <code>AMENT_PREFIX_PATH</code> 排列，Prefix 搜索命中第一个含该包的前缀；<b>② 去重不挪位</b>——列表里已有的路径，再 source 也不会换位置，所以顺序实验必须在<b>干净终端</b>里做。请严格按顺序执行并记录每步输出：</p>
+<div class="tip amber"><span class="lab">🚦 前置检查：你的 .bashrc 是否"自启动"了 ROS？</span>很多设备（含 <code>ros2_migration</code> 一类迁移工具生成的配置）会在 <code>~/.bashrc</code> 里写上 <code>source /opt/ros/humble/setup.bash</code> + <code>source ~/ros2_ws/install/setup.bash</code> 自动加载——这样<b>每个新终端一出生就带着两条前缀，且 ros2_ws 已排在 humble 前面</b>；再叠加"去重不挪位"，你把 source 拆开重排一万次也全是工作空间赢，实验永远"复现不出"。做本实验前二选一：<br>
+<b>① 临时注释（推荐）</b>：编辑 <code>~/.bashrc</code>，给这两行 <code>source</code> 前加 <code>#</code>，保存后<b>关闭并重开终端</b>再做实验，做完恢复原样；<br>
+<b>② 干净 shell（不动文件）</b>：<code>env -i HOME="$HOME" TERM="$TERM" USER="$USER" PATH=/usr/bin:/bin bash --noprofile --norc</code>——进去后环境一尘不染，按下面六步执行，<code>exit</code> 退出回原终端。</div>
+<pre><span class="c"># ① 正确顺序：系统层先，自己层后（全新终端执行）</span>
 source /opt/ros/humble/setup.bash
 source ~/ros2_ws/install/setup.bash
-ros2 pkg prefix demo_nodes_cpp   <span class="g"># → /home/&lt;你&gt;/ros2_ws/install/demo_nodes_cpp ✅ Overlay 赢</span>
+ros2 pkg prefix demo_nodes_cpp   <span class="g"># → /home/&lt;你&gt;/ros2_ws/install/demo_nodes_cpp ✅ 晚进列表的排在前，Overlay 赢</span>
 
-<span class="c"># ② 颠倒顺序：新开终端重来</span>
-source ~/ros2_ws/install/setup.bash
+<span class="c"># ② 新开一个终端（绝不要沿用①的终端！）：先只加载系统层</span>
 source /opt/ros/humble/setup.bash
-ros2 pkg prefix demo_nodes_cpp   <span class="g"># → /opt/ros/humble/... ✅ 后 source 者胜（回到系统层）</span>
+ros2 pkg prefix demo_nodes_cpp   <span class="g"># → /opt/ros/humble/... ✅ 此刻只有系统层，它独占第一（无 Overlay 时回落系统层）</span>
 
-<span class="c"># ③ 看清环境变量里的排列</span>
+<span class="c"># ③ 同一终端再补上自己的层：首次进列表 → 插到最前</span>
+source ~/ros2_ws/install/setup.bash
+ros2 pkg prefix demo_nodes_cpp   <span class="g"># → /home/&lt;你&gt;/ros2_ws/install/demo_nodes_cpp ✅ 后 source 者胜</span>
+
+<span class="c"># ④ 看清真实顺序（自上而下 = 优先级从高到低）</span>
+echo $AMENT_PREFIX_PATH | tr ':' '\n'
 echo $COLCON_PREFIX_PATH | tr ':' '\n'
 
-<span class="c"># ④ 反向验证：新开终端，只加载自己的层、跳过 Underlay</span>
+<span class="c"># ⑤ 反向验证：新开终端，只加载自己的层、跳过 Underlay</span>
 source ~/ros2_ws/install/setup.bash
 ros2 --help                   <span class="y"># → 仍 command not found ⚠</span>
 <span class="c"># 原因：Overlay 只"追加"路径，不自带 ros2 本体 —— Underlay 不能省</span>
 
-<span class="c"># ⑤ 一键恢复：删产物重新来过（永远安全的操作）</span>
+<span class="c"># ⑥ 一键恢复：删产物重新来过（永远安全的操作）</span>
 rm -rf build install log &amp;&amp; colcon build</pre>
+<div class="tip amber"><span class="lab">⚠️ 为什么在同一个终端"颠倒顺序"永远复现不出回退？</span>环境变量的拼接规则是 <b>prepend-non-duplicate：已经在列表里的路径，再 source 一次是空操作，不会把它挪到最前</b>。步骤 ① 做完后，<code>/opt/ros/humble</code> 和 <code>~/ros2_ws/install</code> 都已固化进列表——此后你在同终端里按"先自己、后系统"反复颠倒 source，顺序纹丝不动，<code>ros2_ws</code> 照样赢（很多同学在这里以为规则反了，其实规则是"<b>路径位置只在首次加入时决定，之后去重保持原位</b>"）。想看系统层赢，唯一姿势就是<b>新开终端只 source 它</b>（步骤②）；真实排列随时用步骤④核对。</div>
 </section>
 
 <section class="blk" id="s9">
@@ -396,8 +404,8 @@ rm -rf build install log &amp;&amp; colcon build</pre>
     <li>colcon build 输出出现 <code>Summary: N package finished</code></li>
     <li><code>ros2 pkg prefix demo_nodes_cpp</code> 指向 <code>~/ros2_ws/install</code>（工作空间版盖住了 apt 版）</li>
     <li><code>echo $COLCON_PREFIX_PATH</code> 中你的工作空间排在 /opt/ros 之前</li>
-    <li>能口头解释：为什么 build/install 可以随便删？为什么顺序颠倒包会"消失"？</li>
-    <li>完成 Overlay 实操全部五步：正序时 prefix 指向工作空间 / 颠倒后落回 /opt/ros / 跳过 Underlay 后 <code>ros2 --help</code> 仍不可用</li>
+    <li>能口头解释：为什么 build/install 可以随便删？为什么同一个终端里重复 source 不会改变前后顺序？</li>
+    <li>完成 Overlay 实操全部六步：正序时 prefix 指向工作空间 / 新开终端只加载系统层时落回 /opt/ros / 补上自己层后又指回 ros2_ws / 跳过 Underlay 后 <code>ros2 --help</code> 仍不可用</li>
   </ul>
 </div>
 <table>
