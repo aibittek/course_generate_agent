@@ -8,7 +8,7 @@
   --accent-blue:#2563eb; --accent-teal:#0d9488; --accent-amber:#d97706;
   --accent-violet:#7c3aed; --accent-rose:#e11d48; --accent-cyan:#0891b2;
   --theme:#d97706; --theme-deep:#b45309; --theme-bg:#fef3c7; --theme-bd:#fde68a;
-  --font-mono:'Cascadia Code','JetBrains Mono',Consolas,'Noto Sans Mono CJK SC',monospace;
+  --font-mono:'Cascadia Code','JetBrains Mono',Consolas,'Noto Sans Mono CJK SC','Microsoft YaHei','PingFang SC','Noto Sans SC',monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -56,7 +56,9 @@ strong{color:var(--head)}
 code{font-family:var(--font-mono);font-size:.9em;background:var(--bg-soft);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
 pre{font-family:var(--font-mono);font-size:13.5px;line-height:1.8;background:#0f172a;color:#e8eef7;border-radius:12px;padding:16px 20px;overflow-x:auto;margin:12px 0;font-weight:450;-webkit-font-smoothing:antialiased}
 pre code{background:transparent;border:none;border-radius:0;padding:0;font-size:inherit;color:inherit;font-family:inherit}
-pre .c{color:#93a9c4}pre .g{color:#6ee7a8}pre .b{color:#93c5fd}pre .y{color:#fcd34d}
+/* 带圈数字 ①②③…（U+2460-2473）在 Consolas 等西文等宽字体里缺字→显示方块。注释统一走中文字体优先的栈 */
+pre .c{color:#93a9c4;font-family:'Microsoft YaHei','PingFang SC','Noto Sans SC','Cascadia Code','JetBrains Mono',Consolas,monospace}
+pre .g{color:#6ee7a8}pre .b{color:#93c5fd}pre .y{color:#fcd34d}
 code.inline{background:#fef3c7;border-color:#fde68a;color:#92400e;padding:1px 6px}
 
 /* flow */

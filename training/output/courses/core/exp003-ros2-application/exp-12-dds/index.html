@@ -586,7 +586,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
           <tr><td>Liveliness</td><td><code>AUTOMATIC</code> / <code>MANUAL_BY_TOPIC</code></td><td>谁负责证明"我还活着"</td><td>安全关键节点 → MANUAL（代码显式心跳）</td></tr>
         </tbody>
       </table>
-      <pre><span class="c"># 查看任一话题当前生效的完整 QoS 档案</span>
+      <pre data-copy="cmd"><span class="c"># 查看任一话题当前生效的完整 QoS 档案</span>
 <span class="g">ros2</span> topic info /chatter --verbose
 <span class="c"># 输出含：Reliability: RELIABLE / Durability: VOLATILE / GID: 01.0f...</span>
 
@@ -606,7 +606,7 @@ qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=<span class="b">10</span
       <div class="cmdstep">
         <div class="cs-hd"><span class="cs-no">1</span><b>启动一个 talker</b><span class="cs-where">终端 1</span></div>
         <p class="cs-why">不设任何环境变量 → 落在默认域 0：</p>
-        <pre><span class="g">ros2</span> run demo_nodes_cpp talker</pre>
+        <pre data-copy="cmd"><span class="g">ros2</span> run demo_nodes_cpp talker</pre>
         <div class="io"><span class="dim">$ ros2 run demo_nodes_cpp talker</span>
 [INFO] [talker]: Publishing: 'Hello World: 1'
 [INFO] [talker]: Publishing: 'Hello World: 2'</div>
@@ -615,7 +615,7 @@ qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=<span class="b">10</span
       <div class="cmdstep">
         <div class="cs-hd"><span class="cs-no">2</span><b>ss 列出 UDP 监听端口</b><span class="cs-where">终端 2</span></div>
         <p class="cs-why">域 0 的发现端口应为 <b>7400</b>（组播发现）与 <b>7411</b>（单播发现）：</p>
-        <pre><span class="g">ss</span> -unap | <span class="g">grep</span> -E <span class="y">"7400|7411"</span></pre>
+        <pre data-copy="cmd"><span class="g">ss</span> -unap | <span class="g">grep</span> -E <span class="y">"7400|7411"</span></pre>
         <div class="io"><span class="dim">$ ss -unap | grep -E "7400|7411"</span>
 UNCONN 0 0 <span class="ok">0.0.0.0:7400</span> 0.0.0.0:* users:(("talker",pid=3121,fd=12))
 UNCONN 0 0 <span class="ok">0.0.0.0:7411</span> 0.0.0.0:* users:(("talker",pid=3121,fd=13))
@@ -624,7 +624,7 @@ UNCONN 0 0 <span class="ok">0.0.0.0:7411</span> 0.0.0.0:* users:(("talker",pid=3
       <div class="cmdstep">
         <div class="cs-hd"><span class="cs-no">3</span><b>换域跑，端口号凭空 +1750</b><span class="cs-where">终端 3</span></div>
         <p class="cs-why">域 7 的预期端口 = 7400 + 250×7 = <b>9150</b>；同时 <code class="inline">ros2 topic list</code> <b>看不到</b>域 0 的 <code class="inline">/chatter</code>：</p>
-        <pre><span class="g">ROS_DOMAIN_ID</span>=<span class="y">7</span> ros2 run demo_nodes_cpp talker
+        <pre data-copy="cmd"><span class="g">ROS_DOMAIN_ID</span>=<span class="y">7</span> ros2 run demo_nodes_cpp talker
 <span class="g">ss</span> -unap | <span class="g">grep</span> -E <span class="y">"9150|9161"</span>
 <span class="g">ROS_DOMAIN_ID</span>=<span class="y">7</span> ros2 topic list</pre>
         <div class="io"><span class="dim">$ ss -unap | grep -E "9150|9161"</span>
@@ -640,9 +640,9 @@ UNCONN 0 0 <span class="ok">0.0.0.0:9161</span> 0.0.0.0:* users:(("talker",pid=4
       <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 8px">A-2 · 组播发现通道本身（ros2 multicast）</h3>
       <p>发现报文<b>独立于话题数据</b>，走的是 UDP 组播。<code class="inline">ros2 multicast</code> 是 ros2cli 自带命令，可直接抓到这个通道：</p>
       <div class="termbar"><span class="tl">终端 A</span><b>接收端</b></div>
-      <pre><span class="g">ros2</span> multicast receive</pre>
+      <pre data-copy="cmd"><span class="g">ros2</span> multicast receive</pre>
       <div class="termbar"><span class="tl">终端 B</span><b>发送端</b><span class="note">新终端</span></div>
-      <pre><span class="g">ros2</span> multicast send</pre>
+      <pre data-copy="cmd"><span class="g">ros2</span> multicast send</pre>
       <div class="io"><span class="dim"># 终端 A 输出：</span>
 Received from <span class="ok">10.1.134.9:57588</span>: 'Hello World!'</div>
       <div class="tip amber">⚠️ <b>由此可解释一个经典现象</b>：实验室把两台机器接在不同 VLAN、或交换机禁了 <b>IGMP Snooping 组播</b> 时，"节点互相看不见"——这不是 ROS 的 bug，是 DDS 的<b>发现层被切断</b>了。数据链路根本还没建立，自然收不到任何消息。<br>排查顺序：先 <code class="inline">ping</code> 通（IP 可达）→ 再 <code class="inline">ros2 multicast send/receive</code>（组播可达）→ 都通了才轮到查域号与 QoS。</div>
@@ -651,7 +651,7 @@ Received from <span class="ok">10.1.134.9:57588</span>: 'Hello World!'</div>
       <div class="cmdstep">
         <div class="cs-hd"><span class="cs-no">1</span><b>起一个节点，看 /dev/shm 的变化</b><span class="cs-where">终端 R</span></div>
         <p class="cs-why">Fast-DDS 同机通信默认走共享内存（SHM），段文件立刻出现在 <code class="inline">/dev/shm</code>：</p>
-        <pre><span class="g">ros2</span> run demo_nodes_cpp talker &amp;
+        <pre data-copy="cmd"><span class="g">ros2</span> run demo_nodes_cpp talker &amp;
 <span class="g">ls</span> -l /dev/shm | <span class="g">grep</span> fast
 <span class="g">df</span> -h /dev/shm</pre>
         <div class="io"><span class="dim">$ ls -l /dev/shm | grep fast</span>
@@ -684,10 +684,10 @@ tmpfs           3.9G   48M  3.8G   2% /dev/shm</div>
       <h3 style="font-size:16px;color:var(--text-primary);margin:22px 0 8px">B-1 · Durability：后加入的订阅者能拿到历史数据</h3>
       <p>这就是 ROS 1 时代的 <b>latching</b>，在 DDS 里叫 <code class="inline">TRANSIENT_LOCAL</code> durability。<b>发布者先跑，订阅者后启动</b>，照样立刻收到积压的消息：</p>
       <div class="termbar"><span class="tl">终端 1</span><b>transient_local 发布者</b><span class="note">先跑 3 秒</span></div>
-      <pre><span class="g">ros2</span> topic pub -r 2 --qos-durability transient_local --qos-depth 5 \
+      <pre data-copy="cmd"><span class="g">ros2</span> topic pub -r 2 --qos-durability transient_local --qos-depth 5 \
   /qos_tl std_msgs/msg/String <span class="y">"{data: retained}"</span></pre>
       <div class="termbar"><span class="tl">终端 2</span><b>等 3 秒后再启动订阅者</b><span class="note">新终端</span></div>
-      <pre><span class="g">ros2</span> topic echo --qos-durability transient_local /qos_tl</pre>
+      <pre data-copy="cmd"><span class="g">ros2</span> topic echo --qos-durability transient_local /qos_tl</pre>
       <div class="io"><span class="dim">$ ros2 topic echo --qos-durability transient_local /qos_tl</span>
 data: retained
 data: retained
@@ -697,10 +697,10 @@ data: retained
 
       <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 8px">B-2 · Reliability 不兼容 → 逻辑上根本没连上</h3>
       <div class="termbar"><span class="tl">终端 1</span><b>best_effort 发布者</b></div>
-      <pre><span class="g">ros2</span> topic pub -r 5 --qos-reliability best_effort /qos_be \
+      <pre data-copy="cmd"><span class="g">ros2</span> topic pub -r 5 --qos-reliability best_effort /qos_be \
   std_msgs/msg/String <span class="y">"{data: be}"</span></pre>
       <div class="termbar"><span class="tl">终端 2</span><b>reliable 订阅者</b><span class="note">新终端</span></div>
-      <pre><span class="g">ros2</span> topic echo --qos-reliability reliable /qos_be
+      <pre data-copy="cmd"><span class="g">ros2</span> topic echo --qos-reliability reliable /qos_be
 <span class="g">ros2</span> topic info -v /qos_be</pre>
       <div class="io"><span class="dim">$ ros2 topic echo --qos-reliability reliable /qos_be</span>
 <span class="bad">[WARN] New publisher discovered on topic '/qos_be', offering incompatible QoS.</span>
@@ -714,7 +714,7 @@ Subscription count: <span class="bad">0</span></div>
 
       <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 8px">B-3 · 顺带读一份真实 QoS 清单</h3>
       <p><code class="inline">ros2 topic info -v</code> 会打印每个端点的<b>完整 QoS</b>——这份清单本身就是 DDS 的 QoS 策略表：</p>
-      <pre><span class="g">ros2</span> topic info -v /qos_tl</pre>
+      <pre data-copy="cmd"><span class="g">ros2</span> topic info -v /qos_tl</pre>
       <div class="io"><span class="dim">$ ros2 topic info -v /qos_tl</span>
 QoS profile:
   Reliability: <span class="ok">RELIABLE</span>

@@ -11,8 +11,20 @@
   window.addEventListener('scroll',spy,{passive:true}); spy();
   const io=new IntersectionObserver(es=>es.forEach(e=>{
     if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); }
-  }),{threshold:.10});
+  }),{threshold:0, rootMargin:'0px 0px -8% 0px'});
   document.querySelectorAll('.blk').forEach(el=>io.observe(el));
+  /* 兜底：超高元素（高于视口约 10 倍）永远达不到百分比阈值，按位置直接判定 */
+  function revealByPos(){
+    const vh=window.innerHeight;
+    document.querySelectorAll('.blk:not(.on)').forEach(el=>{
+      const r=el.getBoundingClientRect();
+      if(r.top<vh*0.92 && r.bottom>0){ el.classList.add('on'); io.unobserve(el); }
+    });
+  }
+  window.addEventListener('scroll',revealByPos,{passive:true});
+  window.addEventListener('resize',revealByPos);
+  revealByPos();
+  setTimeout(revealByPos,400);
 })();
 
 /* ↓ 命令/代码块一键复制：给页面里所有 <pre> 加一个复制按钮 */
@@ -38,8 +50,29 @@
     catch(e){ flash(btn,'复制失败',0); }
     document.body.removeChild(ta);
   }
+  /* 从 <pre> 提取待复制文本。
+     data-copy="cmd" 时：逐行丢弃以 # 开头的纯注释行、以及行尾的 "  # 注释"，
+     让"一个注释 + 一条命令"的排版可以只复制命令本身。 */
+  function extract(pre){
+    var raw=pre.textContent.replace(/\u00a0/g,' ');
+    var mode=pre.getAttribute&&pre.getAttribute('data-copy');
+    if(mode!=='cmd'){
+      return raw.replace(/^\n+/,'').replace(/\s+$/,'');
+    }
+    var out=[];
+    raw.split('\n').forEach(function(line){
+      var t=line.replace(/\s+$/,'');
+      if(/^\s*#/.test(t)) return;                 // 整行注释 → 跳过
+      // 行尾注释：空白 + # 之后全部去掉（命令里出现 " # " 的概率极低）
+      t=t.replace(/\s+#.*$/,'');
+      if(t.trim()==='') return;                   // 去掉空行
+      out.push(t);
+    });
+    return out.join('\n');
+  }
   function doCopy(pre,btn){
-    var text=pre.textContent.replace(/\u00a0/g,' ').replace(/^\n+/,'').replace(/\s+$/,'');
+    var text=extract(pre);
+    if(!text){ flash(btn,'无命令可复制',0); return; }
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(function(){ flash(btn,'已复制 ✓',1); },
         function(){ fallback(text,btn); });

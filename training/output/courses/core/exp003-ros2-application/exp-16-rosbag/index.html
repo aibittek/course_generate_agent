@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-16 · rosbag2 数据录制与回放 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#c2410c;--theme-deep:#9a3412;--theme-bg:#ffedd5;--theme-bd:#fed7aa}.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
 /* 三问卡：是什么 / 为什么 / 怎么用 */
 .www{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:.75rem;margin:.85rem 0 1.1rem}
@@ -235,7 +235,7 @@
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1.1</span><b>创建存储目录</b><span class="cs-where">终端 C（任意终端均可）</span></div>
     <p class="cs-why">先建一个固定目录，避免包散落在 <code>~</code> 根目录里日后找不到。<b>以后所有录制都在这一个目录里做</b>，方便整体备份与清理：</p>
-    <pre><span class="g">mkdir</span> -p ~/ros2_bags
+    <pre data-copy="cmd"><span class="g">mkdir</span> -p ~/ros2_bags
 <span class="g">cd</span> ~/ros2_bags
 <span class="g">pwd</span>                              <span class="c"># 确认当前目录：/home/iflytek/ros2_bags</span></pre>
   </div>
@@ -243,7 +243,7 @@
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1.2</span><b>启动数据源节点（终端 A）</b><span class="cs-where">终端 A · 保持运行</span></div>
     <p class="cs-why">talker 以 <b>1Hz</b> 稳定发布 <code>/chatter</code>——"1Hz"这个标称值很关键，后面体检时要拿它当基准判断有没有丢数据：</p>
-    <pre><span class="c"># 终端 A：现场数据源（保持运行，不要 Ctrl+C）</span>
+    <pre data-copy="cmd"><span class="c"># 终端 A：现场数据源（保持运行，不要 Ctrl+C）</span>
 <span class="g">ros2</span> run demo_nodes_cpp talker
 <span class="c"># [INFO] [talker]: Publishing: 'Hello World: 1'</span>
 <span class="c"># [INFO] [talker]: Publishing: 'Hello World: 2'   ...每秒一条</span></pre>
@@ -252,7 +252,7 @@
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1.3</span><b>启动 listener 增加系统活跃话题（终端 B）</b><span class="cs-where">终端 B · 保持运行</span></div>
     <p class="cs-why">listener 订阅 <code>/chatter</code>，同时它自身会产生 <code>/rosout</code> 等系统话题。<b>它的作用是让"全量录制"有多一点话题可录</b>——这样你才能直观看到 <code>-a</code> 到底把什么收进来了：</p>
-    <pre><span class="c"># 终端 B：监听端（保持运行）</span>
+    <pre data-copy="cmd"><span class="c"># 终端 B：监听端（保持运行）</span>
 <span class="g">ros2</span> run demo_nodes_cpp listener
 <span class="c"># [INFO] [listener]: I heard: [Hello World: 1]   ...每秒一条</span></pre>
   </div>
@@ -260,7 +260,7 @@
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1.4</span><b>启动全量录制（终端 C）</b><span class="cs-where">终端 C · 运行约 15 秒后 Ctrl+C</span></div>
     <p class="cs-why"><code>-a</code> = 录下此刻<b>所有</b>活跃话题。<b>启动即开始录</b>，控制台只打印"订阅确认"，不滚动消息内容。<b>保持约 15 秒再按 Ctrl+C 停止</b>（录太短可能出 0 字节空包）：</p>
-    <pre><span class="c"># 终端 C：全量录制</span>
+    <pre data-copy="cmd"><span class="c"># 终端 C：全量录制</span>
 <span class="g">ros2</span> bag record -a -o exp16_full
 <span class="c"># 等待约 15 秒后按 Ctrl+C 停止录制</span></pre>
     <div class="io"><span class="dim">$ ros2 bag record -a -o exp16_full</span>
@@ -291,7 +291,7 @@
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1.5</span><b>查看生成的文件结构</b><span class="cs-where">终端 C</span></div>
     <p class="cs-why">录完立刻看一眼目录——<b>一个 bag 就是一个目录，里面至少两个文件</b>。<code>.db3</code> 是消息本体，<code>metadata.yaml</code> 是清单：</p>
-    <pre><span class="g">ls</span> -lh exp16_full/</pre>
+    <pre data-copy="cmd"><span class="g">ls</span> -lh exp16_full/</pre>
     <div class="io"><span class="dim">$ ls -lh exp16_full/</span>
 -rw-r--r-- 1 iflytek iflytek <span class="ok">51K</span> ... <span class="ok">exp16_full_0.db3</span>   <span class="c"># SQLite3 数据库（消息本体）</span>
 -rw-r--r-- 1 iflytek iflytek   <span class="ok">4K</span> ... <span class="ok">metadata.yaml</span>      <span class="c"># 元数据清单（时长/条数/话题）</span>
@@ -303,7 +303,7 @@
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1.6</span><b>查看 metadata.yaml 内容</b><span class="cs-where">终端 C</span></div>
     <p class="cs-why">这是整份清单的<b>原始出处</b>——<code>ros2 bag info</code> 打印的每个数字都能在这里找到。<b>human-readable，删了它 bag 就"失忆"</b>（<code>info</code> 直接读不出来）：</p>
-    <pre><span class="g">cat</span> exp16_full/metadata.yaml</pre>
+    <pre data-copy="cmd"><span class="g">cat</span> exp16_full/metadata.yaml</pre>
     <div class="io"><span class="dim">$ cat exp16_full/metadata.yaml</span>
 rosbag2_bagfile_information:
   version: 5
@@ -336,7 +336,7 @@ rosbag2_bagfile_information:
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">2</span><b>三行数据决定这个包能不能用</b><span class="cs-where">终端 C</span></div>
     <p class="cs-why">继承别人的 bag、或几周后回头查时，先回答三个问题：录了多久？有这个话题吗？频率对不对？<code>info</code> 毫秒级给出答案，不必回放整个文件：</p>
-    <pre><span class="g">ros2 bag info</span> exp16_full</pre>
+    <pre data-copy="cmd"><span class="g">ros2 bag info</span> exp16_full</pre>
     <div class="io"><span class="dim">$ ros2 bag info exp16_full</span>
 Files:             exp16_full_0.db3
 Bag size:          50.9 KiB
@@ -366,7 +366,7 @@ Topic information:
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">3</span><b>停掉现场源 → play 让历史"复活"</b><span class="cs-where">新终端 listener</span></div>
     <p class="cs-why">关键动作：<b>先停掉所有数据源</b>（终端 A、B 按 Ctrl+C），确认系统空闲，再起一个干净的 listener 当"观众"，然后回放——listener 会把历史消息当成实时消息照单全收：</p>
-    <pre><span class="c"># 终端 A、B 按 Ctrl+C 停掉 talker / listener</span>
+    <pre data-copy="cmd"><span class="c"># 终端 A、B 按 Ctrl+C 停掉 talker / listener</span>
 <span class="g">ros2</span> node list                       <span class="c"># 预期：空输出，确认系统空闲</span>
 
 <span class="c"># 新终端：起一个 listener 作为回放"观众"（保持运行）</span>
@@ -412,7 +412,7 @@ I heard: [Hello World: <span class="ok">3</span>] ...
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">4</span><b>只录 /chatter，比比文件大小</b><span class="cs-where">终端 A 起 talker，终端 B 录制</span></div>
     <p class="cs-why">点名录制只订阅命令行里明确列出的话题，<b>忽略系统其他所有活跃话题</b>。录完直接和全量包比大小，差多少一目了然：</p>
-    <pre><span class="c"># 终端 A：数据源</span>
+    <pre data-copy="cmd"><span class="c"># 终端 A：数据源</span>
 <span class="g">ros2</span> run demo_nodes_cpp talker
 
 <span class="c"># 终端 B：只录 /chatter，15 秒后自动停</span>
@@ -437,7 +437,7 @@ Topic information:
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">5</span><b>压缩省盘 / --max-bag-size 分片</b><span class="cs-where">终端 B</span></div>
     <p class="cs-why">压缩减少磁盘占用（代价是 CPU）；<code>--max-bag-size</code> 防止单个 <code>.db3</code> 过大难搬运——B2 实验箱磁盘有限时尤其重要。<b>但这两个参数都有坑，下面用实测数据说清</b>：</p>
-    <pre><span class="c"># 5.1 压缩录制 —— 必须同时给 mode 和 format</span>
+    <pre data-copy="cmd"><span class="c"># 5.1 压缩录制 —— 必须同时给 mode 和 format</span>
 <span class="g">timeout</span> 20 ros2 bag record -a -o exp16_compressed \
   <span class="y">--compression-mode message --compression-format zstd</span>
 
@@ -492,7 +492,7 @@ Topic information:
   <div class="termbar"><span class="tl">终端 A/B</span><b>第 6 步 · 离线回放 + rviz2 联调（带钟工作流）</b><span class="note">带钟回放 + 视图同步</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">6</span><b>带钟回放（终端 A）+ rviz 认钟（终端 B）</b><span class="cs-where">两个终端</span></div>
-    <pre><span class="c"># 终端 A：回放数据并持续发布 /clock</span>
+    <pre data-copy="cmd"><span class="c"># 终端 A：回放数据并持续发布 /clock</span>
 <span class="g">ros2</span> bag play exp16_full <span class="y">--clock --loop</span>
 
 <span class="c"># 终端 B：启动 rviz，让视图也认仿真时间</span>
@@ -605,6 +605,6 @@ var CMD = {
 function build(){ document.getElementById('out').innerHTML = CMD[document.getElementById('md').value]; }
 build();
 </script>
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 </body>
 </html>

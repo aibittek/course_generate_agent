@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-14 · rqt 可视化工具箱 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#0d9488;--theme-deep:#0f766e;--theme-bg:#ccfbf1;--theme-bd:#99f6e4}
 /* 指导书实操截图图廊 */
 .figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px}
@@ -179,7 +179,7 @@
 <!-- 05 命令精讲 -->
 <section class="blk" id="s5">
   <h2><span class="no">05</span>命令精讲：启动方式三连<span class="fs">应用新知</span></h2>
-  <pre><span class="c"># 方式一：启动完整工作台（自带菜单可再开任意插件）</span>
+  <pre data-copy="cmd"><span class="c"># 方式一：启动完整工作台（自带菜单可再开任意插件）</span>
 <span class="b">$</span> rqt
 
 <span class="c"># 方式二：直启单个插件（省去菜单导航，脚本常用；本机均已安装）</span>
@@ -200,7 +200,7 @@
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1</span><b>查一个节点有哪些 logger、当前什么级别</b><span class="cs-where">终端</span></div>
     <p class="cs-why"><b>补充一句原理</b>：<code>set_logger_levels</code> 不是每个节点凭空自带的，它由 <b>日志服务节点</b>（如 <code>logger_level_service</code>，或 rclpy/rclcpp 中开启 <code>enable_logger_service=True</code>）统一提供；只有该服务在线，下面这条命令才有对象可调。同理，<code>ros2 topic echo /rosout</code> 要求发起节点以 DEBUG 级别重新发布日志——<b>先提级，才看得见</b>。<br>查一个节点当前有哪些 logger、什么级别：</p>
-    <pre><span class="g">ros2</span> node list                       <span class="c"># 先拿节点名，如 /car1_base_driver</span>
+    <pre data-copy="cmd"><span class="g">ros2</span> node list                       <span class="c"># 先拿节点名，如 /car1_base_driver</span>
 <span class="g">ros2</span> service list | grep logger</pre>
     <div class="io"><span class="dim">$ ros2 node list</span>
 /car1_base_driver
@@ -212,7 +212,7 @@
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">2</span><b>运行中动态提级到 DEBUG，抓完调回</b><span class="cs-where">终端</span></div>
     <p class="cs-why">等价于 rqt_logger_level 的拖拽操作，但可写进脚本、可在 ssh 里跑：</p>
-    <pre><span class="g">ros2</span> service call /car1_base_driver/set_logger_levels \
+    <pre data-copy="cmd"><span class="g">ros2</span> service call /car1_base_driver/set_logger_levels \
   rcl_interfaces/srv/SetLoggerLevels \
   <span class="y">"{levels: [{logger: '', level: 10}]}"</span>   <span class="c"># 10=DEBUG</span></pre>
     <div class="io"><span class="dim">$ ros2 service call /car1_base_driver/set_logger_levels \</span>
@@ -227,7 +227,7 @@ response:
   <div class="termbar"><span class="tl">终端</span><b>远程机器人：ssh 图形转发（机制保留）</b><span class="note">需 X server</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">3</span><b>把远端机器人的 rqt 窗口"投"到本机屏幕</b><span class="cs-where">本机终端</span></div>
-    <pre><span class="g">ssh</span> -X iflytek@10.1.134.9
+    <pre data-copy="cmd"><span class="g">ssh</span> -X iflytek@10.1.134.9
 <span class="g">rqt</span>                              <span class="c"># 窗口经 X11 转发到本机显示</span></pre>
     <div class="io"><span class="dim">$ ssh -X iflytek@10.1.134.9</span>
 <span class="dim">iflytek@10.1.134.9's password:</span>
@@ -260,7 +260,7 @@ response:
   <div class="termbar"><span class="tl">终端 1</span><b>先确认数据源存在（不猜）</b><span class="note">新终端</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1</span><b>列出话题、看清类型与频率</b><span class="cs-where">终端 1</span></div>
-    <pre><span class="g">ros2</span> topic list | grep car1
+    <pre data-copy="cmd"><span class="g">ros2</span> topic list | grep car1
 <span class="g">ros2</span> topic info /car1_base_driver/battery --verbose
 <span class="g">ros2</span> topic hz /car1_base_driver/battery</pre>
     <div class="io"><span class="dim">$ ros2 topic list | grep car1</span>
@@ -277,7 +277,7 @@ average rate: <span class="ok">1.000</span>
   <div class="termbar"><span class="tl">终端 2</span><b>rqt_graph 看拓扑</b><span class="note">保持运行</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">2</span><b>一张图看清谁在发、谁在收</b><span class="cs-where">终端 2</span></div>
-    <pre><span class="g">ros2</span> run rqt_graph rqt_graph</pre>
+    <pre data-copy="cmd"><span class="g">ros2</span> run rqt_graph rqt_graph</pre>
     <div class="io"><span class="dim">$ ros2 run rqt_graph rqt_graph</span>
 <span class="ok"># 窗口里：椭圆 car1_base_driver → 矩形 /car1_base_driver/battery → 有订阅者则连出箭头</span>
 <span class="warn"># 勾上 Hide Debug，/parameter_events、/rosout 消失，主链路只剩你要看的</span></div>
@@ -287,7 +287,7 @@ average rate: <span class="ok">1.000</span>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">3</span><b>把电压变成看得见的线</b><span class="cs-where">终端 3</span></div>
     <p class="cs-why">话题名直接跟在插件名后面传入即可（这就是"方式三"的用法）：</p>
-    <pre><span class="g">ros2</span> run rqt_plot rqt_plot /car1_base_driver/battery
+    <pre data-copy="cmd"><span class="g">ros2</span> run rqt_plot rqt_plot /car1_base_driver/battery
 <span class="c"># 或先开空窗口，再在左上角输入框粘贴 /car1_base_driver/battery</span></pre>
     <div class="io"><span class="dim">$ ros2 run rqt_plot rqt_plot /car1_base_driver/battery</span>
 <span class="ok"># 窗口左上输入框出现 /car1_base_driver/battery，勾选框打钩</span>
@@ -298,7 +298,7 @@ average rate: <span class="ok">1.000</span>
   <div class="termbar"><span class="tl">终端 1</span><b>交叉印证：曲线末端 = echo 的数</b><span class="note">新终端</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">4</span><b>CLI 与 GUI 对同一话题说同一句话</b><span class="cs-where">终端 1</span></div>
-    <pre><span class="g">ros2</span> topic echo /car1_base_driver/battery --once</pre>
+    <pre data-copy="cmd"><span class="g">ros2</span> topic echo /car1_base_driver/battery --once</pre>
     <div class="io"><span class="dim">$ ros2 topic echo /car1_base_driver/battery --once</span>
 data: <span class="ok">12.34</span>
 <span class="warn"># 这个数应与 rqt_plot 曲线右端当前值基本一致（同一时刻采样，允许一位小数误差）</span></div>
@@ -321,7 +321,7 @@ data: <span class="ok">12.34</span>
   <div class="termbar"><span class="tl">终端 1</span><b>第 1 步 · 找到图像话题</b><span class="note">新终端</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1</span><b>列出所有图像话题，看清分辨率与频率</b><span class="cs-where">终端 1</span></div>
-    <pre><span class="g">ros2</span> topic list | grep -i image
+    <pre data-copy="cmd"><span class="g">ros2</span> topic list | grep -i image
 <span class="g">ros2</span> topic info /camera/color/image_raw --verbose
 <span class="g">ros2</span> topic hz /camera/color/image_raw</pre>
     <div class="io"><span class="dim">$ ros2 topic list | grep -i image</span>
@@ -339,7 +339,7 @@ average rate: <span class="ok">30.00</span>    <span class="c"># 30fps 是常见
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">2</span><b>把相机画面搬进窗口</b><span class="cs-where">终端 2</span></div>
     <p class="cs-why">这是感知调参最直观的一步——改曝光/改分辨率，肉眼立刻能判断效果：</p>
-    <pre><span class="g">ros2</span> run rqt_image_view rqt_image_view</pre>
+    <pre data-copy="cmd"><span class="g">ros2</span> run rqt_image_view rqt_image_view</pre>
     <div class="io"><span class="dim">$ ros2 run rqt_image_view rqt_image_view</span>
 <span class="ok"># 窗口左上角下拉框选中 /camera/color/image_raw</span>
 <span class="ok"># 画面实时刷新，右上角可勾 "Smooth image" 缩放显示</span>
@@ -350,7 +350,7 @@ average rate: <span class="ok">30.00</span>    <span class="c"># 30fps 是常见
   <div class="termbar"><span class="tl">终端 3</span><b>第 3 步 · 日志用命令行管（不给 GUI 留活口）</b><span class="note">新终端</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">3</span><b>提级 → 抓上下文 → 调回</b><span class="cs-where">终端 3</span></div>
-    <pre><span class="c"># 过滤：只留 camera 相关的 WARN 以上</span>
+    <pre data-copy="cmd"><span class="c"># 过滤：只留 camera 相关的 WARN 以上</span>
 <span class="g">ros2</span> topic echo /rosout | grep -E <span class="y">"camera|timeout"</span>
 
 <span class="c"># 动态提级（等价 rqt_logger_level，本机现成）：</span>
@@ -371,7 +371,7 @@ response:
   <div class="termbar"><span class="tl">终端</span><b>第 4 步 · 存成布局，下次一键还原</b><span class="note">终端</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">4</span><b>Perspective：把摆好的多个插件窗口固化</b><span class="cs-where">终端</span></div>
-    <pre><span class="g">rqt</span>                      <span class="c"># 打开工作台，逐一把 graph/plot/image_view 拖进同一窗口</span>
+    <pre data-copy="cmd"><span class="g">rqt</span>                      <span class="c"># 打开工作台，逐一把 graph/plot/image_view 拖进同一窗口</span>
 <span class="c"># Perspectives → Save As → 命名 car_debug → 下次启动直接选它</span></pre>
     <div class="io"><span class="dim">$ rqt</span>
 <span class="ok"># Perspectives 菜单里出现 car_debug，重启 rqt 后用同一名字还原全部布局</span></div>
@@ -431,7 +431,7 @@ response:
 </main>
 </div>
 
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 
 <div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
 <script>

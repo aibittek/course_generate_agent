@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-17 · Launch 启动文件 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#0284c7;--theme-deep:#0369a1;--theme-bg:#e0f2fe;--theme-bd:#bae6fd}
 /* 指导书实操截图图廊 */
 .figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px}
@@ -209,7 +209,7 @@
     <div class="kcard"><div class="kd">语法怎么写</div><div class="kt">remappings=[(A, B)]</div><p>永远是「<b>把 A 映射成 B</b>」，<b>A 是节点源码里的名字</b>。写作 <code>remappings=[('/scan', '/scan_front')]</code>，读作"源码里的 /scan，出到系统后叫 /scan_front"。</p></div>
     <div class="kcard"><div class="kd">最容易错的地方</div><div class="kt">A/B 写反 = remap 完全失效</div><p>把 <code>('/scan_front', '/scan')</code> 写反，会变成"把源码里的 /scan_front 改成 /scan"——而源码里根本没有 /scan_front，于是<b>静默无效、不报错</b>。这是 remap 失灵的第一大原因。</p></div>
   </div>
-  <pre><span class="c"># remap：一台车两个雷达，两个实例各发各的</span>
+  <pre data-copy="cmd"><span class="c"># remap：一台车两个雷达，两个实例各发各的</span>
 Node(package=<span class="y">'my_pkg'</span>, executable=<span class="y">'lidar_driver'</span>,
      name=<span class="y">'lidar_front'</span>,                            <span class="g"># 实例唯一名（不能重）</span>
      remappings=[(<span class="y">'/scan'</span>, <span class="y">'/scan_front'</span>)],       <span class="g"># 源码 /scan → 系统 /scan_front</span>
@@ -229,7 +229,7 @@ Node(package=<span class="y">'my_pkg'</span>, executable=<span class="y">'lidar_
     <div class="kcard"><div class="kd">语法怎么写</div><div class="kt">condition=IfCondition(...)</div><p>条件是<b>挂在 Action 上的一个开关属性</b>：<code>IfCondition(expr)</code> 表达式为真才执行；<code>UnlessCondition(expr)</code> 为假才执行（表达"非"更直白）。没写 condition 的 Action 恒执行。</p></div>
     <div class="kcard"><div class="kd">表达式从哪来</div><div class="kt">LaunchConfiguration + PythonExpression</div><p><code>LaunchConfiguration('mode')</code> 取出命令行传入的值（字符串），再用 <code>PythonExpression</code> 拼成可求值的表达式：<code>PythonExpression(['"', mode, '" == "debug"'])</code>。</p></div>
   </div>
-  <pre><span class="c"># 条件：debug 模式多起一个可视化节点，其它模式不起</span>
+  <pre data-copy="cmd"><span class="c"># 条件：debug 模式多起一个可视化节点，其它模式不起</span>
 mode = LaunchConfiguration(<span class="y">'mode'</span>)                        <span class="g"># 从命令行取值</span>
 LaunchDescription([
     DeclareLaunchArgument(<span class="y">'mode'</span>, default_value=<span class="y">'normal'</span>),
@@ -250,7 +250,7 @@ LaunchDescription([
     <div class="kcard"><div class="kd">什么时候触发</div><div class="kt">正常结束 / 被 Ctrl+C 都算</div><p>只要 A 进程<b>退出</b>就触发，不区分正常退出还是被信号终止。这让它天然适合"守护—接续"场景：A 崩了也能自动拉起 B 做现场保护。</p></div>
   </div>
 
-  <pre><span class="c"># 事件：recorder 一退出，自动拉起 analyzer</span>
+  <pre data-copy="cmd"><span class="c"># 事件：recorder 一退出，自动拉起 analyzer</span>
 <span class="b">from</span> launch.actions <span class="b">import</span> RegisterEventHandler
 <span class="b">from</span> launch.event_handlers <span class="b">import</span> OnProcessExit
 
@@ -286,7 +286,7 @@ LaunchDescription([
 <!-- 06 代码精讲 -->
 <section class="blk" id="s6">
   <h2><span class="no">05</span>代码精讲：第一个 Launch 文件<span class="fs">应用新知</span></h2>
-  <pre><span class="c"># basic_launch.py —— 最小可用模板（入口函数名一个字符都不能错）</span>
+  <pre data-copy="cmd"><span class="c"># basic_launch.py —— 最小可用模板（入口函数名一个字符都不能错）</span>
 <span class="b">from</span> launch <span class="b">import</span> LaunchDescription
 <span class="b">from</span> launch_ros.actions <span class="b">import</span> Node
 
@@ -307,7 +307,7 @@ LaunchDescription([
 <span class="c"># 运行（包内 launch/ 目录需 install 到 share，见 06 节 CMakeLists）</span>
 <span class="b">$</span> ros2 launch launch_demo_pkg basic_launch.py
 <span class="c"># Ctrl+C 一次 → 全部子进程收 SIGINT 优雅退出</span></pre>
-  <pre><span class="c"># 参数化 + 条件启动骨架（步骤 3/4 的核心结构）</span>
+  <pre data-copy="cmd"><span class="c"># 参数化 + 条件启动骨架（步骤 3/4 的核心结构）</span>
 <span class="b">from</span> launch.actions <span class="b">import</span> DeclareLaunchArgument, LogInfo
 <span class="b">from</span> launch.substitutions <span class="b">import</span> LaunchConfiguration, PythonExpression
 <span class="b">from</span> launch.conditions <span class="b">import</span> IfCondition
@@ -345,7 +345,7 @@ LaunchDescription([
   <h3>第 0 步 · 建承载包（三件套缺一不可）</h3>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 1 · 建包并编译</b></div>
-<pre><span class="p">$</span> mkdir -p ~/launch_demo_pkg/launch
+<pre data-copy="cmd"><span class="p">$</span> mkdir -p ~/launch_demo_pkg/launch
 <span class="p">$</span> cd ~/launch_demo_pkg
 
 <span class="c"># ① package.xml：声明 build_type 与运行时依赖</span>
@@ -383,7 +383,7 @@ CMEOF
   <h3>第 1 步 · 基础版：两节点一键起、一次停</h3>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 1 · 写 basic_launch.py 并运行</b></div>
-<pre><span class="p">$</span> cat > launch/basic_launch.py << 'PYEOF'
+<pre data-copy="cmd"><span class="p">$</span> cat > launch/basic_launch.py << 'PYEOF'
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
@@ -400,7 +400,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>预期输出（实测形态）</b></div>
-<pre><span class="dim">[INFO] [launch]: All log files can be found below /home/iflytek/.ros/log/2026-10-15-10-11-23-XXXXXX</span>
+<pre data-copy="cmd"><span class="dim">[INFO] [launch]: All log files can be found below /home/iflytek/.ros/log/2026-10-15-10-11-23-XXXXXX</span>
 <span class="dim">[INFO] [launch]: Default logging verbosity is set to INFO</span>
 <span class="dim">[INFO] [launch]: Defaulting event handling to actions.</span>
 <span class="hi">[INFO] [my_talker-1]: process started with pid [18421]</span>
@@ -421,7 +421,7 @@ PYEOF
   <h3>第 2 步 · remap 版：一个改道、两个听众的对照实验</h3>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 1 · 写 remap_launch.py 并运行</b></div>
-<pre><span class="p">$</span> cat > launch/remap_launch.py << 'PYEOF'
+<pre data-copy="cmd"><span class="p">$</span> cat > launch/remap_launch.py << 'PYEOF'
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
@@ -445,7 +445,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>预期输出（对照现象是本步的核心）</b></div>
-<pre><span class="hi">[INFO] [talker_remapped-1]: process started with pid [18501]</span>
+<pre data-copy="cmd"><span class="hi">[INFO] [talker_remapped-1]: process started with pid [18501]</span>
 <span class="hi">[INFO] [listener_default-2]: process started with pid [18502]</span>
 <span class="hi">[INFO] [listener_remapped-3]: process started with pid [18503]</span>
 <span class="ok">[talker_remapped-1]</span> [INFO] [...] Publishing: 'Hello World: 1'
@@ -458,7 +458,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 2 · 双证据验证 remap 生效</b></div>
-<pre><span class="p">$</span> source ~/launch_demo_pkg/install/setup.bash
+<pre data-copy="cmd"><span class="p">$</span> source ~/launch_demo_pkg/install/setup.bash
 <span class="p">$</span> ros2 topic list
 <span class="ok">/my_chatter</span>          <span class="dim">← 实际话题名已经被改到这里</span>
 /parameter_events
@@ -484,7 +484,7 @@ PYEOF
   <code>Node(..., namespace='robot1')</code> 会把节点变成 <code>/robot1/talker</code>、话题变成 <code>/robot1/chatter</code>。同机跑两台机器人模型时，<code>/robot1/chatter</code> 与 <code>/robot2/chatter</code> 天然隔离，不需要写任何 remap。这也是 <b>EXP-15 里 car1/car2 两套硬件能同时上线</b>的底层原因。</div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>失败现场：No launch file found 的三连排查</b></div>
-<pre><span class="p">$</span> ros2 launch launch_demo_pkg basic_launch.py
+<pre data-copy="cmd"><span class="p">$</span> ros2 launch launch_demo_pkg basic_launch.py
 <span class="err">launch: error: No launch file found in package 'launch_demo_pkg' with name 'basic_launch.py'</span>
 
 <span class="c"># ① build 成功了吗？</span>
@@ -513,7 +513,7 @@ PYEOF
   <h3>第 1 步 · 参数化：同一份文件，两种人格</h3>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 1 · 写 param_launch.py</b></div>
-<pre><span class="p">$</span> cat > launch/param_launch.py << 'PYEOF'
+<pre data-copy="cmd"><span class="p">$</span> cat > launch/param_launch.py << 'PYEOF'
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, LogInfo
 from launch.substitutions import LaunchConfiguration, PythonExpression
@@ -552,7 +552,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>默认跑（不传参）— 2 个节点</b></div>
-<pre><span class="p">$</span> ros2 launch launch_demo_pkg param_launch.py
+<pre data-copy="cmd"><span class="p">$</span> ros2 launch launch_demo_pkg param_launch.py
 <span class="dim">[INFO] [launch]: Defaulting event handling to actions.</span>
 <span class="ok">[INFO] [launch]: Starting with log_level=info, enable_debug=false</span>
 <span class="hi">[INFO] [talker_param-1]: process started with pid [18601]</span>
@@ -567,7 +567,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>传参跑 — 3 个节点 + DEBUG 日志</b></div>
-<pre><span class="p">$</span> ros2 launch launch_demo_pkg param_launch.py \
+<pre data-copy="cmd"><span class="p">$</span> ros2 launch launch_demo_pkg param_launch.py \
     enable_debug_node:=true log_level:=debug
 <span class="ok">[INFO] [launch]: Starting with log_level=debug, enable_debug=true</span>
 <span class="hi">[INFO] [talker_param-1]: process started with pid [18621]</span>
@@ -588,7 +588,7 @@ PYEOF
   <h3>第 2 步 · 条件启动：IfCondition 与 UnlessCondition 三档实测</h3>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 1 · 写 conditional_launch.py 并跑三档</b></div>
-<pre><span class="p">$</span> cat > launch/conditional_launch.py << 'PYEOF'
+<pre data-copy="cmd"><span class="p">$</span> cat > launch/conditional_launch.py << 'PYEOF'
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, LogInfo
 from launch.substitutions import LaunchConfiguration, PythonExpression
@@ -621,7 +621,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>三档对照实测</b></div>
-<pre><span class="p">$</span> ros2 launch launch_demo_pkg conditional_launch.py
+<pre data-copy="cmd"><span class="p">$</span> ros2 launch launch_demo_pkg conditional_launch.py
 <span class="ok">[INFO] [launch]: Launch mode: normal</span>
 <span class="ok">[INFO] [launch]: [DETAILED LOG] System started in non-production mode.</span>
 <span class="dim">[INFO] [talker_core-1]: process started with pid [18701]</span>
@@ -657,7 +657,7 @@ PYEOF
   <h3>第 3 步 · 事件触发：A 退出 → B 自动接管</h3>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 1 · 写 event_launch.py 并运行</b></div>
-<pre><span class="p">$</span> cat > launch/event_launch.py << 'PYEOF'
+<pre data-copy="cmd"><span class="p">$</span> cat > launch/event_launch.py << 'PYEOF'
 from launch import LaunchDescription
 from launch.actions import RegisterEventHandler, LogInfo
 from launch.event_handlers import OnProcessExit
@@ -695,7 +695,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 1 · 启动阶段输出</b></div>
-<pre><span class="dim">[INFO] [launch]: Defaulting event handling to actions.</span>
+<pre data-copy="cmd"><span class="dim">[INFO] [launch]: Defaulting event handling to actions.</span>
 <span class="ok">[INFO] [launch]: System started. Try killing talker_event to trigger recovery.</span>
 <span class="hi">[INFO] [talker_event-1]: process started with pid [18801]</span>
 <span class="hi">[INFO] [talker_backup-2]: process started with pid [18802]</span>
@@ -704,7 +704,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 2 · 杀掉 talker_event 触发事件</b></div>
-<pre><span class="p">$</span> ros2 node list
+<pre data-copy="cmd"><span class="p">$</span> ros2 node list
 <span class="ok">/talker_event</span>
 <span class="ok">/talker_backup</span>
 
@@ -715,7 +715,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 1 · 事件连锁反应（回到终端 1 看）</b></div>
-<pre><span class="warn">[INFO] [talker_event-1]: process has died [pid 18801, exit code -9, ...]</span>
+<pre data-copy="cmd"><span class="warn">[INFO] [talker_event-1]: process has died [pid 18801, exit code -9, ...]</span>
 <span class="ok">[INFO] [launch]: [EVENT] talker_event has exited! Starting recovery node...</span>
 <span class="hi">[INFO] [listener_recovery-3]: process started with pid [18825]   ← 自动拉起！</span>
 <span class="ok">[INFO] [launch]: [EVENT] Recovery node started successfully.</span>
@@ -723,7 +723,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 2 · 再次核对节点列表</b></div>
-<pre><span class="p">$</span> ros2 node list
+<pre data-copy="cmd"><span class="p">$</span> ros2 node list
 <span class="ok">/talker_backup</span>          <span class="dim">← 仍在</span>
 <span class="ok">/listener_recovery</span>      <span class="dim">← 新来的</span>
 <span class="dim">（/talker_event 已消失，/listener_recovery 已完成补位）</span></pre>
@@ -746,7 +746,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>终端 1 · integrated_launch.py 核心骨架</b></div>
-<pre><span class="p">$</span> cat > launch/integrated_launch.py << 'PYEOF'
+<pre data-copy="cmd"><span class="p">$</span> cat > launch/integrated_launch.py << 'PYEOF'
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, LogInfo,
                             RegisterEventHandler, ExecuteProcess)
@@ -806,7 +806,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>测试 1 · 默认参数（最小系统）</b></div>
-<pre><span class="p">$</span> ros2 launch launch_demo_pkg integrated_launch.py
+<pre data-copy="cmd"><span class="p">$</span> ros2 launch launch_demo_pkg integrated_launch.py
 <span class="ok">[INFO] [launch]: Starting sensor system on topic: /sensor_data</span>
 <span class="hi">[INFO] [sensor_driver-1]: process started with pid [18901]</span>
 <span class="hi">[INFO] [data_processor-2]: process started with pid [18902]</span>
@@ -819,7 +819,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>测试 2 · 全开（3 节点 + bag 录制 + 换话题名）</b></div>
-<pre><span class="p">$</span> ros2 launch launch_demo_pkg integrated_launch.py \
+<pre data-copy="cmd"><span class="p">$</span> ros2 launch launch_demo_pkg integrated_launch.py \
     enable_debug:=true enable_bag_record:=true sensor_topic:=/test_data
 <span class="ok">[INFO] [launch]: Starting sensor system on topic: /test_data</span>
 <span class="hi">[INFO] [sensor_driver-1]: process started with pid [18921]</span>
@@ -842,7 +842,7 @@ PYEOF
   </div>
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><b>测试 3 · 恢复机制验证</b></div>
-<pre><span class="c"># 在 integrated_launch 运行期间，另开终端杀掉 sensor_driver</span>
+<pre data-copy="cmd"><span class="c"># 在 integrated_launch 运行期间，另开终端杀掉 sensor_driver</span>
 <span class="p">$</span> ps aux | grep "sensor_driver" | grep -v grep
 <span class="dim">iflytek   18901 ... /opt/ros/humble/lib/demo_nodes_cpp/talker --ros-args -r __node:=sensor_driver</span>
 <span class="p">$</span> kill 18901
@@ -922,7 +922,7 @@ PYEOF
 </main>
 </div>
 
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 
 <div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
 <script>

@@ -214,16 +214,13 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>发布 / 订阅模式全解析：消息从发布端走到回调里的四个环节、QoS 三要素如何决定"丢消息还是补消息"；再把 MQ5 的电压读数经对数换算成 ppm，用阈值报警验证整条链路。</p>
       <div class="meta"><span class="tag">Publisher/Sub</span><span class="tag">QoS</span><span class="tag">MQ5</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-06-topic/index.html#s6">① 先看现象：跑出 MQ5 浓度在话题上流动</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s1">② 为什么需要话题：一份浓度数据，四个"想听的人"</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s2">③ 核心原理：一条消息怎样从发布端走到回调里</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s2">原理</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s3">④ 原理动画：一条消息的分发之旅</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s4">⑤ QoS：给话题签一份"传输合同"</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s4">原理 + 交互</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s5">⑥ QoS 实验台：改档位，看消息怎么丢、怎么补</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s5">交互</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s7">⑦ 代码精讲：MQ5 从电压到 ppm 的对数换算</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s7">源码导读</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s8">⑧ 动手任务：把现象变成你自己的证据</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s8">综合</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s9">⑨ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s10">⑩ 实验总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s6">① 跑出现象：MQ5 浓度在话题上流动</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s6">实操</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s1">② 问题引入与原理：一份数据，为什么要走话题</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s1">原理</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s4">③ QoS：传输合同 + 实验台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s4">原理 + 交互</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s7">④ 实验步骤：框架 → 代码 → 现象</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s7">源码 + 实操</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s8">⑤ 动手任务：改点新东西来验证</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s8">综合</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s9">⑥ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#s9">验证</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s10">⑦ 实验总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#s10">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -254,16 +251,13 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>Goal / Feedback / Result 三通道模型，以及藏在端点里的 5 条线；MFRC522 寻卡（REQA）→ 防冲突 → 读 UID 三步流程封装成动作服务器，带取消与进度反馈。</p>
       <div class="meta"><span class="tag">Action</span><span class="tag">Goal/Feedback</span><span class="tag">MFRC522</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-08-action/index.html#s6">① 先看现象：一步步跑通 RFID 读卡</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s1">② 为什么需要动作：等待不该是黑盒</a><span class="stars">⭐</span><a class="dur" href="exp-08-action/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s2">③ 核心原理：三通道各管什么</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-08-action/index.html#s2">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s3">④ 动画：一次完整 Action 生命周期</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-08-action/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s4">⑤ 专题：三回调与反馈状态机</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-08-action/index.html#s4">专题</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s5">⑥ 动作实验台：亲眼看三种结局</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-08-action/index.html#s5">交互</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s7">⑦ 代码精讲：三份源码逐行读懂</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s7">源码导读</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s8">⑧ 动手任务：把现象变成你自己的证据</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s8">综合</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s9">⑨ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-08-action/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s10">⑩ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-08-action/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s6">① 跑出现象：一步步跑通 RFID 读卡</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s6">实操</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s1">② 问题引入：刷卡等 30 秒，服务为什么不够</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s1">原理</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s2">③ 核心原理：五通道 · 时序 · 状态机</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-08-action/index.html#s2">原理详解</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s7">④ 实验步骤：源码位置 → 框架 → 关键代码</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s7">源码 + 实操</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s8">⑤ 动手任务：按操作验证实验目标</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s8">综合</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s9">⑥ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-08-action/index.html#s9">验证</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s10">⑦ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-08-action/index.html#s10">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -274,16 +268,13 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>从"数据串台"事故入手，讲清为什么要把一份数据打包成一条消息；.msg / .srv / .action 三种接口文件语法与 --- 分隔符，接口包的编译生成与跨语言复用。</p>
       <div class="meta"><span class="tag">.msg</span><span class="tag">.srv</span><span class="tag">接口包</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s1">① 问题引入：一次"数据串台"的误报事故</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s2">② 核心原理：三种接口文件结构</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s2">原理</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s3">③ 动画：接口文件如何变成可 import 的类</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s3">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s4">④ 专题：CMakeLists 与依赖声明</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s4">精讲</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s5">⑤ 交互：接口分类器</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s5">互动</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s6">⑥ 先看现象：编译接口包并自省</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s7">⑦ 实操 A：通览接口包，读懂 6 份契约</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s8">⑧ 实操 B：为新传感器定义接口（设计性任务）</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s9">⑨ 注意事项与验收清单</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s10">⑩ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s0">① 跑出现象：DHT11 温湿度节点跑起来</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s0">实操</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s1">② 问题引入：数据串台的误报事故</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s1">原理</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s2">③ 核心原理：结构 · 编译链路 · 选型</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s2">原理详解</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s6">④ 实操 A：通览 6 份真实契约</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s6">实操</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s8">⑤ 实操 B：为新传感器定义接口</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s8">设计任务</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s9">⑥ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s9">验证</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s10">⑦ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s10">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>

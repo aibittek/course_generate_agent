@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-13 · ROS2 分布式通讯 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#475569;--theme-deep:#334155;--theme-bg:#f1f5f9;--theme-bd:#cbd5e1}/* ===== 终端命令块 ===== */
 .termbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 10px}
 .termbar .tl{background:#0f172a;color:#fff;border-radius:999px;padding:3px 13px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em}
@@ -251,7 +251,7 @@ h3{scroll-margin-top:82px}
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1</span><b>export 后，本终端启动的节点都进域 5</b><span class="cs-where">终端 A · 发布方</span></div>
     <p class="cs-why">影响范围是<b>当前 shell 及其启动的所有子进程</b>——新开的终端不受影响。用官方 demo 的 <code>talker</code> 做发布方：</p>
-    <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">5</span>
+    <pre data-copy="cmd"><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">5</span>
 <span class="g">echo</span> $ROS_DOMAIN_ID          <span class="c"># 5</span>
 <span class="g">ros2</span> run demo_nodes_cpp talker   <span class="c"># 本终端启动的节点都进域 5</span></pre>
     <div class="io"><span class="dim">$ export ROS_DOMAIN_ID=5</span>
@@ -261,7 +261,7 @@ h3{scroll-margin-top:82px}
 <span class="ok">[INFO] [talker]: Publishing: 'Hello World: 1'</span>
 <span class="ok">[INFO] [talker]: Publishing: 'Hello World: 2'</span></div>
     <p class="cs-why">再开一个终端 B，同样 <code>export ROS_DOMAIN_ID=5</code> 后跑 <code>listener</code>，就能收到：</p>
-    <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">5</span>
+    <pre data-copy="cmd"><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">5</span>
 <span class="g">ros2</span> run demo_nodes_cpp listener   <span class="c"># 同域才能收</span></pre>
     <div class="io"><span class="dim">$ export ROS_DOMAIN_ID=5</span>
 <span class="dim">$ ros2 run demo_nodes_cpp listener</span>
@@ -273,7 +273,7 @@ h3{scroll-margin-top:82px}
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">2</span><b>前缀式注入，命令返回后变量表毫发无损</b><span class="cs-where">终端</span></div>
     <p class="cs-why">多人共用一台机器时必备——排查串台问题做 A/B 对照最干净。同一台机器上，让 <code>listener</code> 留在域 5，<code>talker</code> 用前缀式临时进域 6，立刻看不到数据：</p>
-    <pre><span class="g">ROS_DOMAIN_ID</span>=<span class="y">6</span> ros2 run demo_nodes_cpp talker
+    <pre data-copy="cmd"><span class="g">ROS_DOMAIN_ID</span>=<span class="y">6</span> ros2 run demo_nodes_cpp talker
 <span class="g">echo</span> $ROS_DOMAIN_ID          <span class="c"># 输出仍为空——环境没被改</span></pre>
     <div class="io"><span class="dim">$ ROS_DOMAIN_ID=6 ros2 run demo_nodes_cpp talker</span>
 <span class="dim">[INFO] [talker]: Publishing: 'Hello World: 1'</span>
@@ -286,7 +286,7 @@ h3{scroll-margin-top:82px}
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">3</span><b>写进镜像，开机自动生效</b><span class="cs-where">终端</span></div>
     <p class="cs-why">工控机/机器人出厂配置的标准做法；注意 <b>source 只影响之后新开的终端</b>：</p>
-    <pre><span class="g">echo</span> <span class="y">'export ROS_DOMAIN_ID=5'</span> &gt;&gt; ~/.bashrc
+    <pre data-copy="cmd"><span class="g">echo</span> <span class="y">'export ROS_DOMAIN_ID=5'</span> &gt;&gt; ~/.bashrc
 <span class="g">source</span> ~/.bashrc        <span class="c"># 只影响新开终端；老终端不会变</span></pre>
     <div class="io"><span class="dim">$ cat ~/.bashrc | tail -1</span>
 export ROS_DOMAIN_ID=5
@@ -314,7 +314,7 @@ export ROS_DOMAIN_ID=5
   <div class="termbar"><span class="tl">终端 1</span><b>域 42 发布端</b><span class="note">保持运行</span></div>
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">1</span><b>进域 42 并启动 talker</b><span class="cs-where">终端 1</span></div>
-    <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">42</span>
+    <pre data-copy="cmd"><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">42</span>
 <span class="g">ros2</span> run demo_nodes_cpp talker</pre>
     <div class="io"><span class="dim">$ export ROS_DOMAIN_ID=42</span>
 <span class="dim">$ ros2 run demo_nodes_cpp talker</span>
@@ -326,7 +326,7 @@ export ROS_DOMAIN_ID=5
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">2</span><b>同域 listener → 收到数据</b><span class="cs-where">终端 2</span></div>
     <p class="cs-why">域号相同 = 组播地址端口相同 → SPDP 命中 → SEDP 撮合 → 数据到达：</p>
-    <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">42</span>
+    <pre data-copy="cmd"><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">42</span>
 <span class="g">ros2</span> topic list               <span class="c"># 能看到 /chatter</span>
 <span class="g">ros2</span> run demo_nodes_cpp listener</pre>
     <div class="io"><span class="dim">$ export ROS_DOMAIN_ID=42</span>
@@ -344,7 +344,7 @@ export ROS_DOMAIN_ID=5
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">3</span><b>换域 99 → 对端话题消失</b><span class="cs-where">终端 3</span></div>
     <p class="cs-why">注意：列表<b>不是空的</b>——本机域内公共话题仍在，判断标准是有没有<b>对端节点的话题</b>：</p>
-    <pre><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">99</span>
+    <pre data-copy="cmd"><span class="g">export</span> ROS_DOMAIN_ID=<span class="y">99</span>
 <span class="g">ros2</span> topic list               <span class="c"># 只有本机公共话题</span>
 <span class="g">ros2</span> run demo_nodes_cpp listener   <span class="c"># 一直空，等不到数据</span></pre>
     <div class="io"><span class="dim">$ export ROS_DOMAIN_ID=99</span>
@@ -360,7 +360,7 @@ export ROS_DOMAIN_ID=5
   <div class="cmdstep">
     <div class="cs-hd"><span class="cs-no">4</span><b>三终端 unset → 串台现场重现</b><span class="cs-where">终端 3</span></div>
     <p class="cs-why">这正是事故复盘里发生的事——只要回到同一个域，别人的话题立刻出现在你眼前：</p>
-    <pre><span class="g">unset</span> ROS_DOMAIN_ID
+    <pre data-copy="cmd"><span class="g">unset</span> ROS_DOMAIN_ID
 <span class="g">ros2</span> topic list</pre>
     <div class="io"><span class="dim">$ unset ROS_DOMAIN_ID   # 终端1 也执行</span>
 <span class="dim">$ ros2 topic list</span>
@@ -434,12 +434,12 @@ var NET = {
   diffid: '<span class="warn">🚫 不通（隔离生效）</span>\nA 在 239.255.0.1:7400（域 0），B 在 239.255.0.6:7650（域 5）——\n组播地址和端口全都不同，发现报文在<b>网卡分流层</b>就被丢弃。\nros2 topic list 看不到对端话题，epdump/wireshark 也抓不到对端 SPDP。\n这正是"每台机器人独立域号"方案的原理。',
   fw: '<span class="bad">🚫 不通（防火墙拦组播）</span>\n域号一致但 UDP 组播被 ufw/iptables/交换机 IGMP 过滤丢弃。\n特征：ping 通、echo ROS_DOMAIN_ID 相同，topic list 却为空——"路是通的，频道被掐了"。\n排障：sudo ufw status → ufw allow 7400:8399/udp → 交换机开 IGMP Snooping 放行组播。',
   vm: '<span class="bad">🚫 不通（虚拟机 NAT）</span>\nNAT 模式下虚拟机收不到宿主机的组播帧：组播不跨 NAT 边界。\n特征：宿主机之间正常，一进虚拟机就"失联"。\n排障：VMware 改桥接模式（Bridge）/ VirtualBox 改桥接并勾选"混杂模式"，让虚拟机拿到同网段真实 IP。',
-  fixid: '<span class="ok">✅ 互通（修复成立）</span>\nB 重新 export ROS_DOMAIN_ID=0 后又回到同一组播地址。\n新节点发起 SPDP → A 应答 → 3 秒内 topic list 恢复。\n<pre>建议同时把域号写进镜像 ~/.bashrc，避免开机又回到各自为政。</pre>',
+  fixid: '<span class="ok">✅ 互通（修复成立）</span>\nB 重新 export ROS_DOMAIN_ID=0 后又回到同一组播地址。\n新节点发起 SPDP → A 应答 → 3 秒内 topic list 恢复。\n<pre data-copy="cmd">建议同时把域号写进镜像 ~/.bashrc，避免开机又回到各自为政。</pre>',
   server: '<span class="ok">✅ 通（单播发现接管）</span>\n组播不通时改走发现服务器：\n1. fastdds discovery --server-id 0 --ip-address 192.168.1.100 --port 11811\n2. 每个节点终端 export ROS_DISCOVERY_SERVER=192.168.1.100:11811\n所有注册改为对 11811 的单播，可跨子网、可过禁组播的云网络。\n注意：服务器是新单点，挂了则新节点无法加入（已建链的仍工作）。'
 };
 function diag(){ document.getElementById('out').innerHTML = NET[document.getElementById('sc').value]; }
 diag();
 </script>
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 </body>
 </html>

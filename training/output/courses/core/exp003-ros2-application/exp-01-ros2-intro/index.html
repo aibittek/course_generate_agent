@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-01 · ROS2 简介 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>
 :root{--theme:#d97706;--theme-deep:#b45309;--theme-bg:#fef3c7;--theme-bd:#fde68a}
 /* 01 问题引入 · 三场景纵向长图（全部展开、同时播放） */
@@ -532,7 +532,7 @@
       <rect x="80" y="343" width="28" height="28" rx="8" fill="#475569"/>
       <text x="94" y="362" text-anchor="middle" font-size="13.5" font-weight="700" fill="#ffffff">5</text>
       <text x="120" y="351" font-size="14" font-weight="700" fill="#cbd5e1">操作系统层</text>
-      <text x="120" y="373" font-size="11.5" fill="#cbd5e1">Ubuntu 22.04 · Linux / Windows / macOS · 网卡与网络</text>
+      <text x="120" y="373" font-size="11.5" fill="#cbd5e1">Ubuntu 22.04（本课程）· 内核 / 网络栈 / 网卡驱动</text>
 
       <!-- 右：三块分组 -->
       <rect x="556" y="54" width="172" height="130" rx="10" fill="none" stroke="#38bdf8" stroke-dasharray="6 5" opacity="0.75"/>
@@ -545,7 +545,7 @@
 
       <rect x="556" y="326" width="172" height="62" rx="10" fill="none" stroke="#94a3b8" stroke-dasharray="6 5" opacity="0.75"/>
       <text x="642" y="352" text-anchor="middle" font-size="12.5" font-weight="700" fill="#cbd5e1">操作系统与硬件</text>
-      <text x="642" y="372" text-anchor="middle" font-size="11" fill="#94a3b8">网卡 · 网络 · Ubuntu</text>
+      <text x="642" y="372" text-anchor="middle" font-size="11" fill="#94a3b8">网卡 · 网络 · 操作系统</text>
 
       <text x="380" y="410" text-anchor="middle" font-size="11.5" fill="#94a3b8">换语言只动第 2 层，换 DDS 实现只动第 4 层，上面的代码一个字不用改</text>
     </svg>
@@ -560,9 +560,10 @@
       <tr><td><b>2 客户端库层</b></td><td>每种语言一个母语窗口（rclpy / rclcpp），底下共用 rcl 这个语言无关内核</td><td>"同一份消息合同"动画（动画 1-2）讲的就是这层怎么把语言差异吃掉</td></tr>
       <tr><td><b>3 DDS 接口层（RMW）</b></td><td>画一条标准插座线：上层只认统一的发布 / 订阅 / 服务接口，不认插座下面插的是谁</td><td><code>RMW_IMPLEMENTATION</code> 一个环境变量换 DDS，见下方卡片</td></tr>
       <tr><td><b>4 DDS 实现层</b></td><td>真正干活的运输队：组播把节点互相喊出来，RTPS 点对点送消息</td><td>支柱①的落点，动画 1-1 右半边那张网；EXP-12 把整层拆开讲</td></tr>
-      <tr><td><b>5 操作系统层</b></td><td>Ubuntu 22.04 与网络设施，ROS2 只是跑在它上面的普通程序</td><td>本节下半的 source 三板斧，验证的就是这层环境通没通</td></tr>
+      <tr><td><b>5 操作系统层</b></td><td>真实操作系统与网络设施，ROS2 只是跑在它上面的普通程序。<b>本课程统一用 Ubuntu 22.04</b>；官方同时支持 Windows 10+ 与 macOS，但装法、路径、终端习惯都不一样</td><td>本节下半的 source 三板斧，验证的就是这层环境通没通</td></tr>
     </tbody>
   </table>
+  <div class="tip amber"><span class="lab">💻 我电脑是 Windows / macOS，能跟着做吗？</span>能，但<b>不建议在本课程的实验里直接用它们</b>。ROS2 的三个平台不是"三套等价安装"：Linux 是官方一等公民（二进制包齐全、教程最全、机器人硬件驱动原生支持）；Windows 需要额外的 Visual Studio 与包管理环境，很多示例（turtlesim、rqt、部分驱动）跑不顺；macOS 支持面更窄，社区基本靠源码编译。<b>本课程所有命令、路径（<code>~/ros2_ws</code>）、终端习惯都是按 Ubuntu 写的</b>，所以三条路任选：① 装 Ubuntu 22.04 双系统或虚拟机（<b>最省事，推荐</b>）；② Windows 用 WSL2 + Ubuntu 22.04（命令完全一致，图形界面需额外配置）；③ 直接用课程提供的实验箱。macOS 用户建议直接上虚拟机跑 Ubuntu。</div>
   <div class="tip tealb"><span class="lab">💡 一句话复述</span>五层从上到下：写代码只碰前两层，第 3 层是标准插座，第 4 层是运输队，最底下是操作系统。<b>换语言动第 2 层，换 DDS 实现动第 4 层，其余层原封不动。</b>说得出这句话，这张图就算看懂了。</div>
 
   <h3>设计特点：三大设计支柱各站在哪一层</h3>
@@ -581,7 +582,7 @@
     <div class="kcard"><div class="kd">生命周期管理</div><div class="kt">Managed Node 四状态</div><p>Unconfigured → Inactive → Active → Finalized：节点可"待机而不退出"，故障后原地恢复。</p></div>
   </div>
   <h3>环境验证三板斧</h3>
-  <pre><span class="c"># ① 确认发行版（预期输出 humble）</span>
+  <pre data-copy="cmd"><span class="c"># ① 确认发行版（预期输出 humble）</span>
 <span class="g">echo</span> $ROS_DISTRO
 <span class="y">humble</span>
 
@@ -593,7 +594,7 @@
 <span class="c"># ... verbs: action bag interface launch node param pkg run service topic ...</span>
 <span class="c">#            ↑ 八大动词组，EXP-02 逐一拆解</span></pre>
   <div class="tip tealb"><span class="lab"> turtlesim 冒烟测试（可选 · 60 秒）</span>需要图形界面：设备本地桌面直接跑；远程用 <b>VNC</b> 或 <b>MobaXterm（X11 转发）</b>，先敲 <code>echo $DISPLAY</code> 确认非空。下面三条命令按序复制执行：</div>
-  <pre><span class="c"># ① 装包（只需一次）</span>
+  <pre data-copy="cmd"><span class="c"># ① 装包（只需一次）</span>
 <span class="g">sudo</span> apt install ros-humble-turtlesim
 
 <span class="c"># ② 启动海龟窗口，保持开着（拆解见下面的讲解卡）</span>
@@ -625,7 +626,7 @@
     <div class="arr"></div>
     <div class="step"><span class="n">4</span>后台发生的事：DDS 发现 → 节点创建 → 在 /chatter 注册 Publisher → 定时器驱动发消息</div>
   </div>
-  <pre><span class="c"># ① 首次先装官方示例包（已装跳过；缺它必报 package not found）</span>
+  <pre data-copy="cmd"><span class="c"># ① 首次先装官方示例包（已装跳过；缺它必报 package not found）</span>
 <span class="g">sudo</span> apt install ros-humble-demo-nodes-cpp
 <span class="c"># 核对: ros2 pkg executables demo_nodes_cpp  →  应列出 talker / listener</span>
 
@@ -649,7 +650,7 @@
     <div class="arr"></div>
     <div class="step"><span class="n">3</span>终端 C 四连自省：node list → topic list → topic info → topic echo / hz</div>
   </div>
-  <pre><span class="c"># 终端 C：以第三方身份俯瞰整个系统</span>
+  <pre data-copy="cmd"><span class="c"># 终端 C：以第三方身份俯瞰整个系统</span>
 <span class="g">ros2</span> node list
 <span class="c"># /listener  /talker</span>
 <span class="g">ros2</span> topic list
@@ -672,7 +673,7 @@
   </div>
 
   <h3 style="margin:24px 0 8px;font-size:16px">📤 talker.cpp —— 每秒说一句话</h3>
-  <pre><span class="c">#include "rclcpp/rclcpp.hpp"          // ROS2 C++ 客户端库
+  <pre data-copy="cmd"><span class="c">#include "rclcpp/rclcpp.hpp"          // ROS2 C++ 客户端库
 #include "std_msgs/msg/string.hpp"      // 消息类型：字符串</span>
 
 <span class="g">class</span> Talker : <span class="g">public</span> rclcpp::Node   <span class="c">// ① 任何节点都继承 Node</span>
@@ -698,7 +699,7 @@
 };</pre>
 
   <h3 style="margin:24px 0 8px;font-size:16px">📥 listener.cpp —— 收到什么就打印什么</h3>
-  <pre><span class="c">#include "rclcpp/rclcpp.hpp"
+  <pre data-copy="cmd"><span class="c">#include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"</span>
 
 <span class="g">class</span> Listener : <span class="g">public</span> rclcpp::Node   <span class="c">// ① 同样继承 Node</span>
@@ -783,6 +784,6 @@
 </div>
 
 
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 </body>
 </html>

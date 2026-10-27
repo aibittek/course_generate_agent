@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-11 · 时间 API — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#ca8a04;--theme-deep:#a16207;--theme-bg:#fef9c3;--theme-bd:#fde68a}
 /* ===== 命令分步卡（与 EXP-05/06 同款） ===== */
 .termbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 10px}
@@ -227,7 +227,7 @@
 <div class="tm-grid">
   <div class="tm-face">
     <div class="tf-hd">🧮 代码里 · rclpy.time.Time（API 类型）</div>
-    <pre>now = clock.now()
+    <pre data-copy="cmd">now = clock.now()
 later = now + Duration(seconds=5.0)  <span style="color:#0f766e"># Time ± Duration</span>
 dt = t2 - t1                          <span style="color:#0f766e"># → 得 Duration</span>
 now &gt; past                            <span style="color:#0f766e"># 可直接比较</span></pre>
@@ -241,7 +241,7 @@ now &gt; past                            <span style="color:#0f766e"># 可直接
   </div>
   <div class="tm-face">
     <div class="tf-hd">📦 消息里 · builtin_interfaces/Time（传输类型）</div>
-    <pre>stamp:
+    <pre data-copy="cmd">stamp:
   sec: 1786615681     <span style="color:#b45309"># int32 · Unix 秒</span>
   nanosec: 44442152  <span style="color:#b45309"># uint32 · 纳秒</span></pre>
     <p>像个<b>快递单</b>：只有两个字段，紧凑、可序列化，嵌在 Header.stamp 里跨机传输——但自己不会算术。</p>
@@ -270,7 +270,7 @@ now &gt; past                            <span style="color:#0f766e"># 可直接
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">1</span><b>启动节点</b><span class="cs-where">终端 A</span></div>
   <p class="cs-why">先进入源码目录（与实验 6 的 <code>common.py</code> 同目录，才能直接 import 它读 MQ5），再启动节点——1Hz 采样定时器 + 5s 摘要定时器同时开跑，日志里直接打印 stamp：</p>
-  <pre>cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
+  <pre data-copy="cmd">cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
 python3 time_demo_node.py</pre>
   <div class="io"><span class="dim">$ python3 time_demo_node.py</span>
 [INFO] [time_demo_node]: 时间演示节点已启动
@@ -284,7 +284,7 @@ python3 time_demo_node.py</pre>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">2</span><b>echo：看消息里的时间戳</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">stamp 的 sec 一格一格 +1——这就是"时间在数据里流动"的样子：</p>
-  <pre>ros2 topic echo /sensor_data</pre>
+  <pre data-copy="cmd">ros2 topic echo /sensor_data</pre>
   <div class="io"><span class="dim">$ ros2 topic echo /sensor_data</span>
 stamp:
   sec: 1786615681
@@ -303,7 +303,7 @@ frame_id: sensor_frame
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">3</span><b>hz：验证定时器节拍</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">平均频率应贴近 1.000 —— 偏差大说明回调太重拖了后腿（03 节原理）：</p>
-  <pre>ros2 topic hz /sensor_data</pre>
+  <pre data-copy="cmd">ros2 topic hz /sensor_data</pre>
   <div class="io"><span class="dim">$ ros2 topic hz /sensor_data</span>
 average rate: 1.000
     min: 0.997s max: 1.002s std dev: 0.00187s window: 3</div>
@@ -314,7 +314,7 @@ average rate: 1.000
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">4</span><b>delay：测端到端延迟</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">delay = 收到时刻 − stamp，反映通信栈实时性能；出现<b>负值</b>先怀疑时钟不同步：</p>
-  <pre>ros2 topic delay /sensor_data</pre>
+  <pre data-copy="cmd">ros2 topic delay /sensor_data</pre>
   <div class="io"><span class="dim">$ ros2 topic delay /sensor_data</span>
 0.3 ms
 <span class="g"># 局域网正常水平；负值 = 发收两端钟差（先 NTP 对时再查代码）</span></div>
@@ -375,7 +375,7 @@ print(now &gt; past)                      <span class="y"># Time 之间可直接
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">1</span><b>true 开着、没人发 /clock</b><span class="cs-where">终端 A</span></div>
   <p class="cs-why">复现 02 节演示器预演过的场景——节点启动后<b>一片寂静</b>：</p>
-  <pre>cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
+  <pre data-copy="cmd">cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
 python3 time_demo_node.py --ros-args -p use_sim_time:=true</pre>
   <div class="io"><span class="dim">$ python3 time_demo_node.py --ros-args -p use_sim_time:=true</span>
 [INFO] [time_demo_node]: 时间演示节点已启动
@@ -387,7 +387,7 @@ python3 time_demo_node.py --ros-args -p use_sim_time:=true</pre>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">2</span><b>发布 /clock，节点瞬间复活</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">从仿真秒 100 开始，每秒推进 1 仿真秒——观察终端 A 的 stamp 被"接管"：</p>
-  <pre>ros2 topic pub /clock rosgraph_msgs/msg/Clock "{clock: {sec: 100, nanosec: 0}}" --rate 1</pre>
+  <pre data-copy="cmd">ros2 topic pub /clock rosgraph_msgs/msg/Clock "{clock: {sec: 100, nanosec: 0}}" --rate 1</pre>
   <div class="io"><span class="dim"># 终端 A 立刻活跃起来：</span>
 [INFO] 采样 #0001 | stamp: 100.000000000 | frame_id: sensor_frame
 [INFO] 采样 #0002 | stamp: 101.000000000 | frame_id: sensor_frame
@@ -557,7 +557,7 @@ cdLine('[INFO] [time_demo_node]: 节点启动 · use_sim_time=false');
 cdRender();
 setInterval(cdTick,900);
 </script>
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 
 <div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
 <script>

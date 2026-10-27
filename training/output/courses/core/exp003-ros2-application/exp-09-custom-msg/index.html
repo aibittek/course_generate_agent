@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-09 · 自定义接口消息 · 温湿度传感器 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#4f46e5;--theme-deep:#4338ca;--theme-bg:#e0e7ff;--theme-bd:#c7d2fe}
 /* ===== 命令分步卡（与 EXP-05/06 同款） ===== */
 .termbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 10px}
@@ -48,6 +48,21 @@
 .case-tl .ev .t{flex:none;font-family:var(--font-mono);font-size:11.5px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:1px 8px;margin-top:2px}
 .case-tl .ev b{color:#7c2d12}
 .case .concl{margin:12px 0 0;font-size:13.5px;color:#7c2d12;line-height:1.8;border-top:1px dashed #fcd34d;padding-top:10px}
+/* ===== 步骤内嵌示意图/截图（响应式：窄屏不溢出）===== */
+.shot{margin:12px 0 0;cursor:zoom-in}
+.shot img,.shot svg{display:block;margin:0 auto;
+  width:auto;max-width:100%;
+  max-height:min(340px,46vh);
+  height:auto}
+.shot.wide{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.shot.wide img,.shot.wide svg{width:100%;max-width:100%;max-height:none;height:auto}
+.shot figcaption{font-size:12.5px;color:#64748b;line-height:1.65;margin-top:8px;text-align:center}
+@media (max-width:720px){
+  .shot img,.shot svg{max-height:min(260px,38vh)}
+  .shot.wide img,.shot.wide svg{width:auto;min-width:520px;max-width:none}
+  .shot figcaption{font-size:12px;text-align:left}
+  .shot.wide::after{content:'← 左右滑动查看完整内容 →';display:block;font-size:11px;color:#94a3b8;text-align:center;margin-top:4px}
+}
 </style>
 </head>
 <body>
@@ -59,16 +74,13 @@
 <aside class="side">
   <h4>本页目录</h4>
   <a href="#goal">★ 课程目标</a>
-  <a href="#s1" class="now">01 问题引入：一次数据串台事故复盘</a>
-  <a href="#s2">02 核心原理：结构与场景选型</a>
-  <a href="#s3">03 动画：接口文件如何变成可 import 的类</a>
-  <a href="#s4">04 专题：CMakeLists 与依赖声明</a>
-  <a href="#s5">05 交互：该选哪种结构</a>
-  <a href="#s6">06 先看现象：编译并自省接口</a>
-  <a href="#s7">07 实操 A：通览 6 份真实契约</a>
-  <a href="#s8">08 实操 B：设计一份新接口</a>
-  <a href="#s9">09 注意事项与验收清单</a>
-  <a href="#s10">10 本课总结与思考题</a>
+  <a href="#s0" class="now">01 跑出现象：DHT11 温湿度节点跑起来</a>
+  <a href="#s1">02 问题引入：一次数据串台事故复盘</a>
+  <a href="#s2">03 核心原理：结构与场景选型</a>
+  <a href="#s6">04 实操 A：通览 6 份真实契约</a>
+  <a href="#s8">05 实操 B：设计一份新接口</a>
+  <a href="#s9">06 注意事项与验收清单</a>
+  <a href="#s10">07 本课总结与思考题</a>
   <h4>CH2 · 通信机制</h4>
   <a href="../exp-05-node/index.html">EXP-05 节点</a>
   <a href="../exp-06-topic/index.html">EXP-06 话题</a>
@@ -100,8 +112,137 @@
 本课是<b>EXP-06~08 的收口</b>：把散落在三个实验里的自定义接口集中再看一遍。同时为 EXP-17 launch 传参打基础。</div>
 </section>
 
+<section class="blk" id="s0">
+<h2><span class="no">01</span>跑出现象：一个真实的温湿度节点跑起来是什么样</h2>
+<p class="lead">先别急着背接口语法——<b>先看一个真跑起来的自定义消息案例</b>。DHT11 温湿度传感器正好是"一条消息装两个字段"的典型：温度和湿度<b>必须成对出现</b>，缺一个就没有意义。跑通它，你就知道自定义接口到底解决了什么问题。</p>
+
+<div class="tip tealb">🌡️ <b>这个节点你已经有了</b>：<code class="inline">dht11_sensor_node.py</code> 就在 <code class="inline">ros_sensor</code> 包里，<b>不需要你写一行代码</b>。它每 2 秒读一次 DHT11，把温度和湿度打包成一条 <code class="inline">TemperatureHumidity</code> 消息发到 <code class="inline">/temperature_humidity</code> 话题上。下面我们把它跑起来，再从三个角度观察它。</div>
+
+<div class="termbar"><span class="tl">终端 A</span><b>启动温湿度节点</b><span class="note">（保持运行，别关）</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">1</span><b>先把接口包和节点包都编译好</b><span class="cs-where">终端 A</span></div>
+  <p class="cs-why"><code>dht11_sensor_node</code> 要用 <code>TemperatureHumidity</code> 这个消息类，所以<b>接口包必须一起编</b>——只编节点包会因为找不到消息类型而失败。</p>
+  <pre data-copy="cmd"><span class="c"># ① 进工作空间，并加载 ROS2 本体</span>
+cd ~/ros2_ws
+source /opt/ros/humble/setup.bash
+<span class="c"># ② 接口包 + 节点包一起编（顺序由 colcon 按依赖自动排）</span>
+colcon build --packages-select ros_sensor_interfaces ros_sensor
+<span class="c"># ③ 注册进当前终端</span>
+source install/setup.bash</pre>
+  <p class="cs-see">✔ 看到 <code>Finished &lt;&lt;&lt; ros_sensor_interfaces</code> 和 <code>Finished &lt;&lt;&lt; ros_sensor</code> 两行都出现，才算编全。</p>
+</div>
+
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">2</span><b>启动节点，看温湿度每 2 秒滚动</b><span class="cs-where">终端 A</span></div>
+  <p class="cs-why">这条命令背后就是那个 65 行的节点：读 DHT11 → 填两个字段 → 发布 → 打日志。</p>
+
+  <div class="tip tealb" style="margin-bottom:12px">📦 <b>关于 <code class="inline">dht11_native</code>（读 DHT11 的二进制模块）</b><br>
+它不是源码，而是<b>预编译好的 aarch64 C 扩展</b>，已经装在 <code class="inline">~/ros2_ws/install/dht11_native/</code> 下。<b>你不需要编译它</b>，但它必须在 <code class="inline">PYTHONPATH</code> 里才 import 得到——这就是步骤 1 里 <code class="inline">source install/setup.bash</code> 不能省的原因。<br>
+这也是为什么下面那条启动命令要 source <b>三套环境</b>：ROS2 本体提供 <code class="inline">ros2</code> 命令、工作空间提供 <code class="inline">ros_sensor</code> 与 <code class="inline">dht11_native</code>、venv 提供节点实际用的 Python 解释器。</div>
+
+<div class="tip amber" style="margin-bottom:12px">⚠️ <b>DHT11 必须用 root 跑（临时方案）</b><br>
+  DHT11 驱动是<b>直接读写 GPIO 寄存器</b>实现的（走 <code>/dev/mem</code>，走物理地址 <code>0x27320000</code>），不是标准的内核驱动，所以<b>必须有 root 权限</b>。<br>
+  但直接把 <code>ros2 run</code> 前面加 <code>sudo</code> 会失败——<code>sudo</code> 会清空 <code>PATH</code>、<code>PYTHONPATH</code> 和 venv，导致 <code>ros2: command not found</code> 或 <code>PackageNotFoundError</code>。<br>
+  <b>所以这里的做法是：用 <code>sudo</code> 拉起一个 root 的 bash，在它内部把三套环境重新 source 一遍，再启动节点。</b>下面每条 <code>source</code> 都标了作用。</div>
+
+  <p style="margin:14px 0 6px;font-weight:700;font-size:13.5px;color:var(--theme-deep)">粘贴这一整段（5 行要一起复制，别拆开）</p>
+  <pre data-copy="cmd"><span class="c"># 用 sudo 起一个 root 的 bash，在里面依次加载 3 套环境，最后启动节点</span>
+<span class="c"># 行尾的 \ 是续行符：这 5 行在 shell 看来是"一整条命令"，必须整体复制</span>
+<span class="c"># ① source /opt/ros/humble/setup.bash → ROS2 本体环境（提供 ros2 命令与 rclpy）</span>
+<span class="c"># ② source ~/ros2_ws/install/setup.bash → 本工作空间（提供 ros_sensor 包与消息类）</span>
+<span class="c"># ③ source ~/ros2_venv/bin/activate → Python 虚拟环境（节点真正用的解释器）</span>
+sudo -E bash -c 'source /opt/ros/humble/setup.bash; \
+source /home/iflytek/ros2_ws/install/setup.bash; \
+source /home/iflytek/ros2_venv/bin/activate; \
+ros2 run ros_sensor dht11_sensor_node'</pre>
+
+  <div class="tip tealb" style="margin-top:12px">🧪 <b>为什么这是"临时方案"</b><br>
+  这条命令能用，但它有三个明显的短板，只适合<b>课堂实验临时跑一次</b>：<br>
+  · <b>每次都要敲这么长</b>，而且路径写死了 <code>/home/iflytek/</code>，换台机器或换个用户就不对了；<br>
+  · <b>整个节点都在 root 下运行</b>——ROS2 网络、日志文件、工作空间缓存都会变成 root 所有，之后普通用户再跑别的节点可能报权限错；<br>
+  · <b>治不了根</b>：真正的解决方式是给 DHT11 换一个不需要 <code>/dev/mem</code> 的驱动（比如走 gpiod + 内核定时），或者给这个可执行文件单独配 <code>setcap</code>/udev 规则。这些超出本课范围。<br>
+  <b>所以：实验课用这条命令把现象跑出来就行；工程上别这么干。</b></div>
+
+  <div class="io"><span class="dim">$ sudo -E bash -c 'source ... ; ros2 run ros_sensor dht11_sensor_node'</span>
+<span class="g">[INFO]</span> [dht11_sensor_node]: DHT11 温湿度节点启动：周期=2.0s
+<span class="g">[INFO]</span> [dht11_sensor_node]: 温度=25.3°C 湿度=61.0%
+<span class="g">[INFO]</span> [dht11_sensor_node]: 温度=25.4°C 湿度=60.8%
+<span class="g">[INFO]</span> [dht11_sensor_node]: 温度=25.3°C 湿度=61.2%
+<span class="dim">…每 2 秒一行，持续滚动</span></div>
+  <p class="cs-see">✔ 关键观察：<b>温度和湿度永远打印在同一行</b>。它们来自同一次采样，是同一条消息里的两个字段——这就是"原子性"。停止请按 <code>Ctrl+C</code>。</p>
+  <figure class="shot wide" onclick="lbShow(this)">
+    <svg viewBox="0 0 700 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="示意：终端里温度与湿度成对打印，一条消息包含两个字段">
+      <rect width="700" height="210" rx="10" fill="#0b0f17"/>
+      <rect width="700" height="30" rx="10" fill="#1e293b"/>
+      <circle cx="20" cy="15" r="5" fill="#ef4444"/><circle cx="38" cy="15" r="5" fill="#fbbf24"/><circle cx="56" cy="15" r="5" fill="#22c55e"/>
+      <text x="350" y="20" text-anchor="middle" font-size="12" fill="#94a3b8" font-family="monospace">终端 A — dht11_sensor_node</text>
+      <text x="20" y="58" font-size="12.5" fill="#64748b" font-family="monospace">$ ros2 run ros_sensor dht11_sensor_node</text>
+      <text x="20" y="84" font-size="12.5" fill="#4ade80" font-family="monospace">[INFO] DHT11 温湿度节点启动：周期=2.0s</text>
+      <text x="20" y="112" font-size="12.5" fill="#4ade80" font-family="monospace">[INFO] 温度=25.3°C</text>
+      <text x="182" y="112" font-size="12.5" fill="#fbbf24" font-family="monospace">湿度=61.0%</text>
+      <rect x="176" y="98" width="112" height="22" rx="4" fill="none" stroke="#fbbf24" stroke-dasharray="4 3"/>
+      <text x="298" y="113" font-size="11" fill="#fbbf24">← 同一条消息的两个字段</text>
+      <text x="20" y="140" font-size="12.5" fill="#4ade80" font-family="monospace">[INFO] 温度=25.4°C</text>
+      <text x="182" y="140" font-size="12.5" fill="#fbbf24" font-family="monospace">湿度=60.8%</text>
+      <text x="20" y="168" font-size="12.5" fill="#4ade80" font-family="monospace">[INFO] 温度=25.3°C</text>
+      <text x="182" y="168" font-size="12.5" fill="#fbbf24" font-family="monospace">湿度=61.2%</text>
+      <text x="298" y="168" font-size="11" fill="#64748b">…每 2 秒一行</text>
+      <text x="20" y="196" font-size="11.5" fill="#94a3b8" font-family="monospace">TemperatureHumidity { temperature: 25.3, humidity: 61.0 }  ← 一条消息</text>
+    </svg>
+    <figcaption>示意｜温湿度<b>成对打印</b>：每一行都是一次完整采样。<code class="inline">TemperatureHumidity</code> 把两个字段装进同一条消息，订阅端收到的一定是同一时刻的配对值——不会出现"温度是这一次、湿度是上一次"的错配。</figcaption>
+  </figure>
+</div>
+
+<div class="termbar"><span class="tl">终端 B</span><b>换个角度：从话题外部偷看这条消息</b><span class="note">（终端 A 保持运行）</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">3</span><b>看话题上到底流着什么结构</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">这是理解自定义消息最直观的一步——<b>直接看原始消息长什么样</b>。</p>
+  <pre data-copy="cmd"><span class="c"># 新终端开场：进目录 + source</span>
+cd ~/ros2_ws
+source install/setup.bash
+<span class="c"># 看话题列表（应该能找到 /temperature_humidity）</span>
+ros2 topic list
+<span class="c"># 看这条话题用的什么消息类型</span>
+ros2 topic info /temperature_humidity
+<span class="c"># 直接打印消息内容（Ctrl+C 停止）</span>
+ros2 topic echo /temperature_humidity</pre>
+  <div class="io"><span class="dim">$ ros2 topic info /temperature_humidity</span>
+Type: ros_sensor_interfaces/msg/TemperatureHumidity
+Publisher count: <span class="w">1</span>
+Subscription count: <span class="w">0</span>
+
+<span class="dim">$ ros2 topic echo /temperature_humidity</span>
+temperature: <span class="y">25.3</span>
+humidity: <span class="y">61.0</span>
+---
+temperature: <span class="y">25.4</span>
+humidity: <span class="y">60.8</span>
+---</div>
+  <p class="cs-see">✔ <b>注意 <code>---</code> 分隔符</b>：上面这两个字段属于<b>同一条消息</b>，它们之间没有分隔线；分隔线是消息与消息之间的边界。这跟 <code>.msg</code> 文件里"零个分隔符"是同一件事。</p>
+</div>
+
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">4</span><b>看这个消息类是怎么定义出来的</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">话题上那个结构不是凭空来的，它来自一个只有两行的文本文件。<code>interface show</code> 打印的就是那个文件的镜像。</p>
+  <pre data-copy="cmd"><span class="c"># 查看消息定义（就是 .msg 文件的内容）</span>
+ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity</pre>
+  <div class="io"><span class="dim">$ ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity</span>
+<span class="y"># 温湿度传感器数据</span>
+float32 temperature   <span class="dim"># 温度(摄氏度)</span>
+float32 humidity      <span class="dim"># 湿度(%)</span></div>
+  <p class="cs-see">✔ 对照一下：<b>两行定义 → 编译成消息类 → 话题上就能 echo 出结构化的两个字段</b>。这条链路就是本课的全部主题。</p>
+</div>
+
+<div class="tip amber">⚠️ <b>手上没有 DHT11 模块怎么办？</b>终端 A 会跑不起来或报 <code class="inline">读取 DHT11 失败</code>（<code class="inline">dht11_native</code> 是 aarch64 的 C 扩展，只在实验箱上能用）。<b>不影响理解本课</b>——真正的核心是"消息结构"，你可以跳过硬件的部分，直接从步骤 3 开始：手动往同一条话题上发一条消息，观察它的结构：<br>
+<code class="inline">ros2 topic pub /temperature_humidity ros_sensor_interfaces/msg/TemperatureHumidity "{temperature: 25.3, humidity: 61.0}" -r 1</code><br>
+终端 B 的 <code class="inline">echo</code> 与 <code class="inline">interface show</code> 照常可用。</div>
+
+<div class="tip tealb">🎯 <b>跑完这一步，你已经看到三件事</b>：① 一条消息可以装<b>多个字段</b>（温度+湿度）；② 这两个字段<b>永远配对</b>，不会错位；③ 这个结构来自一个<b>两行文本文件</b>。接下来要回答的就是：为什么不直接用 <code class="inline">Float32</code>？那个两行文件怎么变成代码？
+</div>
+</section>
+
 <section class="blk" id="s1">
-<h2><span class="no">01</span>问题引入：一次"数据串台"的误报事故<span class="fs">聚焦问题 · 激活旧知</span></h2>
+<h2><span class="no">02</span>问题引入：一次"数据串台"的误报事故<span class="fs">聚焦问题 · 激活旧知</span></h2>
 
 <p class="lead">在学新东西之前，先把前四章你自己亲手敲过的代码摆到一张桌子上，看它们各自搬运的"<b>数据形状</b>"是什么。想清楚这一步，你就明白自定义接口为什么非有不可。</p>
 
@@ -119,7 +260,7 @@
   <div class="case-hd">🔥 事故复盘：巡检小车的"温湿度超标报警"，为什么报了一个不存在的状态</div>
   <p>需求很朴素：巡检测到 <b>温度 &gt; 35℃ 且 湿度 &gt; 80%</b> 就上报"环境异常"。</p>
   <p>传感器是 DHT11，<b>一次采样同时给出温度和湿度两个值</b>。既然 EXP-06 用 <code>Float32</code> 发 MQ5 浓度没问题，最"自然"的做法就是开两个话题各发各的：</p>
-  <pre>/dht11/temperature   std_msgs/Float32   → 36.2
+  <pre data-copy="cmd">/dht11/temperature   std_msgs/Float32   → 36.2
 /dht11/humidity      std_msgs/Float32   → 82.0</pre>
   <p>代码跑通了，日志在刷，订阅端 print 出来的两条数值也都在——<b>看起来一切正常</b>。然后现场出现了这样的两次采样：</p>
   <div class="case-tl">
@@ -235,7 +376,7 @@
 </section>
 
 <section class="blk" id="s2">
-<h2><span class="no">02</span>核心原理：三种接口文件结构<span class="fs">示证新知</span></h2>
+<h2><span class="no">03</span>核心原理：三种接口文件结构<span class="fs">示证新知</span></h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">.msg · 零个分隔符</div><div class="kt">单段字段表</div><p>每行 <code>类型 字段名 # 注释</code>。TemperatureHumidity：float32 temperature / float32 humidity——一对多持续流的数据载体。</p></div>
   <div class="kcard"><div class="kd">.srv · 一个 ---</div><div class="kt">请求 | 响应</div><p>VerifyFingerprint：请求段<b>空</b>（直接 --- 开头）| 响应 bool success + int32 user_id + string message。可空请求是合法的。</p></div>
@@ -386,10 +527,9 @@
   <tr><td><code>.action</code></td><td>2 个 <code>---</code></td><td>RfidScan.Goal / .Result / .Feedback</td><td>EXP-08 RFID 读卡</td></tr>
 </table>
 <div class="tip amber"><span class="lab">字段类型用定长</span>写 <code>int32</code> 而不是 C 风格 <code>int</code>——跨语言/跨平台必须宽度确定。另外传感器消息常加 <code>bool valid</code>：MAX30102 未接触皮肤时心率恒为 0，没有有效位的话，0 是"读数"还是"没测"根本无法区分。</div>
-</section>
 
-<section class="blk" id="s3">
-<h2><span class="no">03</span>动画：接口文件如何变成可 import 的类<span class="fs">示证新知</span></h2>
+<h3 style="font-size:16px;color:var(--text-primary);margin:28px 0 0">那这行文本是怎么变成可 import 的类的？</h3>
+<p>你在 01 节 echo 出来的 <code class="inline">TemperatureHumidity</code> 结构不是手写的——它由那个两行的 <code class="inline">.msg</code> 文件经编译自动生成。这条链路走四步：</p>
 <div class="anim-box">
 <svg viewBox="0 0 760 235" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
   <g>
@@ -427,11 +567,10 @@
 </svg>
 </div>
 <p class="anim-cap">契约（文本）→ 编译（rosidl）→ 生成物（双语言类）→ 消费（import）；任何一环断掉都会在最后一格报找不到模块。</p>
-</section>
 
-<section class="blk" id="s4">
-<h2><span class="no">04</span>专题：CMakeLists 与依赖声明<span class="fs">示证新知</span></h2>
-<pre><span class="c"># 接口包（ament_cmake）CMakeLists.txt 核心段</span>
+<h3 style="font-size:16px;color:var(--text-primary);margin:28px 0 0">接口包要配什么：CMakeLists 与依赖声明</h3>
+<p>上面那步"编译"不是自动发生的——你得在接口包里点名告诉 rosidl 要编哪些文件、基础类型去哪找。这就是 <code class="inline">CMakeLists.txt</code> 那几行的作用：</p>
+<pre data-copy="cmd"><span class="c"># 接口包（ament_cmake）CMakeLists.txt 核心段</span>
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/VerifyFingerprint.srv"
   "srv/TriggerRelay.srv"
@@ -449,10 +588,9 @@ ament_package()</pre>
   <tr><td>package.xml（节点包）</td><td><code>&lt;depend&gt;ros_sensor_interfaces&lt;/depend&gt;</code></td><td>运行期 import 的入场券——EXP-04 依赖标签的实战</td></tr>
 </table>
 <div class="tip tealb"><span class="lab">为什么要独立接口包</span>接口是契约、节点是实现：分离后 C++ 与 Python 节点共享同一类型；改实现不碰契约；接口版本可单独演进。若写死在节点包里，别的包想用这个类型就不得不<b>依赖整个实现包</b>——循环依赖的温床。</div>
-</section>
 
-<section class="blk" id="s5">
-<h2><span class="no">05</span>交互：接口分类器<span class="fs">应用新知</span></h2>
+<h3 style="font-size:16px;color:var(--text-primary);margin:28px 0 0">动手验证：这段需求该用哪种接口？</h3>
+<p>原理讲完了，用下面这个小工具自测一下——选一个需求，看它该配哪种接口结构、为什么。</p>
 <div class="ix-panel">
   <div class="ix-title">Interface Router · 这段需求该用哪种接口</div>
   <div class="ctl-row">
@@ -471,27 +609,15 @@ ament_package()</pre>
 </section>
 
 <section class="blk" id="s6">
-<h2><span class="no">06</span>先看现象：编译接口包并自省<span class="fs">应用新知</span></h2>
-<p>按下面顺序操作（每张卡都给出「为什么敲它」和「预期终端输出」）。所有输出以实验箱实测为准。</p>
+<h2><span class="no">04</span>实操 A：通览全部 6 份契约，逐份读懂<span class="fs">应用新知</span></h2>
+<p>01 节你只看了一条 <code>TemperatureHumidity</code>，但接口包里一共有 <b>3 类 6 份定义</b>——它们正好对应 EXP-06~08 用过的通信方式。这一节把 6 份陆续读一遍。</p>
 
-<div class="termbar"><span class="tl">终端 0</span><b>编译接口包并加载环境</b><span class="note">一次终端里做完两件事</span></div>
+<div class="termbar"><span class="tl">终端 B</span><b>自省四连：确认契约已注册进系统</b><span class="note">（01 节编译好的环境继续用）</span></div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">1</span><b>编译 + source</b><span class="cs-where">终端 0</span></div>
-  <p class="cs-why">接口是纯定义，必须先经 rosidl 编译成消息类、再 source 进环境，后面所有 <code>ros2 interface</code> 命令与节点 <code>import</code> 才找得到它：</p>
-  <pre>cd ~/ros2_ws
-colcon build --symlink-install --packages-select ros_sensor_interfaces
-source install/setup.bash</pre>
-  <div class="io"><span class="dim">$ colcon build --symlink-install --packages-select ros_sensor_interfaces</span>
-Starting &gt;&gt;&gt; ros_sensor_interfaces
-Finished &lt;&lt;&lt; ros_sensor_interfaces [<span class="g">X.XXs</span>]
-<span class="dim">$ source install/setup.bash   # 不 source 则下一步 list 里看不到</span></div>
-</div>
-
-<div class="termbar"><span class="tl">终端 1</span><b>自省四连：确认契约已注册进系统</b><span class="note">新终端记得 source</span></div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">2</span><b>列出全部 6 个自定义接口</b><span class="cs-where">终端 1</span></div>
+  <div class="cs-hd"><span class="cs-no">1</span><b>列出全部 6 个自定义接口</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">这条命令相当于"查户口"——6 个接口全在，说明编译、注册两环都没掉：</p>
-  <pre>ros2 interface list | grep ros_sensor_interfaces</pre>
+  <pre data-copy="cmd"><span class="c"># 列出本接口包的所有接口，按 msg / srv / action 三类</span>
+ros2 interface list | grep ros_sensor_interfaces</pre>
   <div class="io"><span class="dim">$ ros2 interface list | grep ros_sensor_interfaces</span>
 msg/HeartRateSpO2
 msg/PhotoState
@@ -502,9 +628,9 @@ action/RfidScan
 <span class="g"># 3 msg + 2 srv + 1 action = 6 个，一个不少</span></div>
 </div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">3</span><b>检视 .srv：注意"空请求"</b><span class="cs-where">终端 1</span></div>
+  <div class="cs-hd"><span class="cs-no">3</span><b>检视 .srv：注意"空请求"</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">打印出的字段必须与源文件一字不差——这是"编译生效"的最直接证据：</p>
-  <pre>ros2 interface show ros_sensor_interfaces/srv/VerifyFingerprint</pre>
+  <pre data-copy="cmd">ros2 interface show ros_sensor_interfaces/srv/VerifyFingerprint</pre>
   <div class="io"><span class="dim">$ ros2 interface show ros_sensor_interfaces/srv/VerifyFingerprint</span>
 <span class="y"># 请求段为空：触发即验证，无需入参</span>
 ---
@@ -514,9 +640,9 @@ string message
 <span class="g"># --- 上面的"空白"就是完整请求段 —— 空请求是合法的</span></div>
 </div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">4</span><b>检视 .action 与 .msg</b><span class="cs-where">终端 1</span></div>
-  <p class="cs-why">对照图 9-2 数分隔符：.action 两个 <code>---</code> 三段、.msg 零个一段：</p>
-  <pre>ros2 interface show ros_sensor_interfaces/action/RfidScan
+  <div class="cs-hd"><span class="cs-no">4</span><b>检视 .action 与 .msg</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">对照上面图 9-4 数分隔符：.action 两个 <code>---</code> 三段、.msg 零个一段：</p>
+  <pre data-copy="cmd">ros2 interface show ros_sensor_interfaces/action/RfidScan
 ros2 interface show ros_sensor_interfaces/msg/TemperatureHumidity</pre>
   <div class="io"><span class="dim">$ ros2 interface show …/action/RfidScan</span>
 int32 timeout_sec      <span class="dim"># Goal 段</span>
@@ -533,16 +659,15 @@ float32 temperature
 float32 humidity</div>
   <p class="cs-see">✔ 自省四连的输出 = 源文件的镜像。<b>先 show 再读代码</b>，系统层的证据永远比记忆可靠。</p>
 </div>
-</section>
 
-<section class="blk" id="s7">
-<h2><span class="no">07</span>实操 A：通览接口包，读懂 6 份契约<span class="fs">应用新知</span></h2>
-<p>任务：打开 <code>ros_sensor_interfaces</code> 源目录，把 3 类 6 份定义文件逐一读完，并和 06 节的 <code>interface show</code> 输出互相印证。</p>
+<h3 style="font-size:16px;color:var(--text-primary);margin:28px 0 0">再打开源目录，逐份读原文</h3>
+<p><code>interface show</code> 打的是编译后的镜像，源文件里还有注释和目录组织。直接进目录读一遍：</p>
 
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">1</span><b>进入接口包，看清目录结构</b><span class="cs-where">终端 1</span></div>
+  <div class="cs-hd"><span class="cs-no">5</span><b>进入接口包，看清目录结构</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">接口包的标准形态：<code>msg/ srv/ action/</code> 三个目录 + <code>CMakeLists.txt</code>。先确认结构再读内容：</p>
-  <pre>cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor_interfaces
+  <pre data-copy="cmd"><span class="c"># 进接口包目录，列出三类定义文件</span>
+cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor_interfaces
 ls -R msg srv action</pre>
   <div class="io"><span class="dim">$ ls -R msg srv action</span>
 msg:
@@ -555,9 +680,10 @@ action:
 RfidScan.action</div>
 </div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">2</span><b>读 .msg：注意 valid 字段的用意</b><span class="cs-where">终端 1</span></div>
+  <div class="cs-hd"><span class="cs-no">6</span><b>读 .msg：注意 valid 字段的用意</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">逐个打开三份消息定义，对照"字段 ↔ 传感器"的对应关系：</p>
-  <pre>cat msg/TemperatureHumidity.msg
+  <pre data-copy="cmd"><span class="c"># 一次读完三份消息定义</span>
+cat msg/TemperatureHumidity.msg
 cat msg/HeartRateSpO2.msg
 cat msg/PhotoState.msg</pre>
   <div class="io"><span class="dim">$ cat msg/TemperatureHumidity.msg</span>
@@ -572,9 +698,9 @@ bool valid            <span class="y"># ← MAX30102 未接触皮肤时心率恒
   <p class="cs-see">✔ 想一想：为什么 TemperatureHumidity 不需要 valid，HeartRateSpO2 却必须加？</p>
 </div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">3</span><b>读 .srv：数一数分隔符</b><span class="cs-where">终端 1</span></div>
+  <div class="cs-hd"><span class="cs-no">3</span><b>读 .srv：数一数分隔符</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">验证"一个 <code>---</code> 切两段"的规律，并留意请求段允许为空：</p>
-  <pre>cat srv/VerifyFingerprint.srv
+  <pre data-copy="cmd">cat srv/VerifyFingerprint.srv
 cat srv/TriggerRelay.srv</pre>
   <div class="io"><span class="dim">$ cat srv/VerifyFingerprint.srv</span>
 <span class="dim"># 请求：触发一次指纹验证（无参数）</span>
@@ -591,9 +717,9 @@ bool success
 string message</div>
 </div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">4</span><b>读 .action：三段各自承载谁</b><span class="cs-where">终端 1</span></div>
+  <div class="cs-hd"><span class="cs-no">4</span><b>读 .action：三段各自承载谁</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">两个 <code>---</code> 切三段，三个方向：Goal 客户端→服务端，Result/Feedback 服务端→客户端：</p>
-  <pre>cat action/RfidScan.action</pre>
+  <pre data-copy="cmd">cat action/RfidScan.action</pre>
   <div class="io"><span class="dim">$ cat action/RfidScan.action</span>
 <span class="dim"># 目标：执行一次读卡任务</span>
 int32 timeout_sec
@@ -606,18 +732,18 @@ string message
 ---
 <span class="dim"># 反馈</span>
 string status</div>
-  <p class="cs-see">✔ 读完 6 份文件回到 06 节再跑一遍 <code>interface show</code>——你会发现自己已经能"背出"输出。</p>
+  <p class="cs-see">✔ 读完 6 份文件回到本节步骤 2 再跑一遍 <code>interface show</code>——你会发现自己已经能"背出"输出。</p>
 </div>
 </section>
 
 <section class="blk" id="s8">
-<h2><span class="no">08</span>实操 B：设计任务——为新传感器定义接口<span class="fs">融会贯通</span></h2>
+<h2><span class="no">05</span>实操 B：设计任务——为新传感器定义接口<span class="fs">融会贯通</span></h2>
 <p><b>任务背景</b>：小车上要新装一个光照传感器，需要上报「照度值 + 读数是否有效 + 采样时刻」。请按真实工程流程走完"定义 → 登记 → 编译 → 验证"四步。</p>
 
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">1</span><b>编写 Illuminance.msg</b><span class="cs-where">终端 1</span></div>
+  <div class="cs-hd"><span class="cs-no">1</span><b>编写 Illuminance.msg</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">用 heredoc 一次写入三字段定义（和 6 份前辈接口住在同一个包里）：</p>
-  <pre>cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor_interfaces
+  <pre data-copy="cmd">cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor_interfaces
 cat &gt; msg/Illuminance.msg &lt;&lt; 'EOF'
 # 光照度消息：单段，无分隔符
 float32 lux          # 照度(lx)
@@ -629,7 +755,7 @@ cat msg/Illuminance.msg   <span class="c"># 回读确认</span></pre>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">2</span><b>把文件登记进编译列表</b><span class="cs-where">编辑器</span></div>
   <p class="cs-why">打开 <code>CMakeLists.txt</code>，在 <code>rosidl_generate_interfaces</code> 列表末尾追加一行（<code>builtin_interfaces</code> 已在 DEPENDENCIES 里，无需再改）：</p>
-  <pre>rosidl_generate_interfaces(${PROJECT_NAME}
+  <pre data-copy="cmd">rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/VerifyFingerprint.srv"
   "srv/TriggerRelay.srv"
   "action/RfidScan.action"
@@ -644,10 +770,10 @@ cat msg/Illuminance.msg   <span class="c"># 回读确认</span></pre>
 <span class="dim">// ——每个接口文件都必须显式列入列表才会被编译</span></div>
 </div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">3</span><b>重编 + source + 验证</b><span class="cs-where">终端 1</span></div>
+  <div class="cs-hd"><span class="cs-no">3</span><b>重编 + source + 验证</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">编译接口包并重新加载环境，然后用系统层命令做最终验收：</p>
-  <pre>cd ~/ros2_ws
-colcon build --symlink-install --packages-select ros_sensor_interfaces
+  <pre data-copy="cmd">cd ~/ros2_ws
+colcon build --packages-select ros_sensor_interfaces
 source install/setup.bash
 ros2 interface show ros_sensor_interfaces/msg/Illuminance</pre>
   <div class="io"><span class="dim">$ ros2 interface show ros_sensor_interfaces/msg/Illuminance</span>
@@ -673,7 +799,7 @@ builtin_interfaces/Time stamp
 </section>
 
 <section class="blk" id="s9">
-<h2><span class="no">09</span>注意事项与验收清单<span class="fs">融会贯通</span></h2>
+<h2><span class="no">06</span>注意事项与验收清单<span class="fs">融会贯通</span></h2>
 <div class="check">
   <ul>
     <li>默画三种接口的分隔符结构：.msg 无、.srv 一个 ---、.action 两个 ---</li>
@@ -695,7 +821,7 @@ builtin_interfaces/Time stamp
 </section>
 
 <section class="blk" id="s10">
-<h2><span class="no">10</span>本课总结与思考题<span class="fs">融会贯通</span></h2>
+<h2><span class="no">07</span>本课总结与思考题<span class="fs">融会贯通</span></h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">结构</div><div class="kt">0 / 1 / 2 个分隔符</div><p>msg 单段、srv 请求响应、action 三段——文件结构直接映射通信模型。</p></div>
   <div class="kcard"><div class="kd">编译</div><div class="kt">rosidl_generate_interfaces</div><p>列表 + DEPENDENCIES 双配置，产出 Python/C++ 双端类。</p></div>
@@ -726,6 +852,6 @@ var ROUTES={
 function routeIf(){document.getElementById('ifIo').innerHTML=ROUTES[document.getElementById('req').value];}
 routeIf();
 </script>
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 </body>
 </html>

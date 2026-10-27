@@ -238,7 +238,7 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
 
   <h3>2.1 树状结构：只记"直接父子"，路径唯一</h3>
   <p>TF2 把机器人身上所有坐标系组织成一棵树：<strong>每个坐标系最多一个父坐标系，不能成环</strong>。典型结构长这样：</p>
-<pre><span class="c">map                              ← 世界原点（SLAM 维护）</span>
+<pre data-copy="cmd"><span class="c">map                              ← 世界原点（SLAM 维护）</span>
  └── odom                         ← 里程计原点（会漂移）
       └── base_link               ← 车体中心
            ├── laser_frame        ← 雷达（安装位置 = 静态变换）
@@ -282,7 +282,7 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
       <b>查询要给三样：</b>目标坐标系（转到哪）、源坐标系（数据原来在哪）、<b>时间戳</b>（要哪个时刻的变换——TF 带时间缓存，可以回查过去几秒）。
     </p></div>
   </div>
-  <pre><span class="c"># 静态 TF 最快的发法：不用写代码，一行命令（雷达在车体前方 10cm、高 20cm）</span>
+  <pre data-copy="cmd"><span class="c"># 静态 TF 最快的发法：不用写代码，一行命令（雷达在车体前方 10cm、高 20cm）</span>
 ros2 run tf2_ros static_transform_publisher --x 0.1 --y 0 --z 0.2 \
   --yaw 0 --pitch 0 --roll 0 base_link laser_frame</pre>
   <div class="tip violet"><span class="lab">✦ 为什么这么设计？三句话</span>
@@ -382,7 +382,7 @@ ros2 run tf2_ros static_transform_publisher --x 0.1 --y 0 --z 0.2 \
 
   <h3>4.2 2D 平面旋转的半角公式（本实验只需 yaw）</h3>
   <p>机器人在地面打转，本质是绕 Z 轴转 <strong>yaw</strong> 角。此时四元数退化为两个非零分量：</p>
-<pre><span class="c"># 绕 Z 轴旋转 yaw：四元数只有 z、w 两个分量非零</span>
+<pre data-copy="cmd"><span class="c"># 绕 Z 轴旋转 yaw：四元数只有 z、w 两个分量非零</span>
 z = sin(yaw / 2)
 w = cos(yaw / 2)<span class="c">   # x = y = 0</span>
 
@@ -469,7 +469,7 @@ w = cos(yaw / 2)<span class="c">   # x = y = 0</span>
   <h2><span class="no">06</span> 代码精讲：发布者与查询者<span class="fs">应用新知</span></h2>
 
   <h3>6.1 发布静态变换（实操 1 要写的）</h3>
-<pre><span class="b">import</span> rclpy
+<pre data-copy="cmd"><span class="b">import</span> rclpy
 <span class="b">from</span> rclpy.node <span class="b">import</span> Node
 <span class="b">from</span> geometry_msgs.msg <span class="b">import</span> TransformStamped
 <span class="b">from</span> tf2_ros <span class="b">import</span> StaticTransformBroadcaster
@@ -493,7 +493,7 @@ w = cos(yaw / 2)<span class="c">   # x = y = 0</span>
         self.pub.sendTransform(t)   <span class="c"># 只发这一次，后加入的订阅者也能收到</span></pre>
 
   <h3>6.2 查询变换（下游节点的标准姿势）</h3>
-<pre><span class="b">from</span> tf2_ros <span class="b">import</span> Buffer, TransformListener
+<pre data-copy="cmd"><span class="b">from</span> tf2_ros <span class="b">import</span> Buffer, TransformListener
 
 self.buffer = Buffer()
 self.listener = TransformListener(self.buffer, self)   <span class="c"># 监听 /tf + /tf_static 填充 buffer</span>
@@ -513,7 +513,7 @@ yaw = <span class="y">2.0</span> * math.atan2(qz, qw)   <span class="c"># 第 4 
 <section class="blk" id="s7">
   <h2><span class="no">07</span> 实操 1 · 创建 tf2_demo 包并发布静态变换<span class="fs">应用新知</span></h2>
   <div class="flow">
-    <div class="step"><span class="n">1</span>进入工作空间并创建包（依赖 <code>tf2_ros</code> 负责发布/监听，<code>tf2_tools</code> 提供 view_frames 等调试工具）：<pre>cd ~/ros2_ws/src
+    <div class="step"><span class="n">1</span>进入工作空间并创建包（依赖 <code>tf2_ros</code> 负责发布/监听，<code>tf2_tools</code> 提供 view_frames 等调试工具）：<pre data-copy="cmd">cd ~/ros2_ws/src
 ros2 pkg create tf2_demo \
   --build-type ament_python \
   --dependencies rclpy tf2_ros tf2_tools geometry_msgs \
@@ -521,14 +521,14 @@ ros2 pkg create tf2_demo \
     <div class="arr"></div>
     <div class="step"><span class="n">2</span>把 <strong>6.1 的 StaticTfPub</strong> 写入 <code>tf2_demo/static_tf_pub.py</code>，加执行权限；在 <code>setup.py</code> 的 <code>entry_points</code> 注册 <code>static_tf_pub = tf2_demo.static_tf_pub:main</code>（同 EXP-05 要求）。</div>
     <div class="arr"></div>
-    <div class="step"><span class="n">3</span>补一个 <code>main()</code>：<pre><span class="b">def</span> <span class="g">main</span>(args=<span class="b">None</span>):
+    <div class="step"><span class="n">3</span>补一个 <code>main()</code>：<pre data-copy="cmd"><span class="b">def</span> <span class="g">main</span>(args=<span class="b">None</span>):
     rclpy.init(args=args)
     node = StaticTfPub()
     rclpy.spin(node)      <span class="c"># spin 保持节点存活，静态消息靠 QoS 重放</span>
     node.destroy_node()
     rclpy.shutdown()</pre></div>
     <div class="arr"></div>
-    <div class="step"><span class="n">4</span>构建并 source，启动发布者：<pre>cd ~/ros2_ws &amp;&amp; colcon build --packages-select tf2_demo
+    <div class="step"><span class="n">4</span>构建并 source，启动发布者：<pre data-copy="cmd">cd ~/ros2_ws &amp;&amp; colcon build --packages-select tf2_demo
 <span class="b">.</span> install/setup.bash
 ros2 run tf2_demo static_tf_pub</pre></div>
   </div>
@@ -538,11 +538,11 @@ ros2 run tf2_demo static_tf_pub</pre></div>
 <section class="blk" id="s8">
   <h2><span class="no">08</span> 实操 2 · 三种手段验证 TF 树<span class="fs">融会贯通</span></h2>
   <div class="flow">
-    <div class="step"><span class="n">1</span><strong>命令行直查</strong>——对应第 3 节动画的一次 lookup：<pre>ros2 run tf2_ros tf2_echo base_link laser_frame
+    <div class="step"><span class="n">1</span><strong>命令行直查</strong>——对应第 3 节动画的一次 lookup：<pre data-copy="cmd">ros2 run tf2_ros tf2_echo base_link laser_frame
 <span class="c"># 输出 Translation: [0.1, 0.0, 0.2]  Rotation: [0,0,0] (x,y,z,w)</span>
 <span class="c"># 至 Ctrl+C 前会持续刷新（动态边场景下数值会变）</span></pre>能打印出变换矩阵 = 链路可用。</div>
     <div class="arr"></div>
-    <div class="step"><span class="n">2</span><strong>导出整棵树</strong>——生成 PDF 树状图（离线图片在 <code>~/.ros</code> 下，名为 <code>frames.pdf</code>）：<pre>ros2 run tf2_tools view_frames
+    <div class="step"><span class="n">2</span><strong>导出整棵树</strong>——生成 PDF 树状图（离线图片在 <code>~/.ros</code> 下，名为 <code>frames.pdf</code>）：<pre data-copy="cmd">ros2 run tf2_tools view_frames
 <span class="c"># 订阅 /tf、/tf_static 5 秒 → 打印每个 frame 的发布频率与超时告警 → 生成 frames.pdf</span></pre>检查：是否为<strong>合法树形</strong>（无环、每个 child 只有一个 parent）。</div>
     <div class="arr"></div>
     <div class="step"><span class="n">3</span><strong>RViz 可视化</strong>——启动 <code>rv2</code>，<code>Add → By display type → TF</code>，勾选 <strong>Frames / Names / Arrows</strong>；若同时播传感器数据（如选用真实小车则执行 <code>ros2 launch car_common car_bringup.launch.py</code>），把 Fixed Frame 设为 <code>map</code>，观察点云/激光是否落在车体与地图的正确相对位置——<strong>对不上 = TF 有问题</strong>。</div>

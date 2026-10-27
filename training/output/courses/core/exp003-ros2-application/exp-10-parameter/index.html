@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-10 · 参数服务 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#dc2626;--theme-deep:#b91c1c;--theme-bg:#fee2e2;--theme-bd:#fecaca}
 /* ===== 命令分步卡（与 EXP-05/06 同款） ===== */
 .termbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 10px}
@@ -327,7 +327,7 @@
 
 <section class="blk" id="s4">
 <h2><span class="no">04</span>专题：ParameterDescriptor 与两层约束<span class="fs">示证新知</span></h2>
-<pre><span class="c"># 声明时附带描述符：自描述 + 可视化元数据</span>
+<pre data-copy="cmd"><span class="c"># 声明时附带描述符：自描述 + 可视化元数据</span>
 from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
 
 period_desc = ParameterDescriptor(
@@ -420,7 +420,7 @@ def timer_cb(self):
         self.get_logger().info(<span class="s">f'raw={raw} voltage={v:.3f}V ppm={ppm:.2f}'</span>)</pre>
 
 <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 0">第三站 · 回调：校验 → 应用 → 回执</h3>
-<pre><span class="c"># __init__ 末尾注册（必须先导入：from rcl_interfaces.msg import SetParametersResult）</span>
+<pre data-copy="cmd"><span class="c"># __init__ 末尾注册（必须先导入：from rcl_interfaces.msg import SetParametersResult）</span>
 self.add_on_set_parameters_callback(self.on_parameters_set)
 
 def _recreate_timer(self):
@@ -462,7 +462,7 @@ def on_parameters_set(self, params):
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">1</span><b>编译 + source</b><span class="cs-where">终端 0</span></div>
   <p class="cs-why">param_sensor_node.py 放进包内并注册 <code>entry_points</code>（setup.py 加 <code>'param_sensor = ros_sensor.param_sensor_node:main'</code>）后，重编一次：</p>
-  <pre>cd ~/ros2_ws
+  <pre data-copy="cmd">cd ~/ros2_ws
 colcon build --symlink-install --packages-select ros_sensor
 source install/setup.bash</pre>
   <div class="io"><span class="dim">$ colcon build --symlink-install --packages-select ros_sensor</span>
@@ -473,7 +473,7 @@ Finished &lt;&lt;&lt; ros_sensor [<span class="g">X.XXs</span>]</div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">2</span><b>默认参数启动</b><span class="cs-where">终端 A</span></div>
   <p class="cs-why">启动日志会打印三个参数的初始值，随后以 1s 周期持续采样：</p>
-  <pre>ros2 run ros_sensor param_sensor</pre>
+  <pre data-copy="cmd">ros2 run ros_sensor param_sensor</pre>
   <div class="io"><span class="dim">$ ros2 run ros_sensor param_sensor</span>
 [INFO] [param_sensor]: 节点已启动: 发布周期: 1.0 s, 传感器: 开启, 报警阈值: 500.0 ppm
 [INFO] [param_sensor]: 新定时器已创建: 周期=1.000s
@@ -486,7 +486,7 @@ Finished &lt;&lt;&lt; ros_sensor [<span class="g">X.XXs</span>]</div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">3</span><b>列出参数注册表</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">验证三颗自定义旋钮 + 一颗系统自带旋钮都已登记：</p>
-  <pre>ros2 param list</pre>
+  <pre data-copy="cmd">ros2 param list</pre>
   <div class="io"><span class="dim">$ ros2 param list</span>
 /param_sensor:
   alarm_threshold_ppm
@@ -497,7 +497,7 @@ Finished &lt;&lt;&lt; ros_sensor [<span class="g">X.XXs</span>]</div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">4</span><b>读取 + 一次性覆盖启动</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">get 读当前值；<code>-p</code> 可在启动瞬间覆盖默认值（走的是"声明时以外部值为默认"的机制）：</p>
-  <pre>ros2 param get /param_sensor publish_period
+  <pre data-copy="cmd">ros2 param get /param_sensor publish_period
 ros2 run ros_sensor param_sensor --ros-args -p publish_period:=0.1 -p alarm_threshold_ppm:=100.0</pre>
   <div class="io"><span class="dim">$ ros2 param get /param_sensor publish_period</span>
 Double value is: 1.0
@@ -514,7 +514,7 @@ Double value is: 1.0
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">1</span><b>describe：看参数的"说明书"</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">描述符（04 节）登记的描述与范围在这里展示：</p>
-  <pre>ros2 param describe /param_sensor publish_period</pre>
+  <pre data-copy="cmd">ros2 param describe /param_sensor publish_period</pre>
   <div class="io"><span class="dim">$ ros2 param describe /param_sensor publish_period</span>
 Parameter name: publish_period
   Type: double
@@ -527,7 +527,7 @@ Parameter name: publish_period
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">2</span><b>一成一败：热生效 vs 被拒绝</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">合法值直通（节点日志立即变快），越界值被回调闸门拦下——对照 05 节模拟器里你亲手触发过的两个场景：</p>
-  <pre>ros2 param set /param_sensor publish_period 0.2
+  <pre data-copy="cmd">ros2 param set /param_sensor publish_period 0.2
 ros2 param set /param_sensor publish_period 100.0
 ros2 param set /param_sensor sensor_enabled false
 ros2 param set /param_sensor sensor_enabled true</pre>
@@ -548,7 +548,7 @@ ros2 param set /param_sensor sensor_enabled true</pre>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">3</span><b>dump 导出 → params-file 加载</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">参数只活在运行时内存，重启即失忆。把调好的值 dump 成 YAML，下次启动预加载——这是"拿手调参数当代码管"的标准流程：</p>
-  <pre>ros2 param dump /param_sensor &gt; param_sensor.yaml
+  <pre data-copy="cmd">ros2 param dump /param_sensor &gt; param_sensor.yaml
 cat param_sensor.yaml
 ros2 run ros_sensor param_sensor --ros-args --params-file ./param_sensor.yaml</pre>
   <div class="io"><span class="dim">$ cat param_sensor.yaml</span>
@@ -680,7 +680,7 @@ plLine('<span class="d">[INFO] ['+plNow()+'] [param_sensor]: 节点已启动: �
 plLine('<span class="d">[INFO] ['+plNow()+'] [param_sensor]: 新定时器已创建: 周期=1.000s</span>');
 plRecreate();
 </script>
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 
 <div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
 <script>

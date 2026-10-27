@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-20 · URDF 与 Xacro 机器人建模 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#a16207;--theme-deep:#854d0e;--theme-bg:#fefce8;--theme-bd:#fde68a}
 /* 指导书实操截图图廊 */
 .figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px}
@@ -194,7 +194,7 @@
 
 <section class="blk" id="s6">
   <h2><span class="no">06</span>命令精讲：检验工具三件套<span class="fs">应用新知</span></h2>
-  <pre><span class="c"># ① 语法+结构验证（输出根 link 与子链接数）</span>
+  <pre data-copy="cmd"><span class="c"># ① 语法+结构验证（输出根 link 与子链接数）</span>
 $ check_urdf diff_drive_robot.urdf
 robot name is: diff_drive_robot
 ---------- Successfully Parsed XML ---------------
@@ -223,7 +223,7 @@ $ head -80 diff_drive_robot_expanded.urdf
     <div class="step"><span class="n">3</span>写左右驱动轮（cylinder r=0.05 L=0.03，continuous，axis 0 1 0，xyz ±0.15 / -0.03）</div>
     <div class="step"><span class="n">4</span>写前万向轮（sphere r=0.025，<b>fixed</b>）→ check_urdf 验证 "3 child(ren)"</div>
   </div>
-  <pre><span class="c">&lt;!-- 核心三关节（完整文件见讲义） --&gt;</span>
+  <pre data-copy="cmd"><span class="c">&lt;!-- 核心三关节（完整文件见讲义） --&gt;</span>
 &lt;material name="black"&gt;&lt;color rgba="0.2 0.2 0.2 1.0"/&gt;&lt;/material&gt;
 <span class="g">&lt;!-- .... link chassis: box + mass 3.0 + ixx0.017 iyy0.042 izz0.053 .... --&gt;</span>
 
@@ -244,7 +244,7 @@ $ head -80 diff_drive_robot_expanded.urdf
   &lt;origin xyz="0.18 0.0 -0.055" rpy="0.0 0.0 0.0"/&gt;
   &lt;parent link="chassis"/&gt;&lt;child link="front_caster"/&gt;
 &lt;/joint&gt;</pre>
-  <pre><span class="c"># urdf_demo 包三处配置（RViz 可视化最小骨架）</span>
+  <pre data-copy="cmd"><span class="c"># urdf_demo 包三处配置（RViz 可视化最小骨架）</span>
 <span class="c"># package.xml 加 exec_depend：robot_state_publisher、joint_state_publisher_gui、rviz2、urdf</span>
 <span class="c"># CMakeLists.txt：模型目录必须 install 到 share</span>
 install(DIRECTORY urdf launch rviz DESTINATION share/${PROJECT_NAME})
@@ -275,7 +275,7 @@ $ ros2 launch urdf_demo display.launch.py
     <div class="step"><span class="n">3</span>box_inertia / cylinder_inertia 宏套公式；wheel 宏以 x_reflect=±1 镜像出左右轮</div>
     <div class="step"><span class="n">4</span>xacro 展开 → check_urdf 复验 → 移动 launch 指向 .xacro 再进 RViz</div>
   </div>
-  <pre><span class="c">&lt;!-- ① 属性层：尺寸/质量/推导量全部参数化 --&gt;</span>
+  <pre data-copy="cmd"><span class="c">&lt;!-- ① 属性层：尺寸/质量/推导量全部参数化 --&gt;</span>
 &lt;robot name="diff_drive_robot" <span class="b">xmlns:xacro="http://www.ros.org/wiki/xacro"</span>&gt;
   &lt;xacro:property name="chassis_length" value="0.40"/&gt;
   &lt;xacro:property name="chassis_width"  value="0.25"/&gt;
@@ -396,7 +396,7 @@ mismatch:'<span class="warn">⚠ Visual 与 Collision 错位 → 两处 origin �
 function fix(){document.getElementById('o').innerHTML=SYM2[document.getElementById('sel').value];}
 fix();
 </script>
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 
 <div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
 <script>

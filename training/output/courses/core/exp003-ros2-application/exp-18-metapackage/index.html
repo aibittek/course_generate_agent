@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-18 · 元功能包与依赖聚合 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#ec4899;--theme-deep:#be185d;--theme-bg:#fce7f3;--theme-bd:#fbcfe8}.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
 </style>
 </head>
@@ -223,7 +223,7 @@
 
 <section class="blk" id="s6">
   <h2><span class="no">05</span>命令精讲：把元包看个底朝天<span class="fs">应用新知</span></h2>
-  <pre><span class="c"># ① 打开 navigation2 的"购物清单"——元包的 package.xml</span>
+  <pre data-copy="cmd"><span class="c"># ① 打开 navigation2 的"购物清单"——元包的 package.xml</span>
 $ ros2 pkg xml navigation2
 
 <span class="c"># ② 数一数 nav2 家族到底有多少子包（至少 15~20 个）</span>
@@ -242,7 +242,7 @@ nav2_planner
   <div class="tip amber"><span class="lab">自建元包的最小 CMakeLists</span>整个文件只有四行有效内容——没有任何编译目标：
 <code style="display:block;margin-top:6px">cmake_minimum_required(VERSION 3.8)<br>project(my_robot_meta)<br>find_package(ament_cmake REQUIRED)<br>ament_package()</code>
 <code>ament_package()</code> 是 ament_cmake 的收尾宏，负责生成索引与注册包信息；它同时是这个包唯一的"工作"。</div>
-  <pre><span class="c"># FAQ 三连：Unknown CMake command "ament_package" →</span>
+  <pre data-copy="cmd"><span class="c"># FAQ 三连：Unknown CMake command "ament_package" →</span>
 $ sudo apt install ros-humble-ament-cmake
 
 <span class="c"># ros2 pkg xml 无输出 → 当前终端没 source，找不到包索引</span>
@@ -260,7 +260,7 @@ $ source install/setup.bash</pre>
     <div class="step"><span class="n">3</span>数子包：<code>ros2 pkg list | grep nav2 | sort</code>，与清单对照</div>
     <div class="step"><span class="n">4</span>找地基：查看 <code>ros2 pkg xml nav2_planner</code>，确认它 build_depend 了 nav2_core / nav2_msgs</div>
   </div>
-  <pre><span class="b">$</span> ros2 pkg xml navigation2 | grep exec_depend
+  <pre data-copy="cmd"><span class="b">$</span> ros2 pkg xml navigation2 | grep exec_depend
   &lt;exec_depend&gt;nav2_amcl&lt;/exec_depend&gt;
   &lt;exec_depend&gt;nav2_planner&lt;/exec_depend&gt;
   &lt;exec_depend&gt;nav2_controller&lt;/exec_depend&gt;
@@ -275,7 +275,7 @@ $ source install/setup.bash</pre>
 
 <section class="blk" id="s8">
   <h2><span class="no">07</span>实操 B：打造 my_robot_meta（设计性任务）<span class="fs">融会贯通</span></h2>
-  <pre><span class="c"># ① 创建（必须 --build-type ament_cmake，选 ament_python 会去找 setup.py 直接失败）</span>
+  <pre data-copy="cmd"><span class="c"># ① 创建（必须 --build-type ament_cmake，选 ament_python 会去找 setup.py 直接失败）</span>
 <span class="b">$</span> cd ~/ros2_ws/src
 <span class="b">$</span> ros2 pkg create my_robot_meta --build-type ament_cmake
 
@@ -301,7 +301,7 @@ $ source install/setup.bash</pre>
     &lt;metapackage/&gt;
   &lt;/export&gt;
 &lt;/package&gt;</pre>
-  <pre><span class="c"># ③ CMakeLists.txt 只留四行</span>
+  <pre data-copy="cmd"><span class="c"># ③ CMakeLists.txt 只留四行</span>
 cmake_minimum_required(VERSION 3.8)
 project(my_robot_meta)
 find_package(ament_cmake REQUIRED)
@@ -363,6 +363,6 @@ find_package(ament_cmake REQUIRED)
 </footer>
 </main>
 </div>
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 </body>
 </html>

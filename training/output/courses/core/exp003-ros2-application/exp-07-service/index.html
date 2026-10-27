@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-07 · 服务通信：指纹验证 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#db2777;--theme-deep:#be185d;--theme-bg:#fce7f3;--theme-bd:#fbcfe8}
 /* ===== 生活对比框 ===== */
 .cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
@@ -68,6 +68,24 @@
 .fg.wide{grid-column:1/-1}
 .fg.wide img{height:auto;max-height:220px;object-fit:contain;background:#0b0f17;padding:4px 0}
 .fg figcaption{font-size:.74rem;color:#64748b;line-height:1.55;padding-top:.45rem}
+/* ===== 步骤内嵌实拍图（响应式：窄屏不溢出，竖幅/长图各自受控）===== */
+.shot{margin:12px 0 0;cursor:zoom-in}
+/* 竖幅/近方照片：限高，避免一张图撑满整屏 */
+.shot img{display:block;margin:0 auto;
+  width:auto;max-width:100%;
+  max-height:min(340px,46vh);
+  height:auto;object-fit:contain}
+/* 终端长图（宽高比 > 3）：铺满宽度、高度自适应；窄屏允许横向滑动看清文字 */
+.shot.wide{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.shot.wide img{width:100%;max-width:100%;max-height:none}
+.shot figcaption{font-size:12.5px;color:#64748b;line-height:1.65;margin-top:8px;text-align:center}
+@media (max-width:720px){
+  .shot img{max-height:min(260px,38vh)}
+  /* 手机上终端长图给一个最小可读宽度，超出就横向滑动，而不是压成一条细线 */
+  .shot.wide img{width:auto;min-width:520px;max-width:none}
+  .shot figcaption{font-size:12px;text-align:left}
+  .shot.wide::after{content:'← 左右滑动查看完整输出 →';display:block;font-size:11px;color:#94a3b8;text-align:center;margin-top:4px}
+}
 #lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
 #lightbox.on{display:flex}
 #lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
@@ -82,16 +100,13 @@
 <aside class="side">
   <h4>本页目录</h4>
   <a href="#goal">★ 课程目标</a>
-  <a href="#s6" class="now">01 先看现象：一步步跑通指纹验证</a>
-  <a href="#s1">02 为什么需要服务：有些事必须"等到答案"</a>
-  <a href="#s2">03 核心原理：一次 RPC 在 ROS2 里怎么跑</a>
-  <a href="#s3">04 动画：一问一答的四个瞬间</a>
-  <a href="#s4">05 专题：指纹三步与"确认码"</a>
-  <a href="#s5">06 服务实验台：亲眼看同步阻塞</a>
-  <a href="#s7">07 代码精讲：三份源码逐行读懂</a>
-  <a href="#s8">08 动手任务：把现象变成证据</a>
-  <a href="#s9">09 注意事项与验收清单</a>
-  <a href="#s10">10 本课总结与思考题</a>
+  <a href="#s6" class="now">01 跑出现象：一步步跑通指纹验证</a>
+  <a href="#s1">02 问题引入：为什么"验证手指"不能广播</a>
+  <a href="#s2">03 核心原理：结构 · 时序 · 模组底层</a>
+  <a href="#s7">04 实验步骤：框架 → 代码 → 现象</a>
+  <a href="#s8">05 动手任务：改点新东西来验证</a>
+  <a href="#s9">06 注意事项与验收清单</a>
+  <a href="#s10">07 本课总结与思考题</a>
   <h4>CH2 · 通信机制</h4>
   <a href="../exp-05-node/index.html">EXP-05 节点</a>
   <a href="../exp-06-topic/index.html">EXP-06 话题</a>
@@ -123,19 +138,46 @@
 </section>
 
 <section class="blk" id="s6">
-<h2><span class="no">01</span>先看现象：一步步跑通指纹验证</h2>
-<p>先别急着看原理和代码——按下面的命令卡一条条敲，把「录入 → 服务端 → 客户端 → CLI 直调」四个现象亲手跑出来。<b>现象对上了，再带着疑问进入后面的原理与 07 代码精讲</b>，每一行你都知道自己在学什么。</p>
+<h2><span class="no">01</span>跑出现象：一步步跑通指纹验证</h2>
+<p>先别急着敲命令——<b>先花 30 秒看懂整套流程</b>，再一条条跑。不然你会困惑"为什么要先录入、为什么录入时不能开服务端"。</p>
 
-<div class="termbar"><span class="tl">终端 P</span><b>录入指纹</b><span class="note">⚠ 录入前先确认服务端没有在运行（两者抢同一个串口）</span></div>
+<h3 style="font-size:16px;color:var(--text-primary);margin:22px 0 0">整套流程长这样：四步，三个"身份"</h3>
+<p>指纹门禁的完整闭环是<b>"先登记，后验证"</b>——模组里必须先存着某根手指的模板，后面才能比对成功。所以顺序不能颠倒：</p>
+
+<div class="flow" style="flex-direction:column;align-items:stretch">
+  <div class="step" style="flex:none"><div class="t">第 ① 步 · 录入（终端 P，只做一次）</div><div class="d" style="font-family:inherit;font-size:13px">同一根手指按两次 → 模组合并成一个<b>模板</b> → 写进模组 Flash。<b>不走 ROS</b>，是独立脚本；做完这一步，模组里才有"底档"。</div></div>
+  <div class="ar" style="align-self:center;padding:4px 0">↓ 模板已存在模组里（断电不丢）</div>
+  <div class="step" style="flex:none"><div class="t">第 ② 步 · 启动服务端（终端 A，常驻）</div><div class="d" style="font-family:inherit;font-size:13px">服务端占住串口，注册 <code class="inline">/verify_fingerprint</code> 服务，然后<b>待命等请求</b>。<b>它一起来，录入脚本就不能再跑了</b>——串口只能被一个人用。</div></div>
+  <div class="ar" style="align-self:center;padding:4px 0">↓ 服务已在线，开始接受"下单"</div>
+  <div class="step" style="flex:none"><div class="t">第 ③ 步 · 客户端验证（终端 B）</div><div class="d" style="font-family:inherit;font-size:13px">客户端找到该服务 → <b>放下手指</b> → 发请求 → 等服务端采图、提特征、比对 → 拿到"成功 / 失败"。</div></div>
+  <div class="ar" style="align-self:center;padding:4px 0">↓ 也可以不写代码，直接用命令行调</div>
+  <div class="step" style="flex:none"><div class="t">第 ④ 步 · CLI 直调（终端 C，排障必备）</div><div class="d" style="font-family:inherit;font-size:13px">用 <code class="inline">ros2 service list / type / call</code> 绕过客户端直接调服务。<b>能调通说明服务端没问题</b>——排障时先 CLI、再代码。</div></div>
+</div>
+
+<div class="tip amber">⚠️ <b>为什么顺序不能乱</b>：① 没录入就验证 → 必然 <code class="inline">user_id=-1 未匹配</code>（库里空的）；② 服务端开着还去跑录入 → 串口被抢，录入报错。这两条是本节最常见的两个坑，<b>先把顺序记住，后面就不用试错</b>。</div>
+
+<table>
+  <thead><tr><th>要用的终端</th><th>干什么</th><th>跑完能不能关</th></tr></thead>
+  <tbody>
+    <tr><td><b>终端 P</b></td><td>录入指纹（独立脚本，不走 ROS）</td><td>能关，<b>但必须先停服务端</b>才能跑</td></tr>
+    <tr><td><b>终端 A</b></td><td>服务端，占住串口等请求</td><td><b>不能关</b>——B 和 C 都要靠它</td></tr>
+    <tr><td><b>终端 B</b></td><td>客户端，发请求等应答</td><td>能关，每次验证跑一次</td></tr>
+    <tr><td><b>终端 C</b></td><td>CLI 观察与直调</td><td>能关，随时可开</td></tr>
+  </tbody>
+</table>
+
+<p style="margin-top:14px">流程清楚了，下面按 <b>①录入 → ②服务端 → ③客户端 → ④CLI</b> 的顺序来。一条命令一张卡，每条都告诉你<b>为什么敲</b>和<b>该看到什么</b>。</p>
+
+<div class="termbar"><span class="tl">终端 P</span><b>第 ① 步 · 录入指纹</b><span class="note">⚠ 录入前先确认服务端没有在运行（两者抢同一个串口）</span></div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">1</span><b>进入驱动目录</b><span class="cs-where">终端 P</span></div>
   <p class="cs-why">录入是独立串口脚本，不走 ROS——所以直接进源码目录跑。</p>
-  <pre>cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor</pre>
+  <pre data-copy="cmd">cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor</pre>
 </div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">2</span><b>录入指纹到位置 1</b><span class="cs-where">终端 P</span></div>
   <p class="cs-why">按终端提示，把<b>同一根手指</b>放上传感器两次（两次特征合并成一个模板写入 Flash）。</p>
-  <pre>python3 fingerprint_enroll.py enroll -i 1</pre>
+  <pre data-copy="cmd">python3 fingerprint_enroll.py enroll -i 1</pre>
   <div class="io"><span class="dim">$ python3 fingerprint_enroll.py enroll -i 1</span>
 === 录入指纹到位置 #1 ===
 请将手指放到传感器上（第1次）...
@@ -148,22 +190,27 @@
 <span class="g">✓ 模板已合并</span>
 <span class="g">✓ 录入成功！指纹已保存到位置 #1</span></div>
   <p class="cs-see">✔ 两次按压必须是同一根手指、角度尽量一致，否则报"合并模板失败"——重新录一遍即可。</p>
+  <figure class="shot" onclick="lbShow(this)">
+    <img src="../assets/image-20260821183258468.png" alt="手指按在指纹传感器上（蓝色背光采集窗口）" loading="eager">
+    <figcaption>实拍｜<b>手指放哪</b>：平放在指纹模组的<b>蓝色背光采集窗口</b>上，指肚贴满窗口、别偏。压得太轻采不到图（模组回 0x02），压得太重或角度斜会生成错误特征。</figcaption>
+  </figure>
+  <figure class="shot wide" onclick="lbShow(this)">
+    <img src="../assets/image-20260821183429592.png" alt="录入脚本终端输出：两次按压后模板合并成功" loading="eager">
+    <figcaption>实拍｜<b>录入成功的完整输出</b>：两次 <code>✓ 采集到指纹图像</code> → <code>✓ 特征已生成</code> → <code>✓ 模板已合并</code> → 保存到位置 #1。<b>只按一次不会成功</b>——必须两次才够合并出一个模板。</figcaption>
+  </figure>
 </div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">3</span><b>确认模板已入库</b><span class="cs-where">终端 P</span></div>
-  <pre>python3 fingerprint_enroll.py list</pre>
+  <pre data-copy="cmd">python3 fingerprint_enroll.py list</pre>
   <div class="io"><span class="g">指纹库模板数量: 1</span></div>
+  <p class="cs-see">✔ 显示 1 就说明模板真的写进模组 Flash 了（断电不丢）。后面验证能匹配上，靠的就是这份模板。</p>
 </div>
-<div class="figs-guide"><h4>📸 录入环节实物与终端截图</h4><div class="figgrid">
-<figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821183258468.png" alt="手指按在指纹传感器上（蓝色背光采集窗口）" loading="lazy"><figcaption>把手指平放在指纹模组的采集窗口上（蓝色背光处）</figcaption></figure>
-<figure class="fg wide" onclick="lbShow(this)"><img src="../assets/image-20260821183429592.png" alt="录入脚本终端输出：两次按压后模板合并成功" loading="lazy"><figcaption>录入脚本终端输出：两次按压 → 特征合并 → 保存到位置 #1</figcaption></figure>
-</div></div>
 
-<div class="termbar"><span class="tl">终端 A</span><b>启动服务端</b><span class="note">保持运行，别停</span></div>
+<div class="termbar"><span class="tl">终端 A</span><b>第 ② 步 · 启动服务端</b><span class="note">保持运行，别停</span></div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">4</span><b>起服务端节点</b><span class="cs-where">终端 A</span></div>
   <p class="cs-why">新开终端，先回到工作空间根目录并加载环境（<code>ros2 run</code> 找包靠它）。</p>
-  <pre>cd ~/ros2_ws
+  <pre data-copy="cmd">cd ~/ros2_ws
 source install/setup.bash
 ros2 run ros_sensor fingerprint_server</pre>
   <div class="io"><span class="g">[INFO] 指纹服务已启动: port=/dev/ttyS10 baud=57600</span>
@@ -171,40 +218,41 @@ ros2 run ros_sensor fingerprint_server</pre>
   <p class="cs-see">✔ port/baud 来自参数（可用 <code>--ros-args -p port:=…</code> 或环境变量 FP_PORT 覆盖）——07 节代码里看它们是怎么声明的。</p>
 </div>
 
-<div class="termbar"><span class="tl">终端 B</span><b>客户端发起验证</b><span class="note">服务端保持运行</span></div>
+<div class="termbar"><span class="tl">终端 B</span><b>第 ③ 步 · 客户端发起验证</b><span class="note">服务端保持运行</span></div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">5</span><b>起客户端节点</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">客户端先等服务上线，再发请求——按提示把手<b>录入过的那根手指</b>放上传感器。</p>
-  <pre>cd ~/ros2_ws
+  <pre data-copy="cmd">cd ~/ros2_ws
 source install/setup.bash
 ros2 run ros_sensor fingerprint_client</pre>
   <div class="io"><span class="dim">[INFO] 等待指纹服务 /verify_fingerprint ...</span>
 <span class="g">[INFO] 指纹服务已就绪</span>
 <span class="dim">[INFO] 发送指纹验证请求...</span>
 <span class="g">[INFO] 验证成功 user_id=1 匹配成功 score=1151</span></div>
-  <p class="cs-see">✔ 换一根<b>没录入过</b>的手指再跑一次：终端打印 <code>验证失败 user_id=-1 未匹配到指纹</code>——两次现象都留证据（08 节任务要用）。</p>
+  <p class="cs-see">✔ 换一根<b>没录入过</b>的手指再跑一次：终端打印 <code>验证失败 user_id=-1 未匹配到指纹</code>——两次现象都留证据（05 节动手任务要用）。</p>
+  <figure class="shot wide" onclick="lbShow(this)">
+    <img src="../assets/image-20260821183542587.png" alt="fingerprint_client 终端：验证成功 user_id=1 score=1151" loading="eager">
+    <figcaption>实拍｜<b>验证成功的终端</b>：<code>等待指纹服务…</code> → <code>服务已就绪</code> → <code>发送请求...</code> → <code>验证成功 user_id=1 score=1151</code>。<b>注意第一行</b>——客户端是先等服务上线才发请求的，这就是 <code>wait_for_service</code> 的作用。</figcaption>
+  </figure>
 </div>
-<div class="figs-guide"><h4>📸 客户端验证成功截图</h4><div class="figgrid">
-<figure class="fg wide" onclick="lbShow(this)"><img src="../assets/image-20260821183542587.png" alt="fingerprint_client 终端：验证成功 user_id=1 score=1151" loading="lazy"><figcaption>客户端终端：服务就绪 → 发送请求 → 验证成功 user_id=1 score=1151</figcaption></figure>
-</div></div>
 
-<div class="termbar"><span class="tl">终端 C</span><b>CLI 三连：绕过客户端直调服务</b><span class="note">终端 A 保持运行</span></div>
+<div class="termbar"><span class="tl">终端 C</span><b>第 ④ 步 · CLI 三连：绕过客户端直调服务</b><span class="note">终端 A 保持运行</span></div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">6</span><b>列出所有服务</b><span class="cs-where">终端 C</span></div>
   <p class="cs-why">这条命令相当于查服务黄页——<code>/verify_fingerprint</code> 在不在、谁来提供，一目了然。</p>
-  <pre>ros2 service list | grep verify</pre>
+  <pre data-copy="cmd">ros2 service list | grep verify</pre>
   <div class="io"><span class="g">/verify_fingerprint</span></div>
 </div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">7</span><b>查服务的类型</b><span class="cs-where">终端 C</span></div>
-  <pre>ros2 service type /verify_fingerprint</pre>
+  <pre data-copy="cmd">ros2 service type /verify_fingerprint</pre>
   <div class="io"><span class="g">ros_sensor_interfaces/srv/VerifyFingerprint</span></div>
   <p class="cs-see">✔ 想看这个接口里有哪些字段，用 EXP-09 的 <code>ros2 interface show ros_sensor_interfaces/srv/VerifyFingerprint</code>。</p>
 </div>
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">8</span><b>直接调用（不写一行客户端代码）</b><span class="cs-where">终端 C</span></div>
   <p class="cs-why"><b>调用前先把手指放好</b>——这个 srv 的请求字段为空，所以参数必须传 <code>"{}"</code>；不放手指的话，你会看到服务端轮询 50 次（约 10s）后回超时。</p>
-  <pre>ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprint "{}"</pre>
+  <pre data-copy="cmd">ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprint "{}"</pre>
   <div class="io"><span class="dim">$ ros2 service call /verify_fingerprint ros_sensor_interfaces/srv/VerifyFingerprint "{}"</span>
 <span class="g">success: true</span>
 <span class="g">user_id: 1</span>
@@ -214,12 +262,19 @@ ros2 run ros_sensor fingerprint_client</pre>
 </section>
 
 <section class="blk" id="s1">
-<h2><span class="no">02</span>为什么需要服务：有些事必须"等到答案"</h2>
-<p>想象你在公司前台值班，来了一个访客要进实验室。你<b>不能广播一句"有人要进门"</b>就转身干别的——你必须拿到一个明确的答复："他是张工，放行"或"查无此人，拦下"。这个答复<b>只回答你这一次的提问</b>，回答完这次对话就结束了。</p>
+<h2><span class="no">02</span>问题引入：为什么"验证一根手指"不能像浓度那样广播</h2>
+<p>你刚跑通了指纹验证。现在换个真实场景想一圈——<b>给实验室装一道指纹门禁</b>。要求很具体：</p>
 
-<div class="tip">🏠 <b>生活里这种"一问一答"到处都是</b>：去银行柜台办卡，柜员处理完把卡递给你——这笔业务只属于你；点外卖下单，平台必须回你一句"接单成功"，你才会去等餐；打 120 急救电话，接线员必须明确回答"车已派出"，你才敢挂电话挂得安心。共同点是——<b>一个人问，一个人答，问的人必须等到答复才能做下一步决定</b>。</div>
+<div class="tip tealb">🚪 <b>场景：谁想进门，谁就得先"问一句"</b><br>
+同事把手指按上去 → 门禁程序判断"是不是登记过的人" → <b>是就开锁，不是就报警</b>。<br>
+关键在于：<b>开锁这个动作，必须基于一个确定的答案</b>。程序不能"大概觉得像"就开门，也不能广播一句"有人要进门"就转身去干别的——它必须拿到明确的"通过 / 不通过"，才能决定下一步。</div>
 
-<p>上一课（EXP-06）的 MQ5 浓度是典型的话题场景：传感器每秒广播一次，<b>有没有人听无所谓</b>。但指纹验证完全不同，它是一次性提问，必须拿到"成功/失败"才能决定开门与否。</p>
+<p>这就是它和上一课（EXP-06）的本质差别。MQ5 浓度是<b>持续广播</b>：每秒发一次，有没有人听都行，多一个人听也无所谓。但"验证手指"是<b>一次性提问</b>——问的人<b>站着等答案</b>，答案只属于这一次提问，问完这段对话就结束。</p>
+
+<div class="tip">🏠 <b>生活里这种"一问一答"到处都是</b>：去银行柜台办卡，柜员办完把卡递给你——这笔业务只属于你，旁边排队的人不会拿到你的卡；点外卖下单，平台必须回你一句"接单成功"，你才敢去等餐；打 120，接线员必须明确说"车已派出"，你才敢挂电话。<b>共同点：一个人问、一个人答，问的人必须等到答复才能做下一步决定。</b></div>
+
+<h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 0">那要是硬用话题来做，会撞上什么？</h3>
+<p>不是没人这么试过。把"验证手指"塞进话题，你会立刻遇到四个麻烦：</p>
 
 <div class="cmp-grid">
   <div class="cmp-box bad">
@@ -284,7 +339,7 @@ ros2 run ros_sensor fingerprint_client</pre>
 <div class="tip"><span class="lab">定义 Service</span>客户端发送 Request 后进入等待，服务端收到请求调用回调、产出 Response 回传——一次调用一次应答，<b>天然可配对、天然知道成败</b>。也称 RPC（远程过程调用）：你像调用本机函数一样发起调用，真正干活的代码可能跑在另一台机器上。</div>
 </section>
 <section class="blk" id="s2">
-<h2><span class="no">03</span>核心原理：一次 RPC 在 ROS2 里怎么跑起来</h2>
+<h2><span class="no">03</span>核心原理：一次 RPC 怎么跑起来（结构 · 时序 · 模组底层）</h2>
 <p class="cs-why" style="font-size:14.5px;color:#475569;line-height:1.9">一个容易误会的地方先说破：<b>ROS2 的服务不是"客户端直接调用服务端的函数"</b>。把两个节点拆开看，中间隔着 DDS 和序列化——服务在底层其实是"两个方向的通道 + 一个配对约定"：请求沿一条通道去，应答沿另一条通道回，ROS2 靠请求里自带的<b>客户端标识 + 序号</b>把应答精确配回给发起者。下面这张图就是它内部的全貌（图 7-2）。</p>
 
 <div class="fig-wrap">
@@ -363,10 +418,9 @@ ros2 run ros_sensor fingerprint_client</pre>
   <tr><td>中间反馈</td><td>无（值到了就是反馈）</td><td>无（这正是动作要补的短板，EXP-08）</td></tr>
   <tr><td>典型场景</td><td>MQ5 浓度持续发布</td><td>指纹验证、继电器控制、单次状态查询</td></tr>
 </table>
-</section>
-<section class="blk" id="s3">
-<h2><span class="no">04</span>动画：一问一答的四个瞬间</h2>
-<p>下面这张时序图把一次完整调用压缩成 4.8 秒循环：①请求出发 → 服务端回调干活 → ②应答返回。盯着<b>粉色小球</b>（请求）和<b>紫色小球</b>（应答）各走一遍，就掌握了服务的全部时序。</p>
+
+<h3 style="font-size:16px;color:var(--text-primary);margin:28px 0 0">时序：一问一答的四个瞬间</h3>
+<p>上面那张结构图讲的是"里子"，这张时序图讲"面子"——一次完整调用压缩成 4.8 秒循环：①请求出发 → 服务端回调干活 → ②应答返回。盯着<b>粉色小球</b>（请求）和<b>紫色小球</b>（应答）各走一遍，服务的时序就掌握了。</p>
 <div class="anim-box">
 <svg viewBox="0 0 760 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
   <!-- 生命线 -->
@@ -404,11 +458,9 @@ ros2 run ros_sensor fingerprint_client</pre>
 </svg>
 </div>
 <p class="anim-cap">对照图 7-2 看：① = 步骤②③（发送+等待的起点），服务端暗格 = 步骤⑥⑦，② = 应答通道回程。</p>
-</section>
 
-<section class="blk" id="s4">
-<h2><span class="no">05</span>专题：指纹模组的三步与"确认码"</h2>
-<p>ROS 层之下，指纹模组走 UART 主从协议（包头 <code>0xEF01</code> + 指令 + 校验）。它是个"一问一答"的老实人：主机发一条指令，模组回一个<b>确认码</b>。验证一次要走三步：</p>
+<h3 style="font-size:16px;color:var(--text-primary);margin:28px 0 0">ROS 层之下：指纹模组的三步与"确认码"</h3>
+<p>服务端回调里那句"采图 → 特征 → 比对"到底做了什么？再往下钻一层：指纹模组走 UART 主从协议（包头 <code>0xEF01</code> + 指令 + 校验）。它是个"一问一答"的老实人——主机发一条指令，模组回一个<b>确认码</b>。验证一次要走三步：</p>
 
 <div class="fig-wrap">
 <svg viewBox="0 0 680 210" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
@@ -448,90 +500,31 @@ ros2 run ros_sensor fingerprint_client</pre>
 
 <div class="tip tealb">🚪 <b>类比："门铃没人按" ≠ "门铃坏了"</b>。0x02 是"还没人按门铃"——你该继续等；0x01 才是"门铃坏了"——该报修了。把 0x02 当失败立即返回，用户手指还没放稳，调用就"验证失败"了。把<b>可恢复状态</b>与<b>真错误</b>区分开，是传感器轮询鲁棒性的第一课。</div>
 
-<p>轮询参数的账：<code>retries=50</code> 次 × <code>sleep(0.2)</code> 秒 ≈ <b>10 秒等待窗口</b>——给用户留出"看到提示 → 放手指"的反应时间。想看这个策略实际怎么跑，直接去 05 的实验台试。</p>
+<p>轮询参数的账：<code>retries=50</code> 次 × <code>sleep(0.2)</code> 秒 ≈ <b>10 秒等待窗口</b>——给用户留出"看到提示 → 放手指"的反应时间。这个策略的源码就在下面的服务端 `handle_request` 里，第 2 步会逐行讲。</p>
 </section>
-<section class="blk" id="s5">
-<h2><span class="no">06</span>服务实验台：亲眼看"同步阻塞"是怎么发生的</h2>
-<p>原理读十遍，不如亲手"卡"一次。下面的实验台完整复刻 <code>fingerprint_server</code> 的轮询逻辑（0.2s 一轮、retries=50）：选一种手指状态，点"发起验证"，看请求出去之后客户端在等什么、服务端在干什么。</p>
-<div class="ix-panel">
-  <div class="ix-title">Service Lab · 发起一次指纹验证</div>
-  <div class="lab-row">
-    <div class="lab-box">
-      <h5>手指状态</h5>
-      <label>什么时候放手指
-        <select id="fpWhen">
-          <option value="now">一上来就放好了</option>
-          <option value="later">第 5 轮才放上去</option>
-          <option value="never">始终不放（等满窗口）</option>
-        </select>
-      </label>
-    </div>
-    <div class="lab-box">
-      <h5>服务端写法（做个对照）</h5>
-      <label class="switch-row" style="margin:6px 0">
-        <input type="checkbox" id="fpErr"> 把 0x02 当作错误立即返回（错误示范）
-      </label>
-    </div>
-  </div>
-  <div class="btn-row"><button class="btn" onclick="runSrvLab()">发起验证 call_async →</button></div>
-  <div id="srvCells" class="tl-cells" style="margin-top:14px"></div>
-  <div class="lab-log" id="srvLog"><span class="d">// 选择场景后点「发起验证」，观察轮询与阻塞窗口…</span></div>
-  <div class="lab-verdict warn" id="srvVerdict" style="display:none"></div>
-</div>
-<p class="ix-caption">时间轴每一格 ≈ 一次 0.2s 轮询（为演示只画出前几轮，实际 retries=50）。黄色 = 等待（0x02），粉色 = 干活，绿色 = 拿到结果，红色 = 失败。</p>
-</section>
-
-<script>
-function runSrvLab(){
-  var t=document.getElementById('fpWhen').value;
-  var asErr=document.getElementById('fpErr').checked;
-  var cells=[],log=[];
-  log.push('<span class="d">$ [client] call_async(/verify_fingerprint) 请求已发出，进入 spin_until_future_complete 等待…</span>');
-  var vEl=document.getElementById('srvVerdict'), vCls='ok', vTxt='';
-  if(asErr){
-    cells.push({t:'0x02',c:'bad'});
-    log.push('<span class="r">[server] 第 1 轮 get_image → 确认码 0x02（无手指）→ 被当作错误处理</span>');
-    log.push('<span class="r">[client] 收到 Response：success=false  message="采集图像失败(code=0x02)"</span>');
-    log.push('<span class="d">// 总耗时 &lt;0.2s——快是快了，但用户手指还没放稳</span>');
-    vCls='bad';
-    vTxt='✘ 状态被误当错误：10 秒等待窗口完全失效，用户必然"验证失败"。区分 0x02（状态，继续等）与 0x01（错误，返回失败）是鲁棒性第一课。';
-  }else if(t==='never'){
-    for(var i=0;i<10;i++) cells.push({t:'0x02',c:'wait'});
-    cells.push({t:'…',c:'wait'});
-    cells.push({t:'超时',c:'bad'});
-    log.push('<span class="y">[server] 第 1~50 轮 get_image 全部返回 0x02（无手指）→ sleep(0.2) 继续等</span>');
-    log.push('<span class="y">[server] 轮询计数 50/50 耗尽，退出循环</span>');
-    log.push('<span class="r">[client] 约 10s 后收到 Response：success=false  message="超时，未检测到手指"</span>');
-    log.push('<span class="d">// 这 10 秒里客户端一行代码都没法执行——同步阻塞的全部代价</span>');
-    vCls='warn';
-    vTxt='⚠ 等待窗口给了用户反应时间，但客户端也整整卡了 10 秒。如果这种"长时间等待 + 想中途放弃"成为常态，就该升级成动作了（EXP-08）。';
-  }else{
-    var n=(t==='later')?5:1;
-    for(var j=1;j<n;j++) cells.push({t:'0x02',c:'wait'});
-    cells.push({t:'0x00',c:'act'});
-    cells.push({t:'特征',c:'act'});
-    cells.push({t:'比对',c:'act'});
-    cells.push({t:'✓',c:'ok'});
-    if(n>1) log.push('<span class="d">[server] 第 1~'+(n-1)+' 轮 get_image → 0x02（无手指）→ sleep(0.2) 继续</span>');
-    log.push('<span class="g">[server] 第 '+n+' 轮 get_image → 0x00 ✓ 采到指纹图像</span>');
-    log.push('<span class="g">[server] gen_char(1) 生成特征 → search() 命中：user_id=1  score=1151</span>');
-    log.push('<span class="g">[client] 收到 Response：success=true  user_id=1  message="匹配成功 score=1151"</span>');
-    log.push('<span class="d">// 从发出到拿结果的全部时间里，客户端都阻塞在等待上——这就是"同步"</span>');
-    vCls='ok';
-    vTxt='✓ 一问一答完成：应答语义内建，success/user_id 直接可判定。代价是等待期间客户端什么都做不了——短耗时场景这正是想要的确定性。';
-  }
-  var cEl=document.getElementById('srvCells'); cEl.innerHTML='';
-  cells.forEach(function(c){var d=document.createElement('div');d.className='c '+c.c;d.textContent=c.t;cEl.appendChild(d);});
-  document.getElementById('srvLog').innerHTML=log.join('\n');
-  vEl.className='lab-verdict '+vCls; vEl.textContent=vTxt; vEl.style.display='block';
-}
-runSrvLab();
-</script>
 <section class="blk" id="s7">
-<h2><span class="no">07</span>代码精讲：三份源码，逐行读懂你刚才跑的东西</h2>
-<p>按数据流的方向读三份源码：<b>① 协议层</b>（怎么跟模组说话）→ <b>② 服务端</b>（怎么接请求、回应答）→ <b>③ 客户端</b>（怎么发请求、等结果）。源码都在 <code>~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor/</code>。</p>
+<h2><span class="no">04</span>实验步骤：先看懂框架，再读代码，最后跑出现象</h2>
+<p class="lead">换个顺序读代码：<b>先看骨架（三份文件各管什么、谁调谁）→ 再读核心几段（只讲非讲不可的）→ 最后回到终端跑一遍，把代码和现象对上号</b>。反过来"一上来逐行啃"最容易迷路——语法记住了，却说不清这段代码为什么长这样。</p>
 
-<h3>第 1 站 · fingerprint_enroll.py：UART 协议层（不碰 ROS）</h3>
+<h3 style="font-size:17px;color:var(--text-primary);margin:28px 0 0">第 1 步 · 先看骨架：三份文件，一条调用链</h3>
+<p>你刚才跑过的所有东西，来自三份代码。别急着看细节，先记住<b>分工</b>——骨架立住了，后面读代码只是填肉。</p>
+
+<div class="flow" style="flex-direction:column;align-items:stretch">
+  <div class="step" style="flex:none"><div class="t">① fingerprint_enroll.py · 协议层（不碰 ROS）</div><div class="d" style="font-family:inherit;font-size:13px">把字节级收发封装成 <code class="inline">Fingerprint</code> 类：发指令帧、解析确认码。<b>录入脚本和两个 ROS 节点共用它</b>。</div></div>
+  <div class="ar" style="align-self:center;padding:4px 0">↓ 被 import，不直接对外</div>
+  <div class="step" style="flex:none"><div class="t">② fingerprint_server.py · 服务端</div><div class="d" style="font-family:inherit;font-size:13px">用 <code class="inline">create_service</code> 注册 <code class="inline">/verify_fingerprint</code>；回调里调协议层走"采图→特征→比对"，填好 response 返回。</div></div>
+  <div class="ar" style="align-self:center;padding:4px 0">↓ DDS 搬运请求与应答（这一层你一行都不写）</div>
+  <div class="step" style="flex:none"><div class="t">③ fingerprint_client.py · 客户端</div><div class="d" style="font-family:inherit;font-size:13px">用 <code class="inline">create_client</code> 找到同名服务；<code class="inline">call_async</code> 发请求 → <code class="inline">spin_until_future_complete</code> 等应答 → 按 <code class="inline">success</code> 分支。</div></div>
+</div>
+
+<div class="tip tealb">🧩 <b>一句话记住分工</b>：<code class="inline">fingerprint_enroll.py</code> 负责<b>会跟硬件说话</b>，<code class="inline">fingerprint_server.py</code> 负责<b>接单干活</b>，<code class="inline">fingerprint_client.py</code> 负责<b>下单等结果</b>。<b>录入脚本是"编外人员"</b>——它不走 ROS，直接用协议层，所以和服务端抢串口（这就是 01 节提醒"录入前先停服务端"的原因）。</div>
+
+<div class="tip">📍 <b>三份文件在同一目录</b>：<code class="inline">~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor/</code>（外层 <code class="inline">ros_sensor/</code> 是包，里层同名目录才是放 .py 的）。建议边读边打开源码对照。</div>
+
+<h3 style="font-size:17px;color:var(--text-primary);margin:28px 0 0">第 2 步 · 再读代码：三段非讲不可的地方</h3>
+<p>按调用链的顺序看三段。每段只抓关键几行——其余的准备代码你打开源码一眼就懂，这里不占篇幅。</p>
+
+<h4 style="font-size:15.5px;color:var(--theme-deep);margin:24px 0 0">① 协议层：指纹模组怎么"说话"</h4>
 <p>模组是"一问一答"的主从协议：主机发指令帧，模组回确认码。这个文件把字节级的收发全部封装成 <code>Fingerprint</code> 类，ROS 节点只管调用它的方法。</p>
 <pre><span class="c"># 来源：fingerprint_enroll.py L19-33（指令码与确认码定义）</span>
 <span class="c"># ── 指令码：每个都是"一条命令的编号"──</span>
@@ -543,7 +536,7 @@ CMD_STORE_CHAR  = 0x06   <span class="c"># PS_StoreChar  储存模板（录入�
 
 <span class="c"># ── 确认码：模组对每条命令的"答复"──</span>
 <span class="c"># 0x00 成功   0x01 收包有错   0x02 无手指（状态，不是错误！）</span></pre>
-<pre><span class="c"># 帧结构（_build_packet，L36-42）：一帧命令长这样——</span>
+<pre data-copy="cmd"><span class="c"># 帧结构（_build_packet，L36-42）：一帧命令长这样——</span>
 ┌────────┬──────────┬────────┬────────┬────────┬────────┬──────────┐
 │ 包头    │ 地址      │ 包标识  │ 长度    │ 指令码  │ 参数    │ 校验和    │
 │ EF01    │ FF FF FF │ 01     │ 2 字节  │ 1 字节  │ n 字节  │ 2 字节    │
@@ -551,7 +544,7 @@ CMD_STORE_CHAR  = 0x06   <span class="c"># PS_StoreChar  储存模板（录入�
 └────────┴──────────┴────────┴────────┴────────┴────────┴──────────┘
 <span class="c"># 校验和 = 对"包标识+长度+指令码+参数"逐字节求和取低 16 位。</span>
 <span class="c"># _send()（L56-73）负责发帧、等应答帧、校验确认码——带超时保护。</span></pre>
-<pre><span class="c"># Fingerprint 类对外方法（接口示意，实现在 L45-124）</span>
+<pre data-copy="cmd"><span class="c"># Fingerprint 类对外方法（接口示意，实现在 L45-124）</span>
 fp = Fingerprint(port, baud)      <span class="c"># 打开串口</span>
 code = fp.get_image()             <span class="c"># → 0x00 采到图 / 0x02 无手指 / 0x01 帧错误</span>
 code = fp.gen_char(buf_id)        <span class="c"># 图像 → 特征</span>
@@ -561,11 +554,11 @@ result = fp.search()              <span class="c"># 搜索库：result.page=命�
   <tr><th>逐行看点</th><th>它在干什么</th></tr>
   <tr><td>帧尾的校验和</td><td>串口线上防传输出错的唯一手段——校验不过模组直接回 0x01"收包有错"</td></tr>
   <tr><td><code>_send</code> 的收发超时</td><td>发帧后等应答帧带超时保护——串口不像网络有重传，没应答基本就是模组掉线</td></tr>
-  <tr><td><code>get_image → gen_char → search</code></td><td>正好是 05 节图 7-3 的三步——协议层把每步各封一个方法，服务端按顺序调用</td></tr>
+  <tr><td><code>get_image → gen_char → search</code></td><td>正好是上面图 7-3 的三步——协议层把每步各封一个方法，服务端按顺序调用</td></tr>
   <tr><td>录入四步 <code>get_image×2 + reg_model + store_char</code></td><td>录入脚本专用：两次特征 + 合并 + 写 Flash——这就是录入和验证分成两个程序的原因</td></tr>
 </table>
 
-<h3>第 2 站 · fingerprint_server.py：服务端三步走</h3>
+<h4 style="font-size:15.5px;color:var(--theme-deep);margin:24px 0 0">② 服务端：接单、干活、回话</h4>
 <pre><span class="c"># 来源：fingerprint_server.py L19-26（节点初始化：参数声明 + 服务注册）</span>
 super().__init__(<span class="y">'fingerprint_server'</span>)
 self.declare_parameter(<span class="y">'port'</span>, os.environ.get(<span class="y">'FP_PORT'</span>, <span class="y">'/dev/ttyS10'</span>))
@@ -601,12 +594,12 @@ self.srv = self.create_service(
 <table>
   <tr><th>逐行看点</th><th>为什么这么写</th></tr>
   <tr><td>三个 <code>declare_parameter</code></td><td>port/baud/retries 先声明后取用——忘声明就 <code>get_parameter</code> 会直接抛异常</td></tr>
-  <tr><td><code>0x02 → sleep(0.2) → continue</code></td><td>05 实验台里"正常写法"那条路径的源码出处：状态与错误分流，10s 等待窗口由此而来</td></tr>
+  <tr><td><code>0x02 → sleep(0.2) → continue</code></td><td>即上面"确认码：状态 ≠ 错误"那张表的落地写法：状态与错误分流，10s 等待窗口由此而来</td></tr>
   <tr><td><code>try/finally: fp.close()</code></td><td>不管成功失败、哪怕中途抛异常，串口都会被关闭——否则服务端第二次调用就打不开串口</td></tr>
   <tr><td>给 <code>response</code> 的每个字段赋值后 return</td><td>服务端回调的"返回值即应答"：你填什么，客户端就收到什么</td></tr>
 </table>
 
-<h3>第 3 站 · fingerprint_client.py：异步发送、同步等待</h3>
+<h4 style="font-size:15.5px;color:var(--theme-deep);margin:24px 0 0">③ 客户端：异步发送、同步等待</h4>
 <pre><span class="c"># 来源：fingerprint_client.py L16-40（创建客户端 → 发请求 → 等结果）</span>
 super().__init__(<span class="y">'fingerprint_client'</span>)
 self.cli = self.create_client(VerifyFingerprint, <span class="y">'verify_fingerprint'</span>)
@@ -633,40 +626,67 @@ resp = future.result()
 
 <div class="tip tealb">🔗 <b>两端对照：同一件事的两种视角</b>
 <table style="margin:10px 0 0">
-  <tr><th>环节</th><th>服务端（第 2 站）</th><th>客户端（第 3 站）</th></tr>
+  <tr><th>环节</th><th>服务端（②）</th><th>客户端（③）</th></tr>
   <tr><td>建立端点</td><td><code>create_service(类型, 名, 回调)</code></td><td><code>create_client(类型, 名)</code></td></tr>
   <tr><td>确认对方在线</td><td>不需要（被动等请求）</td><td><code>wait_for_service</code> 循环</td></tr>
   <tr><td>交换数据</td><td>回调参数 <code>request</code> 收，<code>return response</code> 回</td><td><code>call_async(req)</code> 发，<code>future.result()</code> 收</td></tr>
   <tr><td>名字必须一致的地方</td><td colspan="2"><code>'verify_fingerprint'</code> 与 <code>VerifyFingerprint</code> 类型——差一个字母就永远"等待中"</td></tr>
 </table></div>
+
+<h3 style="font-size:17px;color:var(--text-primary);margin:30px 0 0">第 3 步 · 最后跑出结果：把代码和现象对上号</h3>
+<p>代码读完了，回到终端。这一步不是重复 01 节，而是让<b>"代码里的某一行"和"屏幕上的某一行"建立一一对应</b>——对上了，才算真读懂。</p>
+
+<table>
+  <tr><th>你在代码里看到的</th><th>终端里对应的现象</th><th>说明</th></tr>
+  <tr><td><code>create_service(..., 'verify_fingerprint', ...)</code></td><td><code>ros2 service list | grep verify</code> 能看到它</td><td>注册了才能被"查黄页"查到；名字就是客户端的寻址依据</td></tr>
+  <tr><td><code>if code == 0x02: sleep(0.2); continue</code></td><td>手指不放，服务端不返回，客户端一直等</td><td>0x02 是"状态"不是"错误"——所以它在等，而不是报错</td></tr>
+  <tr><td><code>for _ in range(retries)</code>（retries=50）</td><td>约 10 秒后客户端收到"超时，未检测到手指"</td><td>50 × 0.2s = 10s，等待窗口的上限由这两个数相乘决定</td></tr>
+  <tr><td><code>response.success = True; response.user_id = result.page</code></td><td>客户端打印 <code>验证成功 user_id=1 score=1151</code></td><td>回调里填什么，客户端就收到什么——"返回值即应答"</td></tr>
+  <tr><td><code>finally: fp.close()</code></td><td>连续调用两次不报错；服务端运行中跑录入会报串口占用</td><td>串口是独占资源，不归还下次就打不开</td></tr>
+  <tr><td><code>while not wait_for_service(timeout_sec=1.0)</code></td><td>先起客户端时每秒打印"等待指纹服务…"</td><td>不是死等——服务端一起来，循环就退出继续往下走</td></tr>
+</table>
+
+<div class="tip tealb">✅ <b>对上号的标志</b>：你能指着终端那行 <code>验证成功 user_id=1 score=1151</code>，说出它是服务端哪个变量赋值的、经哪个通道回到客户端、又被哪一行打印出来。<b>说得出这条链路，这节就过了</b>。</div>
 </section>
 
 <section class="blk" id="s8">
-<h2><span class="no">08</span>动手任务：把现象变成你自己的证据</h2>
-<p>边做边填证据表——这就是你实验报告的素材。做之前先回 01 节照着命令卡跑通一遍。</p>
+<h2><span class="no">05</span>动手任务：改点新东西，验证你真的懂了</h2>
+<p class="lead">01 节和上面第 3 步都是"跟着看现象"。这一节的任务<b>故意不重复那些操作</b>——每个任务都要你<b>改一处新东西</b>（改参数、扩接口、改源码），然后自己判断"结果该是什么样"再去验证。<b>能预判结果，才算真懂。</b></p>
+
+<div class="tip amber">📌 <b>先立个规矩</b>：动手前<b>先在纸上写下你预期的现象</b>（哪怕只有两个字）。跑完再对照——预期错了，恰恰是最有价值的一次学习。</div>
+
 <div class="kgrid">
-  <div class="kcard"><div class="kt">任务 1 · 录入与失败录入</div><div class="kd">用同一根手指完成录入（<code>enroll -i 1</code>）；再故意用两根不同手指录一次，记录报错文案。<b>要记录</b>："合并模板失败"的完整终端输出。</div></div>
-  <div class="kcard"><div class="kt">任务 2 · 成功与失败验证</div><div class="kd">客户端分别用已录入 / 未录入手指验证，截两张图。<b>要记录</b>：<code>user_id=1 score=…</code> 与 <code>user_id=-1 未匹配到指纹</code> 两条日志。</div></div>
-  <div class="kcard"><div class="kt">任务 3 · 超时窗口实测</div><div class="kd">终端 C 用 <code>ros2 service call … "{}"</code> 调用但<b>不放手指</b>，用秒表计时。<b>要记录</b>：从回车到超时响应的实际秒数（理论 ≈ 50×0.2s=10s），和理论值对比。</div></div>
-  <div class="kcard"><div class="kt">任务 4 · 先后顺序实验</div><div class="kd">先启动客户端（服务端不跑），观察"等待指纹服务…"每秒打印；再启动服务端。<b>要记录</b>：客户端是否自动恢复——这说明 <code>wait_for_service</code> 起了什么作用。</div></div>
-  <div class="kcard"><div class="kt">任务 5 · 串口独占实验</div><div class="kd">服务端运行中再跑 <code>fingerprint_enroll.py enroll -i 2</code>。<b>要记录</b>：串口打开失败的报错——这就是"录入与服务端互斥"的原因。</div></div>
+  <div class="kcard"><div class="kt">任务 1 · 改参数：把等待窗口砍到 2 秒</div><div class="kd">不改代码，用 <code class="inline">--ros-args -p retries:=10</code> 重启服务端（10×0.2s≈2s）。<br><b>先预判</b>：不放手指时，多久收到超时？<br><b>然后验证</b>：用秒表实测，和 2 秒对得上吗？<br><b>要记录</b>：实测秒数 + 你算的账。</div></div>
+
+  <div class="kcard"><div class="kt">任务 2 · 改源码：让 0x02 变成真错误</div><div class="kd">把 <code class="inline">handle_request</code> 里 <code class="inline">if code == 0x02</code> 那段<b>去掉</b>，让 0x02 落进 else 分支立即返回失败。<br><b>先预判</b>：手指放得慢一点会怎样？<br><b>然后验证</b>：故意慢半秒放手指，看是否直接"验证失败"。<br><b>要记录</b>：改动前后的两次结果对比。<br><i>这题是本课最核心的鲁棒性教训。</i></div></div>
+
+  <div class="kcard"><div class="kt">任务 3 · 扩接口：给 .srv 加个返回字段</div><div class="kd">在 <code class="inline">VerifyFingerprint.srv</code> 的应答区加一行 <code class="inline">float64 score</code>，服务端填真实分数，客户端打印它（改动要重编 <code>ros_sensor_interfaces</code>）。<br><b>先预判</b>：不改客户端会怎样？<br><b>要记录</b>：加字段前后的客户端输出，以及"为什么必须两端同时重编"。</div></div>
+
+  <div class="kcard"><div class="kt">任务 4 · 造第三个客户端（协议层）</div><div class="kd"><b>不写 Python</b>，只用 <code class="inline">ros2 service call</code> 连调三次，观察每次的 <code class="inline">score</code> 值。<br><b>先预判</b>：同一根手指连按三次，score 会一样吗？<br><b>要记录</b>：三次 score 和你的解释（提示：score 是"相似度"，不是"是否匹配"）。</div></div>
+
+  <div class="kcard"><div class="kt">任务 5 · 串口独占（排障实验）</div><div class="kd">服务端运行中，再跑 <code class="inline">fingerprint_enroll.py enroll -i 2</code>。<br><b>先预判</b>：会成功、会排队、还是直接报错？<br><b>要记录</b>：报错原文，并结合 <code class="inline">try/finally: fp.close()</code> 解释"为什么一个人在用时另一个人插不进来"。</div></div>
+
+  <div class="kcard"><div class="kt">任务 6 · 选型设计（综合，可交报告）</div><div class="kd">要实现"按下按钮 → 机械臂抓取 → 完成后亮灯"，该用话题、服务还是动作？<br><b>要记录</b>：三选一的理由 + 画出节点与接口草图（提示：抓取过程要几分钟、还要能中止，想想 EXP-08 补的是什么短板）。<b>不用真写代码</b>。</div></div>
 </div>
+
+<div class="tip tealb">🎯 <b>任务目的</b>：任务 1、5 练"参数与资源的边界"（什么该做成参数、什么天生独占）；任务 2、3 练"改代码/改接口"的完整闭环（改哪、重编谁、验证什么）；任务 4 练"用 CLI 独立验证服务端"；任务 6 练选型判断。<b>任务 2 和任务 6 最能拉开差距</b>。</div>
 <div class="task-tbl">
 <table>
-  <thead><tr><th>#</th><th>要记录的证据</th><th>对应验收点（09 节）</th></tr></thead>
+  <thead><tr><th>#</th><th>你要改动的地方</th><th>要记录的证据</th><th>对应验收点（06 节）</th></tr></thead>
   <tbody>
-    <tr><td>1</td><td>成功录入 + 失败录入两段终端输出</td><td>能说出录入/验证分离的原因</td></tr>
-    <tr><td>2</td><td>成功/失败验证客户端日志截图</td><td>response 三字段（success/user_id/message）都会用</td></tr>
-    <tr><td>3</td><td>超时实测秒数 vs 理论 10s</td><td>能算轮询窗口：retries × sleep</td></tr>
-    <tr><td>4</td><td>客户端自动恢复的日志</td><td>能解释 wait_for_service 的作用</td></tr>
-    <tr><td>5</td><td>串口占用报错截图</td><td>能解释 try/finally 关串口的意义</td></tr>
+    <tr><td>1</td><td>启动参数 <code>retries:=10</code></td><td>实测超时秒数 + 你的算账</td><td>能算出等待窗口 = retries × sleep</td></tr>
+    <tr><td>2</td><td><code>handle_request</code> 里 0x02 分支</td><td>改动前后"慢放手指"的两次结果</td><td>能解释"状态 ≠ 错误"</td></tr>
+    <tr><td>3</td><td><code>.srv</code> 应答区加字段</td><td>加字段前后客户端输出</td><td>懂接口改动要两端重编</td></tr>
+    <tr><td>4</td><td>无（只用 CLI）</td><td>三次 score 值与解释</td><td>会用 service call 独立验证</td></tr>
+    <tr><td>5</td><td>无（制造资源冲突）</td><td>串口占用报错原文</td><td>能解释 try/finally 关串口</td></tr>
+    <tr><td>6</td><td>无（设计题）</td><td>选型理由 + 架构草图</td><td>能在话题/服务/动作间选型</td></tr>
   </tbody>
 </table>
 </div>
 </section>
 
 <section class="blk" id="s9">
-<h2><span class="no">09</span>注意事项与验收清单</h2>
+<h2><span class="no">06</span>注意事项与验收清单</h2>
 <div class="check">
   <ul>
     <li>能按顺序背出服务客户端六步：create_client → wait_for_service → Request → call_async → spin_until_future_complete → result</li>
@@ -689,7 +709,7 @@ resp = future.result()
 </section>
 
 <section class="blk" id="s10">
-<h2><span class="no">10</span>本课总结与思考题</h2>
+<h2><span class="no">07</span>本课总结与思考题</h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">语义</div><div class="kt">一对一 · 单次 · 同步</div><p>应答配对内建，专治"必须等到答案"的场景。</p></div>
   <div class="kcard"><div class="kd">写法</div><div class="kt">异步发送 + 同步等待</div><p>call_async 保执行器畅通，spin_until_future_complete 负责等到。</p></div>
@@ -697,7 +717,7 @@ resp = future.result()
   <div class="kcard"><div class="kd">调试</div><div class="kt">ros2 service 三连</div><p>list/type/call 无需客户端即可验证服务端。</p></div>
 </div>
 <div class="tip violet"><span class="lab">思考题</span>
-① 服务端把 0x02（无手指）当错误立即返回会怎样？结合 05 实验台里你亲眼看到的现象与"轮询 + sleep(0.2)"说明状态码与错误码分离对鲁棒性的意义。<br>
+① 服务端把 0x02（无手指）当错误立即返回会怎样？结合上面的确认码表和"轮询 + sleep(0.2)"说明状态码与错误码分离对鲁棒性的意义。<br>
 ② 当前 srv 请求为空，无法指定"验证哪个用户/验证通过后开门还是记考勤"——如何扩展 .srv？给出字段设计与调用流程。<br>
 ③ （进阶）轮询 50 次约 10 秒后超时返回——如果想让客户端"等不及可放弃"，服务能做到吗？不能的话该怎么办？（衔接 EXP-08 动作的取消能力）</div>
 </section>
@@ -709,7 +729,7 @@ resp = future.result()
 </main>
 </div>
 
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 
 <div id="lightbox" onclick="this.classList.remove('on')"><img alt=""></div>
 <script>

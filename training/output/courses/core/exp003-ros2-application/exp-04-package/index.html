@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-04 · 功能包与依赖管理 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#059669;--theme-deep:#047857;--theme-bg:#d1fae5;--theme-bd:#a7f3d0}</style>
 </head>
 <body>
@@ -71,7 +71,7 @@
 <section class="blk" id="s11">
 <h2><span class="no">02</span>演示：拆开两个真实功能包</h2>
 <p>先不写代码。上一章工作空间里就躺着两个官方包，正好一 C++ 一 Python，拆开对着看，差别一目了然：</p>
-<pre><span class="c"># ① C++ 那个：源码是 .cpp，构建说明书叫 CMakeLists.txt</span>
+<pre data-copy="cmd"><span class="c"># ① C++ 那个：源码是 .cpp，构建说明书叫 CMakeLists.txt</span>
 <span class="g">ls</span> ~/ros2_ws/src/xflz_eai_car1/ros2_demos/demo_nodes_cpp/
 <span class="c"># package.xml  CMakeLists.txt  include/  src/</span>
 
@@ -89,7 +89,7 @@
   <tr><td>源码长什么样</td><td>src/topics/*.cpp</td><td>demo_nodes_py/topics/*.py</td></tr>
   <tr><td>共同点</td><td colspan="2">都有 package.xml；都声明了构建工具和依赖（rclcpp / rclpy、消息类型 std_msgs）——这几行就是后文 rosdep 补装的依据</td></tr>
 </table>
-<pre><span class="c"># package.xml 主线字段：两边结构一样，只差几行依赖（节选）</span>
+<pre data-copy="cmd"><span class="c"># package.xml 主线字段：两边结构一样，只差几行依赖（节选）</span>
 &lt;package format="3"&gt;
   &lt;name&gt;demo_nodes_cpp&lt;/name&gt;                     <span class="c"># ← 我是谁</span>
   &lt;buildtool_depend&gt;ament_cmake&lt;/buildtool_depend&gt; <span class="c"># ← 用什么构建（py 包这里换成 ament_python）</span>
@@ -160,7 +160,7 @@
 </div>
 <p class="anim-cap">依赖的生命周期：声明 → 解析 → 补装 → 链接；四个环节任一断裂都会在"链接成功"处报错。</p>
 <h3>读懂清单：字段与依赖的"生效阶段"</h3>
-<pre><span class="c"># 节选自真机 demo_nodes_cpp/package.xml（cat ~/ros2_ws/src/xflz_eai_car1/ros2_demos/demo_nodes_cpp/package.xml，真文件更长）</span>
+<pre data-copy="cmd"><span class="c"># 节选自真机 demo_nodes_cpp/package.xml（cat ~/ros2_ws/src/xflz_eai_car1/ros2_demos/demo_nodes_cpp/package.xml，真文件更长）</span>
 &lt;package format="3"&gt;
   &lt;name&gt;demo_nodes_cpp&lt;/name&gt;
   &lt;version&gt;…&lt;/version&gt;                    <span class="c"># 版本/维护者/license 等四件套从略</span>
@@ -176,7 +176,7 @@
   &lt;test_depend&gt;ament_lint_auto&lt;/test_depend&gt;
   &lt;export&gt;&lt;build_type&gt;ament_cmake&lt;/build_type&gt;&lt;/export&gt;
 &lt;/package&gt;</pre>
-<pre><span class="c"># 对照 demo_nodes_py/package.xml（同样节选）——rclpy、std_msgs 挂在 exec_depend 下：</span>
+<pre data-copy="cmd"><span class="c"># 对照 demo_nodes_py/package.xml（同样节选）——rclpy、std_msgs 挂在 exec_depend 下：</span>
 <span class="c"># Python 不编译，不存在"仅编译期"要装而运行期不用的依赖，所以看不到 build_depend。</span>
 <span class="c"># 两个文件都可以真机 cat、再用 grep build_depend 对比着核对一遍</span></pre>
 <table>
@@ -200,7 +200,7 @@
   <div class="step"><div class="n">5</div>重编再跑：窗口 1 每秒打印"发出: …"，保持运行。</div>
   <div class="step"><div class="n">6</div>另开窗口，用 EXP-02 学的 list / echo / hz 四条命令闭环验收。</div>
 </div>
-<pre><span class="b">cd</span> ~/ros2_ws/src                                        <span class="c"># ① 进 src 目录才能建包</span>
+<pre data-copy="cmd"><span class="b">cd</span> ~/ros2_ws/src                                        <span class="c"># ① 进 src 目录才能建包</span>
 ros2 pkg create my_test_pkg --build-type ament_python \
   --node-name hello_node --dependencies rclpy            <span class="c"># ② 生成骨架：package.xml + setup.py + hello_node.py</span>
 <span class="b">cd</span> ~/ros2_ws &amp;&amp; colcon build --packages-select my_test_pkg <span class="c"># ③ 回根目录编译，产物进 build/ 与 install/</span>
@@ -221,17 +221,17 @@ ros2 run my_test_pkg hello_node    <span class="y"># 输出 Hi from my_test_pkg.
 <p>生成的模板文件其实只有 4 行 <code>print</code>——没 import rclpy、没有节点、没有 spin，所以打完就退出，<code>ros2 node list</code> 里自然也查不到它。<b>现在把它改成真节点，每秒往 /chatter 发一条消息。</b>这是第一次改代码，<b>不整份重写</b>——跟着三处改动做，每处都写清楚加什么、加在哪。</p>
 
 <p>第 0 步，先看看现在的文件长什么样（一共就 4 行）：</p>
-<pre><span class="g">cat</span> ~/ros2_ws/src/my_test_pkg/my_test_pkg/hello_node.py
+<pre data-copy="cmd"><span class="g">cat</span> ~/ros2_ws/src/my_test_pkg/my_test_pkg/hello_node.py
 <span class="c"># def main():  print('Hi from my_test_pkg.')，加上两句入口调用——</span>
 <span class="c"># 没有 rclpy、没有节点、没有 spin，所以打完就退出，连 node list 都查不到</span></pre>
 
 <p><b>改动 1｜文件最顶部（<code>def main</code> 之前）加三行 import：</b></p>
-<pre>import rclpy
+<pre data-copy="cmd">import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String   <span class="c"># 缺模块时：sudo apt install ros-humble-std-msgs</span></pre>
 
 <p><b>改动 2｜紧接着 import 下面、<code>def main</code> 之前，加一个节点类</b>——发布者和定时器都在这里：</p>
-<pre>class HelloNode(Node):
+<pre data-copy="cmd">class HelloNode(Node):
     def __init__(self):
         super().__init__('hello_node')
         self.pub = self.create_publisher(String, 'chatter', 10)  <span class="c"># 发布者：话题 chatter，队列 10</span>
@@ -244,12 +244,12 @@ from std_msgs.msg import String   <span class="c"># 缺模块时：sudo apt inst
         self.get_logger().info(f'发出: Hello World: {self.n}')</pre>
 
 <p><b>改动 3｜把原来整个 <code>def main</code> 函数换成下面这 4 行</b>（print 换成初始化 + spin；spin 让进程停在这里持续发消息，不再打完就退）：</p>
-<pre>def main():
+<pre data-copy="cmd">def main():
     rclpy.init()
     rclpy.spin(HelloNode())
     rclpy.shutdown()</pre>
 
-<pre><span class="c"># ⑦ 保存后重新编译、运行，用上一章的命令验收</span>
+<pre data-copy="cmd"><span class="c"># ⑦ 保存后重新编译、运行，用上一章的命令验收</span>
 <span class="b">cd</span> ~/ros2_ws
 colcon build --packages-select my_test_pkg   <span class="y"># 改了源码必须重编（--symlink-install 可省这步，见 EXP-03 第 03 节）</span>
 <span class="b">source</span> install/setup.bash
@@ -266,7 +266,7 @@ ros2 topic hz /chatter      <span class="g"># → 约 1.0 Hz     频率对</span
 <section class="blk" id="s8">
 <h2><span class="no">05</span>实操 B：编译两个真包，对比 C++ 与 Python</h2>
 <p>不自己造包了，直接拿工作空间里现成的两个真包下手：demo_nodes_cpp 和 demo_nodes_py 干的是同一件事（话题 talker/listener），但构建类型一 C++ 一 Python——正好把原理那节说的"两条线"亲手走一遍。</p>
-<pre><span class="c"># ① 回到工作空间根目录，先编 C++ 那个——真编译，build/ 里会堆出 .o</span>
+<pre data-copy="cmd"><span class="c"># ① 回到工作空间根目录，先编 C++ 那个——真编译，build/ 里会堆出 .o</span>
 <span class="b">cd</span> ~/ros2_ws
 colcon build --packages-select demo_nodes_cpp
 <span class="g">ls</span> build/demo_nodes_cpp/CMakeFiles/   <span class="y"># 大堆 .o 中间产物——g++ 真的干活了</span>
@@ -390,6 +390,6 @@ var DEPS={
 function pickDep(){document.getElementById('depIo').innerHTML=DEPS[document.getElementById('scene').value];}
 pickDep();
 </script>
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 </body>
 </html>

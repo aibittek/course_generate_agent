@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-02 · ROS2 常用命令工具 — 机器人 ROS2 应用与开发</title>
-<link rel="stylesheet" href="../shared/tutorial.css?v=20261015b">
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>
 :root{--theme:#2563eb;--theme-deep:#1d4ed8;--theme-bg:#dbeafe;--theme-bd:#bfdbfe}
 /* 04 实操中心 · 关卡切换 */
@@ -414,7 +414,7 @@
 
   <h3 style="margin:24px 0 10px;font-size:16px">🧪 亲手验证：让"阻塞"和"不阻塞"肉眼可见</h3>
   <p>光看理论不会形成直觉。按下面三步做，你会亲眼看到两者的差别——<b>这是本实验最值得做的一次对比</b>：</p>
-  <pre><span class="c"># 准备：终端 A 跑 talker，终端 B 备用</span>
+  <pre data-copy="cmd"><span class="c"># 准备：终端 A 跑 talker，终端 B 备用</span>
 <span class="g">ros2</span> run demo_nodes_cpp talker
 
 <span class="c"># ① 先看 topic 的"发完就走"：终端 C</span>
@@ -433,7 +433,7 @@
 
   <h3 style="margin:24px 0 10px;font-size:16px">🛡️ 命令行也能限时：用 shell 的 timeout 包一层</h3>
   <p>上面第 ③ 步你只能 <kbd>Ctrl+C</kbd> 手动脱身。<b>但命令行并非没有办法限时</b>——既然 <code>ros2 service call</code> 自己不带超时参数，就让外层的 <b>shell 定时器</b>替它掐断。这是 Linux 上处理"可能卡死的命令"的标准做法，不只用于 ROS2：</p>
-  <pre><span class="c"># 语法：timeout [选项] 秒数 命令...</span>
+  <pre data-copy="cmd"><span class="c"># 语法：timeout [选项] 秒数 命令...</span>
 <span class="c"># ③ 的改进版：最多等 3 秒，超时自动杀掉</span>
 <span class="g">timeout</span> <span class="b">3</span> ros2 service call /talker/get_parameters rcl_interfaces/srv/GetParameters <span class="y">"{names: ['use_sim_time']}"</span>
 <span class="c"># → 3 秒后进程被终止，提示：Terminated</span>
@@ -510,7 +510,7 @@
       <div class="arr"></div>
       <div class="step"><span class="n">4</span>换 <code>ros2 node info /listener</code> 再来一遍——Subscribers 里应有 <code>/chatter</code></div>
     </div>
-    <pre><span class="c"># 终端 C：</span>
+    <pre data-copy="cmd"><span class="c"># 终端 C：</span>
 <span class="g">ros2</span> node info /talker
 <span class="c"># Publishers:</span>
 <span class="c">#   /chatter            ← 它往外说的话题</span>
@@ -536,7 +536,7 @@
       <div class="arr"></div>
       <div class="step"><span class="n">4</span>参数组：<code>param list → dump → set</code> 三连，观察 set 后命令立即返回 Success</div>
     </div>
-    <pre><span class="c"># 终端 C：观察</span>
+    <pre data-copy="cmd"><span class="c"># 终端 C：观察</span>
 <span class="g">ros2</span> topic list -t
 <span class="c"># /chatter [std_msgs/msg/String]  /parameter_events  /rosout</span>
 <span class="g">ros2</span> topic hz /chatter                  <span class="c"># average rate: 1.000 · min/max 软实时统计</span>
@@ -564,7 +564,7 @@
       <div class="arr"></div>
       <div class="step"><span class="n">4</span>进阶：<code>--rate 2.0</code> 变速回放；录完重开 talker 恢复现场</div>
     </div>
-    <pre><span class="c"># 终端 D：录制（跑着的 talker/listener 会一起被录下来）</span>
+    <pre data-copy="cmd"><span class="c"># 终端 D：录制（跑着的 talker/listener 会一起被录下来）</span>
 <span class="g">ros2</span> bag record -a -o exp02_test        <span class="c"># -a=all  10~20 秒就 Ctrl+C</span>
 <span class="g">ros2</span> bag info exp02_test
 <span class="c"># Files: exp02_test_0.db3        Duration: 12.3s</span>
@@ -719,6 +719,6 @@ function clearTerm(){
   document.getElementById('termIo').innerHTML = '<span class="dim">// 终端已清屏：继续点击命令验证（过关状态保留）…</span>';
 }
 </script>
-<script src="../shared/tutorial.js" defer></script>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
 </body>
 </html>
