@@ -36,7 +36,7 @@
 .figcap{font-size:12.5px;color:var(--text-muted);text-align:center;margin:6px 0 0}
 
 /* ===== 五星教学法：阶段徽章 ===== */
-.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
+
 /* ===== 事故复盘 ===== */
 .lead{font-size:14px;color:#475569;line-height:1.9;margin:0 0 14px}
 .lead b{color:var(--head)}
@@ -242,7 +242,7 @@ float32 humidity      <span class="dim"># 湿度(%)</span></div>
 </section>
 
 <section class="blk" id="s1">
-<h2><span class="no">02</span>问题引入：一次"数据串台"的误报事故<span class="fs">聚焦问题 · 激活旧知</span></h2>
+<h2><span class="no">02</span>问题引入：一次"数据串台"的误报事故</h2>
 
 <p class="lead">在学新东西之前，先把前四章你自己亲手敲过的代码摆到一张桌子上，看它们各自搬运的"<b>数据形状</b>"是什么。想清楚这一步，你就明白自定义接口为什么非有不可。</p>
 
@@ -376,7 +376,7 @@ float32 humidity      <span class="dim"># 湿度(%)</span></div>
 </section>
 
 <section class="blk" id="s2">
-<h2><span class="no">03</span>核心原理：三种接口文件结构<span class="fs">示证新知</span></h2>
+<h2><span class="no">03</span>核心原理：三种接口文件结构</h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">.msg · 零个分隔符</div><div class="kt">单段字段表</div><p>每行 <code>类型 字段名 # 注释</code>。TemperatureHumidity：float32 temperature / float32 humidity——一对多持续流的数据载体。</p></div>
   <div class="kcard"><div class="kd">.srv · 一个 ---</div><div class="kt">请求 | 响应</div><p>VerifyFingerprint：请求段<b>空</b>（直接 --- 开头）| 响应 bool success + int32 user_id + string message。可空请求是合法的。</p></div>
@@ -609,7 +609,7 @@ ament_package()</pre>
 </section>
 
 <section class="blk" id="s6">
-<h2><span class="no">04</span>实操 A：通览全部 6 份契约，逐份读懂<span class="fs">应用新知</span></h2>
+<h2><span class="no">04</span>实操 A：通览全部 6 份契约，逐份读懂</h2>
 <p>01 节你只看了一条 <code>TemperatureHumidity</code>，但接口包里一共有 <b>3 类 6 份定义</b>——它们正好对应 EXP-06~08 用过的通信方式。这一节把 6 份陆续读一遍。</p>
 
 <div class="termbar"><span class="tl">终端 B</span><b>自省四连：确认契约已注册进系统</b><span class="note">（01 节编译好的环境继续用）</span></div>
@@ -737,7 +737,7 @@ string status</div>
 </section>
 
 <section class="blk" id="s8">
-<h2><span class="no">05</span>实操 B：设计任务——为新传感器定义接口<span class="fs">融会贯通</span></h2>
+<h2><span class="no">05</span>实操 B：设计任务——为新传感器定义接口</h2>
 <p><b>任务背景</b>：小车上要新装一个光照传感器，需要上报「照度值 + 读数是否有效 + 采样时刻」。请按真实工程流程走完"定义 → 登记 → 编译 → 验证"四步。</p>
 
 <div class="cmdstep">
@@ -799,7 +799,7 @@ builtin_interfaces/Time stamp
 </section>
 
 <section class="blk" id="s9">
-<h2><span class="no">06</span>注意事项与验收清单<span class="fs">融会贯通</span></h2>
+<h2><span class="no">06</span>注意事项与验收清单</h2>
 <div class="check">
   <ul>
     <li>默画三种接口的分隔符结构：.msg 无、.srv 一个 ---、.action 两个 ---</li>
@@ -821,7 +821,7 @@ builtin_interfaces/Time stamp
 </section>
 
 <section class="blk" id="s10">
-<h2><span class="no">07</span>本课总结与思考题<span class="fs">融会贯通</span></h2>
+<h2><span class="no">07</span>本课总结与思考题</h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">结构</div><div class="kt">0 / 1 / 2 个分隔符</div><p>msg 单段、srv 请求响应、action 三段——文件结构直接映射通信模型。</p></div>
   <div class="kcard"><div class="kd">编译</div><div class="kt">rosidl_generate_interfaces</div><p>列表 + DEPENDENCIES 双配置，产出 Python/C++ 双端类。</p></div>

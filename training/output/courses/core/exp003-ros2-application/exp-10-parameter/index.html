@@ -61,7 +61,7 @@
 #lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
 #lightbox.on{display:flex}
 #lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
+
 </style>
 </head>
 <body>
@@ -160,7 +160,7 @@
 </section>
 
 <section class="blk" id="s1">
-<h2><span class="no">02</span>问题引入：改一个数字为什么这么贵<span class="fs">聚焦问题 · 激活旧知</span></h2>
+<h2><span class="no">02</span>问题引入：改一个数字为什么这么贵</h2>
 <p class="lead">刚才你在页面上拖滑块，改一个值的代价是<b>零</b>。但在没有参数系统之前，同样的事有多贵？</p>
 <div class="flow">
   <div class="step"><div class="n">1</div>巡线小车的 PID 三个系数、MQ5 采样周期、报警阈值 500 ppm——都写死在源码里。</div>
@@ -192,32 +192,52 @@
 </div>
 
 <div class="anim-box">
-<svg viewBox="0 0 760 210" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
-  <!-- 上：硬编码之路 -->
-  <text x="24" y="30" fill="#b91c1c" font-size="13" font-weight="bold">✗ 硬编码之路（改一次走全程）</text>
-  <g font-size="11.5">
-    <rect x="24" y="44" width="106" height="40" rx="8" fill="#fff" stroke="#fca5a5"/><text x="77" y="68" fill="#7f1d1d" text-anchor="middle">改源码 500→600</text>
-    <rect x="164" y="44" width="106" height="40" rx="8" fill="#fff" stroke="#fca5a5"/><text x="217" y="68" fill="#7f1d1d" text-anchor="middle">colcon build</text>
-    <rect x="304" y="44" width="106" height="40" rx="8" fill="#fff" stroke="#fca5a5"/><text x="357" y="68" fill="#7f1d1d" text-anchor="middle">部署到小车</text>
-    <rect x="444" y="44" width="106" height="40" rx="8" fill="#fff" stroke="#fca5a5"/><text x="497" y="68" fill="#7f1d1d" text-anchor="middle">重启节点</text>
-    <rect x="584" y="44" width="120" height="40" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-dasharray="4 3"/><text x="644" y="68" fill="#b91c1c" text-anchor="middle">采样中断 1~5 分钟</text>
-  </g>
-  <g stroke="#fca5a5" stroke-width="2" marker-end="url(#ar10a)">
-    <path d="M130 64 H160" fill="none"/><path d="M270 64 H300" fill="none"/><path d="M410 64 H440" fill="none"/><path d="M550 64 H580" fill="none"/>
-  </g>
-  <defs><marker id="ar10a" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#fca5a5"/></marker>
-  <marker id="ar10b" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#5eead4"/></marker></defs>
-  <!-- 下：参数化之路 -->
-  <text x="24" y="128" fill="#0f766e" font-size="13" font-weight="bold">✓ 参数化之路（一条命令热生效）</text>
-  <g font-size="11.5">
-    <rect x="24" y="142" width="260" height="40" rx="8" fill="#fff" stroke="#5eead4"/><text x="154" y="166" fill="#0f766e" text-anchor="middle" font-family="monospace">ros2 param set … alarm_threshold_ppm 600.0</text>
-    <rect x="330" y="142" width="150" height="40" rx="8" fill="#fff" stroke="#5eead4"/><text x="405" y="166" fill="#0f766e" text-anchor="middle">回调校验（毫秒级）</text>
-    <rect x="526" y="142" width="178" height="40" rx="8" fill="#f0fdfa" stroke="#5eead4"/><text x="615" y="166" fill="#0f766e" text-anchor="middle">新阈值热生效 · 采样不中断</text>
-  </g>
-  <g stroke="#5eead4" stroke-width="2" marker-end="url(#ar10b)">
-    <path d="M284 162 H326" fill="none"/><path d="M480 162 H522" fill="none"/>
-  </g>
-  <text x="380" y="204" fill="#94a3b8" font-size="11.5" text-anchor="middle">参数把"改配置"从工程行为降级为日常操作 —— 这就是"把配置参数从代码里拉出来"</text>
+<svg viewBox="0 0 760 236" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <defs>
+    <marker id="ar10bad" markerWidth="7" markerHeight="7" refX="5.5" refY="2.8" orient="auto"><path d="M0,0 L6,2.8 L0,5.6 Z" fill="#f87171"/></marker>
+    <marker id="ar10good" markerWidth="7" markerHeight="7" refX="5.5" refY="2.8" orient="auto"><path d="M0,0 L6,2.8 L0,5.6 Z" fill="#4ade80"/></marker>
+  </defs>
+
+  <!-- 上排：硬编码（深色卡片 + 红色描边） -->
+  <text x="24" y="24" fill="#f87171" font-size="12.5" font-weight="bold">✗ 硬编码之路 —— 改一次走完全程</text>
+  <rect x="24" y="34" width="104" height="42" rx="8" fill="#1e293b" stroke="#7f1d1d" stroke-width="1.4"/>
+  <text x="76" y="60" fill="#e2e8f0" font-size="11" text-anchor="middle">改源码</text>
+  <rect x="152" y="34" width="104" height="42" rx="8" fill="#1e293b" stroke="#7f1d1d" stroke-width="1.4"/>
+  <text x="204" y="54" fill="#e2e8f0" font-size="10.5" text-anchor="middle">colcon</text>
+  <text x="204" y="68" fill="#e2e8f0" font-size="10.5" text-anchor="middle">build</text>
+  <rect x="280" y="34" width="104" height="42" rx="8" fill="#1e293b" stroke="#7f1d1d" stroke-width="1.4"/>
+  <text x="332" y="60" fill="#e2e8f0" font-size="11" text-anchor="middle">部署到小车</text>
+  <rect x="408" y="34" width="104" height="42" rx="8" fill="#1e293b" stroke="#7f1d1d" stroke-width="1.4"/>
+  <text x="460" y="60" fill="#e2e8f0" font-size="11" text-anchor="middle">重启节点</text>
+  <rect x="536" y="34" width="200" height="42" rx="8" fill="#3f1d1d" stroke="#b91c1c" stroke-width="1.4" stroke-dasharray="5 3"/>
+  <text x="636" y="53" fill="#fca5a5" font-size="10.5" text-anchor="middle">采样中断</text>
+  <text x="636" y="68" fill="#fca5a5" font-size="10.5" text-anchor="middle" font-weight="bold">1 ~ 5 分钟</text>
+
+  <line x1="128" y1="55" x2="148" y2="55" stroke="#f87171" stroke-width="1.8" marker-end="url(#ar10bad)"/>
+  <line x1="256" y1="55" x2="276" y2="55" stroke="#f87171" stroke-width="1.8" marker-end="url(#ar10bad)"/>
+  <line x1="384" y1="55" x2="404" y2="55" stroke="#f87171" stroke-width="1.8" marker-end="url(#ar10bad)"/>
+  <line x1="512" y1="55" x2="532" y2="55" stroke="#f87171" stroke-width="1.8" marker-end="url(#ar10bad)"/>
+
+  <!-- 中间 VS 分隔 -->
+  <line x1="24" y1="98" x2="736" y2="98" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="380" y="94" fill="#64748b" font-size="10" text-anchor="middle" font-weight="bold">VS</text>
+
+  <!-- 下排：参数化（深色卡片 + 绿色描边） -->
+  <text x="24" y="126" fill="#4ade80" font-size="12.5" font-weight="bold">✓ 参数化之路 —— 一条命令热生效</text>
+  <rect x="24" y="136" width="248" height="46" rx="8" fill="#1e293b" stroke="#15803d" stroke-width="1.4"/>
+  <text x="148" y="164" fill="#86efac" font-size="10.5" text-anchor="middle" font-family="monospace">ros2 param set … 600.0</text>
+  <rect x="300" y="136" width="140" height="46" rx="8" fill="#1e293b" stroke="#15803d" stroke-width="1.4"/>
+  <text x="370" y="157" fill="#e2e8f0" font-size="10.5" text-anchor="middle">回调校验</text>
+  <text x="370" y="171" fill="#64748b" font-size="9.5" text-anchor="middle">毫秒级</text>
+  <rect x="468" y="136" width="268" height="46" rx="8" fill="#14351f" stroke="#22c55e" stroke-width="1.4"/>
+  <text x="602" y="157" fill="#86efac" font-size="11" text-anchor="middle" font-weight="bold">新阈值热生效</text>
+  <text x="602" y="172" fill="#4ade80" font-size="10" text-anchor="middle">采样不中断</text>
+
+  <line x1="272" y1="159" x2="296" y2="159" stroke="#4ade80" stroke-width="1.8" marker-end="url(#ar10good)"/>
+  <line x1="440" y1="159" x2="464" y2="159" stroke="#4ade80" stroke-width="1.8" marker-end="url(#ar10good)"/>
+
+  <!-- 底部结论 -->
+  <text x="380" y="220" fill="#94a3b8" font-size="11" text-anchor="middle">参数把"改配置"从工程行为降级为日常操作 —— 这就是把配置参数从代码里拉出来</text>
 </svg>
 </div>
 <p class="figcap">图 10-1 · 同样是把报警阈值从 500 改成 600：硬编码走完全程 vs 参数化一条命令</p>
@@ -235,91 +255,92 @@
 </div>
 
 <div class="anim-box">
-<svg viewBox="0 0 760 448" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+<svg viewBox="0 0 760 452" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
   <defs>
-    <marker id="arD10" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#2563eb"/></marker>
-    <marker id="arG10" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#0d9488"/></marker>
-    <marker id="arS10" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#dc2626"/></marker>
-    <marker id="arA10" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#f59e0b"/></marker>
-    <marker id="arOK10" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#16a34a"/></marker>
+    <marker id="arD10" markerWidth="7" markerHeight="7" refX="5.5" refY="2.8" orient="auto"><path d="M0,0 L6,2.8 L0,5.6 Z" fill="#60a5fa"/></marker>
+    <marker id="arG10" markerWidth="7" markerHeight="7" refX="5.5" refY="2.8" orient="auto"><path d="M0,0 L6,2.8 L0,5.6 Z" fill="#2dd4bf"/></marker>
+    <marker id="arS10" markerWidth="7" markerHeight="7" refX="5.5" refY="2.8" orient="auto"><path d="M0,0 L6,2.8 L0,5.6 Z" fill="#f87171"/></marker>
+    <marker id="arA10" markerWidth="7" markerHeight="7" refX="5.5" refY="2.8" orient="auto"><path d="M0,0 L6,2.8 L0,5.6 Z" fill="#fbbf24"/></marker>
+    <marker id="arOK10" markerWidth="7" markerHeight="7" refX="5.5" refY="2.8" orient="auto"><path d="M0,0 L6,2.8 L0,5.6 Z" fill="#4ade80"/></marker>
   </defs>
 
-  <!-- 节点外：读取 / 写入两路的调用方 -->
-  <rect x="20" y="162" width="132" height="56" rx="8" fill="#fff" stroke="#94a3b8"/>
-  <text x="86" y="184" fill="#0f172a" font-size="12" font-weight="bold" text-anchor="middle">外部 CLI / rqt</text>
-  <text x="86" y="202" fill="#64748b" font-size="9.5" text-anchor="middle">节点代码读取也走此门</text>
-  <rect x="20" y="262" width="132" height="56" rx="8" fill="#fff" stroke="#94a3b8"/>
-  <text x="86" y="284" fill="#0f172a" font-size="12" font-weight="bold" text-anchor="middle">外部 CLI / rqt</text>
-  <text x="86" y="302" fill="#64748b" font-size="9.5" text-anchor="middle">ros2 param set …</text>
+  <!-- 左侧：外部调用方（深色卡） -->
+  <rect x="16" y="150" width="130" height="58" rx="9" fill="#1e293b" stroke="#475569" stroke-width="1.4"/>
+  <text x="81" y="172" fill="#e2e8f0" font-size="11.5" font-weight="bold" text-anchor="middle">外部 CLI / rqt</text>
+  <text x="81" y="190" fill="#64748b" font-size="9.5" text-anchor="middle">get 读取入口</text>
 
-  <!-- 节点大框 -->
-  <rect x="186" y="18" width="556" height="340" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 4"/>
-  <text x="464" y="42" fill="#334155" font-size="13" font-weight="bold" text-anchor="middle">节点内部 · /param_sensor</text>
+  <rect x="16" y="266" width="130" height="58" rx="9" fill="#1e293b" stroke="#475569" stroke-width="1.4"/>
+  <text x="81" y="288" fill="#e2e8f0" font-size="11.5" font-weight="bold" text-anchor="middle">外部 CLI / rqt</text>
+  <text x="81" y="306" fill="#64748b" font-size="9.5" text-anchor="middle">ros2 param set</text>
 
-  <!-- 三条泳道底色 -->
-  <rect x="196" y="72" width="340" height="68" rx="8" fill="#eff6ff" fill-opacity=".6"/>
-  <rect x="196" y="158" width="340" height="68" rx="8" fill="#f0fdfa" fill-opacity=".6"/>
-  <rect x="196" y="244" width="340" height="86" rx="8" fill="#fffbeb" fill-opacity=".7"/>
+  <!-- 节点大框（深色 + 虚线边界） -->
+  <rect x="168" y="14" width="352" height="350" rx="12" fill="#0f172a" stroke="#334155" stroke-width="1.4" stroke-dasharray="6 4"/>
+  <text x="344" y="36" fill="#94a3b8" font-size="11.5" font-weight="bold" text-anchor="middle">节点内部 · /param_sensor</text>
 
-  <!-- 连线（先画线，盒子后画盖住中段） -->
-  <path d="M300 118 H340" stroke="#2563eb" stroke-width="2.2" fill="none" marker-end="url(#arD10)"/>
-  <path d="M496 118 H544" stroke="#2563eb" stroke-width="2.2" fill="none" marker-end="url(#arD10)"/>
-  <path d="M152 198 H544" stroke="#0d9488" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arG10)"/>
-  <path d="M548 210 H156" stroke="#0d9488" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arG10)"/>
-  <path d="M152 292 H312" stroke="#dc2626" stroke-width="2.5" fill="none" marker-end="url(#arS10)"/>
-  <path d="M392 292 H408" stroke="#f59e0b" stroke-width="2.5" fill="none" marker-end="url(#arA10)"/>
-  <path d="M516 292 H544" stroke="#16a34a" stroke-width="2.5" fill="none" marker-end="url(#arOK10)"/>
-  <text x="532" y="281" fill="#16a34a" font-size="9.5" font-weight="bold" text-anchor="middle">✓ 落库</text>
-  <path d="M464 328 V360" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="5 4" fill="none" marker-end="url(#arS10)"/>
+  <!-- 三条泳道（低饱和深色底） -->
+  <rect x="180" y="66" width="328" height="72" rx="8" fill="#172554"/>
+  <rect x="180" y="156" width="328" height="72" rx="8" fill="#042f2e"/>
+  <rect x="180" y="246" width="328" height="102" rx="8" fill="#3b1d0a"/>
 
-  <!-- ① 登记路（节点内部发起，不走闸门） -->
-  <text x="204" y="90" fill="#1d4ed8" font-size="11" font-weight="bold">① 登记路 declare —— 仅 __init__ 一次</text>
-  <rect x="204" y="98" width="96" height="40" rx="8" fill="#fff" stroke="#2563eb"/>
-  <text x="252" y="117" fill="#0f172a" font-size="12" font-weight="bold" text-anchor="middle">节点 __init__</text>
-  <text x="252" y="132" fill="#64748b" font-size="9.5" text-anchor="middle">启动时执行</text>
-  <rect x="344" y="98" width="152" height="40" rx="8" fill="#fff" stroke="#2563eb"/>
-  <text x="420" y="117" fill="#0f172a" font-size="12" font-weight="bold" text-anchor="middle">门① declare</text>
-  <text x="420" y="132" fill="#64748b" font-size="9.5" text-anchor="middle">登记 名字 · 类型 · 默认值</text>
+  <!-- ===== ① 登记路 ===== -->
+  <text x="188" y="84" fill="#60a5fa" font-size="10.5" font-weight="bold">① declare 登记 · 仅 __init__ 一次</text>
+  <rect x="188" y="92" width="112" height="38" rx="7" fill="#1e293b" stroke="#2563eb" stroke-width="1.3"/>
+  <text x="244" y="109" fill="#e2e8f0" font-size="11" text-anchor="middle" font-weight="bold">节点 __init__</text>
+  <text x="244" y="122" fill="#64748b" font-size="9" text-anchor="middle">启动时</text>
+  <rect x="336" y="92" width="164" height="38" rx="7" fill="#1e293b" stroke="#2563eb" stroke-width="1.3"/>
+  <text x="418" y="108" fill="#e2e8f0" font-size="11" text-anchor="middle" font-weight="bold">门① declare</text>
+  <text x="418" y="122" fill="#94a3b8" font-size="8.5" text-anchor="middle">名字 · 类型 · 默认值</text>
+  <line x1="300" y1="111" x2="332" y2="111" stroke="#60a5fa" stroke-width="1.8" marker-end="url(#arD10)"/>
+  <line x1="500" y1="111" x2="540" y2="111" stroke="#60a5fa" stroke-width="1.8" marker-end="url(#arD10)"/>
 
-  <!-- ② 读取路（外部发起，一问一答） -->
-  <text x="204" y="176" fill="#0f766e" font-size="11" font-weight="bold">② 读取路 get —— 任意时刻 · 任意次</text>
-  <rect x="344" y="184" width="152" height="40" rx="8" fill="#fff" stroke="#0d9488"/>
-  <text x="420" y="203" fill="#0f172a" font-size="12" font-weight="bold" text-anchor="middle">门② get</text>
-  <text x="420" y="218" fill="#64748b" font-size="9.5" text-anchor="middle">读当前值 · 立即返回</text>
+  <!-- ===== ② 读取路 ===== -->
+  <text x="188" y="174" fill="#2dd4bf" font-size="10.5" font-weight="bold">② get 读取 · 任意时刻 · 任意次</text>
+  <rect x="336" y="182" width="164" height="38" rx="7" fill="#1e293b" stroke="#0d9488" stroke-width="1.3"/>
+  <text x="418" y="198" fill="#e2e8f0" font-size="11" text-anchor="middle" font-weight="bold">门② get</text>
+  <text x="418" y="212" fill="#94a3b8" font-size="8.5" text-anchor="middle">读当前值 · 立即返回</text>
+  <line x1="148" y1="179" x2="332" y2="179" stroke="#2dd4bf" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#arG10)"/>
+  <line x1="504" y1="196" x2="542" y2="196" stroke="#2dd4bf" stroke-width="1.8" marker-end="url(#arG10)"/>
 
-  <!-- ③ 写入路（外部发起，必过闸门） -->
-  <text x="204" y="262" fill="#b45309" font-size="11" font-weight="bold">③ 写入路 set —— 唯一必过闸门</text>
-  <rect x="316" y="270" width="76" height="46" rx="8" fill="#fff" stroke="#dc2626"/>
-  <text x="354" y="289" fill="#0f172a" font-size="12" font-weight="bold" text-anchor="middle">门③ set</text>
-  <text x="354" y="304" fill="#64748b" font-size="9.5" text-anchor="middle">写值入口</text>
-  <rect x="412" y="258" width="104" height="70" rx="9" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
-  <text x="464" y="276" fill="#fcd34d" font-size="12.5" font-weight="bold" text-anchor="middle">回调闸门</text>
-  <text x="464" y="290" fill="#94a3b8" font-size="9" font-family="monospace" text-anchor="middle">on_set_parameters</text>
-  <text x="464" y="304" fill="#e2e8f0" font-size="9.5" text-anchor="middle">① 校验 0.02~10.0</text>
-  <text x="464" y="318" fill="#e2e8f0" font-size="9.5" text-anchor="middle">② 应用 ③ 回执</text>
+  <!-- ===== ③ 写入路 ===== -->
+  <text x="188" y="264" fill="#fbbf24" font-size="10.5" font-weight="bold">③ set 写入 · 唯一必过闸门</text>
+  <rect x="188" y="272" width="76" height="42" rx="7" fill="#1e293b" stroke="#dc2626" stroke-width="1.3"/>
+  <text x="226" y="291" fill="#e2e8f0" font-size="11" text-anchor="middle" font-weight="bold">门③ set</text>
+  <text x="226" y="305" fill="#64748b" font-size="8.5" text-anchor="middle">写值入口</text>
+  <rect x="286" y="266" width="114" height="56" rx="8" fill="#3f1d1d" stroke="#f59e0b" stroke-width="1.6"/>
+  <text x="343" y="285" fill="#fcd34d" font-size="11" text-anchor="middle" font-weight="bold">回调闸门</text>
+  <text x="343" y="299" fill="#fca5a5" font-size="8.5" text-anchor="middle" font-family="monospace">on_set_params</text>
+  <text x="343" y="313" fill="#e2e8f0" font-size="8.5" text-anchor="middle">校验 → 应用 → 回执</text>
+  <line x1="264" y1="293" x2="282" y2="293" stroke="#f87171" stroke-width="1.8" marker-end="url(#arS10)"/>
+  <line x1="400" y1="293" x2="536" y2="293" stroke="#4ade80" stroke-width="1.8" marker-end="url(#arOK10)"/>
+  <text x="468" y="287" fill="#4ade80" font-size="9" text-anchor="middle" font-weight="bold">✓ 落库</text>
 
-  <!-- 参数注册表（右侧数据仓，三路共同的目的地） -->
-  <rect x="548" y="64" width="176" height="264" rx="10" fill="#0f172a"/>
-  <text x="636" y="86" fill="#a5b4fc" font-size="12.5" font-weight="bold" text-anchor="middle">参数注册表</text>
-  <text x="636" y="101" fill="#64748b" font-size="10" text-anchor="middle">数据仓 · 唯一真相源</text>
-  <line x1="564" y1="110" x2="708" y2="110" stroke="#1e293b" stroke-width="2"/>
-  <g font-size="10.5" font-family="monospace">
-    <text x="564" y="130" fill="#e2e8f0">publish_period = 1.0</text>
-    <text x="564" y="150" fill="#e2e8f0">sensor_enabled = true</text>
-    <text x="564" y="170" fill="#e2e8f0">alarm_threshold_ppm</text>
-    <text x="576" y="185" fill="#94a3b8">= 500.0</text>
-    <text x="564" y="205" fill="#64748b">use_sim_time = false</text>
+  <!-- ===== 参数注册表（右侧，深色数据仓） ===== -->
+  <rect x="552" y="56" width="192" height="286" rx="10" fill="#0f172a" stroke="#475569" stroke-width="1.4"/>
+  <text x="648" y="80" fill="#a5b4fc" font-size="12" font-weight="bold" text-anchor="middle">参数注册表</text>
+  <text x="648" y="96" fill="#64748b" font-size="9.5" text-anchor="middle">唯一真相源</text>
+  <line x1="568" y1="106" x2="728" y2="106" stroke="#334155" stroke-width="1.4"/>
+  <g font-size="10" font-family="monospace">
+    <text x="568" y="128" fill="#e2e8f0">publish_period</text>
+    <text x="568" y="142" fill="#4ade80">  = 1.0</text>
+    <text x="568" y="164" fill="#e2e8f0">sensor_enabled</text>
+    <text x="568" y="178" fill="#4ade80">  = true</text>
+    <text x="568" y="200" fill="#e2e8f0">alarm_threshold</text>
+    <text x="568" y="214" fill="#4ade80">  = 500.0</text>
+    <text x="568" y="236" fill="#64748b">use_sim_time</text>
+    <text x="568" y="250" fill="#64748b">  = false</text>
   </g>
-  <line x1="564" y1="218" x2="708" y2="218" stroke="#1e293b" stroke-width="2"/>
-  <text x="636" y="240" fill="#94a3b8" font-size="9.5" text-anchor="middle">值一变 → 回调重建定时器</text>
-  <text x="636" y="256" fill="#94a3b8" font-size="9.5" text-anchor="middle">（行为变化的起点 · 第 1 步）</text>
+  <line x1="568" y1="264" x2="728" y2="264" stroke="#334155" stroke-width="1.4"/>
+  <text x="648" y="284" fill="#94a3b8" font-size="9" text-anchor="middle">值一变 → 回调重建定时器</text>
+  <text x="648" y="300" fill="#64748b" font-size="9" text-anchor="middle">（行为变化的起点）</text>
 
-  <!-- 拒绝回执（回到节点外） -->
-  <rect x="310" y="364" width="308" height="42" rx="8" fill="#fef2f2" stroke="#fca5a5"/>
-  <text x="464" y="381" fill="#b91c1c" font-size="11" font-weight="bold" text-anchor="middle">✗ 拒绝：successful=False + reason</text>
-  <text x="464" y="397" fill="#7f1d1d" font-size="9.5" text-anchor="middle">CLI 显示 Setting parameter failed，注册表原值不动</text>
+  <!-- ===== 拒绝回执 ===== -->
+  <path d="M343 322 V358" stroke="#f87171" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#arS10)"/>
+  <rect x="196" y="362" width="296" height="44" rx="8" fill="#3f1d1d" stroke="#b91c1c" stroke-width="1.3"/>
+  <text x="344" y="380" fill="#fca5a5" font-size="10.5" font-weight="bold" text-anchor="middle">✗ 拒绝：successful=False + reason</text>
+  <text x="344" y="396" fill="#94a3b8" font-size="9" text-anchor="middle">CLI 显示 failed，注册表原值不动</text>
 
-  <text x="380" y="432" fill="#94a3b8" font-size="11.5" text-anchor="middle">三条路汇入同一个仓：登记定型、读取直通、写入必过闸门 —— set 永远不是直接写内存</text>
+  <!-- 底部结论 -->
+  <text x="380" y="438" fill="#94a3b8" font-size="10.5" text-anchor="middle">三条路汇入同一个仓：登记定型 · 读取直通 · 写入必过闸门 —— set 永远不是直接写内存</text>
 </svg>
 </div>
 <p class="figcap">图 10-2 · 参数服务解剖图：三条路（declare 登记 / get 读取 / set 写入）汇入同一个参数注册表，只有写入路必须过回调闸门</p>
@@ -334,39 +355,59 @@
 
 <h3 style="font-size:16px;color:var(--text-primary);margin:28px 0 0">一次 <code>param set</code> 的完整数据流</h3>
 <div class="anim-box">
-<svg viewBox="0 0 760 235" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
-  <g>
-    <rect x="16" y="46" width="132" height="72" rx="10" fill="#1e293b" stroke="#dc2626" stroke-width="2"/>
-    <text x="82" y="74" fill="#fff" font-size="13.5" text-anchor="middle" font-weight="bold">外部 CLI / rqt</text>
-    <text x="82" y="95" fill="#fca5a5" font-size="11" text-anchor="middle">ros2 param set 0.2</text>
-    <text x="82" y="111" fill="#64748b" font-size="10" text-anchor="middle">（另一终端）</text>
-    <rect x="204" y="46" width="150" height="72" rx="10" fill="#1e293b" stroke="#dc2626" stroke-width="2"/>
-    <text x="279" y="74" fill="#fff" font-size="13.5" text-anchor="middle" font-weight="bold">节点参数服务</text>
-    <text x="279" y="95" fill="#fca5a5" font-size="11" text-anchor="middle">parameter_server</text>
-    <text x="279" y="111" fill="#64748b" font-size="10" text-anchor="middle">（节点内部注册表）</text>
-    <rect x="410" y="46" width="152" height="72" rx="10" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
-    <text x="486" y="72" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">set_parameters</text>
-    <text x="486" y="91" fill="#fff" font-size="13" text-anchor="middle" font-weight="bold">callback</text>
-    <text x="486" y="111" fill="#fcd34d" font-size="10.5" text-anchor="middle">校验范围 / 应用行为</text>
-    <rect x="618" y="46" width="126" height="72" rx="10" fill="#1e293b" stroke="#22c55e" stroke-width="2"/>
-    <text x="681" y="72" fill="#fff" font-size="13.5" text-anchor="middle" font-weight="bold">业务逻辑</text>
-    <text x="681" y="93" fill="#86efac" font-size="10.5" text-anchor="middle">重建定时器 →</text>
-    <text x="681" y="110" fill="#86efac" font-size="10.5" text-anchor="middle">0.2s 周期生效</text>
-  </g>
-  <path d="M148 82 H204" stroke="#334155" stroke-width="3"/>
-  <path d="M354 82 H410" stroke="#334155" stroke-width="3"/>
-  <path d="M562 82 H618" stroke="#334155" stroke-width="3"/>
-  <circle r="6" fill="#f87171" cx="148" cy="82"><animate attributeName="cx" values="148;204" dur="1.2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.2s" repeatCount="indefinite"/></circle>
-  <circle r="6" fill="#f87171" cx="354" cy="82"><animate attributeName="cx" values="354;410" dur="1.2s" begin="0.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.2s" begin="0.4s" repeatCount="indefinite"/></circle>
-  <circle r="6" fill="#4ade80" cx="562" cy="82"><animate attributeName="cx" values="562;618" dur="1.2s" begin="0.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.2s" begin="0.8s" repeatCount="indefinite"/></circle>
-  <!-- 返回路径 -->
-  <path d="M486 118 V168 H82 V118" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5 4" fill="none"/>
-  <rect x="228" y="154" width="240" height="28" rx="6" fill="#3f1d1d" stroke="#b91c1c"/>
-  <text x="348" y="173" fill="#fca5a5" font-size="11.5" text-anchor="middle">校验失败 → successful=False + reason</text>
-  <text x="486" y="212" fill="#94a3b8" font-size="12">成功路径回执 SetParametersResult(successful=True) → CLI 显示 Set parameter successful</text>
+<svg viewBox="0 0 760 250" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <defs>
+    <marker id="arF10" markerWidth="7" markerHeight="7" refX="5.5" refY="2.8" orient="auto"><path d="M0,0 L6,2.8 L0,5.6 Z" fill="#64748b"/></marker>
+  </defs>
+
+  <!-- 四个环节：统一 y=40 h=68，横向等距 -->
+  <rect x="20" y="40" width="150" height="68" rx="9" fill="#1e293b" stroke="#dc2626" stroke-width="1.6"/>
+  <text x="95" y="64" fill="#fff" font-size="11.5" font-weight="bold" text-anchor="middle">外部 CLI / rqt</text>
+  <text x="95" y="82" fill="#fca5a5" font-size="10" text-anchor="middle" font-family="monospace">ros2 param set 0.2</text>
+  <text x="95" y="97" fill="#64748b" font-size="9" text-anchor="middle">另一终端</text>
+
+  <rect x="216" y="40" width="150" height="68" rx="9" fill="#1e293b" stroke="#dc2626" stroke-width="1.6"/>
+  <text x="291" y="64" fill="#fff" font-size="11.5" font-weight="bold" text-anchor="middle">节点参数服务</text>
+  <text x="291" y="82" fill="#fca5a5" font-size="9.5" text-anchor="middle" font-family="monospace">parameter_server</text>
+  <text x="291" y="97" fill="#64748b" font-size="9" text-anchor="middle">节点内部注册表</text>
+
+  <rect x="412" y="40" width="150" height="68" rx="9" fill="#3f1d1d" stroke="#f59e0b" stroke-width="1.8"/>
+  <text x="487" y="62" fill="#fcd34d" font-size="11.5" font-weight="bold" text-anchor="middle">回调闸门</text>
+  <text x="487" y="78" fill="#fca5a5" font-size="9" text-anchor="middle" font-family="monospace">set_parameters_cb</text>
+  <text x="487" y="94" fill="#e2e8f0" font-size="9.5" text-anchor="middle">校验范围 → 应用行为</text>
+
+  <rect x="608" y="40" width="132" height="68" rx="9" fill="#14351f" stroke="#22c55e" stroke-width="1.6"/>
+  <text x="674" y="62" fill="#86efac" font-size="11.5" font-weight="bold" text-anchor="middle">业务逻辑</text>
+  <text x="674" y="80" fill="#4ade80" font-size="9.5" text-anchor="middle">重建定时器</text>
+  <text x="674" y="96" fill="#4ade80" font-size="9.5" text-anchor="middle">0.2s 周期生效</text>
+
+  <!-- 三段前进箭头（水平，落在中线 y=74） -->
+  <line x1="170" y1="74" x2="212" y2="74" stroke="#64748b" stroke-width="2.2"/>
+  <polygon points="212,74 204,70 204,78" fill="#64748b"/>
+  <line x1="366" y1="74" x2="408" y2="74" stroke="#64748b" stroke-width="2.2"/>
+  <polygon points="408,74 400,70 400,78" fill="#64748b"/>
+  <line x1="562" y1="74" x2="604" y2="74" stroke="#64748b" stroke-width="2.2"/>
+  <polygon points="604,74 596,70 596,78" fill="#64748b"/>
+
+  <!-- 流动小球 -->
+  <circle r="5" fill="#f87171" cx="170" cy="74"><animate attributeName="cx" values="170;212" dur="1.2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.2s" repeatCount="indefinite"/></circle>
+  <circle r="5" fill="#f87171" cx="366" cy="74"><animate attributeName="cx" values="366;408" dur="1.2s" begin="0.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.2s" begin="0.4s" repeatCount="indefinite"/></circle>
+  <circle r="5" fill="#4ade80" cx="562" cy="74"><animate attributeName="cx" values="562;604" dur="1.2s" begin="0.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" dur="1.2s" begin="0.8s" repeatCount="indefinite"/></circle>
+
+  <!-- 成功回执（虚线回到起点） -->
+  <path d="M487 108 V140 H95 V112" stroke="#22c55e" stroke-width="1.6" stroke-dasharray="5 4" fill="none" marker-end="url(#arF10)"/>
+  <rect x="200" y="128" width="270" height="24" rx="6" fill="#14351f" stroke="#22c55e" stroke-width="1.2"/>
+  <text x="335" y="144" fill="#86efac" font-size="10" text-anchor="middle">✓ successful=True → CLI 显示 Set parameter successful</text>
+
+  <!-- 失败回执（下方独立条） -->
+  <rect x="200" y="168" width="380" height="26" rx="6" fill="#3f1d1d" stroke="#b91c1c" stroke-width="1.2"/>
+  <text x="390" y="185" fill="#fca5a5" font-size="10" text-anchor="middle">✗ 校验失败 → successful=False + reason，注册表原值不动</text>
+
+  <!-- 底部结论 -->
+  <text x="380" y="222" fill="#94a3b8" font-size="10.5" text-anchor="middle">set 不是直接写内存：先过回调这道闸门 —— 校验、应用、回执三件事决定这次修改是成功还是被拒绝</text>
 </svg>
 </div>
-<p class="anim-cap">set 不是直接写内存：先过回调这道"闸门"——校验、应用、回执三件事决定这次修改是成功还是被拒绝。</p>
+<p class="figcap">图 10-3 · 一次 <code>param set</code> 的完整数据流：请求经参数服务转交回调闸门，校验通过才落到业务逻辑</p>
 <h3 style="font-size:16px;color:var(--text-primary);margin:28px 0 0">两层约束：描述符（静态）与回调（动态）</h3>
 <pre data-copy="cmd"><span class="c"># 声明时附带描述符：自描述 + 可视化元数据</span>
 from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange

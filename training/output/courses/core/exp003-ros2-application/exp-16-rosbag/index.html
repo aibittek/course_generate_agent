@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-16 · rosbag2 数据录制与回放 — 机器人 ROS2 应用与开发</title>
 <link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
-<style>:root{--theme:#c2410c;--theme-deep:#9a3412;--theme-bg:#ffedd5;--theme-bd:#fed7aa}.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
+<style>:root{--theme:#c2410c;--theme-deep:#9a3412;--theme-bg:#ffedd5;--theme-bd:#fed7aa}
 /* 三问卡：是什么 / 为什么 / 怎么用 */
 .www{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:.75rem;margin:.85rem 0 1.1rem}
 .www>div{border-radius:11px;padding:.7rem .85rem;border:1px solid var(--theme-bd);background:#fffaf6}
@@ -68,7 +68,7 @@
 </section>
 
 <section class="blk" id="s1">
-  <h2><span class="no">01</span>问题引入：只会来一次的现场故障<span class="fs">聚焦问题 · 激活旧知</span></h2>
+  <h2><span class="no">01</span>问题引入：只会来一次的现场故障</h2>
   <div class="tip"><span class="lab">先回忆</span>EXP-06 的话题数据流过了就没了、EXP-11 的时间戳与 <code>use_sim_time</code>——本章解决的问题是：<b>数据流过就消失，怎么"录下来、倒回去"反复研究</b>。现场故障只发生一次，但录好的包可以回放一万次。</div>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>偶发</b><p>仓库小车在 3 号货架角落必现定位跳变，开回调试室就永远复现不了</p></div>
@@ -95,7 +95,7 @@
 
 <!-- 02 原理 -->
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：一个 .db3 文件里到底有什么<span class="fs">示证新知</span></h2>
+  <h2><span class="no">02</span>核心原理：一个 .db3 文件里到底有什么</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">存储结构</div><div class="kt">SQLite3 双表 + 元数据</div><p>一个 bag = 目录：<code>*.db3</code> 数据库 + <code>metadata.yaml</code> 清单。库里两张表——<b>topics</b>（话题ID→名称/类型/QoS）与 <b>messages</b>（时间戳+话题ID+CDR 字节流）。YAML 记录时长/条数/相对路径，删除它 bag 就"失忆"。</p></div>
     <div class="kcard"><div class="kd">为什么选 SQLite</div><div class="kt">四条硬理由</div><p>① 自带索引→任意时间点随机访问；② 事务机制→写到一半断电最多损坏最后一笔；③ SQL 直接聚合分析（频率=Count/Duration）；④ 单文件好搬运好上传。</p></div>
@@ -122,7 +122,7 @@
 
 <!-- 03 动画 -->
 <section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：录包保真、回放复活<span class="fs">示证新知</span></h2>
+  <h2><span class="no">03</span>动画：录包保真、回放复活</h2>
   <div class="anim-box">
     <svg viewBox="0 0 760 340" width="100%">
       <defs>
@@ -172,7 +172,7 @@
 
 <!-- 04 参数族 -->
 <section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：record 与 play 的参数族<span class="fs">示证新知</span></h2>
+  <h2><span class="no">04</span>原理专题：record 与 play 的参数族</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">record · 范围</div><div class="kt">-a 全量 vs 点名</div><p><code>-a</code> 录所有（含系统话题，磁盘杀手）；<code>ros2 bag record /t1 /t2</code> 点名录——生产标准永远是点名 + <code>-e</code> 正则（如 <code>-e "scan|odom"</code>）圈最小证据集。</p></div>
     <div class="kcard"><div class="kd">record · 范围与切片</div><div class="kt">-e 正则 · --max-bag-duration · -o 命名</div><p><code>-e "chatter|odom"</code> 正则圈话题；<code>-d 3</code> 是 <b>--max-bag-duration</b>——每 3 秒切一个分片（<b>录 12 秒约出 4 片</b> <code>_0/_1/_2/_3</code>），<b>不是</b>延迟开录！<code>-o exp16_full</code> 指定输出目录名（默认按时间戳，难找）。<b>限时录制无专用参数，用系统 <code>timeout 15 ros2 bag ...</code></b>。</p></div>
@@ -199,7 +199,7 @@
 
 <!-- 05 交互 -->
 <section class="blk" id="s5">
-  <h2><span class="no">05</span>交互实验：录放命令构建器<span class="fs">应用新知</span></h2>
+  <h2><span class="no">05</span>交互实验：录放命令构建器</h2>
   <div class="ix-panel">
     <div class="ix-title">Bag Commander：选场景，生成带参数解释的完整命令</div>
     <div class="ctl-row">
@@ -219,7 +219,7 @@
 
 <!-- 07 实操A -->
 <section class="blk" id="s6">
-  <h2><span class="no">06</span>实操 A：全量录制 → 定量分析 → 回放验证<span class="fs">应用新知</span></h2>
+  <h2><span class="no">06</span>实操 A：全量录制 → 定量分析 → 回放验证</h2>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>全量录制</b><p>1.1~1.6 六小步：建目录 → 起 talker/listener → -a 录 15 秒 → 看文件 → 读 metadata</p></div>
     <div class="step"><div class="n">2</div><b>体检</b><p>ros2 bag info：确认 Duration、/chatter 的 Count/Duration ≈ 1Hz</p></div>
@@ -400,7 +400,7 @@ I heard: [Hello World: <span class="ok">3</span>] ...
 
 <!-- 07B 选择性录制 -->
 <section class="blk" id="s6b">
-  <h2><span class="no">06·续</span>实操 A·续：选择性录制、压缩与分片<span class="fs">应用新知</span></h2>
+  <h2><span class="no">06·续</span>实操 A·续：选择性录制、压缩与分片</h2>
   <p>第 06 节用 <code>-a</code> 全量录，方便但有代价——<code>info</code> 里 <code>/parameter_events</code>、<code>/rosout</code>、<code>/events/write_split</code> 这些<b>系统话题</b>被一起录了进来；真实机器人上还有更狠的：1080p 彩色原图（<code>image_raw</code>，8UC3 未压缩）30Hz 单话题约 <b>178MB/s</b>，5 分钟就超 50GB。生产环境的标准做法是<b>点名 + 最小证据集</b>。本节第 4、5 步是 1.1~1.6 六小步之后的<b>进阶实验</b>。</p>
   <div class="www">
     <div class="w1"><div class="wt">🔎 是什么</div><p>三件事：<b>选择性录制</b>（只订点名的话题）、<b>压缩</b>（省盘）、<b>分片</b>（把大包切成多个 .db3 便于搬运）。</p></div>
@@ -475,7 +475,7 @@ Topic information:
 
 <!-- 08 实操B -->
 <section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 B：离线回放 + rviz2 联调数据流<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">07</span>实操 B：离线回放 + rviz2 联调数据流</h2>
   <p>上节回放"能收到消息"，但只要下游节点用到 TF 或定时器，就必须让<b>时间一起回到过去</b>——这就是 --clock 与 use_sim_time 的双开关。</p>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>带钟回放</b><p>ros2 bag play exp16_full --clock --loop：约 40Hz 再生 /clock，时间随回放推进</p></div>
@@ -545,7 +545,7 @@ average delay: <span class="ok">0.01</span>                            <span cla
 
 <!-- 09 注意事项 -->
 <section class="blk" id="s8">
-  <h2><span class="no">08</span>注意事项与验收<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">08</span>注意事项与验收</h2>
   <ul class="check">
     <li>验收 1：用 talker/listener 造现场，独立完成"录 → info → play"全流程，info 验证时长与频率</li>
     <li>验收 2：会算 Count/Duration 频率并对照标称值（/chatter 应≈1Hz）判断数据完整性；能解释为何 Duration ≈ 13.5s 而非 15s</li>
@@ -564,7 +564,7 @@ average delay: <span class="ok">0.01</span>                            <span cla
 
 <!-- 10 总结 -->
 <section class="blk" id="s9">
-  <h2><span class="no">09</span>本课总结<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">09</span>本课总结</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">结构</div><div class="kt">SQLite 双表 + YAML 清单</div><p>topics/messages 两表 + CDR 原始字节，索引支撑随机访问，事务保断电不损。QoS 存在 topics 表的 <code>offered_qos_profiles</code> 列。</p></div>
     <div class="kcard"><div class="kd">录制</div><div class="kt">点名 + 正则是生产标准</div><p>-a 磁盘秒爆（还混入 /rosout 等系统话题）；点名圈最小证据集，配双参数压缩、--max-bag-size 分片、--max-cache-size 缓冲。<b>停止一律用 Ctrl+C</b>（优雅写盘），<code>kill -9</code> 会丢缓存并损坏 SQLite。</p></div>

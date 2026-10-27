@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EXP-18 · 元功能包与依赖聚合 — 机器人 ROS2 应用与开发</title>
 <link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
-<style>:root{--theme:#ec4899;--theme-deep:#be185d;--theme-bg:#fce7f3;--theme-bd:#fbcfe8}.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
+<style>:root{--theme:#ec4899;--theme-deep:#be185d;--theme-bg:#fce7f3;--theme-bd:#fbcfe8}
 </style>
 </head>
 <body>
@@ -57,7 +57,7 @@
 </section>
 
 <section class="blk" id="s1">
-  <h2><span class="no">01</span>问题引入：装个 navigation2，要背 20 个包名吗<span class="fs">聚焦问题 · 激活旧知</span></h2>
+  <h2><span class="no">01</span>问题引入：装个 navigation2，要背 20 个包名吗</h2>
   <div class="tip"><span class="lab">先回忆</span>你已经用过 <code>colcon build --packages-select</code> 一次编一个包，也在 package.xml 里声明过依赖——当依赖膨胀到 20 个包时（比如 navigation2），就需要一层<b>聚合打包</b>：装一个名字，全家到位。</div>
   <div class="flow">
     <div class="step"><span class="n">1</span>想试用导航栈，文档说"安装 navigation2"</div>
@@ -69,7 +69,7 @@
 </section>
 
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：一个"空包"凭什么工作<span class="fs">示证新知</span></h2>
+  <h2><span class="no">02</span>核心原理：一个"空包"凭什么工作</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">零代码</div><div class="kt">没有 src/ 与可执行文件</div><p>元功能包的一切"功能"都在 package.xml 的依赖声明里。它像一张购物清单：自己不生产任何东西，只声明"给我这些东西"。</p></div>
     <div class="kcard"><div class="kd">极简构建</div><div class="kt">CMakeLists 仅四行</div><p>cmake_minimum_required + project + find_package(ament_cmake) + ament_package()。没有 add_executable、没有 install 目标——<b>colcon build 只是"声明集合关系"</b>，实际编译由各子包自己完成。</p></div>
@@ -90,7 +90,7 @@
 </section>
 
 <section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：一条 apt 命令如何拉起全家桶<span class="fs">示证新知</span></h2>
+  <h2><span class="no">03</span>动画：一条 apt 命令如何拉起全家桶</h2>
   <div class="anim-box">
     <svg viewBox="0 0 760 340" width="100%" style="max-height:340px">
       <defs>
@@ -139,7 +139,7 @@
 </section>
 
 <section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：nav2 聚合结构三层剖析<span class="fs">示证新知</span></h2>
+  <h2><span class="no">04</span>原理专题：nav2 聚合结构三层剖析</h2>
 
   <div class="tip"><span class="lab">先接住上一节的悬念</span>
   上节动画里我们看到 <code>navigation2</code> 一个包能拉起 20 多个子包——但你可能想问：<b>这 20 多个包为什么不能合成 1 个？非要拆这么碎图什么？</b><br>
@@ -222,7 +222,7 @@
 </section>
 
 <section class="blk" id="s6">
-  <h2><span class="no">05</span>命令精讲：把元包看个底朝天<span class="fs">应用新知</span></h2>
+  <h2><span class="no">05</span>命令精讲：把元包看个底朝天</h2>
   <pre data-copy="cmd"><span class="c"># ① 打开 navigation2 的"购物清单"——元包的 package.xml</span>
 $ ros2 pkg xml navigation2
 
@@ -253,7 +253,7 @@ $ source install/setup.bash</pre>
 </section>
 
 <section class="blk" id="s7">
-  <h2><span class="no">06</span>实操 A：解剖 navigation2（验证性）<span class="fs">应用新知</span></h2>
+  <h2><span class="no">06</span>实操 A：解剖 navigation2（验证性）</h2>
   <div class="flow">
     <div class="step"><span class="n">1</span>确认安装并 source：安装 ros-humble-navigation2 后 <code>source /opt/ros/humble/setup.bash</code></div>
     <div class="step"><span class="n">2</span>看清单：<code>ros2 pkg xml navigation2</code>，逐行统计 &lt;exec_depend&gt;</div>
@@ -274,7 +274,7 @@ $ source install/setup.bash</pre>
 </section>
 
 <section class="blk" id="s8">
-  <h2><span class="no">07</span>实操 B：打造 my_robot_meta（设计性任务）<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">07</span>实操 B：打造 my_robot_meta（设计性任务）</h2>
   <pre data-copy="cmd"><span class="c"># ① 创建（必须 --build-type ament_cmake，选 ament_python 会去找 setup.py 直接失败）</span>
 <span class="b">$</span> cd ~/ros2_ws/src
 <span class="b">$</span> ros2 pkg create my_robot_meta --build-type ament_cmake
@@ -325,7 +325,7 @@ find_package(ament_cmake REQUIRED)
 </section>
 
 <section class="blk" id="s9">
-  <h2><span class="no">08</span>注意事项与避坑清单<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">08</span>注意事项与避坑清单</h2>
   <div class="check">
     <ul>
       <li>元功能包<b>永远不含代码</b>——发现它有 src/，要么是普通包，要么是写错了。</li>
@@ -341,7 +341,7 @@ find_package(ament_cmake REQUIRED)
 </section>
 
 <section class="blk" id="s10">
-  <h2><span class="no">09</span>本课总结与思考<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">09</span>本课总结与思考</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">概念</div><div class="kt">元功能包 = 零代码聚合器</div><p>没有 src、没有可执行文件，全部价值在于 package.xml 中一串 exec_depend——一条命令装齐全家桶。</p></div>
     <div class="kcard"><div class="kd">依赖语义</div><div class="kt">build / exec / depend</div><p>编译期头文件用 build_depend，运行期库与节点用 exec_depend，depend 是两者合体。按报错发生的阶段选依赖。</p></div>

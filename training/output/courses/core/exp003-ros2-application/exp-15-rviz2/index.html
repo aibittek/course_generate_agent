@@ -17,7 +17,7 @@
 #lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
 #lightbox.on{display:flex}
 #lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
+
 /* 终端步骤卡 */
 .termbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 10px}
 .termbar .tl{background:#0f172a;color:#fff;border-radius:999px;padding:3px 13px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em}
@@ -86,7 +86,7 @@
 </section>
 
 <section class="blk" id="s1">
-  <h2><span class="no">01</span>问题引入：机器人眼中的世界长什么样<span class="fs">聚焦问题 · 激活旧知</span></h2>
+  <h2><span class="no">01</span>问题引入：机器人眼中的世界长什么样</h2>
   <div class="tip"><span class="lab">先回忆</span>EXP-06 里 <code>topic echo</code> 打出来的一串串数字（浓度、温度、坐标）、消息头里的 <code>frame_id</code>——这些抽象数据本章要变成<b>看得见的图形</b>。rviz2 就是所有话题数据的"显示器"，也是后面 TF、URDF、导航的可视化舞台。</div>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>盲人摸象</b><p>echo /scan 一屏数字：[2.31, 2.29, 2.35...]——你知道前方有障碍，但不知道形状</p></div>
@@ -102,7 +102,7 @@
 
 <!-- 02 原理 -->
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：Fixed Frame 决定"上帝站在哪"<span class="fs">示证新知</span></h2>
+  <h2><span class="no">02</span>核心原理：Fixed Frame 决定"上帝站在哪"</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">渲染引擎</div><div class="kt">OGRE 3D + 图层化 Display</div><p>rqt 是 2D 控件，rviz2 走 OGRE 实时渲染管线：每个 Display 是一个图层，各自订阅话题、各自把数据变换到统一坐标系后叠加绘制——可独立开关、设属性，互不干扰。</p></div>
     <div class="kcard"><div class="kd">灵魂参数</div><div class="kt">Fixed Frame：观测基准系</div><p>它回答"相机架在哪个坐标系上看世界"。设成 map：整张地图静止，机器人在图上移动；设成 base_laser：机器人钉在原点，墙壁绕着车动。<b>所有数据都会被 TF 变换到这个系</b>再画。</p></div>
@@ -124,7 +124,7 @@
 
 <!-- 03 动画 -->
 <section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：一条雷达点如何画上屏<span class="fs">示证新知</span></h2>
+  <h2><span class="no">03</span>动画：一条雷达点如何画上屏</h2>
   <div class="anim-box">
     <svg viewBox="0 0 760 330" width="100%">
       <defs>
@@ -167,7 +167,7 @@
 
 <!-- 04 Display 精讲 -->
 <section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：七大 Display 逐个拆<span class="fs">示证新知</span></h2>
+  <h2><span class="no">04</span>原理专题：七大 Display 逐个拆</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">① 地基</div><div class="kt">Grid</div><p>默认就有的网格地面，提供空间标尺。<b>迷失视角时右键 → Reset View</b> 一键回正——这是新手最该记的肌肉记忆。</p></div>
     <div class="kcard"><div class="kd">② 骨骼</div><div class="kt">TF</div><p>Add → TF 自动订阅 /tf 与 /tf_static，RGB 三轴画出每个坐标系，Show Names 显示名字。断链=某段坐标轴消失，比 <code>view_frames</code> 生成 PDF <b>实时</b>得多——PDF 是快照，TF 图层是直播。</p></div>
@@ -186,7 +186,7 @@
 
 <!-- 05 交互 -->
 <section class="blk" id="s5">
-  <h2><span class="no">05</span>交互实验：rviz 黑屏诊断台<span class="fs">应用新知</span></h2>
+  <h2><span class="no">05</span>交互实验：rviz 黑屏诊断台</h2>
   <div class="ix-panel">
     <div class="ix-title">Vision Doctor：选一个症状，按"帧→TF→话题→配置"的顺序给出处置</div>
     <div class="ctl-row">
@@ -207,7 +207,7 @@
 
 <!-- 06 命令精讲 -->
 <section class="blk" id="s6">
-  <h2><span class="no">06</span>命令精讲：启动与图形环境<span class="fs">应用新知</span></h2>
+  <h2><span class="no">06</span>命令精讲：启动与图形环境</h2>
   <pre data-copy="cmd"><span class="c"># 标准启动（默认 Fixed Frame=map，Display 全手动添加）</span>
 <span class="b">$</span> rviz2
 
@@ -247,7 +247,7 @@
 
 <!-- 07 实操A -->
 <section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 A：跑起本车模型，看懂 TF 坐标树<span class="fs">应用新知</span></h2>
+  <h2><span class="no">07</span>实操 A：跑起本车模型，看懂 TF 坐标树</h2>
   <p>不写一行代码——直接用本机功能包 <code>car1_description</code>（小车 C1 的模型描述包）把真车"画"进 rviz2。全程 8 步，每步都有确定的预期结果，照做即可。</p>
   <div class="tip"><span class="lab">这一步为什么必做</span>实验指导书里 rviz2 的第一个实操就是"加载机器人模型看 TF"——因为它是后面导航实操（第 08 节）的地基：没有正确的 TF 树，地图、雷达、路径全都画不出来。</div>
 
@@ -441,7 +441,7 @@ At time 1792054921.106
 
 <!-- 08 实操B -->
 <section class="blk" id="s8">
-  <h2><span class="no">08</span>实操 B：加载导航可视化，一步步看懂地图与雷达<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">08</span>实操 B：加载导航可视化，一步步看懂地图与雷达</h2>
   <p>进阶实操——用本机 <code>car1_navigation</code> 功能包的 <code>navigation.rviz</code> 打开导航专用视图。这份配置比第 07 节复杂得多（订阅 <b>12 个图层话题 + 3 个交互话题</b>），正是理解"rviz 图层如何堆出完整导航画面"的最佳样本。</p>
 
   <div class="termbar"><span class="tl">终端</span><b>第 1 步 · 看清配置订阅了什么</b><span class="note">读配置</span></div>
@@ -597,7 +597,7 @@ Panels:
 
 <!-- 09 注意事项 -->
 <section class="blk" id="s9">
-  <h2><span class="no">09</span>注意事项与验收<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">09</span>注意事项与验收</h2>
   <ul class="check">
     <li>验收 1：能口述"消息 → frame_id → TF 链 → Fixed Frame → 绘制"全链路</li>
     <li>验收 2：实操 A 第 3 步一条 launch 起 display，能在 rviz 里看到本车模型与 TF 坐标轴</li>
@@ -613,7 +613,7 @@ Panels:
 
 <!-- 10 总结 -->
 <section class="blk" id="s10">
-  <h2><span class="no">10</span>本课总结<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">10</span>本课总结</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">定位</div><div class="kt">取景器，不是数据源</div><p>rviz2 只订阅、变换、渲染；异常优先查话题与 TF，而不是怀疑视图工具。</p></div>
     <div class="kcard"><div class="kd">灵魂</div><div class="kt">Fixed Frame 是观测基准</div><p>一切数据变换到它才绘制；换帧=换视角，地图系看全局、车体系看感知。</p></div>

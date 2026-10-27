@@ -17,7 +17,7 @@
 #lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;z-index:99;cursor:zoom-out;padding:2vh 2vw}
 #lightbox.on{display:flex}
 #lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.blk h2 .fs{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:var(--theme-deep);background:var(--theme-bg);border:1px solid var(--theme-bd);border-radius:999px;padding:2px 11px;white-space:nowrap}
+
 /* 三问卡：是什么 / 为什么 / 怎么用 */
 .www{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:.75rem;margin:.85rem 0 1.1rem}
 .www>div{border-radius:11px;padding:.7rem .85rem;border:1px solid var(--theme-bd);background:#f8fbff}
@@ -93,7 +93,7 @@
 </section>
 
 <section class="blk" id="s1">
-  <h2><span class="no">01</span>问题引入：五个终端的手忙脚乱<span class="fs">聚焦问题 · 激活旧知</span></h2>
+  <h2><span class="no">01</span>问题引入：五个终端的手忙脚乱</h2>
   <div class="tip"><span class="lab">先回忆</span>EXP-05~08 每个实验都要开 2~3 个终端、逐条敲 <code>ros2 run</code>、关错一个整组全崩——这些重复劳动正是本章要消灭的对象：<b>一个命令、一份文件，拉起整支机器人队伍</b>，并且让它们同生共死。</div>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>现状</b><p>雷达驱动、定位、规划、控制、可视化 = 5 个终端，每个都要 source、按序启动</p></div>
@@ -114,7 +114,7 @@
 
 <!-- 02 原理 -->
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：ROS2 为什么把启动语言换成 Python<span class="fs">示证新知</span></h2>
+  <h2><span class="no">02</span>核心原理：ROS2 为什么把启动语言换成 Python</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">架构演进</div><div class="kt">从 XML-only 到 Python-first</div><p>ROS1 的 roslaunch 只支持 XML，"A 退出后等 3 秒再启 B"这类逻辑要么写不出来、要么嵌套到没人看得懂。ROS2 把启动编排升级为<b>图灵完备的 Python API</b>——if/for/函数/模块随便用，复杂编排变成普通编程。</p></div>
     <div class="kcard"><div class="kd">核心产物</div><div class="kt">LaunchDescription = Action 列表</div><p>入口函数 <code>generate_launch_description()</code> 返回一个 LaunchDescription，里面装一组 Action（Node、LogInfo、DeclareLaunchArgument……）。ros2 launch 读它、按序执行——这就是"剧本"的实体。</p></div>
@@ -140,7 +140,7 @@
 
 <!-- 03 动画 -->
 <section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：解析、拉起、优雅退出的全过程<span class="fs">示证新知</span></h2>
+  <h2><span class="no">03</span>动画：解析、拉起、优雅退出的全过程</h2>
   <div class="anim-box">
     <svg viewBox="0 0 760 330" width="100%">
       <defs>
@@ -190,7 +190,7 @@
 
 <!-- 04 专题 -->
 <section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：remap、条件、事件三件套<span class="fs">示证新知</span></h2>
+  <h2><span class="no">04</span>原理专题：remap、条件、事件三件套</h2>
 
   <div class="tip"><span class="lab">先想一个问题</span>
   你要在 launch 里管理 5 个节点。如果只是「一个接一个启动」，那用什么都行。真正的麻烦来自下面三件事——它们正是三件套各自要解决的问题：</div>
@@ -285,7 +285,7 @@ LaunchDescription([
 
 <!-- 06 代码精讲 -->
 <section class="blk" id="s6">
-  <h2><span class="no">05</span>代码精讲：第一个 Launch 文件<span class="fs">应用新知</span></h2>
+  <h2><span class="no">05</span>代码精讲：第一个 Launch 文件</h2>
   <pre data-copy="cmd"><span class="c"># basic_launch.py —— 最小可用模板（入口函数名一个字符都不能错）</span>
 <span class="b">from</span> launch <span class="b">import</span> LaunchDescription
 <span class="b">from</span> launch_ros.actions <span class="b">import</span> Node
@@ -334,7 +334,7 @@ LaunchDescription([
 
 <!-- 07 实操A -->
 <section class="blk" id="s7">
-  <h2><span class="no">06</span>实操 A：基础启动 + remap 三节点对照<span class="fs">应用新知</span></h2>
+  <h2><span class="no">06</span>实操 A：基础启动 + remap 三节点对照</h2>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>建包</b><p>建 launch_demo_pkg：package.xml + CMakeLists（install 三件套）+ colcon build</p></div>
     <div class="step"><div class="n">2</div><b>基础版</b><p>basic_launch.py 起 talker+listener，验证日志前缀与一次性退出</p></div>
@@ -502,7 +502,7 @@ PYEOF
 
 <!-- 08 实操B -->
 <section class="blk" id="s8">
-  <h2><span class="no">07</span>实操 B：参数化 + 条件启动 + 事件触发<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">07</span>实操 B：参数化 + 条件启动 + 事件触发</h2>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>默认跑</b><p>param_launch.py 不带参：ros2 node list 应为 2 个节点（核心组）</p></div>
     <div class="step"><div class="n">2</div><b>传参跑</b><p>enable_debug_node:=true log_level:=debug → 3 个节点，日志变 DEBUG</p></div>
@@ -737,7 +737,7 @@ PYEOF
 
 <!-- 09 实操C 综合 -->
 <section class="blk" id="s9">
-  <h2><span class="no">08</span>实操 C：综合系统整合（含 bag 录制）<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">08</span>实操 C：综合系统整合（含 bag 录制）</h2>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>整合</b><p>把 Node + remap + 参数 + 条件 + 事件写进一份 integrated_launch.py</p></div>
     <div class="step"><div class="n">2</div><b>默认跑</b><p>2 节点、话题 /sensor_data，无调试节点、无录制</p></div>
@@ -864,7 +864,7 @@ PYEOF
 
 <!-- 10 注意事项 -->
 <section class="blk" id="s10">
-  <h2><span class="no">09</span>注意事项与验收<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">09</span>注意事项与验收</h2>
   <div class="table-wrap"><table>
     <tr><th>类别</th><th>注意事项</th></tr>
     <tr><td>⚠️ 环境</td><td>Launch 文件必须放在功能包的 <code>launch/</code> 目录，并在编译时通过 <code>install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})</code> 安装到 <code>share/</code></td></tr>
@@ -890,7 +890,7 @@ PYEOF
 
 <!-- 11 总结 -->
 <section class="blk" id="s11">
-  <h2><span class="no">10</span>本课总结<span class="fs">融会贯通</span></h2>
+  <h2><span class="no">10</span>本课总结</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">架构</div><div class="kt">Python-first 事件驱动</div><p>LaunchDescription 装 Action 列表，条件与事件让编排从静态声明升级为动态剧本。</p></div>
     <div class="kcard"><div class="kd">三件套</div><div class="kt">remap / 条件 / 事件</div><p>remap 不改码适配多实例；If/Unless 一文件多场景；OnProcessExit 串起流程自动化。</p></div>
