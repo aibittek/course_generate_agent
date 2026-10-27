@@ -15,6 +15,13 @@
 .www>div.w2 .wt{color:#b45309}
 .www>div.w3 .wt{color:#15803d}
 .www p{margin:0;font-size:.86rem;line-height:1.72;color:#334155}
+
+/* ===== 合并大节内的小标题（原理讲解 / 实验步骤 的 h3） ===== */
+h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
+  color:var(--text-primary);line-height:1.5;
+  border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
+h3.sub:first-of-type{margin-top:18px}
+@media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
 </style>
 </head>
 <body>
@@ -25,17 +32,13 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#goal">★ 课程目标</a>
+    <a href="#goal" class="now">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：只会来一次的现场故障</a>
-  <a href="#s2">02 核心原理：一个 .db3 文件里到底有什么</a>
-  <a href="#s3">03 动画：录包保真、回放复活</a>
-  <a href="#s4">04 原理专题：record 与 play 的参数族</a>
-  <a href="#s5">05 交互实验：录放命令构建器</a>
-  <a href="#s6">06 实操 A：全量录制 → 定量分析 → 回放验证</a>
-  <a href="#s6b">06·续 实操 A·续：选择性录制、压缩与分片</a>
-  <a href="#s7">07 实操 B：离线回放 + rviz2 联调数据流</a>
-  <a href="#s8">08 注意事项与验收</a>
-  <a href="#s9">09 本课总结</a>
+  <a href="#s2">02 原理讲解</a>
+  <a href="#s3">03 实验步骤</a>
+  <a href="#s4">04 注意事项与验收</a>
+  <a href="#s5">05 本课总结</a>
+  
   <h4>CH4 · 工具链</h4>
   <a href="../exp-14-rqt/index.html">EXP-14 rqt 工具箱</a>
   <a href="../exp-15-rviz2/index.html">EXP-15 rviz2 可视化</a>
@@ -93,9 +96,9 @@
   </div>
 </section>
 
-<!-- 02 原理 -->
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：一个 .db3 文件里到底有什么</h2>
+<h2><span class="no">02</span>原理讲解</h2>
+<h3 class="sub">一个 .db3 文件里到底有什么</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">存储结构</div><div class="kt">SQLite3 双表 + 元数据</div><p>一个 bag = 目录：<code>*.db3</code> 数据库 + <code>metadata.yaml</code> 清单。库里两张表——<b>topics</b>（话题ID→名称/类型/QoS）与 <b>messages</b>（时间戳+话题ID+CDR 字节流）。YAML 记录时长/条数/相对路径，删除它 bag 就"失忆"。</p></div>
     <div class="kcard"><div class="kd">为什么选 SQLite</div><div class="kt">四条硬理由</div><p>① 自带索引→任意时间点随机访问；② 事务机制→写到一半断电最多损坏最后一笔；③ SQL 直接聚合分析（频率=Count/Duration）；④ 单文件好搬运好上传。</p></div>
@@ -118,11 +121,7 @@
     <div class="w2"><div class="wt">❓ 为什么</div><p>因为 SQLite 同时给了<b>索引随机访问、事务抗断电、SQL 聚合、单文件易搬运</b>四样——换任何别的存储格式都要自己重造一遍这些能力。</p></div>
     <div class="w3"><div class="wt">🛠 怎么用</div><p>平时不用直接开库——<code>ros2 bag info</code> 读 metadata 就够了；要自己算统计时用 <code>python3 -c "import sqlite3; ..."</code>（<b>本机没有 sqlite3 命令行</b>）。</p></div>
   </div>
-</section>
-
-<!-- 03 动画 -->
-<section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：录包保真、回放复活</h2>
+<h3 class="sub">录包保真、回放复活</h3>
   <div class="anim-box">
     <svg viewBox="0 0 760 340" width="100%">
       <defs>
@@ -168,11 +167,7 @@
     </svg>
   </div>
   <p class="anim-cap">动画：录制端把话题 CDR 字节连时间戳经事务写入 SQLite；回放端从索引读取、按原时序（或 -r 调速）再生发布，算法节点无法区分新旧。底部黄色提示 --clock 开关：它以约 40Hz 持续再生 /clock（不是 1Hz），让历史时间跟随回放流逝，是 TF/定时器正常工作的前提。</p>
-</section>
-
-<!-- 04 参数族 -->
-<section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：record 与 play 的参数族</h2>
+<h3 class="sub">record 与 play 的参数族</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">record · 范围</div><div class="kt">-a 全量 vs 点名</div><p><code>-a</code> 录所有（含系统话题，磁盘杀手）；<code>ros2 bag record /t1 /t2</code> 点名录——生产标准永远是点名 + <code>-e</code> 正则（如 <code>-e "scan|odom"</code>）圈最小证据集。</p></div>
     <div class="kcard"><div class="kd">record · 范围与切片</div><div class="kt">-e 正则 · --max-bag-duration · -o 命名</div><p><code>-e "chatter|odom"</code> 正则圈话题；<code>-d 3</code> 是 <b>--max-bag-duration</b>——每 3 秒切一个分片（<b>录 12 秒约出 4 片</b> <code>_0/_1/_2/_3</code>），<b>不是</b>延迟开录！<code>-o exp16_full</code> 指定输出目录名（默认按时间戳，难找）。<b>限时录制无专用参数，用系统 <code>timeout 15 ros2 bag ...</code></b>。</p></div>
@@ -197,9 +192,9 @@
   </div>
 </section>
 
-<!-- 05 交互 -->
-<section class="blk" id="s5">
-  <h2><span class="no">05</span>交互实验：录放命令构建器</h2>
+<section class="blk" id="s3">
+<h2><span class="no">03</span>实验步骤</h2>
+<h3 class="sub">录放命令构建器</h3>
   <div class="ix-panel">
     <div class="ix-title">Bag Commander：选场景，生成带参数解释的完整命令</div>
     <div class="ctl-row">
@@ -215,11 +210,7 @@
     </div>
     <pre class="io" id="out"></pre>
   </div>
-</section>
-
-<!-- 07 实操A -->
-<section class="blk" id="s6">
-  <h2><span class="no">06</span>实操 A：全量录制 → 定量分析 → 回放验证</h2>
+<h3 class="sub">全量录制 → 定量分析 → 回放验证</h3>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>全量录制</b><p>1.1~1.6 六小步：建目录 → 起 talker/listener → -a 录 15 秒 → 看文件 → 读 metadata</p></div>
     <div class="step"><div class="n">2</div><b>体检</b><p>ros2 bag info：确认 Duration、/chatter 的 Count/Duration ≈ 1Hz</p></div>
@@ -396,86 +387,7 @@ I heard: [Hello World: <span class="ok">3</span>] ...
     <b>② 回放时 listener 收不到</b>：先看 <code>ros2 topic list</code> 里 <code>/chatter</code> 出没出（play 会新建 Publisher）。出了但没反应，查 QoS——<code>ros2 bag play</code> 默认以记录时的 QoS 发布（本机实测 <code>RELIABLE + VOLATILE</code>）。</div>
   </div>
   <div class="tip amber"><span class="lab">观察点</span>record 结束后<b>先 info 再走人</b>：Duration 为 0 或 Count 明显偏少的包是废包（录晚了/缓冲丢了）。一句 <code>ros2 bag info</code> 十秒钟，省掉的是明天重跑现场的一整天。</div>
-</section>
-
-<!-- 07B 选择性录制 -->
-<section class="blk" id="s6b">
-  <h2><span class="no">06·续</span>实操 A·续：选择性录制、压缩与分片</h2>
-  <p>第 06 节用 <code>-a</code> 全量录，方便但有代价——<code>info</code> 里 <code>/parameter_events</code>、<code>/rosout</code>、<code>/events/write_split</code> 这些<b>系统话题</b>被一起录了进来；真实机器人上还有更狠的：1080p 彩色原图（<code>image_raw</code>，8UC3 未压缩）30Hz 单话题约 <b>178MB/s</b>，5 分钟就超 50GB。生产环境的标准做法是<b>点名 + 最小证据集</b>。本节第 4、5 步是 1.1~1.6 六小步之后的<b>进阶实验</b>。</p>
-  <div class="www">
-    <div class="w1"><div class="wt">🔎 是什么</div><p>三件事：<b>选择性录制</b>（只订点名的话题）、<b>压缩</b>（省盘）、<b>分片</b>（把大包切成多个 .db3 便于搬运）。</p></div>
-    <div class="w2"><div class="wt">❓ 为什么</div><p>全量录会把无关系统话题一起装进去，大包还难搬运难上传。三者共同目标是<b>让 bag 体积可控、内容可预期</b>——这也是从"能录"到"录得专业"的分界线。</p></div>
-    <div class="w3"><div class="wt">🛠 怎么用</div><p>点名：<code>ros2 bag record /chatter -o name</code>；压缩：<code>--compression-mode message --compression-format zstd</code>（<b>必须成对</b>）；分片：<code>-d 3</code>（按时长）或 <code>--max-bag-size 1048576</code>（按字节，需大数据量才见效）。</p></div>
-  </div>
-
-  <div class="termbar"><span class="tl">终端 A/B</span><b>第 4 步 · 选择性录制 vs 全量录制</b><span class="note">进阶对比</span></div>
-  <div class="cmdstep">
-    <div class="cs-hd"><span class="cs-no">4</span><b>只录 /chatter，比比文件大小</b><span class="cs-where">终端 A 起 talker，终端 B 录制</span></div>
-    <p class="cs-why">点名录制只订阅命令行里明确列出的话题，<b>忽略系统其他所有活跃话题</b>。录完直接和全量包比大小，差多少一目了然：</p>
-    <pre data-copy="cmd"><span class="c"># 终端 A：数据源</span>
-<span class="g">ros2</span> run demo_nodes_cpp talker
-
-<span class="c"># 终端 B：只录 /chatter，15 秒后自动停</span>
-<span class="g">timeout</span> 15 ros2 bag record <span class="y">/chatter</span> -o exp16_chatter_only
-
-<span class="c"># 比大小 + 看 info（话题列表应只剩 /chatter 一个业务话题）</span>
-<span class="g">ls</span> -lh exp16_full/ exp16_chatter_only/
-<span class="g">ros2</span> bag info exp16_chatter_only</pre>
-    <div class="io"><span class="dim">$ ros2 bag record /chatter -o exp16_chatter_only</span>
-[INFO] [rosbag2_recorder]: Subscribed to topic <span class="ok">'/chatter'</span>   <span class="c"># ← 只有这一个</span>
-<span class="dim">$ ls -lh exp16_full/ exp16_chatter_only/</span>
-<span class="ok">exp16_chatter_only 明显小于 exp16_full</span>   <span class="c"># 不含 /parameter_events、/rosout</span>
-<span class="dim">$ ros2 bag info exp16_chatter_only</span>
-Topic information:
-  Topic: <span class="ok">/chatter</span> | Type: std_msgs/msg/String | Count: ~14 | Serialization Format: cdr
-<span class="warn"># ← 只剩一个话题；而 exp16_full 里还多出 /rosout 等系统话题</span></div>
-    <div class="tip amber"><span class="lab">⚠ 指定的话题当前不存在也不报错</span>
-    如果点名的话题此刻<b>没有 Publisher</b>，recorder 仍会订阅它、<b>静默等待</b>未来出现的发布者，不会报错。若直到录制结束该话题都没出现，bag 里就没有它——录完务必用 <code>info</code> 核对话题确实被录到了。</div>
-  </div>
-
-  <div class="termbar"><span class="tl">终端 B</span><b>第 5 步 · 压缩与文件分片</b><span class="note">两个保命参数</span></div>
-  <div class="cmdstep">
-    <div class="cs-hd"><span class="cs-no">5</span><b>压缩省盘 / --max-bag-size 分片</b><span class="cs-where">终端 B</span></div>
-    <p class="cs-why">压缩减少磁盘占用（代价是 CPU）；<code>--max-bag-size</code> 防止单个 <code>.db3</code> 过大难搬运——B2 实验箱磁盘有限时尤其重要。<b>但这两个参数都有坑，下面用实测数据说清</b>：</p>
-    <pre data-copy="cmd"><span class="c"># 5.1 压缩录制 —— 必须同时给 mode 和 format</span>
-<span class="g">timeout</span> 20 ros2 bag record -a -o exp16_compressed \
-  <span class="y">--compression-mode message --compression-format zstd</span>
-
-<span class="c"># 录完比对大小（省 30~60%）</span>
-<span class="g">ls</span> -lh exp16_full/ exp16_compressed/
-<span class="c"># 验证真的压上了：metadata 里应看到 compression_mode: MESSAGE</span>
-<span class="g">grep</span> -i compression exp16_compressed/metadata.yaml
-
-<span class="c"># 5.2 限制单文件大小（单位是【字节】，1MB 要写 1048576）</span>
-<span class="g">timeout</span> 30 ros2 bag record -a -o exp16_split <span class="y">--max-bag-size 1048576</span>
-<span class="g">ls</span> -lh exp16_split/</pre>
-    <div class="io"><span class="dim">$ timeout 20 ros2 bag record -a -o exp16_compressed \</span>
-<span class="dim">    --compression-mode message --compression-format zstd</span>
-[INFO] [rosbag2_recorder]: Subscribed to topic '/chatter'
-[INFO] [rosbag2_recorder]: Recording...
-<span class="dim">$ grep -i compression exp16_compressed/metadata.yaml</span>
-<span class="ok">  compression_mode: MESSAGE</span>          <span class="c"># ← 有值 = 真的压上了</span>
-<span class="ok">  compression_format: zstd</span>
-<span class="dim">$ ls -lh exp16_full/ exp16_compressed/</span>
-<span class="ok">exp16_compressed 比 exp16_full 小 30~60%</span></div>
-    <table>
-      <tr><th>参数</th><th>坑</th><th>正确做法</th></tr>
-      <tr><td rowspan="2"><code>--compression-mode</code></td><td><code>-c</code> 短选项<b>不存在</b>，敲 <code>-c message</code> 直接报错</td><td>写全 <code>--compression-mode</code></td></tr>
-      <tr><td>只给 mode 不给 format 会<b>静默失效</b>：metadata 写出 <code>compression_mode: ""</code>，等于没压且不报错</td><td>必须配 <code>--compression-format zstd</code>；录完 <code>grep -i compression metadata.yaml</code> 验证有值</td></tr>
-      <tr><td rowspan="2"><code>--max-bag-size</code></td><td>单位是<b>字节</b>不是 MB（写 <code>1</code> = 1 字节，不是 1MB）</td><td>2GB 要写 <code>2147483648</code></td></tr>
-      <tr><td>值不够大<b>完全不切、静默无提示</b>：官方要求 <b>&gt; 86016 字节</b>（示例用 <code>-b 100000</code>），且数据量要足够（小 talker 包整包才 ~24KB，怎么设都不切）</td><td>按时长分片更可预期：用 <code>-d 3</code></td></tr>
-    </table>
-    <div class="tip"><span class="lab">压缩模式两种取值</span>
-    <b><code>message</code></b>：逐条压缩，兼容性最好；<b><code>file</code></b>：整库压缩，速度更快、省空间最多。⚠ 本机（RK3576）<code>message</code> 模式约 <b>+10~20% CPU</b>——30Hz 图像话题要先 <code>top</code> 看余量，CPU 打满丢的是更多数据。</div>
-    <div class="tip amber"><span class="lab">⚠ 分片最大的坑：单查一个 .db3 会"丢数据"</span>
-    分片后数据散在多个文件。以录 9 秒、<code>-d 3</code> 为例：<code>_0 / _1 / _2</code> 三个 <code>.db3</code> 各存一段，<b>只查 <code>_0.db3</code> 只能看到第一段，且毫无报错</b>；<code>ros2 bag info</code> 报的才是<b>全部合计</b>。<br>
-    <b>正确做法</b>：要么把 <code>*.db3</code> 全查一遍求和，要么直接信 <code>ros2 bag info &lt;bag目录&gt;</code>（读 metadata，天然是全部合计）。<b>想要单包就别加 <code>-d</code>；要查总数就查 bag 目录而不是某个 .db3。</b></div>
-  </div>
-</section>
-
-<!-- 08 实操B -->
-<section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 B：离线回放 + rviz2 联调数据流</h2>
+<h3 class="sub">离线回放 + rviz2 联调数据流</h3>
   <p>上节回放"能收到消息"，但只要下游节点用到 TF 或定时器，就必须让<b>时间一起回到过去</b>——这就是 --clock 与 use_sim_time 的双开关。</p>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>带钟回放</b><p>ros2 bag play exp16_full --clock --loop：约 40Hz 再生 /clock，时间随回放推进</p></div>
@@ -543,9 +455,8 @@ average delay: <span class="ok">0.01</span>                            <span cla
   </table>
 </section>
 
-<!-- 09 注意事项 -->
-<section class="blk" id="s8">
-  <h2><span class="no">08</span>注意事项与验收</h2>
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>注意事项与验收</h2>
   <ul class="check">
     <li>验收 1：用 talker/listener 造现场，独立完成"录 → info → play"全流程，info 验证时长与频率</li>
     <li>验收 2：会算 Count/Duration 频率并对照标称值（/chatter 应≈1Hz）判断数据完整性；能解释为何 Duration ≈ 13.5s 而非 15s</li>
@@ -562,9 +473,8 @@ average delay: <span class="ok">0.01</span>                            <span cla
   <b>注意</b>：也正因为这条原理，验证时钟的 <code>ros2 topic delay</code> <b>只能对带 header 的话题用</b>——<code>/chatter</code>（std_msgs/msg/String）没有 header，会直接报 <code>msg does not have header</code>。</div>
 </section>
 
-<!-- 10 总结 -->
-<section class="blk" id="s9">
-  <h2><span class="no">09</span>本课总结</h2>
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>本课总结</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">结构</div><div class="kt">SQLite 双表 + YAML 清单</div><p>topics/messages 两表 + CDR 原始字节，索引支撑随机访问，事务保断电不损。QoS 存在 topics 表的 <code>offered_qos_profiles</code> 列。</p></div>
     <div class="kcard"><div class="kd">录制</div><div class="kt">点名 + 正则是生产标准</div><p>-a 磁盘秒爆（还混入 /rosout 等系统话题）；点名圈最小证据集，配双参数压缩、--max-bag-size 分片、--max-cache-size 缓冲。<b>停止一律用 Ctrl+C</b>（优雅写盘），<code>kill -9</code> 会丢缓存并损坏 SQLite。</p></div>

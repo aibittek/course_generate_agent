@@ -240,6 +240,13 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
 .sand-log{margin-top:14px;background:var(--bg-soft);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.8;min-height:56px;color:var(--text-secondary)}
 .sand-log .lg-step{font-weight:700;color:var(--accent-violet);font-family:var(--font-mono)}
 .sand-log b{color:var(--text-primary)}
+
+/* ===== 合并大节内的小标题（原理讲解 / 实验步骤 的 h3） ===== */
+h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
+  color:var(--text-primary);line-height:1.5;
+  border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
+h3.sub:first-of-type{margin-top:18px}
+@media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
 </style>
 </head>
 <body>
@@ -254,18 +261,12 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
 
   <aside class="sidebar">
     <div class="st">本实验章节</div>
-    <a href="#goal">★ 课程目标</a>
-    <a href="#s1" class="active"><span class="n">01</span>DDS 是什么：为什么话题、服务、动作都靠它</a>
-    <a href="#s2"><span class="n">02</span>核心原理：RMW——DDS 的"万能适配器"</a>
-    <a href="#s3"><span class="n">03</span>域模型：RTPS 协议的四层嵌套</a>
-    <a href="#s4"><span class="n">04</span>原理动画：从进程到网络的四层封装</a>
-    <a href="#s5"><span class="n">05</span>自动发现两阶段：为什么不用写"连接代码"</a>
-    <a href="#s6"><span class="n">06</span>互动沙盘：亲手推进两阶段发现</a>
-    <a href="#s7"><span class="n">07</span>QoS 决策表：按数据特性选策略</a>
-    <a href="#s8"><span class="n">08</span>实操 A：域隔离（端口 / 组播 / 共享内存）</a>
-    <a href="#s9"><span class="n">09</span>实操 B：QoS 两组反差实验</a>
-    <a href="#s10"><span class="n">10</span>注意事项与验收清单</a>
-    <a href="#s11"><span class="n">11</span>实验总结与思考题</a>
+        <a href="#goal">★ 课程目标</a>
+        <a href="#s1" class="active"><span class="n">01</span>问题引入：没写一行连接代码，两个节点为什么就能通</a>
+        <a href="#s2"><span class="n">02</span>原理讲解</a>
+        <a href="#s3"><span class="n">03</span>实验步骤</a>
+        <a href="#s4"><span class="n">04</span>注意事项与验收清单</a>
+        <a href="#s5"><span class="n">05</span>实验总结与思考题</a>
     <hr>
     <div class="other">本课程其它实验</div>
     <div class="other">
@@ -305,7 +306,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
 </section>
 
 <section class="blk reveal" id="s1">
-      <h2><span class="sn">01</span>DDS 是什么：为什么话题、服务、动作都靠它</h2>
+      <h2><span class="no">01</span>问题引入：没写一行连接代码，两个节点为什么就能通</h2>
       <div class="tip"><span class="lab">先回忆</span>EXP-05 两个节点一启动就能"看见"彼此、EXP-06 QoS 合同、EXP-07/08 服务与动作的一问一答——<b>前面课程里学的话题、服务、动作，它们底层通信的具体实现过程，全部由 DDS 完成</b>。它相当于 ROS 机器人系统中的<b>神经网络</b>：上层器官（一个个节点）再复杂，信号传递都走这一套网络。</div>
       <p class="lead">要认识这套神经网络，先回答两个问题：<b>它是什么？为什么是它？</b>——能实现通信的模型和软件框架非常多，把常用的四种摆在一起看，DDS 的优势就清楚了：</p>
       <figure class="anim2d-block">
@@ -412,9 +413,9 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
       <div class="tip">💡 <b>DDS 给 ROS2 带来了什么</b>：① <b>自动发现</b>——无需任何注册服务器；② <b>细粒度 QoS</b>——可靠性/持久性/存活检测全部可配；③ <b>实时传输</b>——RTPS 协议基于 UDP 组播，延迟可控；④ <b>厂商生态</b>——Fast-DDS、CycloneDDS、Connext 多家实现可互换。</div>
     </section>
 
-    <!-- 02 -->
-    <section class="blk reveal" id="s2">
-      <h2><span class="sn teal">02</span>核心原理：RMW——DDS 的"万能适配器"</h2>
+<section class="blk" id="s2">
+<h2><span class="no">02</span>原理讲解</h2>
+<h3 class="sub">RMW——DDS 的"万能适配器"</h3>
       <p>在 ROS2 的架构图里，<b>中间层以下的部分就是 DDS 的地盘</b>——话题、服务、动作的所有上层建设都建立在它之上。有了 DDS 打底，开发机器人时不必再纠结通信问题，可以把更多时间放在应用本身。你写的 <code class="inline">rclpy</code> 代码从来不直接碰 DDS。中间隔着两层：<code class="inline">rcl</code>（C API，定义"节点、发布、订阅该怎么做"）和 <code class="inline">rmw</code>（统一 C 接口，规定"DDS 厂商该提供哪些函数"）。各家 DDS 按这份"接口说明书"实现成共享库，运行时通过环境变量插拔。</p>
       <div class="levels">
         <div class="lv"><span class="ln">rclpy / rclcpp</span><span class="ld">开发者 API 层 —— Python / C++ 节点代码</span></div>
@@ -432,12 +433,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
         <div class="kcard"><div class="kt">红线约束</div><div class="kd">同一 <code class="inline">ROS_DOMAIN_ID</code> 下必须使用<b>同一种 RMW 实现</b>——不同实现说的话彼此听不懂。</div></div>
       </div>
       <div class="tip violet">🔧 <b>验证位置</b>：<code class="inline">echo $RMW_IMPLEMENTATION</code> 为空即默认 Fast-DDS；<code class="inline">ros2 doctor --report | grep -i middleware</code> 可确认当前生效的实现。<br><b>注意</b>：08/09 两节的实操<b>不需要切换实现、不需要联网</b>——全部用默认的 Fast-DDS + ros2cli 自带命令即可完成。切换 RMW 属于"知道有这回事"的扩展认知，不作为本课动手项。</div>
-    </section>
-
-    <!-- 03 -->
-        <!-- 03 -->
-    <section class="blk reveal" id="s3">
-      <h2><span class="sn">03</span>域模型：RTPS 协议的四层嵌套</h2>
+<h3 class="sub">RTPS 协议的四层嵌套</h3>
       <p class="lead">RTPS（Real-Time Publish-Subscribe）是 DDS 在网线上跑的"方言"——规定消息怎么打包、怎么寻址、怎么送达。它把整个世界按 <b>四层从上往下套娃</b>：一栋楼里套公司，公司里套部门，部门里套快递员。你前面在 EXP-06 配的 QoS，就贴在最里层的"快递员"身上。</p>
       <div class="nest">
         <div class="nest-lvl domain">
@@ -462,12 +458,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
         </div>
       </div>
       <div class="tip">💡 <b>对上号（这里最容易记混）</b>：<b>一个 Participant ≈ 一个进程</b>，而 <code class="inline">ros2 node list</code> 数出来的是<b>节点</b>——同一进程里的多个节点通常共用一个 Participant（一家公司可以开好几个部门）。<br>所以：节点数 ≠ 公司数。真正带工号的是 <code class="inline">ros2 topic info --verbose</code> 打出的 "GID"，那是 <b>DataWriter 的 GUID</b>（快递员工号）。你在命令行看到的一切，都能在这套"楼→公司→部门→快递员"里找到位置。</div>
-    </section>
-
-    <!-- 04 动画 -->
-        <!-- 04 动画 -->
-    <section class="blk reveal" id="s4">
-      <h2><span class="sn">04</span>原理动画：一条消息如何"穿过四层"到达对端</h2>
+<h3 class="sub">一条消息如何"穿过四层"到达对端</h3>
       <p class="lead">你写代码时只喊了一句 <code class="inline">publish(msg)</code>，但这条消息要连下四层楼、过一道网络、再上四层楼，才能变成对端那个 <code class="inline">callback(msg)</code>。下面把这段"旅程"摊开看：</p>
       <figure class="anim2d-block">
         <svg class="anim2d" viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" role="img"
@@ -519,12 +510,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
         <figcaption>动画 12-1｜你只写了第 ① 步，剩下 ②~⑧ 全是中间件替你跑完——其中 ③ 和 ⑥ 是唯一能整体替换的"零件"（换 DDS 实现）</figcaption>
       </figure>
       <div class="tip violet">🔧 <b>一句总结</b>：rcl 管"逻辑统一"、rmw 管"翻译到具体 DDS"、RTPS 管"网线上怎么传"。你写的应用代码永远只碰 ① 和 ⑧，中间的楼一层都不用爬。</div>
-    </section>
-
-    <!-- 05 -->
-        <!-- 05 -->
-    <section class="blk reveal" id="s5">
-      <h2><span class="sn blue">05</span>自动发现两阶段：为什么不用写"连接代码"</h2>
+<h3 class="sub">为什么不用写"连接代码"</h3>
       <p class="lead">回到开头那个问题：你从没写过"对方 IP 是多少、端口几号"的连接代码，两个节点怎么一启动就通了？答案藏在后台自动跑的两阶段协议里——像进了一个工作群，先认人、再对暗号：</p>
       <div class="disco-flow">
         <div class="df-card spdp">
@@ -544,12 +530,30 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
         </tbody>
       </table>
       <div class="tip amber">⚠️ <b>这是"订阅端没输出"的头号排查方向</b>：三道门——① 同 Domain（同楼）吗？② 话题名/类型一致吗？③ QoS 请求 ≤ 提供吗（EXP-06 沙盒练过）？任何一道不通，SEDP 都不会撮合这对端点，于是"节点看得见、数据出不来"。</div>
-    </section>
+<h3 class="sub">QoS 决策表：按数据特性选策略</h3>
+      <p>QoS（Quality of Service，质量服务策略）是 DDS 的另一张王牌——它是一份<b>数据提供者与接收者之间的合约</b>：发送方按约定的质量发货，接收方按约定验收，DDS 尽力满足双方对通信质量的需求。EXP-06 你练过兼容规则，这里升级到<b>选型能力</b>——不同数据天生想要不同的合约：</p>
+      <table>
+        <thead><tr><th>QoS 策略</th><th>可选值</th><th>语义</th><th>典型场景</th></tr></thead>
+        <tbody>
+          <tr><td>Deadline</td><td><code>DEADLINE(时长)</code></td><td>每次通信必须期限内完成</td><td>200Hz IMU → 设 5ms：超期即报"断流"，第一时间发现节点卡死</td></tr>
+          <tr><td>History</td><td><code>KEEP_LAST(n)</code> / <code>KEEP_ALL</code></td><td>历史数据的缓存大小</td><td>状态量 → KEEP_LAST(1)；录制回放 → KEEP_LAST(1000)</td></tr>
+          <tr><td>Reliability</td><td><code>RELIABLE</code> / <code>BEST_EFFORT</code></td><td>可信赖模式 vs 尽力传输</td><td>RELIABLE 尽量保证完整性（重传）→ 控制指令；BEST_EFFORT 网络差也保流畅、可能丢 → 激光点云/图像</td></tr>
+          <tr><td>Durability</td><td><code>VOLATILE</code> / <code>TRANSIENT_LOCAL</code></td><td>晚加入的节点收不收历史</td><td>实时流 → VOLATILE；地图、机器人状态 → TRANSIENT_LOCAL（新节点快速跟上系统）</td></tr>
+          <tr><td>Liveliness</td><td><code>AUTOMATIC</code> / <code>MANUAL_BY_TOPIC</code></td><td>谁负责证明"我还活着"</td><td>安全关键节点 → MANUAL（代码显式心跳）</td></tr>
+        </tbody>
+      </table>
+      <pre data-copy="cmd"><span class="c"># 查看任一话题当前生效的完整 QoS 档案</span>
+<span class="g">ros2</span> topic info /chatter --verbose
+<span class="c"># 输出含：Reliability: RELIABLE / Durability: VOLATILE / GID: 01.0f...</span>
 
-    <!-- 06 互动 -->
-        <!-- 06 互动 -->
-    <section class="blk reveal" id="s6">
-      <h2><span class="sn">06</span>互动沙盘：亲手推进两阶段发现</h2>
+<span class="c"># 你的 QoS 代码里对应的声明（EXP-06 复习）</span>
+qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=<span class="b">10</span>,
+                 reliability=ReliabilityPolicy.RELIABLE)</pre>
+</section>
+
+<section class="blk" id="s3">
+<h2><span class="no">03</span>实验步骤</h2>
+<h3 class="sub">亲手推进两阶段发现</h3>
       <p class="lead">点"推进一步"，按真实时序看 DDS 怎么在后台把三个节点连起来——你一行连接代码都不用写：</p>
       <div class="ix-block">
         <div class="ix-panel">
@@ -570,34 +574,7 @@ footer{max-width:1340px;margin:20px auto 0;padding:24px 32px 44px;border-top:1px
         </div>
       </div>
       <div class="tip">💡 <b>观察点</b>：第 ② 步三节点只是互相"进了群花名册"，还没有数据流动——这就是为什么两个节点都启动后 <code class="inline">ros2 topic list</code> 秒级可见，但 <code class="inline">echo</code> 出数据还要再等 SEDP 撮合完成。只有走到 ④，绿色连线亮起，消息才真正开始送达。</div>
-    </section>
-
-    <!-- 07 QoS 决策 -->
-    <section class="blk reveal" id="s7">
-      <h2><span class="sn teal">07</span>QoS 决策表：按数据特性选策略</h2>
-      <p>QoS（Quality of Service，质量服务策略）是 DDS 的另一张王牌——它是一份<b>数据提供者与接收者之间的合约</b>：发送方按约定的质量发货，接收方按约定验收，DDS 尽力满足双方对通信质量的需求。EXP-06 你练过兼容规则，这里升级到<b>选型能力</b>——不同数据天生想要不同的合约：</p>
-      <table>
-        <thead><tr><th>QoS 策略</th><th>可选值</th><th>语义</th><th>典型场景</th></tr></thead>
-        <tbody>
-          <tr><td>Deadline</td><td><code>DEADLINE(时长)</code></td><td>每次通信必须期限内完成</td><td>200Hz IMU → 设 5ms：超期即报"断流"，第一时间发现节点卡死</td></tr>
-          <tr><td>History</td><td><code>KEEP_LAST(n)</code> / <code>KEEP_ALL</code></td><td>历史数据的缓存大小</td><td>状态量 → KEEP_LAST(1)；录制回放 → KEEP_LAST(1000)</td></tr>
-          <tr><td>Reliability</td><td><code>RELIABLE</code> / <code>BEST_EFFORT</code></td><td>可信赖模式 vs 尽力传输</td><td>RELIABLE 尽量保证完整性（重传）→ 控制指令；BEST_EFFORT 网络差也保流畅、可能丢 → 激光点云/图像</td></tr>
-          <tr><td>Durability</td><td><code>VOLATILE</code> / <code>TRANSIENT_LOCAL</code></td><td>晚加入的节点收不收历史</td><td>实时流 → VOLATILE；地图、机器人状态 → TRANSIENT_LOCAL（新节点快速跟上系统）</td></tr>
-          <tr><td>Liveliness</td><td><code>AUTOMATIC</code> / <code>MANUAL_BY_TOPIC</code></td><td>谁负责证明"我还活着"</td><td>安全关键节点 → MANUAL（代码显式心跳）</td></tr>
-        </tbody>
-      </table>
-      <pre data-copy="cmd"><span class="c"># 查看任一话题当前生效的完整 QoS 档案</span>
-<span class="g">ros2</span> topic info /chatter --verbose
-<span class="c"># 输出含：Reliability: RELIABLE / Durability: VOLATILE / GID: 01.0f...</span>
-
-<span class="c"># 你的 QoS 代码里对应的声明（EXP-06 复习）</span>
-qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=<span class="b">10</span>,
-                 reliability=ReliabilityPolicy.RELIABLE)</pre>
-    </section>
-
-    <!-- 08 实操 -->
-    <section class="blk reveal" id="s8">
-      <h2><span class="sn">08</span>实操 A：域隔离——看得见的功能 + 摸得着的底层证据</h2>
+<h3 class="sub">域隔离——看得见的功能 + 摸得着的底层证据</h3>
       <p class="lead">本节全部命令<b>零安装</b>、纯 <code class="inline">ros2cli</code>，学生全程能自己敲出效果。先建立"域隔离"的直觉，再从 <code class="inline">ss</code> 端口号和共享内存文件名拿到底层证据链。</p>
 
       <h3 style="font-size:16px;color:var(--text-primary);margin:22px 0 8px">A-1 · 域号 = UDP 端口偏移（最推荐，证据最硬）</h3>
@@ -674,11 +651,7 @@ tmpfs           3.9G   48M  3.8G   2% /dev/shm</div>
           <tr><td>4</td><td>共享内存证据</td><td><code>ls -l /dev/shm</code> 截图</td><td>指出 <code>fastrtps_port7411</code> 与发现端口的对应关系</td></tr>
         </table>
       </div>
-    </section>
-
-    <!-- 09 -->
-    <section class="blk reveal" id="s9">
-      <h2><span class="sn">09</span>实操 B：QoS 实验——DDS 最直观的两组反差</h2>
+<h3 class="sub">QoS 实验——DDS 最直观的两组反差</h3>
       <p class="lead">QoS 最好的教学方式是<b>让现象自己说话</b>。下面两组实验都只用 CLI，反差强烈、结论确定，建议作为本节主力。</p>
 
       <h3 style="font-size:16px;color:var(--text-primary);margin:22px 0 8px">B-1 · Durability：后加入的订阅者能拿到历史数据</h3>
@@ -735,11 +708,10 @@ QoS profile:
           <tr><td>4</td><td>QoS 清单解读</td><td><code>topic info -v</code> 输出</td><td>逐项说出六个策略的实际取值</td></tr>
         </table>
       </div>
-    </section>
+</section>
 
-    <!-- 10 -->
-    <section class="blk reveal" id="s10">
-      <h2><span class="sn">10</span>注意事项与验收清单</h2>
+<section class="blk reveal" id="s4">
+      <h2><span class="no">04</span>注意事项与验收清单</h2>
       <table>
         <thead><tr><th>⚠️ 注意项</th><th>说明</th></tr></thead>
         <tbody>
@@ -763,9 +735,8 @@ QoS profile:
       </ul>
     </section>
 
-    <!-- 11 -->
-    <section class="blk reveal" id="s11">
-      <h2><span class="sn teal">11</span>实验总结与思考题</h2>
+<section class="blk reveal" id="s5">
+      <h2><span class="no">05</span>实验总结与思考题</h2>
       <div class="kgrid">
         <div class="kcard"><div class="kt">✅ 完成成果</div><div class="kd">能用一个域号 + 三条命令看出隔离效果；能从 <code class="inline">ss</code> 端口号和 <code class="inline">/dev/shm</code> 文件名拿到底层证据；跑通 durability 与 reliability 两组 QoS 反差实验。</div></div>
         <div class="kcard"><div class="kt">🧠 原理收获</div><div class="kd">rcl→rmw→DDS 三层抽象的工程价值；RTPS 四层域模型；SPDP+SEDP 两阶段自动发现的完整因果链；域号与端口的物理映射。</div></div>

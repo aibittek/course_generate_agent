@@ -18,6 +18,13 @@
 #lightbox.on{display:flex}
 #lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 
+
+/* ===== 合并大节内的小标题（原理讲解 / 实验步骤 的 h3） ===== */
+h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
+  color:var(--text-primary);line-height:1.5;
+  border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
+h3.sub:first-of-type{margin-top:18px}
+@media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
 </style>
 </head>
 <body>
@@ -28,16 +35,13 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#goal">★ 课程目标</a>
+    <a href="#goal" class="now">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：黑盒调试的困局</a>
-  <a href="#s2">02 核心原理：插件化架构为什么好用</a>
-  <a href="#s3">03 动画：同一系统，四双眼睛</a>
-  <a href="#s4">04 原理专题：五大核心插件逐个拆</a>
-  <a href="#s5">05 命令精讲：启动方式三连</a>
-  <a href="#s6">06 实操 A：graph + plot 看真实底盘电压</a>
-  <a href="#s7">07 实操 B：rqt_image_view 看图 + 命令行管日志</a>
-  <a href="#s8">08 注意事项与验收</a>
-  <a href="#s9">09 本课总结</a>
+  <a href="#s2">02 原理讲解</a>
+  <a href="#s3">03 实验步骤</a>
+  <a href="#s4">04 注意事项与验收</a>
+  <a href="#s5">05 本课总结</a>
+  
   <h4>CH4 · 工具链</h4>
   <a href="../exp-14-rqt/index.html" style="color:var(--theme);font-weight:700">EXP-14 rqt 工具箱</a>
   <a href="../exp-15-rviz2/index.html">EXP-15 rviz2 可视化</a>
@@ -84,9 +88,9 @@
   </div>
 </section>
 
-<!-- 02 原理 -->
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：插件化架构为什么好用</h2>
+<h2><span class="no">02</span>原理讲解</h2>
+<h3 class="sub">插件化架构为什么好用</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">容器层</div><div class="kt">Qt 主窗口 + 插件发现</div><p>rqt 启动时扫描 <code>/opt/ros/humble/share/rqt_*</code> 下声明的插件入口，动态加载进菜单。写一个自己的 rqt 插件，就能把私有调试界面挂进官方工具箱。</p></div>
     <div class="kcard"><div class="kd">数据层</div><div class="kt">共享同一个 ROS 上下文</div><p>所有插件共用 rqt 进程内的 ROS 节点——你在 rqt_graph 里看到的图，和 rqt_plot 订阅的是同一套话题系统，无需逐个工具重新连接。</p></div>
@@ -108,11 +112,7 @@
     <span class="lab">边界：日志与参数不进 GUI</span>
     日志过滤、动态提级交给命令行（<code>ros2 topic echo /rosout</code> + <code>set_logger_levels</code> 服务），参数改动交给 <code>ros2 param set</code>——它们本机现成、可脚本化、更好复现。rqt 专注做它最值的两件事：<b>看图</b>（拓扑/波形/图像）和<b>看数据</b>。
   </div>
-</section>
-
-<!-- 03 动画 -->
-<section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：同一系统，四双眼睛</h2>
+<h3 class="sub">同一系统，四双眼睛</h3>
   <div class="anim-box">
     <svg viewBox="0 0 760 340" width="100%">
       <defs>
@@ -154,11 +154,7 @@
     </svg>
   </div>
   <p class="anim-cap">动画：中央是运行中的 ROS2 系统，rqt_graph（拓扑）、rqt_plot（波形）、rqt_image_view（图像）、rqt_topic（数据）四个插件像四台投影仪，把同一套节点/话题数据各自投射成不同视图，共享同一 ROS 上下文。</p>
-</section>
-
-<!-- 04 插件精讲 -->
-<section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：五大核心插件逐个拆</h2>
+<h3 class="sub">五大核心插件逐个拆</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">① 拓扑</div><div class="kt">rqt_graph</div><p>Plugins → Introspection → Node Graph。椭圆=节点、矩形=话题、箭头=数据流。<b>Hide Debug</b> 勾上，/parameter_events、/rosout 消失，主链路一目了然。右上 Refresh 手动刷新——节点动态变化时不会自动重绘。</p></div>
     <div class="kcard"><div class="kd">② 波形</div><div class="kt">rqt_plot</div><p>Visualization → Plot。路径必须写全 <b>/topic/field</b>，如 <code>/car1_base_driver/battery</code>（String 消息不可绘）。"加号"按钮从话题树选字段最稳；还支持数学表达式 <code>/a/data + /b/data</code> 合成曲线。</p></div>
@@ -176,9 +172,9 @@
   </div>
 </section>
 
-<!-- 05 命令精讲 -->
-<section class="blk" id="s5">
-  <h2><span class="no">05</span>命令精讲：启动方式三连</h2>
+<section class="blk" id="s3">
+<h2><span class="no">03</span>实验步骤</h2>
+<h3 class="sub">启动方式三连</h3>
   <pre data-copy="cmd"><span class="c"># 方式一：启动完整工作台（自带菜单可再开任意插件）</span>
 <span class="b">$</span> rqt
 
@@ -244,11 +240,7 @@ response:
     <br>· macOS：装 XQuartz；
     <br>· Wayland / 纯 headless 环境要么改用 VNC，要么直接在带显示器的机器上跑。
   </div>
-</section>
-
-<!-- 06 实操A -->
-<section class="blk" id="s6">
-  <h2><span class="no">06</span>实操 A：graph + plot 看真实底盘电压</h2>
+<h3 class="sub">graph + plot 看真实底盘电压</h3>
   <p>不写一行代码、不下载任何额外包——本机已经有一个真实在跑的数值话题：<code>/car1_base_driver/battery</code>（底盘电池电压）。用它看清"拓扑 + 波形"两双眼睛怎么配合。</p>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>确认话题在发</b><p><code>ros2 topic list | grep car1</code> 找到电压话题，<code>ros2 topic hz</code> 看它是不是活的</p></div>
@@ -306,11 +298,7 @@ data: <span class="ok">12.34</span>
   </div>
 
   <div class="tip amber"><span class="lab">观察点</span>曲线"冻结"不代表崩溃，是<b>没有新消息到来</b>——横轴还停在最后时刻。判断节点死活回到 graph/CLI（<code>ros2 node list</code>、<code>ros2 topic hz</code>），不要盯着不动的曲线瞎猜。</div>
-</section>
-
-<!-- 07 实操B -->
-<section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 B：rqt_image_view 看图 + 命令行管日志</h2>
+<h3 class="sub">rqt_image_view 看图 + 命令行管日志</h3>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>找图源</b><p><code>ros2 topic list | grep image</code> 找到相机话题，确认它是 sensor_msgs/Image</p></div>
     <div class="step"><div class="n">2</div><b>看图</b><p>rqt_image_view 选话题 → 实时画面出现，用它判断曝光/卡顿/掉帧</p></div>
@@ -389,9 +377,8 @@ response:
 <div class="figs-guide"><h4>📸 指导书实操与现象截图（3 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184634628.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184714874.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184746190.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure></div></div>
 </section>
 
-<!-- 08 注意事项 -->
-<section class="blk" id="s8">
-  <h2><span class="no">08</span>注意事项与验收</h2>
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>注意事项与验收</h2>
   <ul class="check">
     <li>验收 1：rqt_graph 勾 Hide Debug 后能一眼报出主链路的发布/订阅关系</li>
     <li>验收 2：用 <code>ros2 run rqt_plot rqt_plot /car1_base_driver/battery</code> 画出真实电压曲线，并解释"字段级路径"的原因</li>
@@ -404,9 +391,8 @@ response:
   只筛 WARN 往往还会被海量 INFO 之外的同级 WARN 淹没——用 <code>grep -E "node_a|node_b"</code> 做多关键词 OR 收窄；反过来若怀疑"问题起因在 INFO 里"，就先把 grep 放宽、再顺时间线往上游找。提级后<b>一定记得调回</b>，DEBUG 刷屏会拖慢实时节点。</div>
 </section>
 
-<!-- 09 总结 -->
-<section class="blk" id="s9">
-  <h2><span class="no">09</span>本课总结</h2>
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>本课总结</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">架构</div><div class="kt">容器 + 可插拔插件</div><p>rqt 本体只是 Qt 工作台，多个核心插件共享同一 ROS 上下文，Perspectives 保存布局。</p></div>
     <div class="kcard"><div class="kd">分工</div><div class="kt">插件各管一维</div><p>graph 看结构、plot 看波形、image_view 看画面、topic 看数据、bag 看回放。</p></div>

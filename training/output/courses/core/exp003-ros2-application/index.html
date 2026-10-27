@@ -117,14 +117,14 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>ROS 是什么、为什么机器人需要这层"中间件"；ROS1 与 ROS2 架构对比（中心化 Master vs 去中心化 DDS），五层架构与设计特点、Humble 发行版选型，最后跑通 talker / listener 第一个 Hello World。</p>
       <div class="meta"><span class="tag">中间件</span><span class="tag">DDS</span><span class="tag">RMW</span><span class="tag">talker · listener</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s1">① 问题引入：机器人软件为什么需要这层"中间件"</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s2">② 核心原理：ROS2 的三大设计支柱</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s2">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s4">③ ROS2 的架构与设计特点</a><span class="stars">⭐⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s4">架构图 + 环境验证</a></li>
-        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s7">④ 实操 1 · 第一个 Hello World：talker</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s8">⑤ 实操 2 · 零配置互联：listener 与系统监控</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s9a">⑥ 源码一撇：发布订阅的关键代码逻辑</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s9a">源码导读</a></li>
-        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s9">⑦ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s10">⑧ 实验总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-01-ros2-intro/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s1">① 问题引入：机器人软件为什么需要这个 ROS"中间件"</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s2">② 核心原理：ROS2 的三大设计支柱</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s4">③ ROS2 的架构与设计特点</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s4">阅读</a></li>
+        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s7">④ 实操 1 · ROS2 的 Hello World：talker</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s7">阅读</a></li>
+        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s8">⑤ 实操 2 · 零配置互联：listener 与系统监控</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s8">阅读</a></li>
+        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s9">⑥ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s9">验证</a></li>
+        <li><a class="ttl" href="exp-01-ros2-intro/index.html#s10">⑦ 实验总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-01-ros2-intro/index.html#s10">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -135,12 +135,13 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>程序跑起来就变黑盒？ROS2 把"结构可见"做进了架构：与后端 / 前端 / 小程序 / 嵌入式横向对比后，看 <code>ros2</code> 六大命令族如何零侵入看清运行中的系统，并对比异步话题与同步服务两种通信模型。</p>
       <div class="meta"><span class="tag">CLI</span><span class="tag">ros2 run</span><span class="tag">info / echo / hz</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-02-cli-tools/index.html#s1">① 问题引入：程序跑起来就变黑盒？ROS2 的答案</a><span class="stars">⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-02-cli-tools/index.html#s2">② 核心原理：ros2 的"名词域 × 动作"体系</a><span class="stars">⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s2">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-02-cli-tools/index.html#s4">③ 异步话题 vs 同步服务——两种通信模型对比</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s4">精讲</a></li>
-        <li><a class="ttl" href="exp-02-cli-tools/index.html#s6">④ 实操中心：四关（试车台 · node · topic · bag）</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s6">实操</a></li>
+        <li><a class="ttl" href="exp-02-cli-tools/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-02-cli-tools/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-02-cli-tools/index.html#s1">① 问题引入：程序跑起来就变成黑盒？ROS2 给了一个不一样的答案</a><span class="stars">⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-02-cli-tools/index.html#s2">② 核心原理：ros2 的"名词域 × 动作"体系</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-02-cli-tools/index.html#s4">③ 异步话题 vs 同步服务——两种通信模型的对比</a><span class="stars">⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s4">阅读</a></li>
+        <li><a class="ttl" href="exp-02-cli-tools/index.html#s6">④ 实操中心：四关打通命令工具（点哪关练哪关）</a><span class="stars">⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s6">阅读</a></li>
         <li><a class="ttl" href="exp-02-cli-tools/index.html#s9">⑤ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-02-cli-tools/index.html#s5">⑥ 互动：命令选配台（综合自测）</a><span class="stars">⭐⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s5">互动</a></li>
+        <li><a class="ttl" href="exp-02-cli-tools/index.html#s5">⑥ 互动：命令选配台（综合自测）</a><span class="stars">⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s5">阅读</a></li>
         <li><a class="ttl" href="exp-02-cli-tools/index.html#s10">⑦ 实验总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-02-cli-tools/index.html#s10">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
@@ -152,11 +153,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>以真实工程为案例：src / build / install / log 四层目录各管什么、colcon 构建的完整流程、Underlay 与 Overlay 的叠层覆盖规则，从源码到跑起来完整走一圈。</p>
       <div class="meta"><span class="tag">colcon</span><span class="tag">Overlay</span><span class="tag">source setup.bash</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-03-workspace/index.html#s1">① 问题引入：项目越来越大了怎么办</a><span class="stars">⭐</span><a class="dur" href="exp-03-workspace/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-03-workspace/index.html#s11">② 演示：colcon build 构建复杂项目</a><span class="stars">⭐</span><a class="dur" href="exp-03-workspace/index.html#s11">演示</a></li>
-        <li><a class="ttl" href="exp-03-workspace/index.html#s2">③ 核心原理：四层目录结构与 colcon 编译流程</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-workspace/index.html#s2">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-03-workspace/index.html#s7">④ 实操：从零创建工作空间</a><span class="stars">⭐</span><a class="dur" href="exp-03-workspace/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-03-workspace/index.html#s8">⑤ 实操：动手验证 Overlay 覆盖规则</a><span class="stars">⭐⭐</span><a class="dur" href="exp-03-workspace/index.html#s8">实操</a></li>
+        <li><a class="ttl" href="exp-03-workspace/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-03-workspace/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-03-workspace/index.html#s1">① 问题引入：项目越来越大了，怎么办</a><span class="stars">⭐</span><a class="dur" href="exp-03-workspace/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-03-workspace/index.html#s11">② 演示：colcon build 构建复杂项目</a><span class="stars">⭐</span><a class="dur" href="exp-03-workspace/index.html#s11">阅读</a></li>
+        <li><a class="ttl" href="exp-03-workspace/index.html#s2">③ 核心原理：四层目录结构 + colcon 编译流程</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-03-workspace/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-03-workspace/index.html#s7">④ 实操：从零创建工作空间</a><span class="stars">⭐</span><a class="dur" href="exp-03-workspace/index.html#s7">阅读</a></li>
+        <li><a class="ttl" href="exp-03-workspace/index.html#s8">⑤ 实操：动手验证 Overlay 覆盖规则</a><span class="stars">⭐</span><a class="dur" href="exp-03-workspace/index.html#s8">阅读</a></li>
         <li><a class="ttl" href="exp-03-workspace/index.html#s9">⑥ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-03-workspace/index.html#s9">验证</a></li>
         <li><a class="ttl" href="exp-03-workspace/index.html#s10">⑦ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-03-workspace/index.html#s10">总结</a></li>
       </ul>
@@ -169,12 +171,13 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>ament_python 与 ament_cmake 两类功能包的差别；package.xml 三类依赖的阶段语义、setup.py 与 entry_points 入口注册，最后动手建包跑通话题闭环。</p>
       <div class="meta"><span class="tag">package.xml</span><span class="tag">CMakeLists</span><span class="tag">entry_points</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-04-package/index.html#s1">① 问题引入：交付代码，怎么才不抓瞎</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-04-package/index.html#s11">② 演示：拆开两个真实功能包</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#s11">演示</a></li>
-        <li><a class="ttl" href="exp-04-package/index.html#s2">③ 原理：从清单到 build / install</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-package/index.html#s2">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-04-package/index.html#s7">④ 实操 A：从零建包，跑通话题闭环</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-package/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-04-package/index.html#s8">⑤ 实操 B：编译两个真包，对比 C++ 与 Python</a><span class="stars">⭐⭐</span><a class="dur" href="exp-04-package/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-04-package/index.html#s5">⑥ 自查：依赖标签选配器（按阶段分类）</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#s5">互动</a></li>
+        <li><a class="ttl" href="exp-04-package/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-04-package/index.html#s1">① 问题引入：交付代码，怎么才不抓瞎</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-04-package/index.html#s11">② 演示：拆开两个真实功能包</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#s11">阅读</a></li>
+        <li><a class="ttl" href="exp-04-package/index.html#s2">③ 原理：从清单到 build / install</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-04-package/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-04-package/index.html#s7">④ 实操 A：从零建包，跑通话题闭环</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#s7">阅读</a></li>
+        <li><a class="ttl" href="exp-04-package/index.html#s8">⑤ 实操 B：编译两个真包，对比 C++ 与 Python</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#s8">阅读</a></li>
+        <li><a class="ttl" href="exp-04-package/index.html#s5">⑥ 自查：依赖标签选配器（按阶段分类）</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#s5">阅读</a></li>
         <li><a class="ttl" href="exp-04-package/index.html#s9">⑦ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#s9">验证</a></li>
         <li><a class="ttl" href="exp-04-package/index.html#s10">⑧ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-04-package/index.html#s10">总结</a></li>
       </ul>
@@ -196,14 +199,14 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>节点是 ROS2 的"一个岗位"：一台机器人身上 20 多个程序怎么分工。以真实节点 <code>gas_sensor_node</code> 为标本，从构造 → spin → 销毁走完整生命周期，讲透"为什么要拆、spin 在转什么、节点怎么接上头"。</p>
       <div class="meta"><span class="tag">rclpy</span><span class="tag">Node 类</span><span class="tag">spin</span><span class="tag">计算图</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-05-node/index.html#goal">① 本课学完，你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#goal">课程目标</a></li>
-        <li><a class="ttl" href="exp-05-node/index.html#s1">② 问题引入：一台机器人里有多少个程序在干活</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-05-node/index.html#s2">③ 核心原理：跟着一个真实节点，把生命周期走一遍</a><span class="stars">⭐⭐</span><a class="dur" href="exp-05-node/index.html#s2">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-05-node/index.html#s6">④ 节点 API 速查手册</a><span class="stars">⭐⭐</span><a class="dur" href="exp-05-node/index.html#s6">速查手册</a></li>
-        <li><a class="ttl" href="exp-05-node/index.html#s7">⑤ 实操 A：编译并运行 gas_sensor_node</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-05-node/index.html#s8">⑥ 实操 B：三节点组网与身份切换</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s8">验证</a></li>
-        <li><a class="ttl" href="exp-05-node/index.html#s9">⑦ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-05-node/index.html#s10">⑧ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-05-node/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-05-node/index.html#s1">① 问题引入：一台机器人里，到底有多少个程序在干活</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-05-node/index.html#s2">② 核心原理：跟着一个真实节点，把生命周期走一遍</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-05-node/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-05-node/index.html#s6">③ 节点 API 速查手册</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s6">阅读</a></li>
+        <li><a class="ttl" href="exp-05-node/index.html#s7">④ 实操 A：编译并运行 gas_sensor_node</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s7">阅读</a></li>
+        <li><a class="ttl" href="exp-05-node/index.html#s8">⑤ 实操 B：三节点组网与身份切换</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s8">阅读</a></li>
+        <li><a class="ttl" href="exp-05-node/index.html#s9">⑥ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s9">验证</a></li>
+        <li><a class="ttl" href="exp-05-node/index.html#s10">⑦ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-05-node/index.html#s10">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -214,11 +217,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>发布 / 订阅模式全解析：消息从发布端走到回调里的四个环节、QoS 三要素如何决定"丢消息还是补消息"；再把 MQ5 的电压读数经对数换算成 ppm，用阈值报警验证整条链路。</p>
       <div class="meta"><span class="tag">Publisher/Sub</span><span class="tag">QoS</span><span class="tag">MQ5</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-06-topic/index.html#s6">① 跑出现象：MQ5 浓度在话题上流动</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s1">② 问题引入与原理：一份数据，为什么要走话题</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s1">原理</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s4">③ QoS：传输合同 + 实验台</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s4">原理 + 交互</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s7">④ 实验步骤：框架 → 代码 → 现象</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s7">源码 + 实操</a></li>
-        <li><a class="ttl" href="exp-06-topic/index.html#s8">⑤ 动手任务：改点新东西来验证</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s8">综合</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s6">① 跑出现象：一步步跑出 MQ5 浓度在话题上流动</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#s6">阅读</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s1">② 问题引入与原理：一份数据，为什么要经过"话题"</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s4">③ QoS：给话题签一份传输合同，并亲手签坏它</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#s4">阅读</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s7">④ 实验步骤：先看懂框架，再读代码，最后自己跑出结果</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s7">实操</a></li>
+        <li><a class="ttl" href="exp-06-topic/index.html#s8">⑤ 动手任务：改点新东西，验证你真的懂了</a><span class="stars">⭐⭐</span><a class="dur" href="exp-06-topic/index.html#s8">任务</a></li>
         <li><a class="ttl" href="exp-06-topic/index.html#s9">⑥ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#s9">验证</a></li>
         <li><a class="ttl" href="exp-06-topic/index.html#s10">⑦ 实验总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-06-topic/index.html#s10">总结</a></li>
       </ul>
@@ -231,16 +235,14 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>同步请求 / 应答范式的四拍时序与"阻塞"代价；指纹模组 PS_* 串口协议，采图 → 生成特征 → 搜索比对三步验证封装成服务。</p>
       <div class="meta"><span class="tag">Client/Server</span><span class="tag">srv</span><span class="tag">UART 指纹模组</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-07-service/index.html#s6">① 先看现象：一步步跑通指纹验证</a><span class="stars">⭐⭐</span><a class="dur" href="exp-07-service/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-07-service/index.html#s1">② 为什么需要服务：有些事必须"等到答案"</a><span class="stars">⭐</span><a class="dur" href="exp-07-service/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-07-service/index.html#s2">③ 核心原理：一次 RPC 在 ROS2 里怎么跑起来</a><span class="stars">⭐⭐</span><a class="dur" href="exp-07-service/index.html#s2">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-07-service/index.html#s3">④ 动画：一问一答的四个瞬间</a><span class="stars">⭐⭐</span><a class="dur" href="exp-07-service/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-07-service/index.html#s4">⑤ 专题：指纹模组的三步与"确认码"</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-07-service/index.html#s4">专题</a></li>
-        <li><a class="ttl" href="exp-07-service/index.html#s5">⑥ 服务实验台：亲眼看"同步阻塞"怎么发生</a><span class="stars">⭐⭐</span><a class="dur" href="exp-07-service/index.html#s5">交互</a></li>
-        <li><a class="ttl" href="exp-07-service/index.html#s7">⑦ 代码精讲：三份源码逐行读懂</a><span class="stars">⭐⭐</span><a class="dur" href="exp-07-service/index.html#s7">源码导读</a></li>
-        <li><a class="ttl" href="exp-07-service/index.html#s8">⑧ 动手任务：把现象变成你自己的证据</a><span class="stars">⭐⭐</span><a class="dur" href="exp-07-service/index.html#s8">综合</a></li>
-        <li><a class="ttl" href="exp-07-service/index.html#s9">⑨ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-07-service/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-07-service/index.html#s10">⑩ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-07-service/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-07-service/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-07-service/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-07-service/index.html#s6">① 跑出现象：一步步跑通指纹验证</a><span class="stars">⭐</span><a class="dur" href="exp-07-service/index.html#s6">阅读</a></li>
+        <li><a class="ttl" href="exp-07-service/index.html#s1">② 问题引入：为什么"验证一根手指"不能像浓度那样广播</a><span class="stars">⭐</span><a class="dur" href="exp-07-service/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-07-service/index.html#s2">③ 核心原理：一次 RPC 怎么跑起来（结构 · 时序 · 模组底层）</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-07-service/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-07-service/index.html#s7">④ 实验步骤：先看懂框架，再读代码，最后跑出现象</a><span class="stars">⭐⭐</span><a class="dur" href="exp-07-service/index.html#s7">实操</a></li>
+        <li><a class="ttl" href="exp-07-service/index.html#s8">⑤ 动手任务：改点新东西，验证你真的懂了</a><span class="stars">⭐⭐</span><a class="dur" href="exp-07-service/index.html#s8">任务</a></li>
+        <li><a class="ttl" href="exp-07-service/index.html#s9">⑥ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-07-service/index.html#s9">验证</a></li>
+        <li><a class="ttl" href="exp-07-service/index.html#s10">⑦ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-07-service/index.html#s10">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -251,11 +253,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>Goal / Feedback / Result 三通道模型，以及藏在端点里的 5 条线；MFRC522 寻卡（REQA）→ 防冲突 → 读 UID 三步流程封装成动作服务器，带取消与进度反馈。</p>
       <div class="meta"><span class="tag">Action</span><span class="tag">Goal/Feedback</span><span class="tag">MFRC522</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-08-action/index.html#s6">① 跑出现象：一步步跑通 RFID 读卡</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s1">② 问题引入：刷卡等 30 秒，服务为什么不够</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s1">原理</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s2">③ 核心原理：五通道 · 时序 · 状态机</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-08-action/index.html#s2">原理详解</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s7">④ 实验步骤：源码位置 → 框架 → 关键代码</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s7">源码 + 实操</a></li>
-        <li><a class="ttl" href="exp-08-action/index.html#s8">⑤ 动手任务：按操作验证实验目标</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s8">综合</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-08-action/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s6">① 跑出现象：一步步跑通 RFID 读卡</a><span class="stars">⭐</span><a class="dur" href="exp-08-action/index.html#s6">阅读</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s1">② 问题引入：刷卡要等 30 秒，为什么服务不够用</a><span class="stars">⭐</span><a class="dur" href="exp-08-action/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s2">③ 核心原理：五条隐藏通道 · 时序 · 三回调与状态机</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-08-action/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s7">④ 实验步骤：源码在哪、怎么串起来、关键几行在干什么</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s7">实操</a></li>
+        <li><a class="ttl" href="exp-08-action/index.html#s8">⑤ 动手任务：按操作验证本课的四个目标</a><span class="stars">⭐⭐</span><a class="dur" href="exp-08-action/index.html#s8">任务</a></li>
         <li><a class="ttl" href="exp-08-action/index.html#s9">⑥ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-08-action/index.html#s9">验证</a></li>
         <li><a class="ttl" href="exp-08-action/index.html#s10">⑦ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-08-action/index.html#s10">总结</a></li>
       </ul>
@@ -268,11 +271,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>从"数据串台"事故入手，讲清为什么要把一份数据打包成一条消息；.msg / .srv / .action 三种接口文件语法与 --- 分隔符，接口包的编译生成与跨语言复用。</p>
       <div class="meta"><span class="tag">.msg</span><span class="tag">.srv</span><span class="tag">接口包</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s0">① 跑出现象：DHT11 温湿度节点跑起来</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s0">实操</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s1">② 问题引入：数据串台的误报事故</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s1">原理</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s2">③ 核心原理：结构 · 编译链路 · 选型</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s2">原理详解</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s6">④ 实操 A：通览 6 份真实契约</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-09-custom-msg/index.html#s8">⑤ 实操 B：为新传感器定义接口</a><span class="stars">⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s8">设计任务</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s0">① 跑出现象：一个真实的温湿度节点跑起来是什么样</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s0">阅读</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s1">② 问题引入：一次"数据串台"的误报事故</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s2">③ 核心原理：三种接口文件结构</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s6">④ 实操 A：通览全部 6 份契约，逐份读懂</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s6">阅读</a></li>
+        <li><a class="ttl" href="exp-09-custom-msg/index.html#s8">⑤ 实操 B：设计任务——为新传感器定义接口</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s8">阅读</a></li>
         <li><a class="ttl" href="exp-09-custom-msg/index.html#s9">⑥ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s9">验证</a></li>
         <li><a class="ttl" href="exp-09-custom-msg/index.html#s10">⑦ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-09-custom-msg/index.html#s10">总结</a></li>
       </ul>
@@ -285,10 +289,11 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>参数是"从代码里拉出来的配置项"：declare / get / set 三步生命周期，ParameterDescriptor 的两层约束，以及 set_parameters_callback 实现的动态调参闭环与参数持久化。</p>
       <div class="meta"><span class="tag">Parameter</span><span class="tag">动态参数</span><span class="tag">YAML</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-10-parameter/index.html#s5">① 先动手感受：亲手调一调三个参数</a><span class="stars">⭐⭐</span><a class="dur" href="exp-10-parameter/index.html#s5">交互体验</a></li>
-        <li><a class="ttl" href="exp-10-parameter/index.html#s1">② 问题引入：改一个数字为什么这么贵</a><span class="stars">⭐</span><a class="dur" href="exp-10-parameter/index.html#s1">原理</a></li>
-        <li><a class="ttl" href="exp-10-parameter/index.html#s2">③ 核心原理：生命周期 · 数据流 · 两层约束</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-10-parameter/index.html#s2">原理详解</a></li>
-        <li><a class="ttl" href="exp-10-parameter/index.html#s6">④ 实验步骤：读源码 → 跑节点 → 九步联调</a><span class="stars">⭐⭐</span><a class="dur" href="exp-10-parameter/index.html#s6">源码 + 实操</a></li>
+        <li><a class="ttl" href="exp-10-parameter/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-10-parameter/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-10-parameter/index.html#s5">① 先动手感受：亲手调一调这三个参数</a><span class="stars">⭐</span><a class="dur" href="exp-10-parameter/index.html#s5">阅读</a></li>
+        <li><a class="ttl" href="exp-10-parameter/index.html#s1">② 问题引入：改一个数字为什么这么贵</a><span class="stars">⭐</span><a class="dur" href="exp-10-parameter/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-10-parameter/index.html#s2">③ 核心原理：声明 → 读取 → 设置，与两次校验</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-10-parameter/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-10-parameter/index.html#s6">④ 实验步骤：读源码 → 跑节点 → 九步联调</a><span class="stars">⭐⭐</span><a class="dur" href="exp-10-parameter/index.html#s6">实操</a></li>
         <li><a class="ttl" href="exp-10-parameter/index.html#s9">⑤ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-10-parameter/index.html#s9">验证</a></li>
         <li><a class="ttl" href="exp-10-parameter/index.html#s10">⑥ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-10-parameter/index.html#s10">总结</a></li>
       </ul>
@@ -310,14 +315,13 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>Clock 只有一个出口、只有 use_sim_time 一个开关；系统时钟与 /clock 仿真时钟如何透明切换，create_timer 的真实行为与 Header.stamp 的盖章规范。</p>
       <div class="meta"><span class="tag">Clock</span><span class="tag">Timer</span><span class="tag">stamp</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-11-time/index.html#s1">① 问题引入：时间不对齐，数据全白采</a><span class="stars">⭐</span><a class="dur" href="exp-11-time/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-11-time/index.html#s2">② 核心原理：一块表面，两套电池</a><span class="stars">⭐⭐</span><a class="dur" href="exp-11-time/index.html#s2">原理 + 交互</a></li>
-        <li><a class="ttl" href="exp-11-time/index.html#s3">③ 专题：create_timer 的真实行为与 stamp 规范</a><span class="stars">⭐⭐</span><a class="dur" href="exp-11-time/index.html#s3">精讲</a></li>
-        <li><a class="ttl" href="exp-11-time/index.html#s4">④ 先看现象：让时间看得见</a><span class="stars">⭐</span><a class="dur" href="exp-11-time/index.html#s4">实操</a></li>
-        <li><a class="ttl" href="exp-11-time/index.html#s5">⑤ 代码精讲：time_demo_node 逐行拆解</a><span class="stars">⭐⭐</span><a class="dur" href="exp-11-time/index.html#s5">源码导读</a></li>
-        <li><a class="ttl" href="exp-11-time/index.html#s6">⑥ 实操 B：亲手"接管"一个节点的时间轴</a><span class="stars">⭐⭐</span><a class="dur" href="exp-11-time/index.html#s6">综合</a></li>
-        <li><a class="ttl" href="exp-11-time/index.html#s7">⑦ 注意事项与验收清单</a><span class="stars">⭐⭐</span><a class="dur" href="exp-11-time/index.html#s7">验证</a></li>
-        <li><a class="ttl" href="exp-11-time/index.html#s8">⑧ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-11-time/index.html#s8">总结</a></li>
+        <li><a class="ttl" href="exp-11-time/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-11-time/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-11-time/index.html#s1">① 问题引入：时间不对齐，数据全白采</a><span class="stars">⭐</span><a class="dur" href="exp-11-time/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-11-time/index.html#s2">② 先看现象：让时间看得见</a><span class="stars">⭐⭐</span><a class="dur" href="exp-11-time/index.html#s2">现象</a></li>
+        <li><a class="ttl" href="exp-11-time/index.html#s3">③ 原理讲解</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-11-time/index.html#s3">原理</a></li>
+        <li><a class="ttl" href="exp-11-time/index.html#s4">④ 实验步骤</a><span class="stars">⭐⭐</span><a class="dur" href="exp-11-time/index.html#s4">实操</a></li>
+        <li><a class="ttl" href="exp-11-time/index.html#s5">⑤ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-11-time/index.html#s5">验证</a></li>
+        <li><a class="ttl" href="exp-11-time/index.html#s6">⑥ 本课总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-11-time/index.html#s6">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -328,17 +332,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>RMW → RTPS → DDS 分层解剖，Domain / Participant / Endpoint 域模型与 SPDP/SEDP 两阶段发现协议，并给出按数据特性选 QoS 的决策表。</p>
       <div class="meta"><span class="tag">RTPS</span><span class="tag">RMW</span><span class="tag">发现协议</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-12-dds/index.html#s1">① DDS 是什么：为什么话题、服务、动作都靠它</a><span class="stars">⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-12-dds/index.html#s2">② 核心原理：RMW——DDS 的"万能适配器"</a><span class="stars">⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s2">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-12-dds/index.html#s3">③ 域模型：RTPS 协议的四层嵌套</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s3">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-12-dds/index.html#s4">④ 原理动画：一条消息如何"穿过四层"到达对端</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s4">动画</a></li>
-        <li><a class="ttl" href="exp-12-dds/index.html#s5">⑤ 自动发现两阶段：为什么不用写"连接代码"</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s5">精讲</a></li>
-        <li><a class="ttl" href="exp-12-dds/index.html#s6">⑥ 互动沙盘：亲手推进两阶段发现</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s6">交互</a></li>
-        <li><a class="ttl" href="exp-12-dds/index.html#s7">⑦ QoS 决策表：按数据特性选策略</a><span class="stars">⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s7">决策参考</a></li>
-        <li><a class="ttl" href="exp-12-dds/index.html#s8">⑧ 实操 A：域隔离——功能现象与底层端口证据</a><span class="stars">⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-12-dds/index.html#s9">⑨ 实操 B：QoS 实验——DDS 最直观的两组反差</a><span class="stars">⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s9">实操</a></li>
-        <li><a class="ttl" href="exp-12-dds/index.html#s10">⑩ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-12-dds/index.html#s10">验证</a></li>
-        <li><a class="ttl" href="exp-12-dds/index.html#s11">⑪ 实验总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-12-dds/index.html#s11">总结</a></li>
+        <li><a class="ttl" href="exp-12-dds/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-12-dds/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-12-dds/index.html#s1">① 问题引入：没写一行连接代码，两个节点为什么就能通</a><span class="stars">⭐</span><a class="dur" href="exp-12-dds/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-12-dds/index.html#s2">② 原理讲解</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-12-dds/index.html#s3">③ 实验步骤</a><span class="stars">⭐⭐</span><a class="dur" href="exp-12-dds/index.html#s3">实操</a></li>
+        <li><a class="ttl" href="exp-12-dds/index.html#s4">④ 注意事项与验收清单</a><span class="stars">⭐</span><a class="dur" href="exp-12-dds/index.html#s4">验证</a></li>
+        <li><a class="ttl" href="exp-12-dds/index.html#s5">⑤ 实验总结与思考题</a><span class="stars">⭐</span><a class="dur" href="exp-12-dds/index.html#s5">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -349,15 +348,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>ROS_DOMAIN_ID 到底隔离了什么：组播地址与端口的物理映射、多机组网配置、两种发现模式的取舍，以及 SROS2 安全边界。</p>
       <div class="meta"><span class="tag">DOMAIN_ID</span><span class="tag">多机组网</span><span class="tag">域隔离</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-13-distributed/index.html#s1">① 问题引入：好好的机器人为什么会"串台"</a><span class="stars">⭐</span><a class="dur" href="exp-13-distributed/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-13-distributed/index.html#s2">② 核心原理：一个数字如何隔离整张网</a><span class="stars">⭐⭐</span><a class="dur" href="exp-13-distributed/index.html#s2">原理 + 交互</a></li>
-        <li><a class="ttl" href="exp-13-distributed/index.html#s3">③ 动画：组播发现与域隔离的物理过程</a><span class="stars">⭐⭐</span><a class="dur" href="exp-13-distributed/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-13-distributed/index.html#s4">④ 原理专题：两种发现模式与通信安全</a><span class="stars">⭐⭐</span><a class="dur" href="exp-13-distributed/index.html#s4">专题</a></li>
-        <li><a class="ttl" href="exp-13-distributed/index.html#s5">⑤ 交互实验：双机组网诊断台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-13-distributed/index.html#s5">排障</a></li>
-        <li><a class="ttl" href="exp-13-distributed/index.html#s6">⑥ 命令精讲：域号的三种给法</a><span class="stars">⭐⭐</span><a class="dur" href="exp-13-distributed/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-13-distributed/index.html#s7">⑦ 实操 A：单机三终端，10 分钟看到隔离效果</a><span class="stars">⭐⭐</span><a class="dur" href="exp-13-distributed/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-13-distributed/index.html#s8">⑧ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-13-distributed/index.html#s8">验证</a></li>
-        <li><a class="ttl" href="exp-13-distributed/index.html#s9">⑨ 本课总结</a><span class="stars">⭐</span><a class="dur" href="exp-13-distributed/index.html#s9">总结</a></li>
+        <li><a class="ttl" href="exp-13-distributed/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-13-distributed/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-13-distributed/index.html#s1">① 问题引入：好好的机器人为什么会"串台"</a><span class="stars">⭐</span><a class="dur" href="exp-13-distributed/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-13-distributed/index.html#s2">② 原理讲解</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-13-distributed/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-13-distributed/index.html#s3">③ 实验步骤</a><span class="stars">⭐⭐</span><a class="dur" href="exp-13-distributed/index.html#s3">实操</a></li>
+        <li><a class="ttl" href="exp-13-distributed/index.html#s4">④ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-13-distributed/index.html#s4">验证</a></li>
+        <li><a class="ttl" href="exp-13-distributed/index.html#s5">⑤ 本课总结</a><span class="stars">⭐</span><a class="dur" href="exp-13-distributed/index.html#s5">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -377,15 +373,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>Qt 插件体系一次加载多处复用；五大核心插件逐个拆——rqt_graph 看拓扑、rqt_plot 画波形、rqt_console 管日志、rqt_topic 查数据、rqt_bag 看录制。</p>
       <div class="meta"><span class="tag">rqt_graph</span><span class="tag">rqt_plot</span><span class="tag">插件</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-14-rqt/index.html#s1">① 问题引入：黑盒调试的困局</a><span class="stars">⭐</span><a class="dur" href="exp-14-rqt/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-14-rqt/index.html#s2">② 核心原理：插件化架构为什么好用</a><span class="stars">⭐⭐</span><a class="dur" href="exp-14-rqt/index.html#s2">原理</a></li>
-        <li><a class="ttl" href="exp-14-rqt/index.html#s3">③ 动画：同一系统，四双眼睛</a><span class="stars">⭐⭐</span><a class="dur" href="exp-14-rqt/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-14-rqt/index.html#s4">④ 原理专题：五大核心插件逐个拆</a><span class="stars">⭐⭐</span><a class="dur" href="exp-14-rqt/index.html#s4">精讲</a></li>
-        <li><a class="ttl" href="exp-14-rqt/index.html#s5">⑤ 命令精讲：启动方式三连</a><span class="stars">⭐</span><a class="dur" href="exp-14-rqt/index.html#s5">实操</a></li>
-        <li><a class="ttl" href="exp-14-rqt/index.html#s6">⑥ 实操 A：graph + plot 看真实底盘电压</a><span class="stars">⭐</span><a class="dur" href="exp-14-rqt/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-14-rqt/index.html#s7">⑦ 实操 B：rqt_image_view 看图 + 命令行管日志</a><span class="stars">⭐⭐</span><a class="dur" href="exp-14-rqt/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-14-rqt/index.html#s8">⑧ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-14-rqt/index.html#s8">验证</a></li>
-        <li><a class="ttl" href="exp-14-rqt/index.html#s9">⑨ 本课总结</a><span class="stars">⭐</span><a class="dur" href="exp-14-rqt/index.html#s9">总结</a></li>
+        <li><a class="ttl" href="exp-14-rqt/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-14-rqt/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-14-rqt/index.html#s1">① 问题引入：黑盒调试的困局</a><span class="stars">⭐</span><a class="dur" href="exp-14-rqt/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-14-rqt/index.html#s2">② 原理讲解</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-14-rqt/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-14-rqt/index.html#s3">③ 实验步骤</a><span class="stars">⭐⭐</span><a class="dur" href="exp-14-rqt/index.html#s3">实操</a></li>
+        <li><a class="ttl" href="exp-14-rqt/index.html#s4">④ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-14-rqt/index.html#s4">验证</a></li>
+        <li><a class="ttl" href="exp-14-rqt/index.html#s5">⑤ 本课总结</a><span class="stars">⭐</span><a class="dur" href="exp-14-rqt/index.html#s5">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -396,16 +389,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>OGRE 渲染引擎 + 插件面板体系；Fixed Frame 决定视角基准，TF 显示与七大 Display 类型的组合调试方法，以及黑屏问题的系统排查路径。</p>
       <div class="meta"><span class="tag">OGRE</span><span class="tag">Fixed Frame</span><span class="tag">Display</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-15-rviz2/index.html#s1">① 问题引入：机器人眼中的世界长什么样</a><span class="stars">⭐</span><a class="dur" href="exp-15-rviz2/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-15-rviz2/index.html#s2">② 核心原理：Fixed Frame 决定"上帝站在哪"</a><span class="stars">⭐⭐</span><a class="dur" href="exp-15-rviz2/index.html#s2">原理</a></li>
-        <li><a class="ttl" href="exp-15-rviz2/index.html#s3">③ 动画：一条雷达点如何画上屏</a><span class="stars">⭐⭐</span><a class="dur" href="exp-15-rviz2/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-15-rviz2/index.html#s4">④ 原理专题：七大 Display 逐个拆</a><span class="stars">⭐⭐</span><a class="dur" href="exp-15-rviz2/index.html#s4">精讲</a></li>
-        <li><a class="ttl" href="exp-15-rviz2/index.html#s5">⑤ 交互实验：rviz 黑屏诊断台</a><span class="stars">⭐⭐</span><a class="dur" href="exp-15-rviz2/index.html#s5">交互</a></li>
-        <li><a class="ttl" href="exp-15-rviz2/index.html#s6">⑥ 命令精讲：启动与图形环境</a><span class="stars">⭐</span><a class="dur" href="exp-15-rviz2/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-15-rviz2/index.html#s7">⑦ 实操 A：跑起本车模型，看懂 TF 坐标树</a><span class="stars">⭐⭐</span><a class="dur" href="exp-15-rviz2/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-15-rviz2/index.html#s8">⑧ 实操 B：加载导航可视化，看懂地图与雷达</a><span class="stars">⭐⭐</span><a class="dur" href="exp-15-rviz2/index.html#s8">综合</a></li>
-        <li><a class="ttl" href="exp-15-rviz2/index.html#s9">⑨ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-15-rviz2/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-15-rviz2/index.html#s10">⑩ 本课总结</a><span class="stars">⭐</span><a class="dur" href="exp-15-rviz2/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-15-rviz2/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-15-rviz2/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-15-rviz2/index.html#s1">① 问题引入：机器人眼中的世界长什么样</a><span class="stars">⭐</span><a class="dur" href="exp-15-rviz2/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-15-rviz2/index.html#s2">② 原理讲解</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-15-rviz2/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-15-rviz2/index.html#s3">③ 实验步骤</a><span class="stars">⭐⭐</span><a class="dur" href="exp-15-rviz2/index.html#s3">实操</a></li>
+        <li><a class="ttl" href="exp-15-rviz2/index.html#s4">④ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-15-rviz2/index.html#s4">验证</a></li>
+        <li><a class="ttl" href="exp-15-rviz2/index.html#s5">⑤ 本课总结</a><span class="stars">⭐</span><a class="dur" href="exp-15-rviz2/index.html#s5">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -416,15 +405,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>bag 文件的 SQLite3 存储原理与 metadata.yaml 的关系，record / play 两大参数族，离线复现现场故障与数据集采集实战。</p>
       <div class="meta"><span class="tag">ros2 bag</span><span class="tag">SQLite3</span><span class="tag">数据回放</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-16-rosbag/index.html#s1">① 问题引入：只会来一次的现场故障</a><span class="stars">⭐</span><a class="dur" href="exp-16-rosbag/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-16-rosbag/index.html#s2">② 核心原理：一个 .db3 文件里到底有什么</a><span class="stars">⭐⭐</span><a class="dur" href="exp-16-rosbag/index.html#s2">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-16-rosbag/index.html#s3">③ 动画：录包保真、回放复活</a><span class="stars">⭐⭐</span><a class="dur" href="exp-16-rosbag/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-16-rosbag/index.html#s4">④ 原理专题：record 与 play 的参数族</a><span class="stars">⭐⭐</span><a class="dur" href="exp-16-rosbag/index.html#s4">精讲</a></li>
-        <li><a class="ttl" href="exp-16-rosbag/index.html#s5">⑤ 交互实验：录放命令构建器</a><span class="stars">⭐</span><a class="dur" href="exp-16-rosbag/index.html#s5">交互</a></li>
-        <li><a class="ttl" href="exp-16-rosbag/index.html#s6">⑥ 实操 A：全量录制 → 定量分析 → 回放验证</a><span class="stars">⭐</span><a class="dur" href="exp-16-rosbag/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-16-rosbag/index.html#s7">⑦ 实操 B：离线回放 + rviz2 联调数据流</a><span class="stars">⭐⭐</span><a class="dur" href="exp-16-rosbag/index.html#s7">综合</a></li>
-        <li><a class="ttl" href="exp-16-rosbag/index.html#s8">⑧ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-16-rosbag/index.html#s8">验证</a></li>
-        <li><a class="ttl" href="exp-16-rosbag/index.html#s9">⑨ 本课总结</a><span class="stars">⭐</span><a class="dur" href="exp-16-rosbag/index.html#s9">总结</a></li>
+        <li><a class="ttl" href="exp-16-rosbag/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-16-rosbag/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-16-rosbag/index.html#s1">① 问题引入：只会来一次的现场故障</a><span class="stars">⭐</span><a class="dur" href="exp-16-rosbag/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-16-rosbag/index.html#s2">② 原理讲解</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-16-rosbag/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-16-rosbag/index.html#s3">③ 实验步骤</a><span class="stars">⭐⭐</span><a class="dur" href="exp-16-rosbag/index.html#s3">实操</a></li>
+        <li><a class="ttl" href="exp-16-rosbag/index.html#s4">④ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-16-rosbag/index.html#s4">验证</a></li>
+        <li><a class="ttl" href="exp-16-rosbag/index.html#s5">⑤ 本课总结</a><span class="stars">⭐</span><a class="dur" href="exp-16-rosbag/index.html#s5">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -435,16 +421,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>ROS2 为什么把启动语言换成 Python：解析、拉起、优雅退出的全过程，以及 remap 重映射、IfCondition 条件、OnProcessExit 事件三件套，最后做综合系统整合。</p>
       <div class="meta"><span class="tag">launch</span><span class="tag">事件</span><span class="tag">remap</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-17-launch/index.html#s1">① 问题引入：五个终端的手忙脚乱</a><span class="stars">⭐</span><a class="dur" href="exp-17-launch/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-17-launch/index.html#s2">② 核心原理：ROS2 为什么把启动语言换成 Python</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-17-launch/index.html#s2">原理</a></li>
-        <li><a class="ttl" href="exp-17-launch/index.html#s3">③ 动画：解析、拉起、优雅退出的全过程</a><span class="stars">⭐⭐</span><a class="dur" href="exp-17-launch/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-17-launch/index.html#s4">④ 原理专题：remap、条件、事件三件套</a><span class="stars">⭐⭐</span><a class="dur" href="exp-17-launch/index.html#s4">精讲</a></li>
-        <li><a class="ttl" href="exp-17-launch/index.html#s6">⑤ 代码精讲：第一个 Launch 文件</a><span class="stars">⭐⭐</span><a class="dur" href="exp-17-launch/index.html#s6">源码导读</a></li>
-        <li><a class="ttl" href="exp-17-launch/index.html#s7">⑥ 实操 A：基础启动 + remap 三节点对照</a><span class="stars">⭐⭐</span><a class="dur" href="exp-17-launch/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-17-launch/index.html#s8">⑦ 实操 B：参数化 + 条件启动 + 事件触发</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-17-launch/index.html#s8">进阶</a></li>
-        <li><a class="ttl" href="exp-17-launch/index.html#s9">⑧ 实操 C：综合系统整合（含 bag 录制）</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-17-launch/index.html#s9">综合</a></li>
-        <li><a class="ttl" href="exp-17-launch/index.html#s10">⑨ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-17-launch/index.html#s10">验证</a></li>
-        <li><a class="ttl" href="exp-17-launch/index.html#s11">⑩ 本课总结</a><span class="stars">⭐</span><a class="dur" href="exp-17-launch/index.html#s11">总结</a></li>
+        <li><a class="ttl" href="exp-17-launch/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-17-launch/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-17-launch/index.html#s1">① 问题引入：五个终端的手忙脚乱</a><span class="stars">⭐</span><a class="dur" href="exp-17-launch/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-17-launch/index.html#s2">② 原理讲解</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-17-launch/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-17-launch/index.html#s3">③ 实验步骤</a><span class="stars">⭐⭐</span><a class="dur" href="exp-17-launch/index.html#s3">实操</a></li>
+        <li><a class="ttl" href="exp-17-launch/index.html#s4">④ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-17-launch/index.html#s4">验证</a></li>
+        <li><a class="ttl" href="exp-17-launch/index.html#s5">⑤ 本课总结</a><span class="stars">⭐</span><a class="dur" href="exp-17-launch/index.html#s5">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -455,15 +437,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>只声明依赖、不写代码的"打包胶水"：exec_depend 聚合子包，一条 apt 命令拉起全家桶；并剖析 nav2 的三层聚合结构，动手自建 my_robot_meta。</p>
       <div class="meta"><span class="tag">metapackage</span><span class="tag">exec_depend</span><span class="tag">一键启动</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-18-metapackage/index.html#s1">① 问题引入：装个 navigation2，要背 20 个包名吗</a><span class="stars">⭐</span><a class="dur" href="exp-18-metapackage/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-18-metapackage/index.html#s2">② 核心原理：一个"空包"凭什么工作</a><span class="stars">⭐⭐</span><a class="dur" href="exp-18-metapackage/index.html#s2">原理</a></li>
-        <li><a class="ttl" href="exp-18-metapackage/index.html#s3">③ 动画：一条 apt 命令如何拉起全家桶</a><span class="stars">⭐⭐</span><a class="dur" href="exp-18-metapackage/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-18-metapackage/index.html#s4">④ 原理专题：nav2 聚合结构三层剖析</a><span class="stars">⭐⭐</span><a class="dur" href="exp-18-metapackage/index.html#s4">精讲</a></li>
-        <li><a class="ttl" href="exp-18-metapackage/index.html#s6">⑤ 命令精讲：把元包看个底朝天</a><span class="stars">⭐</span><a class="dur" href="exp-18-metapackage/index.html#s6">实操</a></li>
-        <li><a class="ttl" href="exp-18-metapackage/index.html#s7">⑥ 实操 A：解剖 navigation2（验证性）</a><span class="stars">⭐</span><a class="dur" href="exp-18-metapackage/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-18-metapackage/index.html#s8">⑦ 实操 B：打造 my_robot_meta（设计性任务）</a><span class="stars">⭐</span><a class="dur" href="exp-18-metapackage/index.html#s8">实操</a></li>
-        <li><a class="ttl" href="exp-18-metapackage/index.html#s9">⑧ 注意事项与避坑清单</a><span class="stars">⭐</span><a class="dur" href="exp-18-metapackage/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-18-metapackage/index.html#s10">⑨ 本课总结与思考</a><span class="stars">⭐</span><a class="dur" href="exp-18-metapackage/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-18-metapackage/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-18-metapackage/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-18-metapackage/index.html#s1">① 问题引入：装个 navigation2，要背 20 个包名吗</a><span class="stars">⭐</span><a class="dur" href="exp-18-metapackage/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-18-metapackage/index.html#s2">② 原理讲解</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-18-metapackage/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-18-metapackage/index.html#s3">③ 实验步骤</a><span class="stars">⭐⭐</span><a class="dur" href="exp-18-metapackage/index.html#s3">实操</a></li>
+        <li><a class="ttl" href="exp-18-metapackage/index.html#s4">④ 注意事项与避坑清单</a><span class="stars">⭐</span><a class="dur" href="exp-18-metapackage/index.html#s4">验证</a></li>
+        <li><a class="ttl" href="exp-18-metapackage/index.html#s5">⑤ 本课总结与思考</a><span class="stars">⭐</span><a class="dur" href="exp-18-metapackage/index.html#s5">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -483,16 +462,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>TF2 树为什么是一棵树：/tf 与 /tf_static 双通道与 QoS 差异、旋转为什么用四元数、查询一条变换链的全过程，并用三种手段验证坐标树。</p>
       <div class="meta"><span class="tag">TF2</span><span class="tag">坐标树</span><span class="tag">odom→base</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-19-tf2/index.html#s1">① 引例：这束激光该画在哪</a><span class="stars">⭐</span><a class="dur" href="exp-19-tf2/index.html#s1">2 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-19-tf2/index.html#s2">② 原理：TF2 树为什么长成一棵树</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-19-tf2/index.html#s2">原理</a></li>
-        <li><a class="ttl" href="exp-19-tf2/index.html#s3">③ 动画：一次 TF 查询的全过程</a><span class="stars">⭐⭐</span><a class="dur" href="exp-19-tf2/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-19-tf2/index.html#s4">④ 原理专题：旋转为什么要用四元数</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-19-tf2/index.html#s4">精讲</a></li>
-        <li><a class="ttl" href="exp-19-tf2/index.html#s5">⑤ 交互实验台：四元数换算 + TF 链查询</a><span class="stars">⭐⭐</span><a class="dur" href="exp-19-tf2/index.html#s5">交互</a></li>
-        <li><a class="ttl" href="exp-19-tf2/index.html#s6">⑥ 代码精讲：发布者与查询者</a><span class="stars">⭐⭐</span><a class="dur" href="exp-19-tf2/index.html#s6">源码导读</a></li>
-        <li><a class="ttl" href="exp-19-tf2/index.html#s7">⑦ 实操 1 · 创建 tf2_demo 包并发布静态变换</a><span class="stars">⭐⭐</span><a class="dur" href="exp-19-tf2/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-19-tf2/index.html#s8">⑧ 实操 2 · 三种手段验证 TF 树</a><span class="stars">⭐⭐</span><a class="dur" href="exp-19-tf2/index.html#s8">验证</a></li>
-        <li><a class="ttl" href="exp-19-tf2/index.html#s9">⑨ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-19-tf2/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-19-tf2/index.html#s10">⑩ 实验总结与思考</a><span class="stars">⭐</span><a class="dur" href="exp-19-tf2/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-19-tf2/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-19-tf2/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-19-tf2/index.html#s1">① 引例：这束激光该画在哪</a><span class="stars">⭐</span><a class="dur" href="exp-19-tf2/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-19-tf2/index.html#s2">② 原理讲解</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-19-tf2/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-19-tf2/index.html#s3">③ 实验步骤</a><span class="stars">⭐⭐</span><a class="dur" href="exp-19-tf2/index.html#s3">实操</a></li>
+        <li><a class="ttl" href="exp-19-tf2/index.html#s4">④ 注意事项与验收</a><span class="stars">⭐</span><a class="dur" href="exp-19-tf2/index.html#s4">验证</a></li>
+        <li><a class="ttl" href="exp-19-tf2/index.html#s5">⑤ 实验总结与思考</a><span class="stars">⭐</span><a class="dur" href="exp-19-tf2/index.html#s5">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>
@@ -503,16 +478,12 @@ footer{border-top:1px solid var(--border);background:var(--bg-surface);margin-to
       <p>link 三重属性（visual / collision / inertial）与 joint 六类型，惯性矩阵为什么不能拍脑袋；手写完整差分车模型，并用 Xacro 参数化把复用压到 80 行。</p>
       <div class="meta"><span class="tag">URDF</span><span class="tag">link/joint</span><span class="tag">Xacro</span></div>
       <ul class="explist">
-        <li><a class="ttl" href="exp-20-urdf/index.html#s1">① 问题引入：屏幕里的小车，是谁画的</a><span class="stars">⭐</span><a class="dur" href="exp-20-urdf/index.html#s1">4 学时 · 开始</a></li>
-        <li><a class="ttl" href="exp-20-urdf/index.html#s2">② 核心原理：link 三重属性 × joint 六类型</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-20-urdf/index.html#s2">原理 + 动画</a></li>
-        <li><a class="ttl" href="exp-20-urdf/index.html#s3">③ 动画：两个发布者如何合力把车"画"出来</a><span class="stars">⭐⭐</span><a class="dur" href="exp-20-urdf/index.html#s3">动画</a></li>
-        <li><a class="ttl" href="exp-20-urdf/index.html#s4">④ 原理专题：惯性矩阵——从魔法数字到物理公式</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-20-urdf/index.html#s4">精讲</a></li>
-        <li><a class="ttl" href="exp-20-urdf/index.html#s5">⑤ 交互演练：URDF Doctor 症状诊断</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-20-urdf/index.html#s5">交互</a></li>
-        <li><a class="ttl" href="exp-20-urdf/index.html#s6">⑥ 命令精讲：检验工具三件套</a><span class="stars">⭐⭐</span><a class="dur" href="exp-20-urdf/index.html#s6">验证</a></li>
-        <li><a class="ttl" href="exp-20-urdf/index.html#s7">⑦ 实操 A：手写完整差分车 URDF（设计性任务）</a><span class="stars">⭐⭐</span><a class="dur" href="exp-20-urdf/index.html#s7">实操</a></li>
-        <li><a class="ttl" href="exp-20-urdf/index.html#s8">⑧ 实操 B：Xacro 参数化重构（复用压缩到 80 行）</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-20-urdf/index.html#s8">进阶</a></li>
-        <li><a class="ttl" href="exp-20-urdf/index.html#s9">⑨ 注意事项与避坑清单</a><span class="stars">⭐</span><a class="dur" href="exp-20-urdf/index.html#s9">验证</a></li>
-        <li><a class="ttl" href="exp-20-urdf/index.html#s10">⑩ 本课总结与思考</a><span class="stars">⭐</span><a class="dur" href="exp-20-urdf/index.html#s10">总结</a></li>
+        <li><a class="ttl" href="exp-20-urdf/index.html#goal">★ 课程目标：本课学完你应该能做到</a><span class="stars">⭐</span><a class="dur" href="exp-20-urdf/index.html#goal">目标</a></li>
+        <li><a class="ttl" href="exp-20-urdf/index.html#s1">① 问题引入：屏幕里的小车，是谁画的</a><span class="stars">⭐</span><a class="dur" href="exp-20-urdf/index.html#s1">引入</a></li>
+        <li><a class="ttl" href="exp-20-urdf/index.html#s2">② 原理讲解</a><span class="stars">⭐⭐⭐</span><a class="dur" href="exp-20-urdf/index.html#s2">原理</a></li>
+        <li><a class="ttl" href="exp-20-urdf/index.html#s3">③ 实验步骤</a><span class="stars">⭐⭐</span><a class="dur" href="exp-20-urdf/index.html#s3">实操</a></li>
+        <li><a class="ttl" href="exp-20-urdf/index.html#s4">④ 注意事项与避坑清单</a><span class="stars">⭐</span><a class="dur" href="exp-20-urdf/index.html#s4">验证</a></li>
+        <li><a class="ttl" href="exp-20-urdf/index.html#s5">⑤ 本课总结与思考</a><span class="stars">⭐</span><a class="dur" href="exp-20-urdf/index.html#s5">总结</a></li>
       </ul>
       <div class="hint"><span>👆 点击小节标题或右侧标签直达对应章节</span></div>
     </article>

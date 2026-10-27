@@ -22,6 +22,13 @@
 .cmdstep .io{margin:9px 0 0;font-size:12.5px;color:#cbd5e1;background:#0f172a;border-radius:10px;padding:13px 16px;line-height:1.8;font-family:var(--font-mono);white-space:pre-wrap;overflow-x:auto}
 h3{scroll-margin-top:82px}
 
+
+/* ===== 合并大节内的小标题（原理讲解 / 实验步骤 的 h3） ===== */
+h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
+  color:var(--text-primary);line-height:1.5;
+  border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
+h3.sub:first-of-type{margin-top:18px}
+@media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
 </style>
 </head>
 <body>
@@ -32,16 +39,13 @@ h3{scroll-margin-top:82px}
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#goal">★ 课程目标</a>
+    <a href="#goal" class="now">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：好好的机器人为什么会"串台"</a>
-  <a href="#s2">02 核心原理：一个数字如何隔离整张网</a>
-  <a href="#s3">03 动画：组播发现与域隔离的物理过程</a>
-  <a href="#s4">04 原理专题：两种发现模式与通信安全</a>
-  <a href="#s5">05 交互实验：双机组网诊断台</a>
-  <a href="#s6">06 命令精讲：环境变量的三种给法</a>
-  <a href="#s7">07 实操 A：单机三终端，10 分钟看到隔离效果</a>
-  <a href="#s8">08 注意事项与验收</a>
-  <a href="#s9">09 本课总结</a>
+  <a href="#s2">02 原理讲解</a>
+  <a href="#s3">03 实验步骤</a>
+  <a href="#s4">04 注意事项与验收</a>
+  <a href="#s5">05 本课总结</a>
+  
   <h4>CH3 · 底层机制与分布式</h4>
   <a href="../exp-11-time/index.html">EXP-11 时间与定时器</a>
   <a href="../exp-12-dds/index.html">EXP-12 DDS 通信剖析</a>
@@ -109,9 +113,9 @@ h3{scroll-margin-top:82px}
   </div>
 </section>
 
-<!-- 02 原理 -->
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：一个数字如何隔离整张网</h2>
+<h2><span class="no">02</span>原理讲解</h2>
+<h3 class="sub">一个数字如何隔离整张网</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">物理层根因</div><div class="kt">组播地址跟着 ID 走</div><p>Fast-DDS 根据域号计算出专属组播地址 <code>239.255.0.N</code> 和端口 <code>7400 + N×250</code>。发往不同域的发现报文在<b>网卡层就被分流</b>，根本不会送到对方协议栈——这就是隔离的第一道防线。</p></div>
     <div class="kcard"><div class="kd">发现流程</div><div class="kt">SPDP 宣告 → SEDP 交换</div><p>节点启动即向域内组播地址周期发送 SPDP 发现报文；收到回应后双方通过 SEDP 交换"我有哪些话题/服务/动作端点"，才建立点对点的正式传输链。</p></div>
@@ -130,11 +134,7 @@ h3{scroll-margin-top:82px}
     <span class="lab">要点</span>
     三台机器人要"各自独立"，最简单的规范是：<b>每台机器人烧录不同的 DOMAIN_ID</b>（写进 <code>~/.bashrc</code> 或机器人系统镜像），中央工作站同时开多个终端、用不同 ID 分别接入各车——比给每台车配独立网段省事得多。
   </div>
-</section>
-
-<!-- 03 动画 -->
-<section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：组播发现与域隔离的物理过程</h2>
+<h3 class="sub">组播发现与域隔离的物理过程</h3>
   <div class="anim-box">
     <svg viewBox="0 0 760 330" width="100%">
       <defs>
@@ -196,11 +196,7 @@ h3{scroll-margin-top:82px}
   <div class="tip amber"><span class="lab">算一遍就知道上限</span>
     域号最大 232，对应端口 7400 + 250×232 = <b>65400</b>，已经贴着系统端口上限 65535。所以域号<b>不能乱挑大数字</b>——实验室给 20 个组分配域号，从 <code>1~20</code> 顺序发牌即可，既避开默认域 0，又留足余量。
   </div>
-</section>
-
-<!-- 04 专题 -->
-<section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：两种发现模式与通信安全</h2>
+<h3 class="sub">两种发现模式与通信安全</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">模式一 · 默认</div><div class="kt">组播自主发现</div><p>开局域网、机器人数量少（&lt;50 节点）时的默认选择。零配置、即开即用，但依赖组播——部分企业网/云环境交换机禁用了组播，就全军覆没。</p></div>
     <div class="kcard"><div class="kd">模式二 · 进阶</div><div class="kt">ROS_DISCOVERY_SERVER 单播</div><p>指定一台"发现服务器"，所有节点改为向它单播注册。不受组播限制，适合 50~500 节点、跨子网、云端混合部署。代价是要先启动并维护 server 进程。</p></div>
@@ -221,9 +217,9 @@ h3{scroll-margin-top:82px}
   </div>
 </section>
 
-<!-- 05 交互 -->
-<section class="blk" id="s5">
-  <h2><span class="no">05</span>交互实验：双机组网诊断台</h2>
+<section class="blk" id="s3">
+<h2><span class="no">03</span>实验步骤</h2>
+<h3 class="sub">双机组网诊断台</h3>
   <div class="ix-panel">
     <div class="ix-title">组排 Network Bench：判断两台设备能否互通，说不出原因就是没学透</div>
     <div class="ctl-row">
@@ -240,11 +236,7 @@ h3{scroll-margin-top:82px}
     </div>
     <pre class="io" id="out"></pre>
   </div>
-</section>
-
-<!-- 06 命令精讲 -->
-<section class="blk" id="s6">
-  <h2><span class="no">06</span>命令精讲：域号的三种给法</h2>
+<h3 class="sub">域号的三种给法</h3>
   <p>三种给法对应三种使用场景——先在当前终端试（最常用），排查时用前缀式做 A/B 对照，确认无误再固化到机器人镜像里。</p>
 
   <div class="termbar"><span class="tl">终端</span><b>给法一 · 当前终端会话生效</b><span class="note">最常用 · 调试友好</span></div>
@@ -298,11 +290,7 @@ export ROS_DOMAIN_ID=5
     <span class="lab">原理</span>
     给法二（前缀式）为什么"不污染环境"？shell 的 <code>VAR=x cmd</code> 语法只在 <code>cmd</code> 进程及其子进程的环境里注入该变量，命令返回后当前 shell 的变量表毫发无损。排查串台问题时用它做 A/B 对照，比反复 export/unset 干净得多。
   </div>
-</section>
-
-<!-- 07 实操A -->
-<section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 A：单机三终端，10 分钟看到隔离效果</h2>
+<h3 class="sub">单机三终端，10 分钟看到隔离效果</h3>
   <p>不接第二台设备也能完整验证域机制——开三个终端即可。三个终端都先 <code>cd ~/ros2_ws</code> 并 <code>source install/setup.bash</code>。</p>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>终端1 · 域 42</b><p>export ROS_DOMAIN_ID=42，启动 talker 发布 /chatter</p></div>
@@ -376,9 +364,8 @@ export ROS_DOMAIN_ID=5
   <div class="tip amber"><span class="lab">观察点</span>终端 3 里 <code>ros2 topic list</code> 并非"空"——本机域内公共话题（/parameter_events、/rosout）仍在。判断标准是<b>有没有对端节点的话题</b>，不是列表长度。</div>
 </section>
 
-<!-- 08 注意事项 -->
-<section class="blk" id="s8">
-  <h2><span class="no">08</span>注意事项与验收</h2>
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>注意事项与验收</h2>
   <ul class="check">
     <li>验收 1：单机三终端——<code>talker</code> 与 <code>listener</code> 实测<b>同域互通、异域隔离、切回默认域串台重现</b>，三步截图齐全</li>
     <li>验收 2：能算出任意域号的发现端口（<code>7400 + 250×域号</code>），并说明域 232 为何贴着上限</li>
@@ -398,9 +385,8 @@ export ROS_DOMAIN_ID=5
   </table>
 </section>
 
-<!-- 09 总结 -->
-<section class="blk" id="s9">
-  <h2><span class="no">09</span>本课总结</h2>
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>本课总结</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">概念</div><div class="kt">域 = DDS 层逻辑隔离圈</div><p>ROS_DOMAIN_ID 0~232，同号互通、异号隔离，对应专属组播地址与端口。</p></div>
     <div class="kcard"><div class="kd">组网</div><div class="kt">只要三个前提</div><p>同网段、同域号、组播畅通。排查顺序：ID → ping → multicast → 防火墙 → 换 RMW。</p></div>

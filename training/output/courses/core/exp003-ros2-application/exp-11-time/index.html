@@ -90,6 +90,13 @@
 .tm-face p{margin:0;font-size:12.5px;color:var(--text-secondary);line-height:1.75}
 .tm-conv{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;font-family:var(--font-mono);font-size:11.5px;color:var(--theme-deep);text-align:center;font-weight:600}
 .tm-conv .tc-ic{font-size:22px}
+
+/* ===== 合并大节内的小标题（原理讲解 / 实验步骤 的 h3） ===== */
+h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
+  color:var(--text-primary);line-height:1.5;
+  border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
+h3.sub:first-of-type{margin-top:18px}
+@media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
 </style>
 </head>
 <body>
@@ -100,15 +107,14 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#goal">★ 课程目标</a>
+    <a href="#goal" class="now">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：时间不对齐，数据全白采</a>
-  <a href="#s2">02 核心原理：一块表面，两套电池</a>
-  <a href="#s3">03 专题：create_timer 的真实行为与 stamp 规范</a>
-  <a href="#s4">04 先看现象：让时间看得见</a>
-  <a href="#s5">05 代码精讲：time_demo 逐行拆解</a>
-  <a href="#s6">06 实操 B：亲手接管时间轴</a>
-  <a href="#s7">07 注意事项与验收清单</a>
-  <a href="#s8">08 本课总结与思考题</a>
+  <a href="#s2">02 先看现象：让时间看得见</a>
+  <a href="#s3">03 原理讲解</a>
+  <a href="#s4">04 实验步骤</a>
+  <a href="#s5">05 注意事项与验收清单</a>
+  <a href="#s6">06 本课总结与思考题</a>
+  
   <h4>CH3 · 底层机制与分布式</h4>
   <a href="../exp-11-time/index.html">EXP-11 时间 API</a>
   <a href="../exp-12-dds/index.html">EXP-12 DDS 剖析</a>
@@ -171,7 +177,68 @@
 </section>
 
 <section class="blk" id="s2">
-<h2><span class="no">02</span>核心原理：一块表面，两套电池</h2>
+<h2><span class="no">02</span>先看现象：让时间看得见</h2>
+<p>跑起 <code>time_demo_node</code>，用三条命令把"时间"变成看得见的数据。命令背后的代码在 05 节逐行拆。</p>
+
+<div class="termbar"><span class="tl">终端 A</span><b>启动双定时器演示节点</b></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">1</span><b>启动节点</b><span class="cs-where">终端 A</span></div>
+  <p class="cs-why">先进入源码目录（与实验 6 的 <code>common.py</code> 同目录，才能直接 import 它读 MQ5），再启动节点——1Hz 采样定时器 + 5s 摘要定时器同时开跑，日志里直接打印 stamp：</p>
+  <pre data-copy="cmd">cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
+python3 time_demo_node.py</pre>
+  <div class="io"><span class="dim">$ python3 time_demo_node.py</span>
+[INFO] [time_demo_node]: 时间演示节点已启动
+[INFO] [time_demo_node]: 系统时钟模式: use_sim_time=False
+[INFO] 采样 #0001 | stamp: 1786615681.044442152 | frame_id: sensor_frame
+[INFO] 采样 #0002 | stamp: 1786615682.044580476 | frame_id: sensor_frame
+<span class="dim"># 每秒一条；sec 是接近当前时刻的 Unix 时间</span></div>
+</div>
+
+<div class="termbar"><span class="tl">终端 B</span><b>外部视角：读 stamp、测频率、测延迟</b><span class="note">新终端</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">2</span><b>echo：看消息里的时间戳</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">stamp 的 sec 一格一格 +1——这就是"时间在数据里流动"的样子：</p>
+  <pre data-copy="cmd">ros2 topic echo /sensor_data</pre>
+  <div class="io"><span class="dim">$ ros2 topic echo /sensor_data</span>
+stamp:
+  sec: 1786615681
+  nanosec: 444421522
+frame_id: sensor_frame
+---
+stamp:
+  sec: 1786615682
+  nanosec: 445804769
+frame_id: sensor_frame
+<span class="g"># sec 逐条递增，nanosec 在 0~999999999 内补齐亚秒精度</span></div>
+  <div class="figs-guide" style="margin-top:12px"><div class="figgrid">
+    <figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184101472.png" alt="ros2 topic echo 显示 stamp" loading="lazy" style="max-height:220px;object-fit:contain"><figcaption>终端 B：ros2 topic echo /sensor_data —— 每条消息的 stamp.sec 逐秒递增，frame_id 固定 sensor_frame（指导书实验 11 · 步骤 2）</figcaption></figure>
+  </div></div>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">3</span><b>hz：验证定时器节拍</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">平均频率应贴近 1.000 —— 偏差大说明回调太重拖了后腿（03 节原理）：</p>
+  <pre data-copy="cmd">ros2 topic hz /sensor_data</pre>
+  <div class="io"><span class="dim">$ ros2 topic hz /sensor_data</span>
+average rate: 1.000
+    min: 0.997s max: 1.002s std dev: 0.00187s window: 3</div>
+  <div class="figs-guide" style="margin-top:12px"><div class="figgrid">
+    <figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184140393.png" alt="ros2 topic hz 输出" loading="lazy" style="max-height:180px;object-fit:contain"><figcaption>终端 B：ros2 topic hz —— average rate 1.000，抖动 ±2ms（Linux 调度器精度），定时器"活着且很准"（指导书实验 11 · 步骤 3）</figcaption></figure>
+  </div></div>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">4</span><b>delay：测端到端延迟</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">delay = 收到时刻 − stamp，反映通信栈实时性能；出现<b>负值</b>先怀疑时钟不同步：</p>
+  <pre data-copy="cmd">ros2 topic delay /sensor_data</pre>
+  <div class="io"><span class="dim">$ ros2 topic delay /sensor_data</span>
+0.3 ms
+<span class="g"># 局域网正常水平；负值 = 发收两端钟差（先 NTP 对时再查代码）</span></div>
+  <p class="cs-see">✔ 三条命令读完，你已经把"时间"从抽象概念变成了三个可测量的数：stamp、rate、delay。</p>
+</div>
+</section>
+
+<section class="blk" id="s3">
+<h2><span class="no">03</span>原理讲解</h2>
+<h3 class="sub">一块表面，两套电池</h3>
 <p>01 节说"全团看指挥"——<b>指挥手里那块表，就是这一节的主角 Clock</b>。它妙在哪？<b>表面只有一个</b>：无论真机还是仿真，你的代码永远只写 <code>now = self.get_clock().now()</code>；<b>电池有两套</b>：真机装「操作系统」电池（读墙上钟），仿真/回放装「/clock 话题」电池（听 Gazebo 或 rosbag play 播报）。电池一换，整条时间轴就换了一个世界——下面这个演示可以亲手换，<b>建议把每个按钮都点一遍</b>：</p>
 
 <div class="tip tealb"><span class="lab">先把术语对齐：ROS2 里没有 ROS_TIME / ROS_SYSTEM 两个常量</span>
@@ -248,11 +315,7 @@ now &gt; past                            <span style="color:#0f766e"># 可直接
   </div>
 </div>
 <div class="tip tealb"><span class="lab">过界必转</span>两个类型不能互相直接赋值：API → 消息用 <code>to_msg()</code>，消息 → API 用 <code>Time.from_msg()</code>。05 节代码精讲里 <code>now.to_msg()</code> 那一行干的就是这件事。</div>
-
-</section>
-
-<section class="blk" id="s3">
-<h2><span class="no">03</span>专题：create_timer 的真实行为与 stamp 规范</h2>
+<h3 class="sub">create_timer 的真实行为与 stamp 规范</h3>
 <div class="kgrid">
   <div class="kcard"><div class="kd">定时器原理</div><div class="kt">挂在 spin 事件循环上的周期源</div><p>create_timer(period, cb) 注册触发源；spin 每轮检查到点就把回调加入执行队列——<b>没有 spin 就永远不触发</b>，取代 ROS1 的 while+Rate.sleep()。</p></div>
   <div class="kcard"><div class="kd">名义周期</div><div class="kt">回调耗时可以拖垮频率</div><p>周期是"最小名义间隔"：回调执行 0.3s 而周期 0.2s → 实际频率被压到约 2.2Hz 而不是 5Hz。I/O 密集任务要异步化。</p></div>
@@ -263,67 +326,8 @@ now &gt; past                            <span style="color:#0f766e"># 可直接
 </section>
 
 <section class="blk" id="s4">
-<h2><span class="no">04</span>先看现象：让时间看得见</h2>
-<p>跑起 <code>time_demo_node</code>，用三条命令把"时间"变成看得见的数据。命令背后的代码在 05 节逐行拆。</p>
-
-<div class="termbar"><span class="tl">终端 A</span><b>启动双定时器演示节点</b></div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">1</span><b>启动节点</b><span class="cs-where">终端 A</span></div>
-  <p class="cs-why">先进入源码目录（与实验 6 的 <code>common.py</code> 同目录，才能直接 import 它读 MQ5），再启动节点——1Hz 采样定时器 + 5s 摘要定时器同时开跑，日志里直接打印 stamp：</p>
-  <pre data-copy="cmd">cd ~/ros2_ws/src/xflz_eai_car1/driver/ros_sensor/ros_sensor/ros_sensor
-python3 time_demo_node.py</pre>
-  <div class="io"><span class="dim">$ python3 time_demo_node.py</span>
-[INFO] [time_demo_node]: 时间演示节点已启动
-[INFO] [time_demo_node]: 系统时钟模式: use_sim_time=False
-[INFO] 采样 #0001 | stamp: 1786615681.044442152 | frame_id: sensor_frame
-[INFO] 采样 #0002 | stamp: 1786615682.044580476 | frame_id: sensor_frame
-<span class="dim"># 每秒一条；sec 是接近当前时刻的 Unix 时间</span></div>
-</div>
-
-<div class="termbar"><span class="tl">终端 B</span><b>外部视角：读 stamp、测频率、测延迟</b><span class="note">新终端</span></div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">2</span><b>echo：看消息里的时间戳</b><span class="cs-where">终端 B</span></div>
-  <p class="cs-why">stamp 的 sec 一格一格 +1——这就是"时间在数据里流动"的样子：</p>
-  <pre data-copy="cmd">ros2 topic echo /sensor_data</pre>
-  <div class="io"><span class="dim">$ ros2 topic echo /sensor_data</span>
-stamp:
-  sec: 1786615681
-  nanosec: 444421522
-frame_id: sensor_frame
----
-stamp:
-  sec: 1786615682
-  nanosec: 445804769
-frame_id: sensor_frame
-<span class="g"># sec 逐条递增，nanosec 在 0~999999999 内补齐亚秒精度</span></div>
-  <div class="figs-guide" style="margin-top:12px"><div class="figgrid">
-    <figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184101472.png" alt="ros2 topic echo 显示 stamp" loading="lazy" style="max-height:220px;object-fit:contain"><figcaption>终端 B：ros2 topic echo /sensor_data —— 每条消息的 stamp.sec 逐秒递增，frame_id 固定 sensor_frame（指导书实验 11 · 步骤 2）</figcaption></figure>
-  </div></div>
-</div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">3</span><b>hz：验证定时器节拍</b><span class="cs-where">终端 B</span></div>
-  <p class="cs-why">平均频率应贴近 1.000 —— 偏差大说明回调太重拖了后腿（03 节原理）：</p>
-  <pre data-copy="cmd">ros2 topic hz /sensor_data</pre>
-  <div class="io"><span class="dim">$ ros2 topic hz /sensor_data</span>
-average rate: 1.000
-    min: 0.997s max: 1.002s std dev: 0.00187s window: 3</div>
-  <div class="figs-guide" style="margin-top:12px"><div class="figgrid">
-    <figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184140393.png" alt="ros2 topic hz 输出" loading="lazy" style="max-height:180px;object-fit:contain"><figcaption>终端 B：ros2 topic hz —— average rate 1.000，抖动 ±2ms（Linux 调度器精度），定时器"活着且很准"（指导书实验 11 · 步骤 3）</figcaption></figure>
-  </div></div>
-</div>
-<div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">4</span><b>delay：测端到端延迟</b><span class="cs-where">终端 B</span></div>
-  <p class="cs-why">delay = 收到时刻 − stamp，反映通信栈实时性能；出现<b>负值</b>先怀疑时钟不同步：</p>
-  <pre data-copy="cmd">ros2 topic delay /sensor_data</pre>
-  <div class="io"><span class="dim">$ ros2 topic delay /sensor_data</span>
-0.3 ms
-<span class="g"># 局域网正常水平；负值 = 发收两端钟差（先 NTP 对时再查代码）</span></div>
-  <p class="cs-see">✔ 三条命令读完，你已经把"时间"从抽象概念变成了三个可测量的数：stamp、rate、delay。</p>
-</div>
-</section>
-
-<section class="blk" id="s5">
-<h2><span class="no">05</span>代码精讲：time_demo_node 逐行拆解</h2>
+<h2><span class="no">04</span>实验步骤</h2>
+<h3 class="sub">time_demo_node 逐行拆解</h3>
 <p>源码来自指导手册实验 11 的 <code>time_demo_node.py</code>。全文件只做三件事：<b>两个定时器、盖时间戳、发摘要</b>——按这三站读：</p>
 
 <h3 style="font-size:16px;color:var(--text-primary);margin:22px 0 0">第一站 · __init__：发布器 + 两个定时器</h3>
@@ -365,10 +369,7 @@ diff   = now - past                    <span class="y"># Time − Time = Duratio
 print(now &gt; past)                      <span class="y"># Time 之间可直接比较</span></pre>
 <div class="tip tealb"><span class="lab">两个 Time 别搞混</span><code>rclpy.time.Time</code>（API 对象，可加减）与 <code>builtin_interfaces/msg/Time</code>（传输结构，字段 sec/nanosec）——过界必须 to_msg() / Time.from_msg() 转一道，直接赋值字段会类型报错。</div>
 <div class="tip"><span class="lab">没有 spin 就没有节拍</span>两个定时器都挂在 <code>rclpy.spin(node)</code> 的事件循环上：spin 不跑，定时器永远不触发。同一节点多定时器在<b>同一线程串行</b>——一个回调堵 3 秒，另一个也跟着饿 3 秒。</div>
-</section>
-
-<section class="blk" id="s6">
-<h2><span class="no">06</span>实操 B：亲手"接管"一个节点的时间轴</h2>
+<h3 class="sub">亲手"接管"一个节点的时间轴</h3>
 <p>最震撼的体验：让节点不再看墙上钟，改听你手动发的 /clock。</p>
 
 <div class="termbar"><span class="tl">终端 A</span><b>以仿真模式启动（先看它卡住）</b></div>
@@ -408,8 +409,8 @@ python3 time_demo_node.py --ros-args -p use_sim_time:=true</pre>
 </div>
 </section>
 
-<section class="blk" id="s7">
-<h2><span class="no">07</span>注意事项与验收清单</h2><div class="check">
+<section class="blk" id="s5">
+<h2><span class="no">05</span>注意事项与验收清单</h2><div class="check">
   <ul>
     <li>默画双时钟架构：use_sim_time 是源开关，get_clock().now() 是统一出口</li>
     <li>讲清 Time（API）与 builtin_interfaces/Time（消息）的互转关系</li>
@@ -431,8 +432,8 @@ python3 time_demo_node.py --ros-args -p use_sim_time:=true</pre>
   <b>时间只有一个出口（<code>get_clock()</code>），只有一个开关（<code>use_sim_time</code>）。</b>凡是绕过出口直接读 <code>time.time()</code> 的代码，在仿真与回放里一定会出错；凡是开着 <code>use_sim_time=true</code> 却没人发 <code>/clock</code> 的机器，节点一定会永久卡住。这两条覆盖了本课 90% 的故障。</div>
 </section>
 
-<section class="blk" id="s8">
-<h2><span class="no">08</span>本课总结与思考题</h2>
+<section class="blk" id="s6">
+<h2><span class="no">06</span>本课总结与思考题</h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">抽象</div><div class="kt">双时钟一个出口</div><p>Clock 吸收系统时钟与 /clock 的差异，上层代码仿真真机零改动。</p></div>
   <div class="kcard"><div class="kd">类型</div><div class="kt">API Time ⇄ 消息 Time</div><p>to_msg()/from_msg() 互转；sec+nanosec 结构贯穿所有 Header。</p></div>

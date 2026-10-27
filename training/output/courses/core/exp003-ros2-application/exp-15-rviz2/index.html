@@ -33,6 +33,13 @@
 .cmdstep pre{margin:9px 0 0;font-size:13px;padding:13px 16px}
 .cmdstep .cs-see{font-size:12.5px;color:#4d7c0f;margin:8px 0 0;line-height:1.75}
 .cmdstep .io{margin:9px 0 0;font-size:12.5px;color:#cbd5e1;background:#0f172a;border-radius:10px;padding:13px 16px;line-height:1.8;font-family:var(--font-mono);white-space:pre-wrap;overflow-x:auto}
+
+/* ===== 合并大节内的小标题（原理讲解 / 实验步骤 的 h3） ===== */
+h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
+  color:var(--text-primary);line-height:1.5;
+  border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
+h3.sub:first-of-type{margin-top:18px}
+@media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
 </style>
 </head>
 <body>
@@ -43,17 +50,13 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#goal">★ 课程目标</a>
+    <a href="#goal" class="now">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：机器人眼中的世界长什么样</a>
-  <a href="#s2">02 核心原理：Fixed Frame 决定"上帝站在哪"</a>
-  <a href="#s3">03 动画：一条雷达点如何画上屏</a>
-  <a href="#s4">04 原理专题：七大 Display 逐个拆</a>
-  <a href="#s5">05 交互实验：rviz 黑屏诊断台</a>
-  <a href="#s6">06 命令精讲：启动与图形环境</a>
-  <a href="#s7">07 实操 A：跑起本车模型（car1_description 8 步）</a>
-  <a href="#s8">08 实操 B：导航可视化逐步操作（car1_navigation）</a>
-  <a href="#s9">09 注意事项与验收</a>
-  <a href="#s10">10 本课总结</a>
+  <a href="#s2">02 原理讲解</a>
+  <a href="#s3">03 实验步骤</a>
+  <a href="#s4">04 注意事项与验收</a>
+  <a href="#s5">05 本课总结</a>
+  
   <h4>CH4 · 工具链</h4>
   <a href="../exp-14-rqt/index.html">EXP-14 rqt 工具箱</a>
   <a href="../exp-15-rviz2/index.html" style="color:var(--theme);font-weight:700">EXP-15 rviz2 可视化</a>
@@ -100,9 +103,9 @@
   </div>
 </section>
 
-<!-- 02 原理 -->
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：Fixed Frame 决定"上帝站在哪"</h2>
+<h2><span class="no">02</span>原理讲解</h2>
+<h3 class="sub">Fixed Frame 决定"上帝站在哪"</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">渲染引擎</div><div class="kt">OGRE 3D + 图层化 Display</div><p>rqt 是 2D 控件，rviz2 走 OGRE 实时渲染管线：每个 Display 是一个图层，各自订阅话题、各自把数据变换到统一坐标系后叠加绘制——可独立开关、设属性，互不干扰。</p></div>
     <div class="kcard"><div class="kd">灵魂参数</div><div class="kt">Fixed Frame：观测基准系</div><p>它回答"相机架在哪个坐标系上看世界"。设成 map：整张地图静止，机器人在图上移动；设成 base_laser：机器人钉在原点，墙壁绕着车动。<b>所有数据都会被 TF 变换到这个系</b>再画。</p></div>
@@ -120,11 +123,7 @@
     <span class="lab">要点</span>
     判断"rviz 坏了还是系统坏了"的分界线：<b>能把数据画出来的前提是"变换链通"</b>。任何 Display 变黄先查 TF（Add → TF 看坐标轴在不在），而不是先怀疑 rviz。TF 通了还有问题，才去查话题本身（有没有数据、QoS 配不配）。
   </div>
-</section>
-
-<!-- 03 动画 -->
-<section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：一条雷达点如何画上屏</h2>
+<h3 class="sub">一条雷达点如何画上屏</h3>
   <div class="anim-box">
     <svg viewBox="0 0 760 330" width="100%">
       <defs>
@@ -163,11 +162,7 @@
     </svg>
   </div>
   <p class="anim-cap">动画：正常路径上，/scan 消息携带 frame_id，rviz2 拿它沿 TF 链逐级变换到 Fixed Frame（map）后由 OGRE 绘出点云；下路为断链场景——任一跳缺失，对应 Display 单独报黄并拒绝绘制，其他图层不受影响，这正是"按图层隔离故障"的排查哲学。</p>
-</section>
-
-<!-- 04 Display 精讲 -->
-<section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：七大 Display 逐个拆</h2>
+<h3 class="sub">七大 Display 逐个拆</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">① 地基</div><div class="kt">Grid</div><p>默认就有的网格地面，提供空间标尺。<b>迷失视角时右键 → Reset View</b> 一键回正——这是新手最该记的肌肉记忆。</p></div>
     <div class="kcard"><div class="kd">② 骨骼</div><div class="kt">TF</div><p>Add → TF 自动订阅 /tf 与 /tf_static，RGB 三轴画出每个坐标系，Show Names 显示名字。断链=某段坐标轴消失，比 <code>view_frames</code> 生成 PDF <b>实时</b>得多——PDF 是快照，TF 图层是直播。</p></div>
@@ -184,9 +179,9 @@
   </div>
 </section>
 
-<!-- 05 交互 -->
-<section class="blk" id="s5">
-  <h2><span class="no">05</span>交互实验：rviz 黑屏诊断台</h2>
+<section class="blk" id="s3">
+<h2><span class="no">03</span>实验步骤</h2>
+<h3 class="sub">rviz 黑屏诊断台</h3>
   <div class="ix-panel">
     <div class="ix-title">Vision Doctor：选一个症状，按"帧→TF→话题→配置"的顺序给出处置</div>
     <div class="ctl-row">
@@ -203,11 +198,7 @@
     </div>
     <pre class="io" id="out"></pre>
   </div>
-</section>
-
-<!-- 06 命令精讲 -->
-<section class="blk" id="s6">
-  <h2><span class="no">06</span>命令精讲：启动与图形环境</h2>
+<h3 class="sub">启动与图形环境</h3>
   <pre data-copy="cmd"><span class="c"># 标准启动（默认 Fixed Frame=map，Display 全手动添加）</span>
 <span class="b">$</span> rviz2
 
@@ -243,11 +234,7 @@
     <span class="lab">原理：为什么先查 glxinfo</span>
     rviz2 依赖 OGRE→OpenGL 渲染，需要驱动提供硬件上下文。板卡（如 RK 系列 Mali-G52）驱动缺失或跑在 llvmpipe 软件渲染上时，轻则卡成幻灯片，重则启动即退。<b>渲染能力是 rviz2 的地基</b>，比任何 Display 设置都更靠前——黑屏第一问永远是"驱动正常吗"。
   </div>
-</section>
-
-<!-- 07 实操A -->
-<section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 A：跑起本车模型，看懂 TF 坐标树</h2>
+<h3 class="sub">跑起本车模型，看懂 TF 坐标树</h3>
   <p>不写一行代码——直接用本机功能包 <code>car1_description</code>（小车 C1 的模型描述包）把真车"画"进 rviz2。全程 8 步，每步都有确定的预期结果，照做即可。</p>
   <div class="tip"><span class="lab">这一步为什么必做</span>实验指导书里 rviz2 的第一个实操就是"加载机器人模型看 TF"——因为它是后面导航实操（第 08 节）的地基：没有正确的 TF 树，地图、雷达、路径全都画不出来。</div>
 
@@ -437,11 +424,7 @@ At time 1792054921.106
   <div class="tip"><span class="lab">环境提醒：venv 与系统 Python</span>
   若当前 shell 在 <code>ros2_venv</code> 之类的虚拟环境里，<b>C++ 写的 <code>robot_state_publisher</code> 不受影响</b>；但将来跑 Python 节点时要留意 venv 与系统 Python 冲突——ROS2 的 Python 节点依赖系统 <code>rclpy</code>，混用 venv 可能 import 失败。跑 Python 节点前建议 <code>deactivate</code> 后只用 <code>source /opt/ros/humble/setup.bash</code>。
   </div>
-</section>
-
-<!-- 08 实操B -->
-<section class="blk" id="s8">
-  <h2><span class="no">08</span>实操 B：加载导航可视化，一步步看懂地图与雷达</h2>
+<h3 class="sub">加载导航可视化，一步步看懂地图与雷达</h3>
   <p>进阶实操——用本机 <code>car1_navigation</code> 功能包的 <code>navigation.rviz</code> 打开导航专用视图。这份配置比第 07 节复杂得多（订阅 <b>12 个图层话题 + 3 个交互话题</b>），正是理解"rviz 图层如何堆出完整导航画面"的最佳样本。</p>
 
   <div class="termbar"><span class="tl">终端</span><b>第 1 步 · 看清配置订阅了什么</b><span class="note">读配置</span></div>
@@ -595,9 +578,8 @@ Panels:
 <div class="figs-guide"><h4>📸 指导书实操与现象截图（6 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184813453.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821184830543.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821185200617.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821185226315.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821185244341.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821185311396.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）</figcaption></figure></div></div>
 </section>
 
-<!-- 09 注意事项 -->
-<section class="blk" id="s9">
-  <h2><span class="no">09</span>注意事项与验收</h2>
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>注意事项与验收</h2>
   <ul class="check">
     <li>验收 1：能口述"消息 → frame_id → TF 链 → Fixed Frame → 绘制"全链路</li>
     <li>验收 2：实操 A 第 3 步一条 launch 起 display，能在 rviz 里看到本车模型与 TF 坐标轴</li>
@@ -611,9 +593,8 @@ Panels:
   黄字 Warning 只有两类根因：<b>帧不存在（Fixed Frame 名字错）</b>与<b>链不完整（TF 缺跳）</b>。验收时随机制造一种，要求 30 秒内说出是哪类——能秒判，才算真看懂了本课第 02 节。</div>
 </section>
 
-<!-- 10 总结 -->
-<section class="blk" id="s10">
-  <h2><span class="no">10</span>本课总结</h2>
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>本课总结</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">定位</div><div class="kt">取景器，不是数据源</div><p>rviz2 只订阅、变换、渲染；异常优先查话题与 TF，而不是怀疑视图工具。</p></div>
     <div class="kcard"><div class="kd">灵魂</div><div class="kt">Fixed Frame 是观测基准</div><p>一切数据变换到它才绘制；换帧=换视角，地图系看全局、车体系看感知。</p></div>

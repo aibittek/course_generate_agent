@@ -6,6 +6,13 @@
 <title>EXP-18 · 元功能包与依赖聚合 — 机器人 ROS2 应用与开发</title>
 <link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#ec4899;--theme-deep:#be185d;--theme-bg:#fce7f3;--theme-bd:#fbcfe8}
+
+/* ===== 合并大节内的小标题（原理讲解 / 实验步骤 的 h3） ===== */
+h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
+  color:var(--text-primary);line-height:1.5;
+  border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
+h3.sub:first-of-type{margin-top:18px}
+@media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
 </style>
 </head>
 <body>
@@ -16,16 +23,13 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#goal">★ 课程目标</a>
+    <a href="#goal" class="now">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：装个 navigation2，要背 20 个包名吗</a>
-  <a href="#s2">02 核心原理：一个"空包"凭什么工作</a>
-  <a href="#s3">03 动画：一条 apt 命令如何拉起全家桶</a>
-  <a href="#s4">04 原理专题：nav2 聚合结构三层剖析</a>
-  <a href="#s6">05 命令精讲：把元包看个底朝天</a>
-  <a href="#s7">06 实操 A：解剖 navigation2（验证性）</a>
-  <a href="#s8">07 实操 B：打造 my_robot_meta（设计性任务）</a>
-  <a href="#s9">08 注意事项与避坑清单</a>
-  <a href="#s10">09 本课总结与思考</a>
+  <a href="#s2">02 原理讲解</a>
+  <a href="#s3">03 实验步骤</a>
+  <a href="#s4">04 注意事项与避坑清单</a>
+  <a href="#s5">05 本课总结与思考</a>
+  
   <h4>CH4 · 工具链</h4>
   <a href="../exp-14-rqt/index.html">EXP-14 rqt 调试工具</a>
   <a href="../exp-15-rviz2/index.html">EXP-15 rviz2 可视化</a>
@@ -69,7 +73,8 @@
 </section>
 
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：一个"空包"凭什么工作</h2>
+<h2><span class="no">02</span>原理讲解</h2>
+<h3 class="sub">一个"空包"凭什么工作</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">零代码</div><div class="kt">没有 src/ 与可执行文件</div><p>元功能包的一切"功能"都在 package.xml 的依赖声明里。它像一张购物清单：自己不生产任何东西，只声明"给我这些东西"。</p></div>
     <div class="kcard"><div class="kd">极简构建</div><div class="kt">CMakeLists 仅四行</div><p>cmake_minimum_required + project + find_package(ament_cmake) + ament_package()。没有 add_executable、没有 install 目标——<b>colcon build 只是"声明集合关系"</b>，实际编译由各子包自己完成。</p></div>
@@ -87,10 +92,7 @@
     <tr><td>典型用途</td><td>实现功能</td><td>一键安装 / 版本锁定一套子包</td></tr>
   </table>
   <div class="tip teal"><span class="lab">三种依赖的语义分野</span><b>build_depend</b> = 编译期需要（头文件、静态链接），只影响 colcon build 能否通过；<b>exec_depend</b> = 运行期需要（动态库、可执行文件、被 launch 启动的节点），决定 ros2 run 是否找得到人；<b>depend</b> = 上面两者的语法糖，等价于同时写 build + exec。<b>判断口诀：报错发生在编译阶段用 build_depend，发生在运行阶段用 exec_depend。</b></div>
-</section>
-
-<section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：一条 apt 命令如何拉起全家桶</h2>
+<h3 class="sub">一条 apt 命令如何拉起全家桶</h3>
   <div class="anim-box">
     <svg viewBox="0 0 760 340" width="100%" style="max-height:340px">
       <defs>
@@ -136,10 +138,7 @@
     </svg>
   </div>
   <div class="anim-cap">图 18-1　元功能包本身"空空如也"，它的全部价值在于把散落的子包捆绑成一个可安装单元。</div>
-</section>
-
-<section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：nav2 聚合结构三层剖析</h2>
+<h3 class="sub">nav2 聚合结构三层剖析</h3>
 
   <div class="tip"><span class="lab">先接住上一节的悬念</span>
   上节动画里我们看到 <code>navigation2</code> 一个包能拉起 20 多个子包——但你可能想问：<b>这 20 多个包为什么不能合成 1 个？非要拆这么碎图什么？</b><br>
@@ -221,8 +220,9 @@
   <b>最佳实践两条</b>：① 每个子包声明<b>自己真正需要的依赖</b>（不要依赖运气）；② 元功能包<b>仅用于批量安装</b>，绝不让子包反过来依赖它。</div>
 </section>
 
-<section class="blk" id="s6">
-  <h2><span class="no">05</span>命令精讲：把元包看个底朝天</h2>
+<section class="blk" id="s3">
+<h2><span class="no">03</span>实验步骤</h2>
+<h3 class="sub">把元包看个底朝天</h3>
   <pre data-copy="cmd"><span class="c"># ① 打开 navigation2 的"购物清单"——元包的 package.xml</span>
 $ ros2 pkg xml navigation2
 
@@ -250,10 +250,7 @@ $ source /opt/ros/humble/setup.bash
 
 <span class="c"># ros2 pkg list 列表里不显示自己刚编的包 → 忘了 source 工作空间</span>
 $ source install/setup.bash</pre>
-</section>
-
-<section class="blk" id="s7">
-  <h2><span class="no">06</span>实操 A：解剖 navigation2（验证性）</h2>
+<h3 class="sub">解剖 navigation2（验证性）</h3>
   <div class="flow">
     <div class="step"><span class="n">1</span>确认安装并 source：安装 ros-humble-navigation2 后 <code>source /opt/ros/humble/setup.bash</code></div>
     <div class="step"><span class="n">2</span>看清单：<code>ros2 pkg xml navigation2</code>，逐行统计 &lt;exec_depend&gt;</div>
@@ -271,10 +268,7 @@ $ source install/setup.bash</pre>
   &lt;depend&gt;nav2_msgs&lt;/depend&gt;
   &lt;exec_depend&gt;nav2_costmap_2d&lt;/exec_depend&gt;</pre>
   <div class="tip tealb"><span class="lab">观察结论</span>元包对子包全是 exec_depend（我只要运行你们）；子包对基础包却出现 build_depend（编译时要 include 它的头文件）——同一份 XML 里，<b>箭头方向决定了依赖语义</b>。</div>
-</section>
-
-<section class="blk" id="s8">
-  <h2><span class="no">07</span>实操 B：打造 my_robot_meta（设计性任务）</h2>
+<h3 class="sub">打造 my_robot_meta（设计性任务）</h3>
   <pre data-copy="cmd"><span class="c"># ① 创建（必须 --build-type ament_cmake，选 ament_python 会去找 setup.py 直接失败）</span>
 <span class="b">$</span> cd ~/ros2_ws/src
 <span class="b">$</span> ros2 pkg create my_robot_meta --build-type ament_cmake
@@ -324,8 +318,8 @@ find_package(ament_cmake REQUIRED)
   </table>
 </section>
 
-<section class="blk" id="s9">
-  <h2><span class="no">08</span>注意事项与避坑清单</h2>
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>注意事项与避坑清单</h2>
   <div class="check">
     <ul>
       <li>元功能包<b>永远不含代码</b>——发现它有 src/，要么是普通包，要么是写错了。</li>
@@ -340,8 +334,8 @@ find_package(ament_cmake REQUIRED)
   <div class="tip"><span class="lab">验证三件套</span><code>ros2 pkg xml &lt;元包&gt;</code> 看清单 → <code>ros2 pkg list | grep &lt;前缀&gt;</code> 数子包 → <code>colcon build --packages-select &lt;元包&gt;</code> 确认秒过。三步全绿，聚合关系即生效。</div>
 </section>
 
-<section class="blk" id="s10">
-  <h2><span class="no">09</span>本课总结与思考</h2>
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>本课总结与思考</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">概念</div><div class="kt">元功能包 = 零代码聚合器</div><p>没有 src、没有可执行文件，全部价值在于 package.xml 中一串 exec_depend——一条命令装齐全家桶。</p></div>
     <div class="kcard"><div class="kd">依赖语义</div><div class="kt">build / exec / depend</div><p>编译期头文件用 build_depend，运行期库与节点用 exec_depend，depend 是两者合体。按报错发生的阶段选依赖。</p></div>

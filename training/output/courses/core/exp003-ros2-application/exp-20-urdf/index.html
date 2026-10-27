@@ -18,6 +18,13 @@
 #lightbox.on{display:flex}
 #lightbox img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 
+
+/* ===== 合并大节内的小标题（原理讲解 / 实验步骤 的 h3） ===== */
+h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
+  color:var(--text-primary);line-height:1.5;
+  border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
+h3.sub:first-of-type{margin-top:18px}
+@media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
 </style>
 </head>
 <body>
@@ -28,17 +35,13 @@
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
-  <a href="#goal">★ 课程目标</a>
+    <a href="#goal" class="now">★ 课程目标</a>
   <a href="#s1" class="now">01 问题引入：屏幕里的小车，是谁画的</a>
-  <a href="#s2">02 核心原理：link 三重属性 × joint 六类型</a>
-  <a href="#s3">03 动画：两个发布者如何合力把车"画"出来</a>
-  <a href="#s4">04 原理专题：惯性矩阵——从魔法数字到物理公式</a>
-  <a href="#s5">05 交互演练：URDF Doctor 症状诊断</a>
-  <a href="#s6">06 命令精讲：检验工具三件套</a>
-  <a href="#s7">07 实操 A：手写完整差分车 URDF（设计性任务）</a>
-  <a href="#s8">08 实操 B：Xacro 参数化重构（复用压缩到 80 行）</a>
-  <a href="#s9">09 注意事项与避坑清单</a>
-  <a href="#s10">10 本课总结与思考</a>
+  <a href="#s2">02 原理讲解</a>
+  <a href="#s3">03 实验步骤</a>
+  <a href="#s4">04 注意事项与避坑清单</a>
+  <a href="#s5">05 本课总结与思考</a>
+  
   <h4>CH5 · 建模基础</h4>
   <a href="../exp-19-tf2/index.html">EXP-19 TF2 坐标变换</a>
   <a href="../exp-20-urdf/index.html" style="color:var(--theme);font-weight:700">EXP-20 URDF 机器人建模</a>
@@ -79,7 +82,8 @@
 </section>
 
 <section class="blk" id="s2">
-  <h2><span class="no">02</span>核心原理：link 三重属性 × joint 六类型</h2>
+<h2><span class="no">02</span>原理讲解</h2>
+<h3 class="sub">link 三重属性 × joint 六类型</h3>
   <table>
     <tr><th>link 属性</th><th>作用</th><th>取值/几何体</th><th>何时必须</th></tr>
     <tr><td><code>&lt;visual&gt;</code></td><td>渲染外观（给 Rviz2 看）</td><td>box / cylinder / sphere / mesh（数万三角形也行）</td><td>只想可视化时——<b>可单独存在</b></td></tr>
@@ -97,10 +101,7 @@
     <tr><td><code>planar</code></td><td>3</td><td>平面运动体（<b>不推荐</b>）</td><td>—</td></tr>
   </table>
   <div class="tip violet"><span class="lab">最容易混淆的两种 origin</span><b>link 内的 origin</b>（visual/collision/inertial 之下）= 该几何体相对<b>自己 link 原点</b>的偏移；<b>joint 里的 origin</b> = <b>子 link 相对父 link</b>的初始位姿。语义完全不同——把轮子的偏移写进 visual origin 而不是 joint origin，轮子会在原地转圈却装不到车轴上。<br><span style="color:var(--theme-deep)">另注：URDF 坐标系遵循 REP-103 —— X 前、Y 左、Z 上；origin 的求值顺序是<b>先 rpy 旋转、再 xyz 平移</b>。</span></div>
-</section>
-
-<section class="blk" id="s3">
-  <h2><span class="no">03</span>动画：两个发布者如何合力把车"画"出来</h2>
+<h3 class="sub">两个发布者如何合力把车"画"出来</h3>
   <div class="anim-box">
     <svg viewBox="0 0 760 320" width="100%" style="max-height:320px">
       <defs>
@@ -155,10 +156,7 @@
     </svg>
   </div>
   <div class="anim-cap">图 20-1　两发布者协作数据流：GUI 把滑块值发到 /joint_states，robot_state_publisher 结合 URDF 解出各 link 的 TF 并发布，Rviz2 依据 Fixed Frame 逐帧重绘。断了任何一环，车都会"散架"。</div>
-</section>
-
-<section class="blk" id="s4">
-  <h2><span class="no">04</span>原理专题：惯性矩阵——从魔法数字到物理公式</h2>
+<h3 class="sub">惯性矩阵——从魔法数字到物理公式</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">长方体 · 底盘</div><div class="kt">Ixx=m/12·(y²+z²)　Iyy=m/12·(x²+z²)　Izz=m/12·(x²+y²)</div><p>例：底盘 0.40×0.25×0.08 m、质量 3.0 kg → ixx=0.017、iyy=0.042、izz=0.053。沿某轴的惯量 = 质量对该轴分布的"转动惰性"，垂直于该轴的边长平方贡献最大。</p></div>
     <div class="kcard"><div class="kd">圆柱体 · 车轮</div><div class="kt">Ixx=Iyy=m/12·(3r²+h²)　Izz=m/2·r²</div><p>轮轴沿 Y：绕轴（Y）转动惯量小、绕直径大时看 h 贡献。r=0.05、L=0.03、m=0.2 代入即可，杜绝拍脑袋的 0.01。</p></div>
@@ -168,8 +166,9 @@
   <div class="tip teal"><span class="lab">为什么是"两个发布者"分工</span>URDF 是<b>静态</b>结构（轮子装在哪），/joint_states 是<b>动态</b>状态（此刻转了多少度）。robot_state_publisher 把两者相乘得到每帧 TF——这正是"模型"与"状态"分离的设计哲学，同一份 URDF 可复用于全车队。</div>
 </section>
 
-<section class="blk" id="s5">
-  <h2><span class="no">05</span>交互演练：URDF Doctor 症状诊断</h2>
+<section class="blk" id="s3">
+<h2><span class="no">03</span>实验步骤</h2>
+<h3 class="sub">URDF Doctor 症状诊断</h3>
   <div class="ix-panel">
     <div class="ix-title">URDF Doctor — 看到症状，定位 XML 病灶</div>
     <div class="ctl-row">
@@ -190,10 +189,7 @@
     </div>
     <div class="io" id="o"></div>
   </div>
-</section>
-
-<section class="blk" id="s6">
-  <h2><span class="no">06</span>命令精讲：检验工具三件套</h2>
+<h3 class="sub">检验工具三件套</h3>
   <pre data-copy="cmd"><span class="c"># ① 语法+结构验证（输出根 link 与子链接数）</span>
 $ check_urdf diff_drive_robot.urdf
 robot name is: diff_drive_robot
@@ -213,10 +209,7 @@ $ head -80 diff_drive_robot_expanded.urdf
 <span class="g"># 观察：左右轮已被完整展开为独立 link/joint；Xacro 版约 80 行，展开约 150 行</span>
 <span class="g"># 4 轮/6 轮车压缩比更高（4×~6×）——宏复用的复利</span></pre>
   <div class="tip amber"><span class="lab">RViz2 RobotModel 调试开关</span><b>Visual Enabled</b> 看外观渲染、<b>Collision Enabled</b> 看橙色碰撞线框、<b>Alpha</b> 调透明度透视内部、同时开 <b>TF Display</b> 显示每根坐标轴（红绿蓝→XYZ），验证 origin 偏移是否指对方向。</div>
-</section>
-
-<section class="blk" id="s7">
-  <h2><span class="no">07</span>实操 A：手写完整差分车 URDF（设计性任务）</h2>
+<h3 class="sub">手写完整差分车 URDF（设计性任务）</h3>
   <div class="flow">
     <div class="step"><span class="n">1</span>建工作空间与目录：<code>ros2 pkg create urdf_demo --build-type ament_cmake</code> 后建 urdf/ 子目录</div>
     <div class="step"><span class="n">2</span>写 4 种材质 + 底盘 link（box 0.40×0.25×0.08，mass 3.0，惯性 0.017/0.042/0.053）</div>
@@ -265,10 +258,7 @@ $ ros2 launch urdf_demo display.launch.py
     <tr><td>RobotModel → Description Topic/Param 有值</td><td>外形出现</td><td>参数未注入或未 source install</td></tr>
     <tr><td>拖 left_wheel_joint 滑块</td><td>左轮绕 Y 旋转</td><td>joint type 写成 fixed 或 GUI 没启动</td></tr>
   </table>
-</section>
-
-<section class="blk" id="s8">
-  <h2><span class="no">08</span>实操 B：Xacro 参数化重构（复用压缩到 80 行）</h2>
+<h3 class="sub">Xacro 参数化重构（复用压缩到 80 行）</h3>
   <div class="flow">
     <div class="step"><span class="n">1</span>property 收编魔法尺寸：chassis_length/width/height、wheel_radius/length、wheel_mass……</div>
     <div class="step"><span class="n">2</span>推导量用表达式：wheel_y_offset=${chassis_width/2 - 0.02}、wheel_z_offset=${-chassis_height/2 + wheel_radius}——改车宽轮距自动跟</div>
@@ -338,8 +328,8 @@ $ ros2 launch urdf_demo display.launch.py
 <div class="figs-guide"><h4>📸 指导书实操与现象截图（3 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821185605592.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821185627155.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…（续）</figcaption></figure><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821185651404.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure></div></div>
 </section>
 
-<section class="blk" id="s9">
-  <h2><span class="no">09</span>注意事项与避坑清单</h2>
+<section class="blk" id="s4">
+  <h2><span class="no">04</span>注意事项与避坑清单</h2>
   <div class="check">
     <ul>
       <li><b>origin 求值顺序</b>：先 rpy 旋转、再 xyz 平移——顺序颠倒视觉全变；开 TF Display 查坐标轴方向。</li>
@@ -361,8 +351,8 @@ $ ros2 launch urdf_demo display.launch.py
   </table>
 </section>
 
-<section class="blk" id="s10">
-  <h2><span class="no">10</span>本课总结与思考</h2>
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>本课总结与思考</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">概念</div><div class="kt">URDF = 数字孪生的唯一入口</div><p>XML 描述几何结构、运动学约束与动力学参数，Rviz2/Gazebo/TF2/运动规划共享同一模型源。</p></div>
     <div class="kcard"><div class="kd">结构</div><div class="kt">link 三属性 × joint 六类型</div><p>visual/collision/inertial 按用途分离，各场景只声明所需；fixed/revolute/continuous/prismatic 按自由度选型，两种 origin 语义严格区分。</p></div>
