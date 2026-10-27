@@ -73,16 +73,12 @@
 <aside class="side">
   <h4>本页目录</h4>
   <a href="#goal">★ 课程目标</a>
-  <a href="#s1" class="now">01 问题引入：改一个数字为什么这么贵</a>
-  <a href="#s2">02 核心原理：声明 → 读取 → 设置的生命周期</a>
-  <a href="#s3">03 动画：ros2 param set 的完整数据流</a>
-  <a href="#s4">04 专题：ParameterDescriptor 与两层约束</a>
-  <a href="#s5">05 实验台：亲手拧一拧三颗旋钮</a>
-  <a href="#s6">06 代码精讲：param_sensor 逐行拆解</a>
-  <a href="#s7">07 实操 A：启动节点与基础读写</a>
-  <a href="#s8">08 实操 B：CLI 九步联调 + 持久化</a>
-  <a href="#s9">09 注意事项与验收清单</a>
-  <a href="#s10">10 本课总结与思考题</a>
+  <a href="#s5" class="now">01 先动手感受：亲手调一调这三个参数</a>
+  <a href="#s1">02 问题引入：改一个数字为什么这么贵</a>
+  <a href="#s2">03 核心原理：生命周期 · 数据流 · 两层约束</a>
+  <a href="#s6">04 实验步骤：读源码 → 跑节点 → 九步联调</a>
+  <a href="#s9">05 注意事项与验收清单</a>
+  <a href="#s10">06 本课总结与思考题</a>
   <h4>CH2 · 通信机制</h4>
   <a href="../exp-05-node/index.html">EXP-05 节点</a>
   <a href="../exp-06-topic/index.html">EXP-06 话题</a>
@@ -94,7 +90,7 @@
 <main class="content">
 <div class="exp-head">
   <span class="code">EXP-10 · 第 2 章 · 设计性 · 2 学时</span>
-  <h1>参数服务：把"旋钮"拉出代码</h1>
+  <h1>参数服务：把配置参数从代码里拉出来</h1>
   <p class="desc">PID 系数、采样周期、报警阈值——硬编码意味着"改参 = 改码 → 编译 → 部署"。本课讲清参数作为"运行时可读写配置层"的原理、declare/get/set 生命周期与动态回调闭环。</p>
   <div class="meta"><span class="tag hl">难度 ⭐⭐</span><span class="tag">2 学时</span><span class="tag">设计性</span><span class="tag">关键词 Parameter · Descriptor · YAML</span></div>
 </div>
@@ -105,7 +101,7 @@
   <div class="kcard"><div class="kd">① 说清原理</div><div class="kt">参数是什么</div><p>能阐述参数是"节点内部状态的运行时可读写配置"，与话题（数据流）、服务（操作）有本质区别；并说清 <code>ParameterDescriptor</code> 在自描述与范围声明中的作用。</p></div>
   <div class="kcard"><div class="kd">② 掌握流程</div><div class="kt">声明 → 读取 → 动态回调</div><p>以 <code>gas_sensor_node</code> 为基础，完成 <code>declare_parameter</code> 声明、<code>get_parameter</code> 读取、<code>add_on_set_parameters_callback</code> 动态回调的完整编程流程。</p></div>
   <div class="kcard"><div class="kd">③ 独立完成</div><div class="kt">做一个可调节点</div><p>独立实现"发布周期 / 采样使能 / 报警阈值可在线调整"的 MQ5 节点，注册 <code>entry_points</code> 后用 <code>ros2 param list/get/set/describe/dump</code> 完成验证。</p></div>
-  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">把旋钮拉出代码</div><p>能为实际系统设计参数化配置——PID 系数、速度上限、触发阈值都通过参数暴露，<b>不重启节点即可调优</b>。</p></div>
+  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">把配置参数外置</div><p>能为实际系统设计参数化配置——PID 系数、速度上限、触发阈值都通过参数暴露，<b>不重启节点即可调优</b>。</p></div>
 </div>
 <div class="tip tealb"><span class="lab">本课的重点与难点</span>
 <b>重点</b>：<code>declare_parameter</code> 的默认值同时决定了参数类型（<code>1.0</code>→double，<code>1</code>→int），类型定错后续读写会失败。<br>
@@ -114,8 +110,58 @@
 本课的节点以 <b>EXP-06 的 <code>gas_sensor_node.py</code> 为起点</b>逐步加参数能力，建议对比着看两份代码。</div>
 </section>
 
+<section class="blk" id="s5">
+<h2><span class="no">01</span>先动手感受：亲手调一调这三个参数</h2>
+<p class="lead">这一节不用敲任何命令——<b>下面是一个跑在页面里的 <code>param_sensor</code> 模拟器</b>。<b>三个滑块，就是真实节点的三个参数</b>（发布周期、报警阈值、使能开关），你拖动它们，右侧日志会立刻响应。<b>先玩两分钟，你就会明白参数到底解决了什么问题</b>，再去实验箱跑真节点。</p>
+
+<div class="tip tealb">🎛️ <b>请按这个顺序试三件事</b><br>
+① <b>拖 <code>publish_period</code> 滑块</b>——从 1.00s 拖到 0.10s，看日志刷新变快；拖到 5s，看它慢下来。<b>节点没有重启，行为已经变了。</b><br>
+② <b>把 <code>alarm_threshold_ppm</code> 拖到 400 以下</b>——模拟读数在 300~700 之间波动，阈值一低，<code>[报警]</code> 就开始刷屏。<br>
+③ <b>点"越界测试"几个按钮</b>——set period 100.0、set period 0.01、set 阈值 -100。观察"闸门状态"那一栏：<b>它们全被拒绝了，日志里留下一条拒绝原因</b>。</div>
+
+<div class="pl-lab">
+  <div class="pl-row">
+    <label>publish_period</label>
+    <input type="range" id="plPer" min="0.02" max="10" step="0.01" value="1">
+    <span class="val" id="plPerV">1.00 s</span>
+  </div>
+  <div class="pl-row">
+    <label>alarm_threshold_ppm</label>
+    <input type="range" id="plThr" min="0" max="1000" step="10" value="500">
+    <span class="val" id="plThrV">500</span>
+  </div>
+  <div class="pl-row">
+    <label>sensor_enabled</label>
+    <input type="checkbox" id="plEn" checked style="width:18px;height:18px;accent-color:#dc2626">
+    <span class="val" id="plEnV" style="width:auto">true</span>
+    <span style="font-size:12px;color:var(--text-muted)">（模拟读数在 300~700 ppm 缓慢波动——调低阈值即可看到报警刷屏）</span>
+  </div>
+  <div class="pl-row" style="margin-top:4px">
+    <label style="width:190px">越界测试（CLI 视角）</label>
+    <button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="plSet('publish_period', 100.0)">set period 100.0</button>
+    <button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="plSet('publish_period', 0.01)">set period 0.01</button>
+    <button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="plSet('publish_period', 5)">set period 5（int）</button>
+    <button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="plSet('alarm_threshold_ppm', -100.0)">set 阈值 -100</button>
+  </div>
+  <div class="pl-state">
+    <span>定时器周期 <b id="plPeriod">1.000s</b></span>
+    <span>已发布 <b id="plCount">0</b> 条</span>
+    <span>闸门状态 <b id="plGate">空闲</b></span>
+  </div>
+  <div class="pl-log" id="plLog"></div>
+</div>
+<p class="figcap">▲ 调 <code>publish_period</code> 看日志节奏（0.02s 最快、10s 最慢）；关掉 <code>sensor_enabled</code> 看采样停止；点越界测试看回调如何拒绝。这些现象稍后在真实节点上会一模一样复现。</p>
+
+<div class="tip amber">💡 <b>刚才那两分钟，其实暴露了三个值得追问的点</b><br>
+① 为什么拖一下滑块，节点行为就变了，<b>却完全不用重启</b>？<br>
+② 为什么有的值被接受、有的被拒绝（<code>100.0</code> 被拒、<code>5</code> 被拒），<b>拒绝的判断发生在哪里</b>？<br>
+③ 关掉 <code>sensor_enabled</code> 后采样停了，但定时器还在跑——<b>参数是怎么"控制行为"而不是"控制线程"的</b>？<br>
+带着这三个问题往下看，下一节先讲<b>没有参数系统时有多痛</b>。</div>
+</section>
+
 <section class="blk" id="s1">
-<h2><span class="no">01</span>问题引入：改一个数字为什么这么贵<span class="fs">聚焦问题 · 激活旧知</span></h2>
+<h2><span class="no">02</span>问题引入：改一个数字为什么这么贵<span class="fs">聚焦问题 · 激活旧知</span></h2>
+<p class="lead">刚才你在页面上拖滑块，改一个值的代价是<b>零</b>。但在没有参数系统之前，同样的事有多贵？</p>
 <div class="flow">
   <div class="step"><div class="n">1</div>巡线小车的 PID 三个系数、MQ5 采样周期、报警阈值 500 ppm——都写死在源码里。</div>
   <div class="step"><div class="n">2</div>现场调参要走完整链：<b>改源码 → 重新编译 → 重新部署 → 重启节点</b>，一轮几分钟，一天调不了几组。</div>
@@ -123,7 +169,7 @@
   <div class="step"><div class="n">4</div>ROS2 的答案：<b>参数系统</b>——把可调值从代码里"拉出来"，运行时用一条命令修改，节点立即按新值工作。</div>
 </div>
 
-<p>换个生活的说法：阈值写死在代码里，就像<b>把功放音量旋钮焊死在机箱里</b>——想调个音量，得拆机、改电路、再装回去。参数系统则是把旋钮装回面板：设备<b>不用停</b>，伸手一拧就行。</p>
+<p>换个生活的说法：阈值写死在代码里，就像<b>把功放音量旋钮焊死在机箱里</b>——想调个音量，得拆机、改电路、再装回去。参数系统则是把旋钮装回面板：设备<b>不用停</b>，伸手一拧就行。（<b>这里的"旋钮"就是参数</b>，只不过它的"拧"是在命令行里发一条 <code>ros2 param set</code>。）</p>
 
 <div class="cmp-grid">
   <div class="cmp-box bad"><h5>😤 硬编码：改一个数字的完整代价</h5>
@@ -171,16 +217,16 @@
   <g stroke="#5eead4" stroke-width="2" marker-end="url(#ar10b)">
     <path d="M284 162 H326" fill="none"/><path d="M480 162 H522" fill="none"/>
   </g>
-  <text x="380" y="204" fill="#94a3b8" font-size="11.5" text-anchor="middle">参数把"改配置"从工程行为降级为日常操作 —— 这就是"把旋钮拉出代码"</text>
+  <text x="380" y="204" fill="#94a3b8" font-size="11.5" text-anchor="middle">参数把"改配置"从工程行为降级为日常操作 —— 这就是"把配置参数从代码里拉出来"</text>
 </svg>
 </div>
 <p class="figcap">图 10-1 · 同样是把报警阈值从 500 改成 600：硬编码走完全程 vs 参数化一条命令</p>
 
-<div class="tip"><span class="lab">参数 = 旋钮</span>参数是节点内部状态的<b>运行时可读写配置层</b>：不定义通信通道、没有消息类型流转，直接读写节点内存变量——这与话题（异步数据流）、服务（同步 RPC 操作）有本质区别。</div>
+<div class="tip"><span class="lab">参数是什么（俗称"旋钮"）</span>参数是节点内部状态的<b>运行时可读写配置层</b>：不定义通信通道、没有消息类型流转，直接读写节点内存变量——这与话题（异步数据流）、服务（同步 RPC 操作）有本质区别。<br><b>"旋钮"只是个比喻</b>：说的是它像音量旋钮一样"随时能拧、拧了立刻生效"，具体到代码里，它就是节点上一个个有名字、有类型的值（如 <code>publish_period=1.0</code>）。</div>
 </section>
 
 <section class="blk" id="s2">
-<h2><span class="no">02</span>核心原理：声明 → 读取 → 设置的生命周期<span class="fs">示证新知</span></h2>
+<h2><span class="no">03</span>核心原理：声明 → 读取 → 设置，与两次校验</h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">声明 declare</div><div class="kt">登记存在 + 默认值 + 类型</div><p><code>declare_parameter('publish_period', 1.0)</code> 在 __init__ 执行一次；<b>默认值同时决定类型</b>（1.0→float，1→int）。参数服务将声明注册，使 CLI / rqt 能发现它。</p></div>
   <div class="kcard"><div class="kd">读取 get</div><div class="kt">任意时刻取当前值</div><p><code>self.get_parameter('name').value</code>——启动时读一次缓存进成员变量，或在每次回调里现取，都不受限制。</p></div>
@@ -266,7 +312,7 @@
   </g>
   <line x1="564" y1="218" x2="708" y2="218" stroke="#1e293b" stroke-width="2"/>
   <text x="636" y="240" fill="#94a3b8" font-size="9.5" text-anchor="middle">值一变 → 回调重建定时器</text>
-  <text x="636" y="256" fill="#94a3b8" font-size="9.5" text-anchor="middle">（行为变化的起点 · 06 节）</text>
+  <text x="636" y="256" fill="#94a3b8" font-size="9.5" text-anchor="middle">（行为变化的起点 · 第 1 步）</text>
 
   <!-- 拒绝回执（回到节点外） -->
   <rect x="310" y="364" width="308" height="42" rx="8" fill="#fef2f2" stroke="#fca5a5"/>
@@ -285,10 +331,8 @@
   <tr><td><b>参数 Parameter</b></td><td>节点内存变量的外部读写口</td><td>发布周期 / 阈值 / 使能开关</td></tr>
 </table>
 <div class="tip amber"><span class="lab">为什么没有网络开销</span>参数读写本质是"经参数服务转发的内存访问"，不存在持续数据流；参数值只活在运行时内存——<b>节点重启即恢复默认值</b>，持久化要靠 dump 出 YAML 再加载。</div>
-</section>
 
-<section class="blk" id="s3">
-<h2><span class="no">03</span>动画：ros2 param set 的完整数据流<span class="fs">示证新知</span></h2>
+<h3 style="font-size:16px;color:var(--text-primary);margin:28px 0 0">一次 <code>param set</code> 的完整数据流</h3>
 <div class="anim-box">
 <svg viewBox="0 0 760 235" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
   <g>
@@ -323,10 +367,7 @@
 </svg>
 </div>
 <p class="anim-cap">set 不是直接写内存：先过回调这道"闸门"——校验、应用、回执三件事决定这次修改是成功还是被拒绝。</p>
-</section>
-
-<section class="blk" id="s4">
-<h2><span class="no">04</span>专题：ParameterDescriptor 与两层约束<span class="fs">示证新知</span></h2>
+<h3 style="font-size:16px;color:var(--text-primary);margin:28px 0 0">两层约束：描述符（静态）与回调（动态）</h3>
 <pre data-copy="cmd"><span class="c"># 声明时附带描述符：自描述 + 可视化元数据</span>
 from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
 
@@ -345,47 +386,12 @@ self.declare_parameter('publish_period', 1.0, period_desc)   <span class="y"># �
 <div class="tip tealb"><span class="lab">两层不冲突</span>描述符是"说明书"，回调是"门卫"——CLI 尝试越界值时，<b>先触发的是回调</b>（参数服务直接调用回调做业务校验）；描述符范围用于工具展示与提示。省掉回调 = 越界值畅通无阻。</div>
 </section>
 
-<section class="blk" id="s5">
-<h2><span class="no">05</span>实验台：亲手拧一拧这三颗旋钮<span class="fs">应用新知</span></h2>
-<p>下面是一个<b>跑在页面里的 param_sensor 模拟器</b>：发布周期、使能开关、报警阈值全部实时可调，越界值会被"回调闸门"当场拒绝——先在页面上感受，再去实验箱跑真的。</p>
-
-<div class="pl-lab">
-  <div class="pl-row">
-    <label>publish_period</label>
-    <input type="range" id="plPer" min="0.02" max="10" step="0.01" value="1">
-    <span class="val" id="plPerV">1.00 s</span>
-  </div>
-  <div class="pl-row">
-    <label>alarm_threshold_ppm</label>
-    <input type="range" id="plThr" min="0" max="1000" step="10" value="500">
-    <span class="val" id="plThrV">500</span>
-  </div>
-  <div class="pl-row">
-    <label>sensor_enabled</label>
-    <input type="checkbox" id="plEn" checked style="width:18px;height:18px;accent-color:#dc2626">
-    <span class="val" id="plEnV" style="width:auto">true</span>
-    <span style="font-size:12px;color:var(--text-muted)">（模拟读数在 300~700 ppm 缓慢波动——调低阈值即可看到报警刷屏）</span>
-  </div>
-  <div class="pl-row" style="margin-top:4px">
-    <label style="width:190px">越界测试（CLI 视角）</label>
-    <button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="plSet('publish_period', 100.0)">set period 100.0</button>
-    <button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="plSet('publish_period', 0.01)">set period 0.01</button>
-    <button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="plSet('publish_period', 5)">set period 5（int）</button>
-    <button class="btn ghost" style="padding:5px 12px;font-size:12px" onclick="plSet('alarm_threshold_ppm', -100.0)">set 阈值 -100</button>
-  </div>
-  <div class="pl-state">
-    <span>定时器周期 <b id="plPeriod">1.000s</b></span>
-    <span>已发布 <b id="plCount">0</b> 条</span>
-    <span>闸门状态 <b id="plGate">空闲</b></span>
-  </div>
-  <div class="pl-log" id="plLog"></div>
-</div>
-<p class="figcap">▲ 调 publish_period 观察日志节奏变化（0.02s 最快、10s 最慢）；关掉 sensor_enabled 看采样停止；点越界测试看回调如何拒绝。对照 06/07 节在真实节点上复现同样现象。</p>
-</section>
-
 <section class="blk" id="s6">
-<h2><span class="no">06</span>代码精讲：param_sensor_node 逐行拆解<span class="fs">应用新知</span></h2>
-<p>源码来自指导手册实验 10，文件位于 <code>ros_sensor/ros_sensor/param_sensor_node.py</code>（与实验 6 的 gas_sensor_node 同目录，<code>from .common import read_mq5_once</code> 复用真实读取）。按数据流分三站读：</p>
+<h2><span class="no">04</span>实验步骤：读源码 → 跑节点 → 九步联调</h2>
+<p class="lead">这一节把"读代码"和"动手跑"合在一起：<b>先看源码的三站结构</b>（知道每个参数在哪被消费），<b>再启动节点验证</b>（看参数变成日志），<b>最后九步 CLI 联调</b>（把声明、读取、校验、热生效、持久化全走一遍）。</p>
+
+<h3 style="font-size:17px;color:var(--text-primary);margin:26px 0 0">第 1 步 · 先看源码：param_sensor_node 的三站结构</h3>
+<p>源码位于 <code>ros_sensor/ros_sensor/param_sensor_node.py</code>（与 EXP-06 的 <code>gas_sensor_node</code> 同目录，<code>from .common import read_mq5_once</code> 复用真实读取）。按数据流分三站读：</p>
 
 <h3 style="font-size:16px;color:var(--text-primary);margin:22px 0 0">第一站 · __init__：声明、读取、接线</h3>
 <pre><span class="c"># 来源：param_sensor_node.py __init__（声明 → 读取 → 发布器/定时器）</span>
@@ -451,27 +457,25 @@ def on_parameters_set(self, params):
   <tr><td>② 应用</td><td>更新变量 + <code>_recreate_timer()</code></td><td>CLI 显示成功但<b>周期纹丝不动</b>——最高频的"改了没用"</td></tr>
   <tr><td>③ 回执</td><td>return SetParametersResult(...)</td><td>返回 None 被判定设置失败，报错还含糊</td></tr>
 </table>
-<div class="tip tealb"><span class="lab">描述符版本</span>声明时可传第三参 <code>ParameterDescriptor(description='MQ5 数据发布周期（秒）…', floating_point_range=[FloatingPointRange(from_value=0.02, to_value=10.0, step=0.01)])</code>——它是给 <code>ros2 param describe</code> 和 rqt_reconfigure 看的"说明书"（04 节详解），<b>不承担拦截职责</b>，门卫仍是上面的回调。</div>
+<div class="tip tealb"><span class="lab">描述符版本</span>声明时可传第三参 <code>ParameterDescriptor(description='MQ5 数据发布周期（秒）…', floating_point_range=[FloatingPointRange(from_value=0.02, to_value=10.0, step=0.01)])</code>——它是给 <code>ros2 param describe</code> 和 rqt_reconfigure 看的"说明书"（见上面"两层约束"），<b>不承担拦截职责</b>，门卫仍是上面的回调。</div>
 <div class="tip"><span class="lab">关键在"应用"</span>很多同学回调里只改了变量值，周期却不变——因为定时器周期在 <code>create_timer</code> 时已固定。参数生效的完整链 = <b>校验 → 更新变量 → 触发后续行为</b>（重建定时器 / 切换开关），缺一步都叫"改了没用"。</div>
-</section>
+<h3 style="font-size:17px;color:var(--text-primary);margin:32px 0 0">第 2 步 · 启动节点：看参数变成日志</h3>
+<p>源码看懂了，打开终端实际跑一遍。先确认每个参数在真实节点上的表现，再进入命令行联调。</p>
 
-<section class="blk" id="s7">
-<h2><span class="no">07</span>实操 A：启动参数节点并完成基础读写<span class="fs">应用新知</span></h2>
-
-<div class="termbar"><span class="tl">终端 0</span><b>编译并注册入口</b><span class="note">新节点必须重编才能被 ros2 run 找到</span></div>
+<div class="termbar"><span class="tl">终端 B</span><b>编译并注册入口</b><span class="note">新节点必须重编才能被 ros2 run 找到</span></div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">1</span><b>编译 + source</b><span class="cs-where">终端 0</span></div>
+  <div class="cs-hd"><span class="cs-no">1</span><b>编译 + source</b><span class="cs-where">终端 A</span></div>
   <p class="cs-why">param_sensor_node.py 放进包内并注册 <code>entry_points</code>（setup.py 加 <code>'param_sensor = ros_sensor.param_sensor_node:main'</code>）后，重编一次：</p>
   <pre data-copy="cmd">cd ~/ros2_ws
-colcon build --symlink-install --packages-select ros_sensor
+colcon build --packages-select ros_sensor
 source install/setup.bash</pre>
-  <div class="io"><span class="dim">$ colcon build --symlink-install --packages-select ros_sensor</span>
+  <div class="io"><span class="dim">$ colcon build --packages-select ros_sensor</span>
 Finished &lt;&lt;&lt; ros_sensor [<span class="g">X.XXs</span>]</div>
 </div>
 
-<div class="termbar"><span class="tl">终端 A</span><b>启动节点：看参数怎么变成日志</b></div>
+<div class="termbar"><span class="tl">终端 B</span><b>启动节点：看参数怎么变成日志</b></div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">2</span><b>默认参数启动</b><span class="cs-where">终端 A</span></div>
+  <div class="cs-hd"><span class="cs-no">2</span><b>默认参数启动</b><span class="cs-where">终端 B</span></div>
   <p class="cs-why">启动日志会打印三个参数的初始值，随后以 1s 周期持续采样：</p>
   <pre data-copy="cmd">ros2 run ros_sensor param_sensor</pre>
   <div class="io"><span class="dim">$ ros2 run ros_sensor param_sensor</span>
@@ -482,10 +486,10 @@ Finished &lt;&lt;&lt; ros_sensor [<span class="g">X.XXs</span>]</div>
 <span class="dim"># 每秒一条……这就是 publish_period=1.0 在"工作"</span></div>
 </div>
 
-<div class="termbar"><span class="tl">终端 B</span><b>外部视角：发现并读取参数</b></div>
+<div class="termbar"><span class="tl">终端 C</span><b>外部视角：发现并读取参数</b></div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">3</span><b>列出参数注册表</b><span class="cs-where">终端 B</span></div>
-  <p class="cs-why">验证三颗自定义旋钮 + 一颗系统自带旋钮都已登记：</p>
+  <div class="cs-hd"><span class="cs-no">3</span><b>列出参数注册表</b><span class="cs-where">终端 C</span></div>
+  <p class="cs-why">验证三个自定义参数 + 一个系统自带参数都已登记：</p>
   <pre data-copy="cmd">ros2 param list</pre>
   <div class="io"><span class="dim">$ ros2 param list</span>
 /param_sensor:
@@ -495,25 +499,23 @@ Finished &lt;&lt;&lt; ros_sensor [<span class="g">X.XXs</span>]</div>
   use_sim_time</div>
 </div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">4</span><b>读取 + 一次性覆盖启动</b><span class="cs-where">终端 B</span></div>
+  <div class="cs-hd"><span class="cs-no">4</span><b>读取 + 一次性覆盖启动</b><span class="cs-where">终端 C</span></div>
   <p class="cs-why">get 读当前值；<code>-p</code> 可在启动瞬间覆盖默认值（走的是"声明时以外部值为默认"的机制）：</p>
   <pre data-copy="cmd">ros2 param get /param_sensor publish_period
 ros2 run ros_sensor param_sensor --ros-args -p publish_period:=0.1 -p alarm_threshold_ppm:=100.0</pre>
   <div class="io"><span class="dim">$ ros2 param get /param_sensor publish_period</span>
 Double value is: 1.0
 <span class="dim"># 带 -p 启动则直接以 0.1s 周期（10Hz）/ 100ppm 起跑，无需 set</span></div>
-  <p class="cs-see">✔ 注意：此时就算 <code>param set</code> 显示成功，节点行为<b>也不会变</b>——因为这一版还没写参数回调（成员变量只在构造时读了一次）。这正是 06 节第三站回调要解决的问题。</p>
+  <p class="cs-see">✔ 注意：此时就算 <code>param set</code> 显示成功，节点行为<b>也不会变</b>——因为这一版还没写参数回调（成员变量只在构造时读了一次）。这正是第 1 步第三站回调要解决的问题。</p>
 </div>
-</section>
 
-<section class="blk" id="s8">
-<h2><span class="no">08</span>实操 B：CLI 九步联调 + 参数持久化<span class="fs">融会贯通</span></h2>
-<p>在 06 节回调版代码编译完成后执行（终端 A 保持节点运行，终端 B 逐步验证）。</p>
+<h3 style="font-size:17px;color:var(--text-primary);margin:32px 0 0">第 3 步 · 九步 CLI 联调：把参数系统走一遍</h3>
+<p>前面已经验证了"参数在册"和"启动覆盖"。这一步把剩下的环节补齐——<b>描述符、热生效、越界被拒、开关控制、持久化</b>，每一步都有明确的观测点。<b>前提</b>：第 1 步的回调版代码已编译，终端 B 的节点保持运行。</p>
 
-<div class="termbar"><span class="tl">终端 B</span><b>读说明书 → 正常调参 → 恶意调参</b></div>
+<div class="termbar"><span class="tl">终端 C</span><b>读说明书 → 正常调参 → 恶意调参</b></div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">1</span><b>describe：看参数的"说明书"</b><span class="cs-where">终端 B</span></div>
-  <p class="cs-why">描述符（04 节）登记的描述与范围在这里展示：</p>
+  <div class="cs-hd"><span class="cs-no">1</span><b>describe：看参数的"说明书"</b><span class="cs-where">终端 C</span></div>
+  <p class="cs-why">描述符（见 03 节"两层约束"）登记的描述与范围在这里展示：</p>
   <pre data-copy="cmd">ros2 param describe /param_sensor publish_period</pre>
   <div class="io"><span class="dim">$ ros2 param describe /param_sensor publish_period</span>
 Parameter name: publish_period
@@ -525,28 +527,28 @@ Parameter name: publish_period
     Step: 0.01</div>
 </div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">2</span><b>一成一败：热生效 vs 被拒绝</b><span class="cs-where">终端 B</span></div>
-  <p class="cs-why">合法值直通（节点日志立即变快），越界值被回调闸门拦下——对照 05 节模拟器里你亲手触发过的两个场景：</p>
+  <div class="cs-hd"><span class="cs-no">2</span><b>一成一败：热生效 vs 被拒绝</b><span class="cs-where">终端 C</span></div>
+  <p class="cs-why">合法值直通（节点日志立即变快），越界值被回调闸门拦下——对照 01 节模拟器里你亲手触发过的两个场景：</p>
   <pre data-copy="cmd">ros2 param set /param_sensor publish_period 0.2
 ros2 param set /param_sensor publish_period 100.0
 ros2 param set /param_sensor sensor_enabled false
 ros2 param set /param_sensor sensor_enabled true</pre>
   <div class="io"><span class="dim">$ ros2 param set /param_sensor publish_period 0.2</span>
 <span class="g">Set parameter successful</span>
-<span class="dim"># 同时终端 A：[INFO] 发布周期已更新: 0.2 s → 日志从每秒 1 条变 5 条</span>
+<span class="dim"># 同时终端 B：[INFO] 发布周期已更新: 0.2 s → 日志从每秒 1 条变 5 条</span>
 
 <span class="dim">$ ros2 param set /param_sensor publish_period 100.0</span>
 <span class="y">Setting parameter failed: publish_period 必须在 [0.02, 10.0] 内，收到: 100.0</span>
-<span class="dim"># 同时终端 A：[WARN] 拒绝发布周期: 100.0</span>
+<span class="dim"># 同时终端 B：[WARN] 拒绝发布周期: 100.0</span>
 
 <span class="dim">$ ros2 param set /param_sensor sensor_enabled false</span>
 <span class="g">Set parameter successful</span>
-<span class="dim"># 终端 A 日志停止；改回 true 恢复</span></div>
+<span class="dim"># 终端 B 日志停止；改回 true 恢复</span></div>
 </div>
 
-<div class="termbar"><span class="tl">终端 B</span><b>持久化：配置即代码</b></div>
+<div class="termbar"><span class="tl">终端 C</span><b>持久化：配置即代码</b></div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">3</span><b>dump 导出 → params-file 加载</b><span class="cs-where">终端 B</span></div>
+  <div class="cs-hd"><span class="cs-no">3</span><b>dump 导出 → params-file 加载</b><span class="cs-where">终端 C</span></div>
   <p class="cs-why">参数只活在运行时内存，重启即失忆。把调好的值 dump 成 YAML，下次启动预加载——这是"拿手调参数当代码管"的标准流程：</p>
   <pre data-copy="cmd">ros2 param dump /param_sensor &gt; param_sensor.yaml
 cat param_sensor.yaml
@@ -566,7 +568,7 @@ ros2 run ros_sensor param_sensor --ros-args --params-file ./param_sensor.yaml</p
   <tr><th>#</th><th>证据项</th><th>记录方式</th><th>合格标准</th></tr>
   <tr><td>1</td><td>参数在册</td><td><code>param list</code> 截图</td><td>4 个参数齐全</td></tr>
   <tr><td>2</td><td>描述符生效</td><td><code>param describe</code> 截图</td><td>显示描述文本与 [0.02, 10.0] 范围</td></tr>
-  <tr><td>3</td><td>热生效</td><td>set 0.2 后终端 A 日志截图</td><td>发布周期更新 INFO + 日志变密</td></tr>
+  <tr><td>3</td><td>热生效</td><td>set 0.2 后终端 B 日志截图</td><td>发布周期更新 INFO + 日志变密</td></tr>
   <tr><td>4</td><td>越界被拒</td><td>set 100.0 双端截图</td><td>CLI failed + 节点端 WARN 拒绝原因</td></tr>
   <tr><td>5</td><td>开关控制</td><td>set false/true 各一张</td><td>日志停止 / 恢复</td></tr>
   <tr><td>6</td><td>持久化</td><td>yaml 内容 + 带文件重启后 <code>param get</code> 截图</td><td>新节点读到 dump 的值</td></tr>
@@ -575,7 +577,7 @@ ros2 run ros_sensor param_sensor --ros-args --params-file ./param_sensor.yaml</p
 </section>
 
 <section class="blk" id="s9">
-<h2><span class="no">09</span>注意事项与验收清单<span class="fs">融会贯通</span></h2>
+<h2><span class="no">05</span>注意事项与验收清单</h2>
 <div class="check">
   <ul>
     <li>默画参数生命周期：声明（一次）→ 读取（任意）→ 外部 set → 回调 → 应用</li>
@@ -598,7 +600,7 @@ ros2 run ros_sensor param_sensor --ros-args --params-file ./param_sensor.yaml</p
 </section>
 
 <section class="blk" id="s10">
-<h2><span class="no">10</span>本课总结与思考题<span class="fs">融会贯通</span></h2>
+<h2><span class="no">06</span>本课总结与思考题</h2>
 <div class="kgrid">
   <div class="kcard"><div class="kd">定位</div><div class="kt">运行时配置层</div><p>不走数据流、不走 RPC，直接门卫式读写节点内存——与话题/服务三足鼎立。</p></div>
   <div class="kcard"><div class="kd">生命周期</div><div class="kt">declare → get → set</div><p>声明一次定型定类；get 随取；set 必过回调。</p></div>

@@ -64,6 +64,21 @@
 .cmdstep table{margin:10px 0 0;font-size:13.5px}
 .cmdstep .cs-see{font-size:12.5px;color:#0f766e;margin:8px 0 0;line-height:1.7}
 .cmdstep .io{margin:10px 0 0;font-size:12.5px;color:#e2e8f0}
+/* ===== 步骤内嵌截图/示意图（响应式：窄屏不溢出）===== */
+.shot{margin:12px 0 0;cursor:zoom-in}
+.shot img{display:block;margin:0 auto;
+  width:auto;max-width:100%;
+  max-height:min(340px,46vh);
+  height:auto}
+.shot.wide{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.shot.wide img{width:100%;max-width:100%;max-height:none;height:auto}
+.shot figcaption{font-size:12.5px;color:#64748b;line-height:1.65;margin-top:8px;text-align:center}
+@media (max-width:720px){
+  .shot img{max-height:min(260px,38vh)}
+  .shot.wide img{width:auto;min-width:520px;max-width:none}
+  .shot figcaption{font-size:12px;text-align:left}
+  .shot.wide::after{content:'← 左右滑动查看完整图 →';display:block;font-size:11px;color:#94a3b8;text-align:center;margin-top:4px}
+}
 </style>
 </head>
 <body>
@@ -108,7 +123,7 @@
 </div>
 <div class="tip tealb"><span class="lab">本课的重点与难点</span>
 <b>重点</b>：<code>class XxxNode(Node)</code> 的继承写法，以及构造函数里"注册节点 → 声明参数 → 创建发布者/定时器"的顺序。<br>
-<b>难点</b>：① 为什么<b>不调用 <code>rclpy.spin()</code> 就等于没开机</b>；② "一个节点 = 一个独立进程"这条设计原则，在工程上到底有什么好处。</div>
+<b>难点</b>：① 为什么<b>不调用 <code>rclpy.spin()</code> 就等于没开机</b>；② "一个节点 = 一个独立进程"这条设计原则，在工程上有哪些优缺点。</div>
 <div class="tip amber"><span class="lab">和前后的关系</span>
 上一课（EXP-04）讲了怎么建包，这一课讲包里最核心的东西怎么写。本课用的 <code>gas_sensor_node</code> <b>正是 EXP-06 的主角</b>——这里从"<b>节点</b>"角度拆它的结构和生命周期，EXP-06 再从"<b>话题</b>"角度拆它怎么发数据。</div>
 </section>
@@ -176,12 +191,29 @@ ROS2 干的事一模一样：把上面那五个程序各封成一个岗位，<b>
 <span class="g">ros2</span> run demo_nodes_cpp listener</pre>
 </div>
 <div class="cmdstep">
-  <div class="cs-hd"><span class="cs-no">0.2</span><b>把计算图画出来</b><span class="cs-where">终端 C</span></div>
-  <p class="cs-why"><code>rqt_graph</code> 是 ROS2 自带的"看图窗口"，完整用法 EXP-14 细讲，这里只要会打开、会读箭头。</p>
+  <div class="cs-hd"><span class="cs-no">0.2</span><b>先装看图工具（只需一次）</b><span class="cs-where">终端 C</span></div>
+  <p class="cs-why"><code>rqt_graph</code> <b>不是 ROS2 基础包自带的</b>——它装在独立的 <code>ros-humble-rqt-graph</code> 包里。没装就直接 <code>ros2 run</code>，会报 <code>Package 'rqt_graph' not found</code>。<b>先装一次，以后就不用再装。</b></p>
+  <pre data-copy="cmd"><span class="c"># -y 表示自动确认，省掉一次 y/n 交互</span>
+<span class="g">sudo</span> apt install -y ros-humble-rqt-graph</pre>
+  <div class="io"><span class="dim">$ sudo apt install -y ros-humble-rqt-graph</span>
+Reading package lists... Done
+The following NEW packages will be installed:
+  ros-humble-rqt-graph
+...
+Setting up ros-humble-rqt-graph (...) ...
+<span class="g"># 出现 "Setting up ... rqt-graph" 就是装好了</span></div>
+  <p class="cs-see">✔ 已经装过的话这行会提示 <code>ros-humble-rqt-graph is already the newest version</code>，可以直接跳到下一步。</p>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">0.3</span><b>把计算图画出来</b><span class="cs-where">终端 C</span></div>
+  <p class="cs-why"><code>rqt_graph</code> 是 ROS2 的"看图窗口"，完整用法 EXP-14 细讲，这里只要会打开、会读箭头。</p>
   <pre data-copy="cmd"><span class="g">source</span> /opt/ros/humble/setup.bash
-<span class="g">sudo</span> apt install ros-humble-rqt-graph   <span class="c"># 报 command not found 才需要装，装过跳过</span>
 <span class="g">ros2</span> run rqt_graph rqt_graph</pre>
   <p class="cs-see">✔ 三个观察点逐个对：① 图里有两个椭圆 <code>/talker</code>、<code>/listener</code>；② 中间是矩形 <code>/chatter</code>，左边一支箭头从 talker 指进来，右边一支从它指去 listener（发布 → 话题 → 订阅）；③ 回终端 A 按 <code>Ctrl+C</code>，talker 的椭圆和箭头立刻从图上消失，重新 run 又自己连回来。</p>
+  <figure class="shot wide" onclick="lbShow(this)">
+    <img src="../assets/image-20261027-rqt-graph-talker-chatter-listener.png" alt="rqt_graph 显示的计算图：/talker 椭圆经 /chatter 话题指向 /listener 椭圆" loading="eager">
+    <figcaption>实拍｜<b><code>rqt_graph</code> 画出来的样子</b>：左<b>红色椭圆 <code>/talker</code></b>（发布者）、中间<b>绿色矩形 <code>/chatter</code></b>（话题）、右<b>黑色椭圆 <code>/listener</code></b>（订阅者）。<b>箭头方向就是数据流向</b>：talker → chatter → listener。<br>记住这个读图规则：<b>椭圆 = 节点，矩形 = 话题，箭头 = 数据流动方向</b>。后面 EXP-06 加订阅者、EXP-07 加服务时，图会越画越大，但读法永远是这三条。</figcaption>
+  </figure>
 </div>
 <div class="tip amber"><span class="lab">这一步其实证明了什么</span>
 你亲眼见到了"计算图"三个字的分量：<b>节点是死是活、连没连上，ROS2 自己心里有数，随时能整张画给你看</b>。杀掉 talker 图就缺一块，说明图反映的是<b>此刻真实的连接</b>，不是文档里的设计稿。<br>
@@ -681,6 +713,150 @@ ROS2 把这两件事分开设计，是为了让你<b>按需选择</b>：传感�
   <div class="kcard"><div class="kd">要并行时</div><div class="kt">多线程执行器</div><p><code>MultiThreadedExecutor(num_threads=N)</code> 让不同回调真正并行。代价是<b>你的回调必须自己保证线程安全</b>（加锁），否则数据会乱——初学阶段先别碰。</p></div>
   <div class="kcard"><div class="kd">要更细的控制</div><div class="kt">回调组 CallbackGroup</div><p><code>MutuallyExclusiveCallbackGroup</code>（同组互斥，同一时刻只跑一个）/ <code>ReentrantCallbackGroup</code>（同组可重入，可并发）。用来"哪些回调允许并行、哪些必须排队"。</p></div>
 </div>
+
+<h3 style="font-size:15.5px;color:var(--theme-deep);margin:24px 0 0">代码怎么写：三种执行器的启动方式</h3>
+<p>上面三张卡片说的是"是什么"，这里给出"怎么写"。<b>三者是层层递进的关系</b>：默认单线程 → 换多线程 → 用回调组精细控制。<b>先看清 main() 里那几行差在哪。</b></p>
+
+<p style="margin:14px 0 6px;font-weight:700;font-size:13.5px;color:var(--theme-deep)">① 默认写法：<code>rclpy.spin(node)</code>（本课用这个）</p>
+<pre><span class="c"># 最短的 main()：rclpy.spin 内部就是用 SingleThreadedExecutor 帮你 spin</span>
+<span class="b">def</span> main():
+    rclpy.init()
+    node = GasSensorNode()
+    <span class="b">try</span>:
+        rclpy.spin(node)          <span class="c"># 单线程，一次一个回调，其余排队</span>
+    <span class="b">except</span> KeyboardInterrupt:
+        <span class="b">pass</span>
+    <span class="b">finally</span>:
+        node.destroy_node()
+        rclpy.shutdown()</pre>
+<p class="cs-see" style="font-size:12.5px;color:#0f766e;margin:8px 0 0;line-height:1.7">✔ <b>等价于</b>下面这段——理解这点很重要，<code>rclpy.spin()</code> 不是另一种机制，只是"帮你 new 了一个单线程执行器并 spin 它"：</p>
+<pre><span class="c"># 展开后的等价写法，看得更清楚</span>
+<span class="b">from</span> rclpy.executors <span class="b">import</span> SingleThreadedExecutor
+
+executor = SingleThreadedExecutor()
+executor.add_node(node)
+<span class="b">try</span>:
+    executor.spin()
+<span class="b">finally</span>:
+    executor.shutdown()
+    node.destroy_node()</pre>
+
+<p style="margin:20px 0 6px;font-weight:700;font-size:13.5px;color:var(--theme-deep)">② 多线程执行器：让不同回调真正并行</p>
+<p style="font-size:13.5px;color:#475569;line-height:1.8;margin:0 0 8px">把 <code>SingleThreadedExecutor</code> 换成 <code>MultiThreadedExecutor</code>，并指定线程数。<b>注意：必须自己加锁</b>，否则两个线程同时改一个变量就会出脏数据。</p>
+<pre><span class="c"># 多线程版：num_threads 决定最多几个回调同时跑</span>
+<span class="b">import</span> threading
+<span class="b">import</span> rclpy
+<span class="b">from</span> rclpy.node <span class="b">import</span> Node
+<span class="b">from</span> std_msgs.msg <span class="b">import</span> Float32
+<span class="b">from</span> rclpy.executors <span class="b">import</span> MultiThreadedExecutor
+
+<span class="b">class</span> GasSensorNode(Node):
+    <span class="b">def</span> __init__(self):
+        <span class="b">super</span>().__init__(<span class="s">'gas_sensor_node'</span>)
+        <span class="c"># 共享数据必须先配一把锁</span>
+        self._lock = threading.Lock()
+        self._last_ppm = 0.0
+        self.create_timer(1.0, self.timer_cb)
+        self.create_subscription(Float32, <span class="s">'/cmd'</span>, self.cmd_cb, 10)
+
+    <span class="b">def</span> timer_cb(self):
+        ppm = read_mq5_once()
+        <span class="b">with</span> self._lock:              <span class="c"># 加锁写</span>
+            self._last_ppm = ppm
+
+    <span class="b">def</span> cmd_cb(self, msg):
+        <span class="b">with</span> self._lock:              <span class="c"># 加锁读</span>
+            <span class="b">print</span>(<span class="s">f'当前 {self._last_ppm}'</span>)
+
+
+<span class="b">def</span> main():
+    rclpy.init()
+    node = GasSensorNode()
+
+    <span class="c"># 关键一行：换成多线程执行器，开 4 个线程</span>
+    executor = MultiThreadedExecutor(num_threads=<span class="b">4</span>)
+    executor.add_node(node)
+
+    <span class="b">try</span>:
+        executor.spin()             <span class="c"># 4 个线程同时从队列里取活干</span>
+    <span class="b">except</span> KeyboardInterrupt:
+        <span class="b">pass</span>
+    <span class="b">finally</span>:
+        executor.shutdown()
+        node.destroy_node()
+        rclpy.shutdown()</pre>
+
+<div class="tip amber" style="margin-top:10px">⚠️ <b>多线程的代价（别急着用）</b><br>
+· <b>必须自己保证线程安全</b>：所有被多个回调共享的变量都要加锁，漏一个就是"偶发"的数据错乱，极难查；<br>
+· <b>rclpy 不是完全线程安全的</b>：两个回调同时调 <code>create_publisher</code>/<code>destroy_node</code> 这类操作可能崩；<br>
+· <b>调试变难</b>：现象不再可复现（有时对有时不对）。<br>
+<b>结论</b>：先单线程跑通，确认瓶颈真的在"回调排队"上，再考虑换多线程。</div>
+
+<p style="margin:20px 0 6px;font-weight:700;font-size:13.5px;color:var(--theme-deep)">③ 回调组：精细控制"哪些能并行"</p>
+<p style="font-size:13.5px;color:#475569;line-height:1.8;margin:0 0 8px">多线程执行器是"整体放开"，回调组是"<b>按组放开</b>"——你要明确告诉 ROS2：这几个回调可以并行，那几个必须排队。<b>用法是在创建定时器/订阅时传入 <code>callback_group</code> 参数。</b></p>
+<pre><span class="c"># 回调组：给回调分组，决定组内是"互斥"还是"可重入"</span>
+<span class="b">import</span> time
+<span class="b">import</span> rclpy
+<span class="b">from</span> rclpy.node <span class="b">import</span> Node
+<span class="b">from</span> std_msgs.msg <span class="b">import</span> Float32
+<span class="b">from</span> rclpy.callback_groups <span class="b">import</span> (
+    MutuallyExclusiveCallbackGroup,   <span class="c"># 同组互斥：一次只跑一个</span>
+    ReentrantCallbackGroup,           <span class="c"># 同组可重入：可并发跑多个</span>
+)
+<span class="b">from</span> rclpy.executors <span class="b">import</span> MultiThreadedExecutor
+
+
+<span class="b">class</span> RobotNode(Node):
+    <span class="b">def</span> __init__(self):
+        <span class="b">super</span>().__init__(<span class="s">'robot_node'</span>)
+
+        <span class="c"># 组 A：慢活，互斥——同一时刻只允许一个在跑</span>
+        self.group_slow = MutuallyExclusiveCallbackGroup()
+
+        <span class="c"># 组 B：快活，可重入——多个可以同时跑</span>
+        self.group_fast = ReentrantCallbackGroup()
+
+        <span class="c"># 创建时把组传进去，这个回调就归到该组</span>
+        self.create_timer(5.0, self.slow_cb, callback_group=self.group_slow)
+        self.create_subscription(
+            Float32, <span class="s">'/cmd'</span>, self.fast_cb, 10,
+            callback_group=self.group_fast)      <span class="c"># ← 关键参数</span>
+
+    <span class="b">def</span> slow_cb(self):
+        time.sleep(3)               <span class="c"># 慢：即便多个触发，同组互斥也不会叠加</span>
+
+    <span class="b">def</span> fast_cb(self, msg):
+        <span class="b">print</span>(msg.data)            <span class="c"># 快：多条消息可并发处理</span>
+
+
+<span class="b">def</span> main():
+    rclpy.init()
+    node = RobotNode()
+
+    <span class="c"># 回调组必须配合多线程执行器才有多线程效果</span>
+    executor = MultiThreadedExecutor(num_threads=<span class="b">4</span>)
+    executor.add_node(node)
+    <span class="b">try</span>:
+        executor.spin()
+    <span class="b">except</span> KeyboardInterrupt:
+        <span class="b">pass</span>
+    <span class="b">finally</span>:
+        executor.shutdown()
+        node.destroy_node()
+        rclpy.shutdown()</pre>
+
+<table style="margin-top:10px">
+  <tr><th>回调组类型</th><th>同组内行为</th><th>典型用途</th></tr>
+  <tr><td><code>MutuallyExclusiveCallbackGroup</code></td><td><b>互斥</b>：同组同一时刻只跑一个，其余排队</td><td>操作共享硬件（如串口、GPIO）的回调，绝不能并发</td></tr>
+  <tr><td><code>ReentrantCallbackGroup</code></td><td><b>可重入</b>：同组可多个同时跑</td><td>纯计算、无共享状态的快回调</td></tr>
+  <tr><td>不传（默认）</td><td>归入节点的默认组，行为等同互斥</td><td>本课所有节点的写法</td></tr>
+</table>
+
+<div class="tip tealb" style="margin-top:10px">🔑 <b>三者的关系，一句话记住</b><br>
+<code>SingleThreadedExecutor</code> = 1 个窗口，所有活排队；<br>
+<code>MultiThreadedExecutor</code> = N 个窗口，但哪些活能同时办<b>由回调组决定</b>；<br>
+<b>回调组不换执行器就没用</b>——单线程下即便标了 <code>Reentrant</code>，也只有一个线程在跑。<b>先选执行器，再用回调组微调</b>。</div>
+
 <div class="tip amber"><span class="lab">⚠ 一条铁律：回调里别阻塞</span>
 单线程下只有一个回调在跑。如果 <code>timer_cb</code> 里写了 <code>sleep(5)</code> 或一个慢查询，<b>这 5 秒内所有别的回调都停在队列里动不了</b>，现象就是"节点卡住了"。<b>回调要短</b>；真要干重活，丢给独立线程或另一个节点。同理：服务回调里如果调用了还要等 spin 才能完成的东西（比如同步等待），会直接死锁——这就是 EXP-07 要讲的坑。</div>
 
@@ -914,10 +1090,9 @@ ROS2 把这两件事分开设计，是为了让你<b>按需选择</b>：传感�
   <div class="cs-hd"><span class="cs-no">1.2</span><b>进工作空间编译</b><span class="cs-where">终端 1</span></div>
   <p class="cs-why"><code>colcon build</code> 必须在工作空间<b>根目录</b>跑。这里一次编两个包——<code>ros_sensor</code> 是节点所在包，<code>ros_sensor_interfaces</code> 是它依赖的接口包（顺序由 colcon 自动排）。</p>
   <pre data-copy="cmd"><span class="b">cd</span> ~/ros2_ws
-<span class="g">colcon build</span> --symlink-install --packages-select ros_sensor ros_sensor_interfaces</pre>
+<span class="g">colcon build</span> --packages-select ros_sensor ros_sensor_interfaces</pre>
   <table>
     <tr><th>参数</th><th>含义</th></tr>
-    <tr><td><code>--symlink-install</code></td><td>软链接安装：改 Python 源码<b>不用重新编译</b>，直接生效——本实操第 3 步"改节点名"就靠它</td></tr>
     <tr><td><code>--packages-select A B</code></td><td>只编这两个包，工作空间里其它包一律不动，省时间</td></tr>
   </table>
   <p class="cs-see">✔ 结尾出现 <code>Summary: 2 packages finished</code></p>
@@ -991,12 +1166,15 @@ ROS2 把这两件事分开设计，是为了让你<b>按需选择</b>：传感�
 
 <div class="cmdstep">
   <div class="cs-hd"><span class="cs-no">3.3</span><b>动手改：换掉节点名</b><span class="cs-where">终端 2 + 3</span></div>
-  <p class="cs-why">把源码里 <code>'gas_sensor_node'</code> 改成 <code>'my_gas_node'</code>，验证"名字就是工牌"。因为有 <code>--symlink-install</code>，<b>通常不用重新编译</b>。</p>
-  <pre data-copy="cmd"><span class="c"># 终端 2：Ctrl+C 停掉，改完名字再跑</span>
+  <p class="cs-why">把源码里 <code>'gas_sensor_node'</code> 改成 <code>'my_gas_node'</code>，验证"名字就是工牌"。<b>改完源码必须重新编译一次</b>（默认安装方式是把文件复制到 install，不是软链接），再 source 才生效。</p>
+  <pre data-copy="cmd"><span class="c"># 终端 2：Ctrl+C 停掉节点，改完名字后重新编译 + source</span>
+<span class="b">cd</span> ~/ros2_ws
+<span class="g">colcon build</span> --packages-select ros_sensor
+<span class="b">source</span> install/setup.bash
 <span class="g">ros2</span> run ros_sensor gas_sensor_node
 <span class="c"># 终端 3：确认名字变了</span>
 <span class="g">ros2</span> node list        <span class="c"># → /my_gas_node</span></pre>
-  <p class="cs-see">✔ 名字跟着源码走。若没生效，补一次 <code>colcon build --packages-select ros_sensor</code> 再 source</p>
+  <p class="cs-see">✔ 名字跟着源码走。<b>没重新编译就看不到变化</b>——因为跑的是 install 里那份副本，不是 src 里的源码。</p>
 </div>
 
 <div class="cmdstep">

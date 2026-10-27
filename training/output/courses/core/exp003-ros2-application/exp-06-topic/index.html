@@ -286,7 +286,7 @@ code.inline{font-family:var(--font-mono);font-size:13px;color:var(--accent-blue)
 </div>
 <div class="tip tealb"><span class="lab">本课的重点与难点</span>
 <b>重点</b>：QoS 的"请求 ≤ 提供"兼容规则——这是"两头都起了、数据却不来"最常见的原因。<br>
-<b>难点</b>：把 MQ5 的电压读数经对数换算成 ppm（浓度单位，百万分之一）；以及理解"发布者根本不知道有几个订阅者"。</div>
+<b>难点</b>：把 MQ5 的电压读数经对数换算成 ppm（<b>parts per million，百万分之一</b>，气体浓度单位）；以及理解"发布者根本不知道有几个订阅者"。</div>
 <div class="tip amber"><span class="lab">和前后的关系</span>
 本课的 <code>gas_sensor_node</code> 在 <b>EXP-05 已从"节点结构"角度拆过</b>；本课换到"话题"角度再看一遍，会发现同一份代码能讲出两层知识。</div>
 </section>
@@ -313,9 +313,17 @@ source install/setup.bash</pre>
 
       <div class="termbar"><span class="tl">终端 B</span><b>启动发布端</b><span class="note">（这个终端会被一直占住，别关）</span></div>
 
+      <div class="tip tealb" style="margin:14px 0 0">
+      📏 <b>先弄清一个单位：PPM（parts per million，百万分之一）</b><br>
+      等一下日志里会一直出现 <code>ppm=312.91</code> 这样的数，先说明它是什么：<b>PPM 是 "parts per million" 的缩写，字面意思就是"百万分之一"</b>，用来表示<b>极小的比例</b>。<br>
+      · 用在气体浓度上：<b>一百万份空气里，混了多少份目标气体</b>。312.91 ppm ≈ 每 100 万份空气里有约 313 份可燃气体。<br>
+      · 换算成百分比更直观：<b>312.91 ppm ≈ 0.031%</b>；本课默认报警阈值 500 ppm ≈ 0.05%——<b>浓度都很低，靠鼻子闻不出来，所以必须靠传感器</b>。<br>
+      · 记住两个量级参照：<b>1000 ppm = 0.1%</b>；<b>10000 ppm = 1%</b>。看到 4 位数的 ppm 就说明已经是"百分之几"了。<br>
+      · 为什么不用百分比：可燃气体在爆炸下限之前往往只有几百到几千 ppm，写成 0.03% 既不方便比大小，也不方便设阈值，所以行业统一用 ppm。</div>
+
       <div class="cmdstep">
         <div class="cs-hd"><span class="cs-no">2</span><b>运行 MQ5 采集节点</b><span class="cs-where">终端 B</span></div>
-        <p class="cs-why">这就是数据的源头：它每秒读一次 ADC，换算成 ppm（气体浓度单位，百万分之一），然后把数值"喊"到 <code>/gas_sensor</code> 这个话题上。</p>
+        <p class="cs-why">这就是数据的源头：它每秒读一次 ADC，<b>把电压换算成 ppm 浓度</b>（换算公式在第 4 节讲），然后把数值"喊"到 <code>/gas_sensor</code> 这个话题上。</p>
         <pre data-copy="cmd"><span class="c"># 新终端必做：进目录 + 加载本工作空间（不然找不到 ros_sensor）</span>
 cd ~/ros2_ws
 source install/setup.bash
@@ -836,8 +844,7 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=<span class="b">1
       <p>下面按数据流动的顺序看三段代码。每段只抓关键几行——其余的 import、初始化、日志格式，你打开源码一眼就懂，这里不占篇幅。</p>
 
       <h4 style="font-size:15.5px;color:var(--theme-deep);margin:24px 0 0">① common.py —— ppm 是算出来的，不是读出来的</h4>
-      <p>先把 <code class="inline">ppm</code> 说清楚：<b>parts per million 的缩写，字面意思就是"百万分之一"</b>，用在气体浓度上，指一百万份空气里混了多少份目标气体。日志里的 312.91 ppm 换成百分比约等于 0.031%，报警阈值 500 ppm 也才 0.05%，都属于很低的浓度，靠闻是闻不出来的。</p>
-      <p>MQ5 是半导体气敏元件：接触可燃气体时内阻下降。电路通过分压把这个电阻变化变成电压，但"电压"和"浓度"<b>不是线性关系</b>——它的灵敏特性曲线只有在双对数坐标下才近似直线，所以必须在对数域里插值反推。</p>
+      <p><b>ppm 是什么</b>在 01 节已经说过（parts per million，百万分之一）。这一节补的关键点是：<b>它不是传感器直接读出来的数字</b>。MQ5 是半导体气敏元件，接触可燃气体时内阻下降；电路通过分压把这个电阻变化变成电压。而"电压"和"浓度"<b>不是线性关系</b>——它的灵敏特性曲线只有在双对数坐标下才近似直线，所以必须在对数域里插值，才能把电压反推成 ppm。</p>
       <div class="flow">
         <div class="step"><div class="t">① ADC 原始值</div><div class="d">raw × scale ÷ 1000</div></div>
         <div class="ar">→</div>
