@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图 17-2 · Launch 工程全景</title>
+<style>
+:root{--bg-page:#ffffff;--bg-card:#ffffff;--text:#0f172a;--text2:#475569;--muted:#94a3b8;
+  --border:#e2e8f0;--teal:#0891b2;--green:#059669;--purple:#7c3aed;--orange:#ea580c;--red:#e11d48;--gray:#64748b;
+  --teal-bg:rgba(8,145,178,.08);--green-bg:rgba(5,150,105,.08);--purple-bg:rgba(124,58,237,.08);
+  --orange-bg:rgba(234,88,12,.10);--gray-bg:rgba(100,116,139,.08)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-page);color:var(--text);font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif;padding:16px 14px 12px}
+.hd{margin-bottom:6px}
+.hd h1{font-size:15px;margin:0 0 4px}
+.hd .q{font-size:12px;color:var(--text2);margin:0}
+svg{width:100%;height:auto;display:block}
+.t{font:600 12.5px system-ui,sans-serif;fill:var(--text)}
+.s{font:400 10.5px system-ui,sans-serif;fill:var(--text2)}
+.l{font:600 10.5px ui-monospace,Consolas,monospace;fill:var(--text2)}
+.dock{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.dock span{font-size:11.5px;border-radius:999px;padding:3px 10px;line-height:1.6}
+.ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.warn{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.evid{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.ft{font-size:10.5px;color:var(--muted);margin-top:8px;text-align:right}
+</style>
+</head>
+<body>
+<div class="hd">
+  <h1>图 17-2 · 实验工程全景：从源码到一键拉起</h1>
+  <p class="q">本图回答的问题：launch 文件放在哪、build 装到哪、ros2 launch 怎么找到它？漏一步会报什么错？</p>
+</div>
+<svg viewBox="0 0 760 460" role="img" aria-label="Launch 工程全景图">
+  <!-- 层1 源码 -->
+  <text class="l" x="14" y="22" fill="var(--purple)">① 源码层 ~/launch_demo_pkg/</text>
+  <rect x="34" y="34" width="692" height="104" rx="9" fill="var(--purple-bg)" stroke="var(--purple)" stroke-width="1.5"/>
+  <rect x="52" y="52" width="210" height="70" rx="7" fill="#fff" stroke="var(--border)"/>
+  <text class="t" x="157" y="76" text-anchor="middle">package.xml</text>
+  <text class="s" x="157" y="96" text-anchor="middle">build_type + exec_depend</text>
+  <text class="s" x="157" y="114" text-anchor="middle" fill="var(--gray)">ros2launch · demo_nodes_cpp</text>
+
+  <rect x="278" y="52" width="210" height="70" rx="7" fill="#fff" stroke="var(--border)"/>
+  <text class="t" x="383" y="76" text-anchor="middle">CMakeLists.txt</text>
+  <text class="l" x="383" y="98" text-anchor="middle" fill="var(--purple)" font-size="9.5">install(DIRECTORY launch</text>
+  <text class="l" x="383" y="114" text-anchor="middle" fill="var(--purple)" font-size="9.5">DESTINATION share/${...})</text>
+
+  <rect x="504" y="52" width="206" height="70" rx="7" fill="#fff" stroke="var(--border)"/>
+  <text class="t" x="607" y="76" text-anchor="middle">launch/*.launch.py</text>
+  <text class="s" x="607" y="96" text-anchor="middle">basic · remap · param</text>
+  <text class="s" x="607" y="114" text-anchor="middle">conditional · event · integrated</text>
+
+  <!-- 层2 构建 -->
+  <line x1="383" y1="138" x2="383" y2="176" stroke="var(--purple)" stroke-width="1.8" marker-end="url(#ap)"/>
+  <text class="l" x="394" y="164" fill="var(--purple)">colcon build</text>
+
+  <rect x="150" y="180" width="466" height="64" rx="9" fill="#fff"/>
+  <rect x="150" y="180" width="466" height="64" rx="9" fill="var(--gray-bg)" stroke="var(--gray)" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text class="t" x="383" y="206" text-anchor="middle">install/launch_demo_pkg/share/launch_demo_pkg/launch/</text>
+  <text class="s" x="383" y="228" text-anchor="middle">launch 文件的"注册地址"——没有 install 规则就到不了这里</text>
+
+  <line x1="383" y1="244" x2="383" y2="282" stroke="var(--green)" stroke-width="1.8" marker-end="url(#ag2)"/>
+  <text class="l" x="394" y="270" fill="var(--green)">source install/setup.bash</text>
+
+  <!-- 层3 运行 -->
+  <text class="l" x="14" y="306" fill="var(--green)">② 运行层</text>
+  <rect x="34" y="316" width="330" height="112" rx="9" fill="#fff"/>
+  <rect x="34" y="316" width="330" height="112" rx="9" fill="var(--green-bg)" stroke="var(--green)" stroke-width="1.8"/>
+  <text class="t" x="199" y="344" text-anchor="middle">ros2 launch pkg file.py [key:=value]</text>
+  <g class="s">
+    <text x="52" y="372">按包名 → share 目录解析文件</text>
+    <text x="52" y="396">参数 key:=value 覆盖 Declare 默认值</text>
+    <text x="52" y="420">Ctrl+C → 级联 SIGINT 全停（见图 17-1）</text>
+  </g>
+
+  <line x1="364" y1="356" x2="440" y2="356" stroke="var(--orange)" stroke-width="1.8" marker-end="url(#ao)"/>
+  <text class="l" x="370" y="346" fill="var(--orange)">拉起进程组</text>
+
+  <rect x="444" y="316" width="282" height="112" rx="9" fill="#fff"/>
+  <rect x="444" y="316" width="282" height="112" rx="9" fill="var(--teal-bg)" stroke="var(--teal)" stroke-width="1.8"/>
+  <text class="t" x="585" y="344" text-anchor="middle">同终端多前缀日志</text>
+  <text class="s" x="462" y="372">[talker_param-1] Publishing…</text>
+  <text class="s" x="462" y="396">[listener_core-2] I heard…</text>
+  <text class="s" x="462" y="420">[listener_debug-3] ← 条件命中才有</text>
+
+  <!-- 失败红框 -->
+  <rect x="150" y="138" width="466" height="34" rx="6" fill="var(--red)" fill-opacity=".07" stroke="var(--red)" stroke-width="1.3"/>
+  <text class="s" x="383" y="160" text-anchor="middle" fill="var(--red)" font-weight="600">⚠ 漏 install 规则 / 漏 source / 忘 build → "No launch file found" 三连排查</text>
+
+  <defs>
+    <marker id="ap" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--purple)"/></marker>
+    <marker id="ag2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--green)"/></marker>
+    <marker id="ao" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="var(--orange)"/></marker>
+  </defs>
+</svg>
+<div class="dock">
+  <span class="ok">✅ launch/ 源码 → build → share 注册 → ros2 launch 定位</span>
+  <span class="warn">⚠️ 三件套漏任何一件：No launch file found</span>
+  <span class="evid">🔍 04 节第 0 步：grep install + ls share 双验证</span>
+</div>
+<div class="ft">EXP-17 · Launch 启动系统</div>
+</body>
+</html>

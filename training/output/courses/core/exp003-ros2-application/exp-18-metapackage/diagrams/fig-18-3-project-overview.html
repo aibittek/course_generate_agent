@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图 18-3 · 本实验的工程全景</title>
+<style>
+:root{--bg-page:#ffffff;--text:#0f172a;--text2:#475569;--muted:#94a3b8;--border:#e2e8f0;
+  --teal:#0891b2;--green:#059669;--purple:#7c3aed;--orange:#ea580c;--red:#e11d48;--gray:#64748b;
+  --teal-bg:rgba(8,145,178,.08);--green-bg:rgba(5,150,105,.08);--purple-bg:rgba(124,58,237,.08);
+  --orange-bg:rgba(234,88,12,.10);--red-bg:rgba(225,29,72,.08);--gray-bg:rgba(100,116,139,.08)}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--text);font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif;padding:16px 14px 12px}
+.hd h1{font-size:15px;margin:0 0 4px}
+.hd .q{font-size:12px;color:var(--text2);margin:0}
+svg{width:100%;height:auto;display:block}
+.t{font:600 12.5px system-ui,sans-serif;fill:var(--text)}
+.s{font:400 10.5px system-ui,sans-serif;fill:var(--text2)}
+.l{font:600 10.5px ui-monospace,Consolas,monospace;fill:var(--text2)}
+.bnd{font:700 11px system-ui,sans-serif;fill:var(--green)}
+.dock{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.dock span{font-size:11.5px;border-radius:999px;padding:3px 10px;line-height:1.6}
+.ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.warn{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.evid{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.ft{font-size:10.5px;color:var(--muted);margin-top:8px;text-align:right}
+</style>
+</head>
+<body>
+<div class="hd">
+  <h1>图 18-3 · 工程全景：两个文件、一条构建、两处验证</h1>
+  <p class="q">本图回答的问题：本实验到底改了哪些文件，命令在哪个环节介入，输出从哪来？</p>
+</div>
+<svg viewBox="0 0 800 450" role="img" aria-label="工程全景框架图">
+  <defs>
+    <marker id="c-p" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#7c3aed"/></marker>
+    <marker id="c-g" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#059669"/></marker>
+    <marker id="c-t" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#0891b2"/></marker>
+    <marker id="c-o" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#ea580c"/></marker>
+    <marker id="c-r" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#e11d48"/></marker>
+    <marker id="c-gy" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#64748b"/></marker>
+  </defs>
+
+  <!-- 外部：系统已装子包 -->
+  <rect x="40" y="30" width="220" height="52" rx="6" fill="#fff"/>
+  <rect x="40" y="30" width="220" height="52" rx="6" fill="var(--gray-bg)" stroke="var(--gray)" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text class="t" x="150" y="54" text-anchor="middle">/opt/ros/humble 已装子包</text>
+  <text class="s" x="150" y="73" text-anchor="middle">外部系统 · 被 exec_depend 引用</text>
+
+  <!-- 包边界 -->
+  <rect x="36" y="112" width="480" height="310" rx="12" fill="none" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="8,4"/>
+  <text class="bnd" x="48" y="132">包 · my_robot_meta（元功能包）</text>
+
+  <!-- package.xml -->
+  <rect x="70" y="148" width="200" height="60" rx="6" fill="#fff"/>
+  <rect x="70" y="148" width="200" height="60" rx="6" fill="var(--purple-bg)" stroke="var(--purple)" stroke-width="1.5"/>
+  <text class="t" x="170" y="172" text-anchor="middle">package.xml</text>
+  <text class="s" x="170" y="191" text-anchor="middle">仅 exec_depend + export</text>
+
+  <!-- CMakeLists -->
+  <rect x="300" y="148" width="196" height="60" rx="6" fill="#fff"/>
+  <rect x="300" y="148" width="196" height="60" rx="6" fill="var(--purple-bg)" stroke="var(--purple)" stroke-width="1.5"/>
+  <text class="t" x="398" y="172" text-anchor="middle">CMakeLists.txt</text>
+  <text class="s" x="398" y="191" text-anchor="middle">四行 · 只有 ament_package()</text>
+
+  <!-- colcon build -->
+  <rect x="180" y="256" width="220" height="58" rx="6" fill="#fff"/>
+  <rect x="180" y="256" width="220" height="58" rx="6" fill="var(--green-bg)" stroke="var(--green)" stroke-width="1.5"/>
+  <text class="t" x="290" y="280" text-anchor="middle">colcon build</text>
+  <text class="s" x="290" y="299" text-anchor="middle">--packages-select · 秒级注册</text>
+
+  <!-- install 索引 -->
+  <rect x="180" y="354" width="220" height="54" rx="6" fill="#fff"/>
+  <rect x="180" y="354" width="220" height="54" rx="6" fill="var(--purple-bg)" stroke="var(--purple)" stroke-width="1.5"/>
+  <text class="t" x="290" y="376" text-anchor="middle">install/ 包索引</text>
+  <text class="s" x="290" y="395" text-anchor="middle">聚合关系注册完成</text>
+
+  <!-- 内部连线 -->
+  <line x1="170" y1="208" x2="240" y2="254" stroke="var(--purple)" stroke-width="1.5" marker-end="url(#c-p)"/>
+  <text class="l" x="176" y="240">清单</text>
+  <line x1="398" y1="208" x2="330" y2="254" stroke="var(--purple)" stroke-width="1.5" marker-end="url(#c-p)"/>
+  <text class="l" x="340" y="240">构建定义</text>
+  <line x1="290" y1="314" x2="290" y2="352" stroke="var(--green)" stroke-width="1.5" marker-end="url(#c-g)"/>
+  <text class="l" x="300" y="336">写入索引</text>
+
+  <!-- 外部引用 -->
+  <line x1="150" y1="82" x2="150" y2="146" stroke="var(--gray)" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#c-gy)"/>
+  <text class="l" x="160" y="118">exec_depend 指向</text>
+
+  <!-- 终端验证 -->
+  <rect x="560" y="112" width="216" height="120" rx="6" fill="#fff"/>
+  <rect x="560" y="112" width="216" height="120" rx="6" fill="var(--teal-bg)" stroke="var(--teal)" stroke-width="1.5"/>
+  <text class="t" x="668" y="138" text-anchor="middle">终端 · 查询命令</text>
+  <text class="s" x="668" y="162" text-anchor="middle">ros2 pkg xml my_robot_meta</text>
+  <text class="s" x="668" y="184" text-anchor="middle">ros2 pkg list | grep nav2</text>
+  <text class="s" x="668" y="206" text-anchor="middle">ros2 pkg xml navigation2</text>
+  <text class="s" x="668" y="224" text-anchor="middle">读取包索引</text>
+  <line x1="400" y1="381" x2="558" y2="216" stroke="var(--teal)" stroke-width="1.5" marker-end="url(#c-t)"/>
+  <text class="l" x="470" y="300">source 后可查</text>
+
+  <!-- 输出 -->
+  <rect x="560" y="266" width="216" height="72" rx="6" fill="#fff"/>
+  <rect x="560" y="266" width="216" height="72" rx="6" fill="var(--orange-bg)" stroke="var(--orange)" stroke-width="1.5"/>
+  <text class="t" x="668" y="292" text-anchor="middle">exec_depend 列表输出</text>
+  <text class="s" x="668" y="313" text-anchor="middle">nav2_amcl / planner / ...</text>
+  <text class="s" x="668" y="330" text-anchor="middle">现象段的证据来源</text>
+  <line x1="668" y1="232" x2="668" y2="264" stroke="var(--orange)" stroke-width="1.5" marker-end="url(#c-o)"/>
+  <text class="l" x="678" y="252">打印</text>
+
+  <rect x="560" y="374" width="216" height="46" rx="6" fill="#fff"/>
+  <rect x="560" y="374" width="216" height="46" rx="6" fill="var(--red-bg)" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text class="t" x="668" y="396" text-anchor="middle" fill="var(--red)">未 source → 找不到包</text>
+  <text class="s" x="668" y="413" text-anchor="middle">ros2 pkg 无输出 / 包名不存在</text>
+  <line x1="668" y1="338" x2="668" y2="372" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#c-r)"/>
+  <text class="l" x="678" y="360" fill="var(--red)">忘了 source</text>
+</svg>
+<div class="dock">
+  <span class="ok">✅ 结论：只有两个文件要写，构建只注册关系，验证靠 pkg xml</span>
+  <span class="warn">⚠️ 风险：改完依赖不重新 build + source，索引里读不到</span>
+  <span class="evid">🔍 验证：02 节现象 ① ② 与 04 节 step ⑤ 的实测输出</span>
+</div>
+<div class="ft">EXP-18 · 元功能包与依赖聚合</div>
+</body>
+</html>

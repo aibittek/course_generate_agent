@@ -2109,24 +2109,47 @@
      框，普通用户无从下手）：改为 路径 + 分步操作 + 成功判据 +
      重试检测，完成一次后全程自动。
      ========================================================== */
-  function guideDir() {
-    // workspace.html 与助手脚本同在 device/ 目录；file: 下可推导出真实路径
-    if (location.protocol !== 'file:') return '';
-    var p = decodeURIComponent(location.pathname || '').replace(/\/[^/]*$/, '');
-    if (/^\/[A-Za-z]:/.test(p)) p = p.slice(1);            // file:///E:/… → /E:/…
-    if (OS.plat === 'win') p = p.replace(/\//g, '\\');     // → E:\…\device
-    return p;
-  }
+    function localWorkspaceUrl() {
+        return bridgeBase() + '/workspace.html';
+    }
+    /* Android（Termux）检测：平台判定目前只认 win/mac/linux，Android UA/Linux(Termux)
+       会被误判为 linux 桌面，引导会给出 xdg-mime/系统注册等在 Termux 里无效的步骤。 */
+    function isTermux() {
+        return /\bAndroid\b/i.test(navigator.userAgent || '') ||
+            /\bcom\.termux\b/i.test(navigator.userAgent || '');
+    }
+    /* 桥接服务是否同源托管当前页面（页面以 http://<host>:<helper端口> 打开时即在线） */
+    function sameOriginHelperUp() {
+        if (location.protocol !== 'http:') return false;
+        var hp = parseInt(location.port || '80', 10);
+        if (!hp) hp = 80;
+        if (hp !== helperPort()) return false;
+        return fetch('http://' + location.host + '/api/ping', { cache: 'no-store' })
+            .then(function (r) { return r.json(); })
+            .then(function (j) { return !!(j && j.service === 'eai-device-bridge'); })
+            .catch(function () { return false; });
+    }
+    function guideDir() {
+        // workspace.html 与助手脚本同在 device/ 目录；file: 下可推导出真实路径
+        if (location.protocol !== 'file:') return '';
+        var p = decodeURIComponent(location.pathname || '').replace(/\/[^/]*$/, '');
+        if (/^\/[A-Za-z]:/.test(p)) p = p.slice(1);            // file:///E:/… → /E:/…
+        if (OS.plat === 'win') p = p.replace(/\//g, '\\');     // → E:\…\device
+        return p;
+    }
 
-  /* 远程站点（https，且不是 127.0.0.1）无法直连本机助手：
-     助手只有明文 ws://（没有 TLS 证书，wss:// 握手失败），ws:// 又会被
-     浏览器按混合内容拦截。所以远程页只能：下载助手包 → 启动 → 切到
-     助手自托管的 http://127.0.0.1:端口/workspace.html。 */
-  function isRemotePage() {
-    if (location.protocol === 'file:') return false;
-    var h = location.hostname;
-    return !(h === '127.0.0.1' || h === 'localhost' || h === '::1' || h === '[::1]' || h === '');
-  }
+    /* 远程站点（https，且不是 127.0.0.1）无法直连本机助手：
+       助手只有明文 ws://（没有 TLS 证书，wss:// 握手失败），ws:// 又会被
+       浏览器按混合内容拦截。所以远程页只能：下载助手包 → 启动 → 切到
+       助手自托管的 http://127.0.0.1:端口/workspace.html。 */
+    function isRemotePage() {
+        if (location.protocol === 'file:') return false;
+        // 本机调试用 http://127.0.0.1:* 页面不算远程（与 entryflow 的回环判定保持一致）
+        var host = location.hostname;
+        if (host === '127.0.0.1' || host === 'localhost' || host === '::1' || host === '[::1]') return false;
+        if (location.protocol !== 'https:') return false;
+        return !!(host && host !== '');
+    }
   function helperZipUrl() { return 'eai-helper.zip'; }
   function localWorkspaceUrl() {
     return bridgeBase() + '/workspace.html';

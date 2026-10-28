@@ -22,6 +22,36 @@ h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
   border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
 h3.sub:first-of-type{margin-top:18px}
 @media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
+
+/* 终端步骤卡 */
+.termbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 10px}
+.termbar .tl{background:#0f172a;color:#fff;border-radius:999px;padding:3px 13px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em}
+.termbar b{font-size:14.5px;color:var(--text-primary)}
+.termbar .note{font-size:12.5px;color:var(--text-muted)}
+.cmdstep{background:var(--bg-soft);border:1px solid var(--border);border-left:3px solid var(--theme);border-radius:12px;padding:13px 17px;margin:11px 0}
+.cmdstep .cs-hd{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.cmdstep .cs-no{font-family:var(--font-mono);font-size:12px;font-weight:700;background:var(--theme);color:#fff;border-radius:999px;min-width:22px;height:22px;text-align:center;line-height:22px;padding:0 5px;flex:none}
+.cmdstep .cs-hd b{font-size:14.5px;color:var(--text-primary)}
+.cmdstep .cs-where{margin-left:auto;font-family:var(--font-mono);font-size:11px;background:var(--theme-bg);color:var(--theme-deep);border:1px solid var(--theme-bd);border-radius:999px;padding:3px 11px;white-space:nowrap}
+.cmdstep .cs-why{font-size:13.5px;color:#475569;margin:7px 0 0;line-height:1.8}
+.cmdstep pre{margin:9px 0 0;font-size:13px;padding:13px 16px}
+.cmdstep .cs-see{font-size:12.5px;color:var(--theme-deep);margin:8px 0 0;line-height:1.75}
+
+/* ===== 图解块：编号标题 + 本图回答的问题 + iframe 图页 + 三徽标 ===== */
+.srcline{font-size:12.5px;color:var(--text-muted);margin:10px 0 0}
+.figq{font-size:12.5px;color:var(--text-secondary);margin:16px 0 6px;font-weight:600}
+.figq b{color:var(--theme-deep);font-weight:700}
+.dwrap{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:8px 0 4px;background:#fff}
+.dwrap iframe{display:block;width:100%;height:560px;border:0}
+@media(max-width:720px){.dwrap iframe{height:660px}}
+.dock{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:2px 10px 10px}
+.dock span{font-size:12px;border-radius:999px;padding:3px 11px;line-height:1.65}
+.dock .ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.dock .warn{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.dock .evid{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.qrow{font-size:12.5px;color:var(--text-muted);margin:14px 0 4px;font-weight:600}
+.tip details{margin:7px 0 11px;font-size:12.5px;line-height:1.8}
+.tip details summary{cursor:pointer;color:#5b21b6;font-weight:600}
 </style>
 </head>
 <body>
@@ -32,12 +62,13 @@ h3.sub:first-of-type{margin-top:18px}
 <div class="wrap">
 <aside class="side">
   <h4>本页目录</h4>
-    <a href="#goal" class="now">★ 课程目标</a>
-  <a href="#s1" class="now">01 问题引入：只会来一次的现场故障</a>
-  <a href="#s2">02 原理讲解</a>
-  <a href="#s3">03 实验步骤</a>
-  <a href="#s4">04 注意事项与验收</a>
-  <a href="#s5">05 本课总结</a>
+  <a href="#goal" class="now">★ 课程目标</a>
+  <a href="#s1">01 问题引入：只会来一次的现场故障</a>
+  <a href="#s2">02 先看现象：录一次，历史就留住了</a>
+  <a href="#s3">03 原理讲解</a>
+  <a href="#s4">04 实验步骤</a>
+  <a href="#s5">05 注意事项与验收</a>
+  <a href="#s6">06 本课总结与验证题</a>
   
   <h4>CH4 · 工具链</h4>
   <a href="../exp-14-rqt/index.html">EXP-14 rqt 工具箱</a>
@@ -85,7 +116,8 @@ h3.sub:first-of-type{margin-top:18px}
   </div>
   <div class="tip tealb">
     <span class="lab">本实验的示例数据源：talker / listener</span>
-    与实验指导书一致，本课全程用 ROS2 官方演示包 <code>demo_nodes_cpp</code> 的 <b>talker（发布 <code>/chatter</code>）</b> 与 <b>listener（订阅 <code>/chatter</code>）</b> 作为"现场"与"回放验证端"。理由很实际：<b>不依赖任何硬件就能完整走通录→查→放全流程</b>，talker 标称 <b>1Hz</b> 的稳定节奏让"频率是否对得上"一眼可判（实测约 1.03Hz，因调度抖动略有浮动，属正常）。等你理解了机制，再把数据源换成 B2 实验箱的 <code>/scan</code>、<code>/odom</code>、相机话题即可——命令完全一样。
+    本课全程用 ROS2 官方演示包 <code>demo_nodes_cpp</code> 的 <b>talker（发布 <code>/chatter</code>）</b> 与 <b>listener（订阅 <code>/chatter</code>）</b> 作为"现场"与"回放验证端"：<b>不依赖任何硬件就能走通录→查→放全流程</b>，talker 标称 <b>1Hz</b> 让"频率对不对得上"一眼可判（实测约 1.03Hz，属正常抖动）。<br>
+    理解机制后，再把数据源换成 B2 实验箱的 <code>/scan</code>、<code>/odom</code>、相机话题——命令完全一样。
     <br><code># 两个终端各起一个，保持运行</code><br>
     <code>ros2 run demo_nodes_cpp talker</code> &nbsp;·&nbsp; <code>ros2 run demo_nodes_cpp listener</code>
   </div>
@@ -97,8 +129,27 @@ h3.sub:first-of-type{margin-top:18px}
 </section>
 
 <section class="blk" id="s2">
-<h2><span class="no">02</span>原理讲解</h2>
+  <h2><span class="no">02</span>先看现象：录一次，历史就留住了</h2>
+  <div class="tip tealb"><span class="lab">2 分钟 0→1</span>先不讲原理——把 talker / listener 起起来、录一段、再回放，你会亲眼看到"已经流走的历史"按原节奏重新发布，订阅端毫无察觉。</div>
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>造现场</b><p>两个终端分别跑 <code>ros2 run demo_nodes_cpp talker</code> 和 <code>listener</code>，确认 listener 每秒打印一条</p></div>
+    <div class="step"><div class="n">2</div><b>开录</b><p>第三个终端 <code>ros2 bag record -a -o exp16_full</code>，保持运行 15 秒（Ctrl+C 停止）</p></div>
+    <div class="step"><div class="n">3</div><b>体检</b><p><code>ros2 bag info exp16_full</code> → Duration 约 13.5s，/chatter Count 约 14 条</p></div>
+    <div class="step"><div class="n">4</div><b>断源</b><p>Ctrl+C 停掉 talker——现场彻底静默，listener 不再收到任何东西</p></div>
+    <div class="step"><div class="n">5</div><b>复活</b><p><code>ros2 bag play exp16_full</code> → listener 又开始逐条打印，节奏与录制时一致</p></div>
+    <div class="step"><div class="n">6</div><b>变速</b><p><code>ros2 bag play exp16_full -r 2.0</code> → 打印速度翻倍，验证时序被完整记录</p></div>
+  </div>
+  <div class="tip tealb"><span class="lab">此刻你已经验证的两件事</span>
+① <b>持久化</b>：消息以 CDR 字节写进 .db3，断源后依然存在（info 能数出条数与时间跨度）；<br>
+② <b>原时序重建</b>：play 按时间戳重新发布，-r 改变的是发布节奏而非数据内容——这两点就是后面 03 原理的全部出发点。</div>
+</section>
+
+<section class="blk" id="s3">
+<h2><span class="no">03</span>原理讲解</h2>
 <h3 class="sub">一个 .db3 文件里到底有什么</h3>
+  <div class="figq"><b>图 16-1 · bag 存储结构：清单与本体分工</b>——为什么删掉 metadata.yaml 这个包就"失忆"，而查总数必须对着目录而不是单个 .db3？</div>
+  <div class="dwrap"><iframe src="diagrams/fig-16-1-bag-structure.html" title="图 16-1 bag 存储结构" loading="lazy"></iframe></div>
+  <div class="dock"><span class="ok">✅ metadata.yaml 管"找得到"、.db3 管"内容在"</span><span class="warn">⚠️ 单查一个 _0.db3 漏分片</span><span class="evid">🔍 04 节 1.6 cat yaml + info 心算 1.03Hz</span></div>
   <div class="kgrid">
     <div class="kcard"><div class="kd">存储结构</div><div class="kt">SQLite3 双表 + 元数据</div><p>一个 bag = 目录：<code>*.db3</code> 数据库 + <code>metadata.yaml</code> 清单。库里两张表——<b>topics</b>（话题ID→名称/类型/QoS）与 <b>messages</b>（时间戳+话题ID+CDR 字节流）。YAML 记录时长/条数/相对路径，删除它 bag 就"失忆"。</p></div>
     <div class="kcard"><div class="kd">为什么选 SQLite</div><div class="kt">四条硬理由</div><p>① 自带索引→任意时间点随机访问；② 事务机制→写到一半断电最多损坏最后一笔；③ SQL 直接聚合分析（频率=Count/Duration）；④ 单文件好搬运好上传。</p></div>
@@ -122,51 +173,9 @@ h3.sub:first-of-type{margin-top:18px}
     <div class="w3"><div class="wt">🛠 怎么用</div><p>平时不用直接开库——<code>ros2 bag info</code> 读 metadata 就够了；要自己算统计时用 <code>python3 -c "import sqlite3; ..."</code>（<b>本机没有 sqlite3 命令行</b>）。</p></div>
   </div>
 <h3 class="sub">录包保真、回放复活</h3>
-  <div class="anim-box">
-    <svg viewBox="0 0 760 340" width="100%">
-      <defs>
-        <marker id="a16" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#fdba74"/></marker>
-        <marker id="b16" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#7dd3fc"/></marker>
-      </defs>
-      <text x="380" y="24" text-anchor="middle" fill="#94a3b8" font-size="13">① 现场录制（写入）　→　② SQLite 时间序列　→　③ 工位回放（再生发布）</text>
-      <!-- 录制侧 -->
-      <rect x="30" y="66" width="180" height="60" rx="9" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
-      <text x="120" y="92" text-anchor="middle" fill="#dbeafe" font-size="13" font-weight="bold">/scan /imu /odom</text>
-      <text x="120" y="114" text-anchor="middle" fill="#93c5fd" font-size="11">话题实时数据流</text>
-      <line x1="214" y1="96" x2="256" y2="96" stroke="#fdba74" stroke-width="2" marker-end="url(#a16)"/>
-      <rect x="260" y="60" width="150" height="72" rx="9" fill="#431407" stroke="#fb923c" stroke-width="2"/>
-      <text x="335" y="88" text-anchor="middle" fill="#ffedd5" font-size="13" font-weight="bold">ros2 bag record</text>
-      <text x="335" y="112" text-anchor="middle" fill="#fed7aa" font-size="11">CDR 原样落盘 · 事务写</text>
-      <circle r="4" fill="#fdba74"><animateMotion path="M214,96 L256,96" dur="1.2s" repeatCount="indefinite"/></circle>
-      <!-- 文件 -->
-      <rect x="470" y="46" width="260" height="104" rx="9" fill="#1c1917" stroke="#a8a29e" stroke-width="2"/>
-      <text x="600" y="70" text-anchor="middle" fill="#e7e5e4" font-size="13" font-weight="bold">exp16_full/ （SQLite3 + YAML）</text>
-      <g font-size="11" fill="#fdba74" font-family="monospace">
-        <text x="488" y="94">t=10.002  /scan    [CDR]</text>
-        <text x="488" y="114">t=10.018  /odom    [CDR]</text>
-        <text x="488" y="134">t=10.035  /imu     [CDR] …</text>
-      </g>
-      <line x1="414" y1="96" x2="466" y2="96" stroke="#fdba74" stroke-width="2" marker-end="url(#a16)"/>
-      <circle r="4" fill="#fdba74"><animateMotion path="M414,96 L466,96" dur="1.2s" repeatCount="indefinite"/></circle>
-      <!-- 回放 -->
-      <rect x="470" y="196" width="120" height="60" rx="9" fill="#082f49" stroke="#38bdf8" stroke-width="2"/>
-      <text x="530" y="222" text-anchor="middle" fill="#dbeafe" font-size="13" font-weight="bold">ros2 bag play</text>
-      <text x="530" y="242" text-anchor="middle" fill="#93c5fd" font-size="10">按原时序再生 · -r 调速</text>
-      <rect x="612" y="196" width="118" height="60" rx="9" fill="#052e16" stroke="#4ade80" stroke-width="2"/>
-      <text x="671" y="222" text-anchor="middle" fill="#dcfce7" font-size="13" font-weight="bold">算法节点</text>
-      <text x="671" y="242" text-anchor="middle" fill="#86efac" font-size="10">分不清现场还是历史</text>
-      <line x1="594" y1="226" x2="608" y2="226" stroke="#7dd3fc" stroke-width="2" marker-end="url(#b16)"/>
-      <line x1="600" y1="154" x2="530" y2="192" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#b16)"/>
-      <text x="470" y="176" fill="#7dd3fc" font-size="11">读取索引，随机跳到任意时刻</text>
-      <!-- 时钟开关 -->
-      <rect x="40" y="200" width="380" height="94" rx="9" fill="#422006" stroke="#fbbf24" stroke-width="2"/>
-      <text x="230" y="226" text-anchor="middle" fill="#fde68a" font-size="13" font-weight="bold">时钟开关（配合 EXP-11 use_sim_time）</text>
-      <text x="56" y="252" fill="#fef3c7" font-size="11.5">play --clock → 以 ~40Hz 再生 /clock 消息 → 订阅节点感知"回到 10.0s"</text>
-      <text x="56" y="276" fill="#fca5a5" font-size="11.5">不开：节点 now=今天 · stamp=昨天 → TF LookupException 满屏</text>
-      <text x="380" y="326" text-anchor="middle" fill="#94a3b8" font-size="12">SQLite 索引 = 时间旅行的"跳转按钮"，CDR = 不掉帧的"原片"</text>
-    </svg>
-  </div>
-  <p class="anim-cap">动画：录制端把话题 CDR 字节连时间戳经事务写入 SQLite；回放端从索引读取、按原时序（或 -r 调速）再生发布，算法节点无法区分新旧。底部黄色提示 --clock 开关：它以约 40Hz 持续再生 /clock（不是 1Hz），让历史时间跟随回放流逝，是 TF/定时器正常工作的前提。</p>
+  <div class="figq"><b>图 16-2 · 录放管线与 --clock 时钟双开关</b>——从现场消息到 listener 复活经过哪几步？--clock 与 use_sim_time 在管线的哪一段起作用？</div>
+  <div class="dwrap"><iframe src="diagrams/fig-16-2-record-play-pipeline.html" title="图 16-2 录放管线" loading="lazy"></iframe></div>
+  <div class="dock"><span class="ok">✅ record 原片落盘 · play 按索引再生，节点分不清新旧</span><span class="warn">⚠️ kill -9 违规停录 · 双开关漏一个即时间错位</span><span class="evid">🔍 04 节 3 回放复活 + 4 Time 面板验钟</span></div>
 <h3 class="sub">record 与 play 的参数族</h3>
   <div class="kgrid">
     <div class="kcard"><div class="kd">record · 范围</div><div class="kt">-a 全量 vs 点名</div><p><code>-a</code> 录所有（含系统话题，磁盘杀手）；<code>ros2 bag record /t1 /t2</code> 点名录——生产标准永远是点名 + <code>-e</code> 正则（如 <code>-e "scan|odom"</code>）圈最小证据集。</p></div>
@@ -192,8 +201,12 @@ h3.sub:first-of-type{margin-top:18px}
   </div>
 </section>
 
-<section class="blk" id="s3">
-<h2><span class="no">03</span>实验步骤</h2>
+<section class="blk" id="s4">
+<h2><span class="no">04</span>实验步骤</h2>
+<p class="srcline">通用结构：① 工程全景（谁在哪台终端做什么）→ ② 每步"为什么 + 命令 + 预期输出" → ③ 坑与对照。全部命令可直接照抄。</p>
+  <div class="figq"><b>图 16-3 · 实验工程全景：三个终端各管一段</b>——录→查→放全流程里每个终端扮演什么角色，回放前为什么要先断源？</div>
+  <div class="dwrap"><iframe src="diagrams/fig-16-3-project-overview.html" title="图 16-3 实验工程全景" loading="lazy"></iframe></div>
+  <div class="dock"><span class="ok">✅ A 造现场 · C 录放 · B 当观众，bag 目录是唯一交接物</span><span class="warn">⚠️ 不断源就回放 → 新旧消息混流</span><span class="evid">🔍 下文 1.4 录 → 2 体检 → 3 断源回放</span></div>
 <h3 class="sub">录放命令构建器</h3>
   <div class="ix-panel">
     <div class="ix-title">Bag Commander：选场景，生成带参数解释的完整命令</div>
@@ -386,24 +399,21 @@ I heard: [Hello World: <span class="ok">3</span>] ...
     <b>① 回放结束 listener 立刻停止输出</b>：预期行为——bag 播完 Publisher 就销毁了。要持续测就用 <code>--loop</code> 循环回放。<br>
     <b>② 回放时 listener 收不到</b>：先看 <code>ros2 topic list</code> 里 <code>/chatter</code> 出没出（play 会新建 Publisher）。出了但没反应，查 QoS——<code>ros2 bag play</code> 默认以记录时的 QoS 发布（本机实测 <code>RELIABLE + VOLATILE</code>）。</div>
   </div>
-  <div class="tip amber"><span class="lab">观察点</span>record 结束后<b>先 info 再走人</b>：Duration 为 0 或 Count 明显偏少的包是废包（录晚了/缓冲丢了）。一句 <code>ros2 bag info</code> 十秒钟，省掉的是明天重跑现场的一整天。</div>
+  <div class="tip amber"><span class="lab">观察点</span>record 结束后<b>先 info 再走人</b>：Duration 为 0 或 Count 明显偏少的包是废包（录晚了/缓冲丢了）。</div>
 <h3 class="sub">离线回放 + rviz2 联调数据流</h3>
-  <p>上节回放"能收到消息"，但只要下游节点用到 TF 或定时器，就必须让<b>时间一起回到过去</b>——这就是 --clock 与 use_sim_time 的双开关。</p>
+  <p>上节回放"能收到消息"，但只要下游节点用到 TF 或定时器，就必须让<b>时间一起回到过去</b>——双开关的原理主场在 <a href="#s3">03 原理讲解 · 图 16-2</a>，这里只做照抄操作与验证。</p>
+  <div class="figq"><b>图 16-4 · 离线联调数据流：带钟回放四小步</b>——play、/clock、rviz2、Time 面板怎么串起来，验钟为什么不能用 /chatter？</div>
+  <div class="dwrap"><iframe src="diagrams/fig-16-4-offline-debug-flow.html" title="图 16-4 离线联调数据流" loading="lazy"></iframe></div>
+  <div class="dock"><span class="ok">✅ 两开关都开，rviz 才进入"历史时空"</span><span class="warn">⚠️ 漏开关 TF LookupException · delay 须带 header</span><span class="evid">🔍 下文 4 的 Time 面板 + topic delay /scan</span></div>
   <div class="flow">
     <div class="step"><div class="n">1</div><b>带钟回放</b><p>ros2 bag play exp16_full --clock --loop：约 40Hz 再生 /clock，时间随回放推进</p></div>
     <div class="step"><div class="n">2</div><b>视图同步</b><p>rviz2 --ros-args -p use_sim_time:=true，视图进入"历史时空"</p></div>
     <div class="step"><div class="n">3</div><b>验证对时</b><p>Panels→Add New Panel→Time：显示与回放同步的时间（非系统时间）</p></div>
     <div class="step"><div class="n">4</div><b>加 Display</b><p>按 bag 内容加 LaserScan / TF / Path / Image 面板，复现原始场景</p></div>
   </div>
-  <p class="cs-see" style="margin:.2rem 0 .6rem">▲ 上述四小步是<b>第 6 步（离线联调）</b>内部的操作顺序 —— 与前面 1.1~1.6、第 2~5 步<b>同级并列</b>，不是新的编号起点。</p>
-  <div class="www">
-    <div class="w1"><div class="wt">🔎 是什么</div><p><b>双开关铁三角</b>：<code>play --clock</code> 持续再生 <code>/clock</code>（约 40Hz）＋ 节点 <code>use_sim_time:=true</code> ＋ rviz <code>use_sim_time:=true</code>。</p></div>
-    <div class="w2"><div class="wt">❓ 为什么</div><p>因为许多节点用 <code>get_clock().now()</code> 做数据融合、超时判定、TF 缓存。回放不发 <code>/clock</code> 时，节点 <code>now()</code> 返回真实"今天"，而消息 stamp 是录制那天——<b>差一天，算法判定"数据已过期"直接丢弃</b>。</p></div>
-    <div class="w3"><div class="wt">🛠 怎么用</div><p>终端 A <code>ros2 bag play exp16_full --clock --loop</code>；终端 B <code>rviz2 --ros-args -p use_sim_time:=true</code>；rviz 菜单 <b>Panels → Add New Panel → Time</b> 看时间是否随回放走。<b>验证时要用带 header 的话题</b>。</p></div>
-  </div>
-  <div class="termbar"><span class="tl">终端 A/B</span><b>第 6 步 · 离线回放 + rviz2 联调（带钟工作流）</b><span class="note">带钟回放 + 视图同步</span></div>
+  <div class="termbar"><span class="tl">终端 A/B</span><b>第 4 步 · 离线回放 + rviz2 联调（带钟工作流）</b><span class="note">带钟回放 + 视图同步</span></div>
   <div class="cmdstep">
-    <div class="cs-hd"><span class="cs-no">6</span><b>带钟回放（终端 A）+ rviz 认钟（终端 B）</b><span class="cs-where">两个终端</span></div>
+    <div class="cs-hd"><span class="cs-no">4</span><b>带钟回放（终端 A）+ rviz 认钟（终端 B）</b><span class="cs-where">两个终端</span></div>
     <pre data-copy="cmd"><span class="c"># 终端 A：回放数据并持续发布 /clock</span>
 <span class="g">ros2</span> bag play exp16_full <span class="y">--clock --loop</span>
 
@@ -434,9 +444,6 @@ I heard: [Hello World: <span class="ok">3</span>] ...
 <span class="err">[ERROR] [ros2topic]: msg does not have header</span>   <span class="c"># ← /chatter 无 header，防御检查必须换话题</span>
 <span class="dim">$ ros2 topic delay /scan</span>
 average delay: <span class="ok">0.01</span>                            <span class="c"># 正值且很小 = 时钟对齐良好</span></div>
-    <div class="tip tealb"><span class="lab">为什么 --clock 如此重要</span>
-    许多节点依赖 <code>get_clock().now()</code> 做数据融合、超时判定、TF 缓存。回放时不发 <code>/clock</code>，节点的 <code>now()</code> 返回真实"今天"，而消息 stamp 是录制那天——差一天，算法判定"数据已过期"直接丢弃。<code>--clock</code> + <code>use_sim_time:=true</code> 让节点的时间感知与回放同步，这是<b>离线分析能跑通的前提</b>。<br>
-    ⚠ <code>--clock</code> 的再生频率约 <b>40Hz</b>（不是 1Hz）——它是"心跳"而非"数据帧"，频率足够高才能让订阅方的 <code>now()</code> 平滑推进。</div>
     <div class="tip amber"><span class="lab">⚠ 验证时钟别用 /chatter——它没有 header</span>
     <code>ros2 topic delay</code> 依赖消息里的 <code>header.stamp</code> 与当前时钟对比。<code>std_msgs/msg/String</code>（<code>/chatter</code>）<b>没有 header 字段</b>，直接跑会报 <code>msg does not have header</code>。<br>
     <b>正确做法</b>：换用带 header 的传感器话题验证——<code>ros2 topic delay /scan</code>、<code>/odom</code>、<code>/imu</code>。<br>
@@ -455,8 +462,8 @@ average delay: <span class="ok">0.01</span>                            <span cla
   </table>
 </section>
 
-<section class="blk" id="s4">
-  <h2><span class="no">04</span>注意事项与验收</h2>
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>注意事项与验收</h2>
   <ul class="check">
     <li>验收 1：用 talker/listener 造现场，独立完成"录 → info → play"全流程，info 验证时长与频率</li>
     <li>验收 2：会算 Count/Duration 频率并对照标称值（/chatter 应≈1Hz）判断数据完整性；能解释为何 Duration ≈ 13.5s 而非 15s</li>
@@ -473,8 +480,8 @@ average delay: <span class="ok">0.01</span>                            <span cla
   <b>注意</b>：也正因为这条原理，验证时钟的 <code>ros2 topic delay</code> <b>只能对带 header 的话题用</b>——<code>/chatter</code>（std_msgs/msg/String）没有 header，会直接报 <code>msg does not have header</code>。</div>
 </section>
 
-<section class="blk" id="s5">
-  <h2><span class="no">05</span>本课总结</h2>
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>本课总结与验证题</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">结构</div><div class="kt">SQLite 双表 + YAML 清单</div><p>topics/messages 两表 + CDR 原始字节，索引支撑随机访问，事务保断电不损。QoS 存在 topics 表的 <code>offered_qos_profiles</code> 列。</p></div>
     <div class="kcard"><div class="kd">录制</div><div class="kt">点名 + 正则是生产标准</div><p>-a 磁盘秒爆（还混入 /rosout 等系统话题）；点名圈最小证据集，配双参数压缩、--max-bag-size 分片、--max-cache-size 缓冲。<b>停止一律用 Ctrl+C</b>（优雅写盘），<code>kill -9</code> 会丢缓存并损坏 SQLite。</p></div>
@@ -486,10 +493,29 @@ average delay: <span class="ok">0.01</span>                            <span cla
   <b>为什么</b>：现场故障只来一次，数据流过即消失。录下来才能把"去现场"变成"回工位"，把一次性调试变成可重复回归。<br>
   <b>怎么用</b>：<code>record</code>（点名 + timeout + 可选压缩）→ <code>info</code>（用真实 Duration 心算频率验完整性）→ <code>play</code>（-r / --topics / --start-offset / --clock）。<b>三条硬规则</b>：限时用 timeout 不用 -u；选话题用 --topics 不用 -t；压缩必须 mode + format 双参数。</p>
   </div>
+  <p class="qrow">✎ 验证题（改动型 · 做完对照得分点）——答案需动手执行后用自己的话归纳，参考答案点击展开。</p>
   <div class="tip violet">
-    <span class="lab">思考题</span>
-    <p>① 一条消息的"时间"有两个候选：bag 记录的本地接收时刻与消息内部 header.stamp。什么场景下两者会明显不同？给一套方案判断某条 bag 是"按哪个时间戳排序回放"的。</p>
-    <p>② 现场录了 15 个话题共 10 分钟的 bag，现在要在 3 版导航算法上做回归测试——从"录好的数据"到"每次改完自动跑一轮"，中间缺哪些环节？试设计一套不接硬件、可重复的标准化回归流程（提示：离线回放 + 自动判定 + 结果留存）。</p>
+    <span class="lab">验证题</span>
+    <p><b>Q1</b>（覆盖目标① 存储）把 <code>metadata.yaml</code> 移出 bag 目录另存，分别跑 <code>ros2 bag info exp16_full</code> 与 <code>ros2 bag play exp16_full</code>，记录现象；再把 yaml 放回，对比恢复情况。由此说清 yaml 与 .db3 各自承担什么。</p>
+    <details><summary>参考答案与得分点</summary>
+    移走后 <code>info</code> 报找不到/读不出（bag"失忆"，因 rosbag2 先读清单才能定位文件），<code>play</code> 同样无法回放；放回后 info/play 全部恢复（.db3 数据本体完好）。得分点：①现象对比如实（2 分）；②说清 yaml=清单/索引入口、db3=消息本体（4 分）；③结论"两者缺一不可"（2 分）。<br>
+    注意：<b>在副本上做</b>，实验后还原，不要在唯一拷贝上试删除。</details>
+
+    <p><b>Q2</b>（覆盖目标② 命令）同一段现场，分别用 ①<code>timeout 15 ros2 bag record -a -o bagA</code>、②<code>ros2 bag record /chatter -o bagB --max-bag-size 2048</code> 录制，用 <code>ros2 bag info</code> 对比两包的话题列表与体积；再解释：为什么②的 <code>--max-bag-size 2048</code> 没有产生分片文件？</p>
+    <details><summary>参考答案与得分点</summary>
+    ①bagA 含 4 个话题（/chatter /rosout /parameter_events /events/write_split），bagB 只有 /chatter——全量 vs 点名的直接证据；②bagB 体积远小于 bagA。不分片原因：<code>--max-bag-size</code> 单位是字节（2048B），且<b>写满才切分</b>——/chatter 1Hz 小消息 15 秒远达不到阈值时按需处理，小数据量下即便超过字节阈值也以实际写入为准、静默无提示。得分点：①对比表完整（3 分）；②单位=字节（3 分）；③"写满才切、无提示"（2 分）。</details>
+
+    <p><b>Q3</b>（覆盖目标② 回放）用 <code>ros2 bag info exp16_full</code> 读出 Duration=13.5s、/chatter Count=14，心算频率并判断数据是否完整；然后不改包内容，只用参数让回放"每 0.5 秒收到一条"，验证你的参数确实生效且消息内 stamp 没变。</p>
+    <details><summary>参考答案与得分点</summary>
+    频率 = 14/13.55 ≈ <b>1.03Hz</b>，与 talker 标称 1Hz 一致 → 完整（若拿 15s 当分母得 0.93Hz 会误判）。要让间隔从 1s 变 0.5s 用 <code>ros2 bag play exp16_full -r 2.0</code>。验证 stamp 不变：对比前后输出或用 <code>ros2 bag play --dump</code>/echo 观察消息时间字段——-r 只缩放发布节奏。得分点：①心算与分母正确（3 分）；②-r 2.0（3 分）；③"改节奏不改 stamp"（2 分）。</details>
+
+    <p><b>Q4</b>（覆盖目标③ 数据集设计）现场录了 15 个话题共 10 分钟的包，要在 3 版导航算法上做回归测试。请重新设计一份<b>最小证据链</b>录制命令：圈出必录话题、加上分片与命名，说明每个参数防的是什么风险；并写出"每次改完自动跑一轮"的验证流程骨架（离线回放 → 自动判定 → 结果留存）。</p>
+    <details><summary>参考答案与得分点</summary>
+    示例：<code>ros2 bag record /scan /odom /tf /cmd_vel -e "scan|odom" -o nav_reg_001 --max-bag-size 2147483648</code>——感知+定位+控制闭环即最小证据链；<code>-o</code> 可读命名防"时间戳考古"；<code>--max-bag-size</code> 字节单位分片防单文件过大。流程骨架：play --clock + 节点 use_sim_time ← 回放；解析输出/比对轨迹 ← 自动判定；bag+日志+版本号归档 ← 留存。得分点：①话题选择理由（3 分）；②三个参数各防一险（3 分）；③三段式流程闭环（2 分）。</details>
+
+    <p><b>Q5</b>（覆盖目标④ 离线联调）按图 16-4 把双开关流程跑通后，故意做一个改动：停掉 <code>--clock</code>（另开一个不带钟的 play）但 rviz2 仍保持 <code>use_sim_time:=true</code>，观察 Time 面板与 TF 现象；再用 <code>ros2 topic delay /chatter</code> 与 <code>ros2 topic delay /scan</code> 分别验证，解释两条命令输出差异的根源。</p>
+    <details><summary>参考答案与得分点</summary>
+    无 /clock 时：Time 面板停住/为 0（或不推进），节点与 rviz 的 <code>now()</code> 拿不到仿真时间，TF 出现 LookupException/数据过期丢弃（now=今天·stamp=昨天）。<code>delay /chatter</code> 报 <code>msg does not have header</code>（String 无 header 字段），<code>delay /scan</code> 返回小正值=对齐良好。得分点：①停钟现象描述（3 分）；②双开关"缺一不可"结论（3 分）；③无 header 根源（2 分）。</details>
   </div>
 </section>
 
@@ -499,7 +525,7 @@ average delay: <span class="ok">0.01</span>                            <span cla
 </nav>
 <footer>
   <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-16 rosbag2 数据录制与回放</span>
-  <span>2 学时 · 验证性 · 基于 ros_practice 实验讲义改编</span>
+  <span>2 学时 · 验证性</span>
 </footer>
 </main>
 </div>

@@ -8,6 +8,8 @@
 :root{
   --bg-base:#f8fafc; --bg-card:#fff; --bg-soft:#f1f5f9; --bg-tint:#fffbeb;
   --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --head:#1e293b;
+  --text-primary:#0f172a; --text-secondary:#475569; --text-muted:#64748b;
+  --theme:#d97706; --theme-deep:#b45309; --theme-bg:#fffbeb; --theme-bd:#fde68a;
   --accent-blue:#2563eb; --accent-teal:#0d9488; --accent-amber:#d97706;
   --accent-violet:#7c3aed; --accent-rose:#e11d48; --accent-cyan:#0891b2;
   --font-mono:'Cascadia Code','JetBrains Mono',Consolas,'Noto Sans Mono CJK SC',monospace;
@@ -134,7 +136,7 @@ footer{border-top:1px solid var(--border);margin-top:44px;padding-top:22px;font-
 
 @media(max-width:960px){.wrap{grid-template-columns:1fr}.side{display:none}.content{padding:24px 18px 70px}}
 
-/* 指导书实操截图图廊 */
+/* 实操截图图廊 */
 .figs-guide{margin:1rem 0 .4rem;padding:.9rem 1rem;background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px}
 .figs-guide h4{font-size:.88rem;margin:0 0 .7rem;color:#334155;display:flex;gap:.4rem;align-items:center}
 .figgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem}
@@ -153,6 +155,35 @@ h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
   border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
 h3.sub:first-of-type{margin-top:18px}
 @media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
+
+/* ===== 图解块：问题行 + iframe 图页 + 三徽标 ===== */
+.figq{font-size:12.5px;color:var(--text-secondary);margin:16px 0 6px;font-weight:600}
+.figq b{color:var(--theme-deep);font-weight:700}
+.dwrap{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:8px 0 4px;background:#fff}
+.dwrap iframe{display:block;width:100%;height:560px;border:0}
+@media(max-width:720px){.dwrap iframe{height:620px}}
+.dock{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:2px 10px 10px}
+.dock span{font-size:12px;border-radius:999px;padding:3px 11px;line-height:1.65}
+.dock .ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.dock .warn{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.dock .evid{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.srcline{font-size:12.5px;color:var(--text-muted);margin:10px 0 0}
+.figcap{font-size:12.5px;color:var(--text-muted);text-align:center;margin:6px 0 0}
+.tip details{margin:7px 0 11px;font-size:12.5px;line-height:1.8}
+.tip details summary{cursor:pointer;color:#5b21b6;font-weight:600}
+/* ===== 命令分步卡 ===== */
+.termbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 10px}
+.termbar .tl{background:#0f172a;color:#fff;border-radius:999px;padding:3px 13px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em}
+.termbar b{font-size:14.5px;color:var(--text-primary)}
+.termbar .note{font-size:12.5px;color:var(--text-muted)}
+.cmdstep{background:var(--bg-soft);border:1px solid var(--border);border-left:3px solid #0d9488;border-radius:12px;padding:13px 17px;margin:11px 0}
+.cmdstep .cs-hd{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.cmdstep .cs-no{font-family:var(--font-mono);font-size:12px;font-weight:700;background:#0d9488;color:#fff;border-radius:999px;min-width:22px;height:22px;text-align:center;line-height:22px;padding:0 5px;flex:none}
+.cmdstep .cs-hd b{font-size:14.5px;color:var(--text-primary)}
+.cmdstep .cs-where{margin-left:auto;font-family:var(--font-mono);font-size:11px;background:#f0fdfa;color:#0f766e;border:1px solid #ccfbf1;border-radius:999px;padding:3px 11px;white-space:nowrap}
+.cmdstep .cs-why{font-size:13.5px;color:#475569;margin:7px 0 0;line-height:1.8}
+.cmdstep pre{margin:9px 0 0;font-size:13px;padding:13px 16px}
+.cmdstep .cs-see{font-size:12.5px;color:#0f766e;margin:8px 0 0;line-height:1.75}
 </style>
 </head>
 <body>
@@ -169,10 +200,11 @@ h3.sub:first-of-type{margin-top:18px}
   <h4>本页目录</h4>
     <a href="#goal" class="now">★ 课程目标</a>
   <a href="#s1" class="now">01 引例：这束激光该画在哪</a>
-  <a href="#s2">02 原理讲解</a>
-  <a href="#s3">03 实验步骤</a>
-  <a href="#s4">04 注意事项与验收</a>
-  <a href="#s5">05 实验总结与思考</a>
+  <a href="#s2">02 先看现象：把这条边发出去并读回来</a>
+  <a href="#s3">03 原理讲解</a>
+  <a href="#s4">04 实验步骤</a>
+  <a href="#s5">05 注意事项与验收</a>
+  <a href="#s6">06 本课总结与验证题</a>
   
   <h4>CH3 · 建模进阶</h4>
   <a href="../exp-19-tf2/index.html">EXP-19 TF2 坐标系变换</a>
@@ -234,13 +266,53 @@ h3.sub:first-of-type{margin-top:18px}
 </section>
 
 <section class="blk" id="s2">
-<h2><span class="no">02</span>原理讲解</h2>
-<h3 class="sub">TF2 树为什么长成一棵树</h3>
+<h2><span class="no">02</span>先看现象：把这条边发出去、读回来</h2>
+<p class="srcline">四步、两分钟，先让"雷达在车上"这件事在命令行里成立——不写一行代码。</p>
 
-  <div class="tip"><span class="lab">先记住这一句</span>TF2 存的不是坐标点，而是<strong>坐标系与坐标系之间的"变换"</strong>：一段平移 (x,y,z) + 一段旋转四元数，并且<strong>每条变换都带时间戳</strong>。打个比方：坐标系是一把把尺子，一条 TF 变换就是告诉你"<strong>B 尺子摆在 A 尺子的什么位置、朝什么方向</strong>"；把所有尺子的摆放关系串成一张图，就是 <strong>TF 树</strong>。</div>
+<div class="termbar"><span class="tl">终端 A</span><b>发布一条静态变换</b></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">1</span><b>一行命令发边</b><span class="cs-where">终端 A</span></div>
+  <p class="cs-why">雷达装在车体前方 10cm、高 20cm、无旋转——把这组安装位姿直接发到 <code>/tf_static</code>：</p>
+  <pre data-copy="cmd">ros2 run tf2_ros static_transform_publisher --x 0.1 --y 0 --z 0.2 \
+  --yaw 0 --pitch 0 --roll 0 base_link laser_frame</pre>
+  <p class="cs-see">✔ 不用建包、不用编译——节点起着不退，边就一直有效。</p>
+</div>
 
-  <h3>2.1 树状结构：只记"直接父子"，路径唯一</h3>
-  <p>TF2 把机器人身上所有坐标系组织成一棵树：<strong>每个坐标系最多一个父坐标系，不能成环</strong>。典型结构长这样：</p>
+<div class="termbar"><span class="tl">终端 B</span><b>读回这条边</b><span class="note">新终端</span></div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">2</span><b>tf2_echo 查单边</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">把两端坐标系名喂给它，直接打印这两帧之间的变换：</p>
+  <pre data-copy="cmd">ros2 run tf2_ros tf2_echo base_link laser_frame
+<span class="c"># 输出 Translation: [0.1, 0.0, 0.2]  Rotation: [0,0,0] (x,y,z,w)</span></pre>
+  <div class="cs-see">✔ 平移与命令里的 --x --z 逐个对得上、旋转是单位四元数——这条边发成功了。</div>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">3</span><b>看消息本体</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">静态话题靠 Transient Local，订阅时要带上同样的 Durability 才读得到最后一条：</p>
+  <pre data-copy="cmd">ros2 topic echo /tf_static --qos-durability transient_local</pre>
+  <div class="cs-see">✔ 能读到一整条 TransformStamped（frame_id=base_link，child=laser_frame）。</div>
+</div>
+<div class="cmdstep">
+  <div class="cs-hd"><span class="cs-no">4</span><b>导出整棵树</b><span class="cs-where">终端 B</span></div>
+  <p class="cs-why">订阅 /tf + /tf_static 5 秒，生成 PDF 树图：</p>
+  <pre data-copy="cmd">ros2 run tf2_tools view_frames</pre>
+  <div class="cs-see">✔ 验收清单里的原话：<b>tf2_echo 输出平移 [0.1, 0, 0.2]、旋转单位四元数，frames.pdf 树形合法</b>——这就是本课要交付的两条证据。</div>
+</div>
+<div class="tip tealb"><span class="lab">先记住这个反差</span>四条命令里没有一条是"写代码"，但机器人在数字世界里的<b>位置关系</b>已经成立。为什么发一次就够了、为什么必须是树——下一节拆开讲。</div>
+</section>
+
+<section class="blk" id="s3">
+<h2><span class="no">03</span>原理讲解</h2>
+<h3 class="sub">TF2 树：单父、无环、两条话题</h3>
+  <p class="srcline">建立在 EXP-06 话题与 QoS 之上——坐标系之间的"关系"也是靠两条话题发出来的。</p>
+
+  <div class="tip"><span class="lab">先记住这一句</span>TF2 存的不是坐标点，而是<strong>坐标系与坐标系之间的"变换"</strong>：一段平移 (x,y,z) + 一段旋转四元数，并且<strong>每条变换都带时间戳</strong>。坐标系是一把把尺子，一条 TF 变换就是"<strong>B 尺子摆在 A 尺子的什么位置、朝什么方向</strong>"；把所有尺子的摆放关系串成一张图，就是 <strong>TF 树</strong>。</div>
+
+  <div class="figq"><b>图 19-1 · TF2 变换树｜本图回答：机器人身上的坐标系怎么组织，为什么必须是一棵树？</b></div>
+  <div class="dwrap"><iframe src="diagrams/fig-19-1-tf-tree.html" title="图 19-1 TF2 变换树" loading="lazy"></iframe>
+  <div class="dock"><span class="ok">✅ 结论：单父、无环、路径唯一，查询必有解</span><span class="warn">⚠️ 风险：两个节点抢同一 child 配不同 parent → 报冲突</span><span class="evid">🔍 验证：02 节现象 ② ④ + 04 节 view_frames 树形核对</span></div></div>
+
+  <p>TF2 把机器人身上所有坐标系组织成一棵树：<strong>每个坐标系最多一个父坐标系，不能成环</strong>。典型结构：</p>
 <pre data-copy="cmd"><span class="c">map                              ← 世界原点（SLAM 维护）</span>
  └── odom                         ← 里程计原点（会漂移）
       └── base_link               ← 车体中心
@@ -256,16 +328,8 @@ h3.sub:first-of-type{margin-top:18px}
     <div class="kcard"><div class="kd">传感器系</div><div class="kt">laser_frame / camera_link</div><p>雷达、相机各自的测量原点，安装位置即静态变换。</p></div>
   </div>
 
-  <h3>2.2 查询：沿树爬到"共同祖先"，把变换拼起来</h3>
-  <p>要问"雷达系里的点 (0.3, 0)，在 map 里是哪"——tf2 只干两件事：<strong>先向上爬，再向下拼</strong>，全程不用你手写矩阵：</p>
-  <ol>
-    <li>从 <code>laser_frame</code> 沿父指针一路<strong>向上爬</strong>，收集沿途每一段变换；</li>
-    <li>从 <code>map</code> 也向上爬，找到两条路第一次相遇的<strong>共同祖先</strong>（汇合点）；</li>
-    <li>从汇合点<strong>按下回程</strong>，该取逆的取逆、该连乘的连乘，拼出 A→B 的总变换。</li>
-  </ol>
-  <div class="tip tealb"><span class="lab">✦ 为什么禁止成环？</span>一旦 A 是 B 的父、B 又是 A 的父，上面"向上爬"就<strong>永远爬不到头</strong>，查询陷入死循环。所以 TF2 强制一棵树——树形结构正是查询能在有限步内结束的前提。（两个节点抢同一个 child 的 parent 时，TF2 会直接报错警告。）</div>
+  <div class="tip tealb"><span class="lab">✦ 失败模式：为什么禁止成环？</span>一旦 A 是 B 的父、B 又是 A 的父，沿父指针<strong>向上爬就永远爬不到头</strong>，查询陷入死循环。所以 TF2 强制一棵树——树形结构正是查询能在有限步内结束的前提。两个节点抢同一个 child 的 parent 时，TF2 会直接报错警告。</div>
 
-  <h3>2.3 两条话题，两种更新策略</h3>
   <table>
     <tr><th>话题</th><th>内容</th><th>QoS / 频率</th><th>设计意图</th></tr>
     <tr><td><code>/tf</code></td><td><strong>动态</strong>变换（odom→base_link、机械臂关节角…）</td><td>10 ~ 100 Hz 普通 Reliable + KeepLast(100)</td><td>量大、值一直在变，<strong>新订阅者只需拿到"最新值"</strong>，历史旧值没有意义 → KeepLast 限深</td></tr>
@@ -273,91 +337,45 @@ h3.sub:first-of-type{margin-top:18px}
   </table>
   <div class="tip violet"><span class="lab">🔁 和 EXP-06 QoS 的呼应（别和 EXP-10 参数搞混）</span><code>/tf_static</code> 的 latch 语义，用的就是 EXP-06 里讲过的 <b>QoS Durability = Transient Local</b>：发布者替"迟到的订阅者"保留最后一条。<b>注意它不是参数的机制</b>——参数走的是"参数服务 + 参数事件"这套独立设施，和话题 QoS 无关。这里真正要迁移的知识只有一个：<i>凡是"后加入的节点也必须拿到"的数据，就该给它 Transient Local。</i></div>
 
-  <h3>2.4 两个角色：一个广播，一个监听</h3>
-  <p>用 TF2 的程序就两类，分工和话题的 pub/sub 一模一样：</p>
+  <p><b>两类角色</b>，分工和话题的 pub/sub 一模一样——一个广播，一个监听：</p>
   <div class="kgrid">
     <div class="kcard"><div class="kd">角色 1 · 广播器 Broadcaster</div><div class="kt">告诉所有人："父→子"的变换现在是多少</div><p>
-      <b>谁来发：</b>里程计节点发 <code>odom→base_link</code>；<code>robot_state_publisher</code> 读 URDF 发传感器安装位姿；机械臂控制器发关节变换；你自己标定好相机外参后发 <code>base_link→camera_link</code>。<br>
-      <b>发两种：</b><b>静态</b>（装好就不变）用 <code>StaticTransformBroadcaster</code> 或命令行 <code>static_transform_publisher</code>，<b>只发一次</b>；<b>动态</b>（一直在变）用 <code>TransformBroadcaster</code> <b>持续重发</b>。
+      <b>谁来发：</b>里程计节点发 odom→base_link；robot_state_publisher 读 URDF 发传感器位姿；标定好相机外参后发 base_link→camera_link。<br>
+      <b>两种：</b><b>静态</b>（装好不变）用 StaticTransformBroadcaster，<b>只发一次</b>；<b>动态</b>（一直在变）用 TransformBroadcaster，<b>持续重发</b>。
     </p></div>
     <div class="kcard"><div class="kd">角色 2 · 监听器 Listener</div><div class="kt">订阅 TF，随时被问"A 到 B 的变换是多少"</div><p>
-      <b>谁来听：</b>SLAM 把点云转到 map；Nav2 判断"目标点相对车体多远"；视觉识别到物体后转到 base_link 做抓取。<br>
-      <b>查询要给三样：</b>目标坐标系（转到哪）、源坐标系（数据原来在哪）、<b>时间戳</b>（要哪个时刻的变换——TF 带时间缓存，可以回查过去几秒）。
+      <b>谁来听：</b>SLAM 把点云转到 map；Nav2 判断目标点相对车体多远；视觉识别到物体后转到 base_link 做抓取。<br>
+      <b>查询要给三样：</b>目标坐标系、源坐标系、时间戳——TF 带时间缓存，可以回查过去几秒（查询入口见下一主场）。
     </p></div>
   </div>
+
+  <div class="tip violet"><span class="lab">怎么设置（可照抄入口 · 与 02 节现象 ① 同一条命令）</span>
+  <b>① 免代码</b>：<code>static_transform_publisher</code> 的参数写法固定为 <code>--x --y --z --yaw --pitch --roll</code> + <b>父 frame</b> + <b>子 frame</b>（角度单位是弧度，顺序必须"父在前、子在后"）。<br>
+  <b>② 代码</b>：<code>StaticTransformBroadcaster(self)</code> → <code>sendTransform(t)</code>，其中 <code>t.header.frame_id</code> 写父、<code>t.child_frame_id</code> 写子、无旋转时 <code>rotation.w = 1.0</code>——04 节代码 A 逐行拆的就是它。</div>
   <pre data-copy="cmd"><span class="c"># 静态 TF 最快的发法：不用写代码，一行命令（雷达在车体前方 10cm、高 20cm）</span>
 ros2 run tf2_ros static_transform_publisher --x 0.1 --y 0 --z 0.2 \
   --yaw 0 --pitch 0 --roll 0 base_link laser_frame</pre>
+  <div class="dock" style="justify-content:center"><span class="ok">✅ 结论：父在前子在后，静态发一次、动态持续发</span><span class="warn">⚠️ 风险：父子顺序写反 = 求了逆变换，坐标直接飞出</span><span class="evid">🔍 验证：02 节现象 ① ② 实测</span></div>
   <div class="tip violet"><span class="lab">✦ 为什么这么设计？三句话</span>
   ① <b>解耦</b>：雷达节点只管发雷达系的数据，装在哪、map 长什么样它不关心——坐标系关系全由 TF 统一维护，谁都能查；<br>
   ② <b>自动链式</b>：你只发布"自己负责的那一条边"，连乘合成、跨树查询交给 tf2，永远不用手写 4×4 矩阵；<br>
   ③ <b>带时间缓存</b>：传感器数据有延迟，查询时可以"回查"几秒内的历史变换，用<b>数据自己的时间戳</b>去对齐，点云才不会飘。</div>
 <h3 class="sub">一次 TF 查询的全过程</h3>
-  <p>下面动画演示：<strong>激光点 (0.3, 0) m 位于 laser_frame</strong>，如何沿树两级跳，换算到 map 系。粒子代表"坐标数据在树上的合成流向"。</p>
+  <p class="srcline">接上一主场的"监听者"——要问"雷达系里的点 (0.3, 0)，在 map 里是哪"，tf2 只干两件事：<strong>先向上爬，再向下拼</strong>，全程不用你手写矩阵：</p>
+  <ol>
+    <li>从 <code>laser_frame</code> 沿父指针一路<strong>向上爬</strong>，收集沿途每一段变换；</li>
+    <li>从 <code>map</code> 也向上爬，找到两条路第一次相遇的<strong>共同祖先</strong>（汇合点）；</li>
+    <li>从汇合点<strong>按下回程</strong>，该取逆的取逆、该连乘的连乘，拼出 A→B 的总变换。</li>
+  </ol>
 
-  <div class="anim-box">
-    <svg viewBox="0 0 760 340" width="760" height="340" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#f59e0b"/><stop offset="1" stop-color="#7c3aed"/>
-        </linearGradient>
-        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill="#fbbf24"/>
-        </marker>
-      </defs>
-      <!-- edges -->
-      <line x1="660" y1="70" x2="660" y2="140" stroke="url(#edge)" stroke-width="2.5" marker-end="url(#arr)"/>
-      <line x1="660" y1="195" x2="660" y2="265" stroke="url(#edge)" stroke-width="2.5" marker-end="url(#arr)"/>
-      <line x1="615" y1="167" x2="330" y2="167" stroke="#334155" stroke-width="2" stroke-dasharray="6 5"/>
-      <!-- transform labels on edges -->
-      <rect x="452" y="78" width="176" height="26" rx="7" fill="#1e293b" stroke="#f59e0b" stroke-opacity=".5"/>
-      <text x="540" y="96" fill="#fbbf24" font-size="12.5" text-anchor="middle" font-family="Consolas,monospace">T_map←base (定位输出)</text>
-      <rect x="452" y="205" width="176" height="26" rx="7" fill="#1e293b" stroke="#7c3aed" stroke-opacity=".6"/>
-      <text x="540" y="223" fill="#c4b5fd" font-size="12.5" text-anchor="middle" font-family="Consolas,monospace">T_base←laser (静态标定)</text>
-      <!-- nodes -->
-      <g>
-        <rect x="590" y="30" width="140" height="46" rx="10" fill="#0f172a" stroke="#f59e0b" stroke-width="1.6"/>
-        <text x="660" y="52" fill="#fff" font-size="15" text-anchor="middle" font-weight="bold">map</text>
-        <text x="660" y="68" fill="#94a3b8" font-size="10.5" text-anchor="middle">世界原点</text>
-      </g>
-      <g>
-        <rect x="590" y="146" width="140" height="46" rx="10" fill="#0f172a" stroke="#fb923c" stroke-width="1.6"/>
-        <text x="660" y="168" fill="#fff" font-size="15" text-anchor="middle" font-weight="bold">base_link</text>
-        <text x="660" y="184" fill="#94a3b8" font-size="10.5" text-anchor="middle">车体中心</text>
-      </g>
-      <g>
-        <rect x="590" y="270" width="140" height="46" rx="10" fill="#0f172a" stroke="#7c3aed" stroke-width="1.6"/>
-        <text x="660" y="292" fill="#fff" font-size="15" text-anchor="middle" font-weight="bold">laser_frame</text>
-        <text x="660" y="308" fill="#94a3b8" font-size="10.5" text-anchor="middle">雷达系 · 静态</text>
-      </g>
-      <!-- point cloud sample -->
-      <rect x="60" y="128" width="250" height="78" rx="12" fill="#0b0f17" stroke="#334155"/>
-      <text x="185" y="152" fill="#94a3b8" font-size="12" text-anchor="middle">laser_frame 里测到的障碍点</text>
-      <text x="185" y="180" fill="#4ade80" font-size="17" text-anchor="middle" font-family="Consolas,monospace">p = (0.30, 0.00)</text>
+  <div class="figq"><b>图 19-2 · 一次 TF 查询的全过程｜本图回答：<code>lookup_transform('map','laser_frame')</code> 背后做了哪三步？</b></div>
+  <div class="dwrap"><iframe src="diagrams/fig-19-2-query-chain.html" title="图 19-2 TF 查询流程" loading="lazy"></iframe>
+  <div class="dock"><span class="ok">✅ 结论：三次爬树 + 连乘 = 唯一解，全程无需手写矩阵</span><span class="warn">⚠️ 风险：时间戳超出缓存窗口 → extrapolation 错误</span><span class="evid">🔍 验证：02 节现象 ② tf2_echo 实测 + 04 节代码 B</span></div></div>
 
-      <!-- particle: laser -> base -->
-      <circle r="7" fill="#fbbf24">
-        <animate attributeName="cx" values="330;615" dur="3.4s" repeatCount="indefinite" keyTimes="0;1" calcMode="spline" keySplines=".4 0 .6 1"/>
-        <animate attributeName="cy" values="167;182" dur="3.4s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="0;1;1;0" dur="3.4s" repeatCount="indefinite" keyTimes="0;.15;.85;1"/>
-      </circle>
-      <!-- particle: base -> map -->
-      <circle r="7" fill="#f472b6">
-        <animate attributeName="cx" values="660;660" dur="3.4s" repeatCount="indefinite"/>
-        <animate attributeName="cy" values="265;70" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines=".4 0 .6 1"/>
-        <animate attributeName="opacity" values="0;0;1;1;0" dur="3.4s" repeatCount="indefinite" keyTimes="0;.3;.45;.9;1"/>
-      </circle>
-      <!-- result flash -->
-      <rect x="60" y="240" width="330" height="58" rx="12" fill="#0b0f17" stroke="#f59e0b" stroke-opacity=".6">
-        <animate attributeName="stroke-opacity" values="0;.8;.8;0" dur="3.4s" repeatCount="indefinite"/>
-      </rect>
-      <text x="225" y="266" fill="#fbbf24" font-size="12.5" text-anchor="middle">合成变换 buffer.lookup_transform() 结果</text>
-      <text x="225" y="288" fill="#fff" font-size="15" text-anchor="middle" font-family="Consolas,monospace">p_map ≈ (x, y) ← 两级连乘</text>
-      <!-- cycle caption -->
-      <text x="380" y="330" fill="#64748b" font-size="11.5" text-anchor="middle">3.4s / 轮：laser_frame 上溯 → base_link 上溯 → 合成 → 输出到 map 系</text>
-    </svg>
-    <div class="anim-cap">图 19-1　TF 查询 = 沿树收集"父子边"再连乘；任意两个框之间只有一条唯一路径</div>
-  </div>
+  <div class="tip violet"><span class="lab">怎么设置（可照抄入口 · 查询两行起手式）</span>
+  先挂监听再查询：<code>self.buffer = Buffer()</code> → <code>self.listener = TransformListener(self.buffer, self)</code> →
+  <code>self.buffer.lookup_transform('map', 'laser_frame', rclpy.time.Time(), timeout=rclpy.duration.Duration(seconds=1.0))</code>。<br>
+  <b>三个参数的含义</b>：目标系（转到哪）、源系（数据原来在哪）、时刻（<code>Time()</code> = 最新；传具体时刻则用缓存历史插值）——04 节代码 B 是它的完整形态。</div>
 
   <div class="kgrid">
     <div class="kcard"><div class="kd">静态边</div><div class="kt">base_link → laser_frame</div><p>出厂安装决定，一次发布，靠 /tf_static 的 Transient Local 让后加入节点也能读到。</p></div>
@@ -365,9 +383,10 @@ ros2 run tf2_ros static_transform_publisher --x 0.1 --y 0 --z 0.2 \
     <div class="kcard"><div class="kd">合成责任</div><div class="kt">谁都不用管全树</div><p>每个节点只发布自己那一段边，跨 4 层的变换交给 TF2 自动连乘。</p></div>
     <div class="kcard"><div class="kd">时效对齐</div><div class="kt">时间戳插值</div><p>查询带时间戳 t 时，对两条动态边在 t 附近做插值/外推，保证"同一时刻"的几何一致。</p></div>
   </div>
+  <div class="dock" style="justify-content:center"><span class="ok">✅ 结论：每节点只发布自己那条边，跨树查询交给 TF2</span><span class="warn">⚠️ 风险：多源数据不传同一时间戳 → 插值错位、点云漂移</span><span class="evid">🔍 验证：02 节现象 ② tf2_echo 持续刷新的数值</span></div>
 <h3 class="sub">旋转为什么要用四元数</h3>
 
-  <h3>4.1 欧拉角的三宗罪</h3>
+  <p><b>三种表示法对比</b>——看 ROS2 为什么只认四元数：</p>
   <table>
     <tr><th>表示法</th><th>表达</th><th>问题</th></tr>
     <tr><td>欧拉角 (roll, pitch, yaw)</td><td>直观，人眼能理解"偏航 30°"</td><td>① <strong>万向节死锁</strong>：俯仰 ±90° 时丢失一个自由度；② 插值不均匀，动画打结；③ 顺序敏感（ZYX vs XYZ 结果不同）</td></tr>
@@ -375,8 +394,7 @@ ros2 run tf2_ros static_transform_publisher --x 0.1 --y 0 --z 0.2 \
     <tr><td><strong>四元数 q=(x,y,z,w)</strong></td><td>4 个数，无奇点</td><td><strong>ROS2 的标准选择</strong>：万向节死锁不存在、插值用 Slerp 均匀平滑、复合只要哈密顿乘法</td></tr>
   </table>
 
-  <h3>4.2 2D 平面旋转的半角公式（本实验只需 yaw）</h3>
-  <p>机器人在地面打转，本质是绕 Z 轴转 <strong>yaw</strong> 角。此时四元数退化为两个非零分量：</p>
+  <p><b>半角公式（本实验只需 yaw）</b>：机器人在地面打转，本质是绕 Z 轴转 <strong>yaw</strong> 角，四元数退化为两个非零分量：</p>
 <pre data-copy="cmd"><span class="c"># 绕 Z 轴旋转 yaw：四元数只有 z、w 两个分量非零</span>
 z = sin(yaw / 2)
 w = cos(yaw / 2)<span class="c">   # x = y = 0</span>
@@ -386,14 +404,100 @@ w = cos(yaw / 2)<span class="c">   # x = y = 0</span>
 <span class="c"># 反解：yaw = 2·atan2(z, w)   ← 看代码时反过来算角度就用它</span></pre>
   <div class="tip amber"><span class="lab">💡 记忆锚点</span>"<strong>半角</strong>"是关键：四元数存的是 yaw/<strong>2</strong> 的三角函数。验证：yaw=180° 时 w=0、z=1，正好是"转满半圈的信息被编码在半角空间里"。看别人的代码看到 <code>atan2(z, w) * 2</code> 就是在从四元数反求偏航角。</div>
 
-  <h3>4.3 在 ROS2 消息里长什么样</h3>
-  <p><code>geometry_msgs/msg/Transform</code> = <code>translation(x,y,z)</code> + <code>rotation(x,y,z,w)</code>；<code>Quaternion</code> 四个字段顺序固定为 <strong>x, y, z, w</strong>（不是 w,x,y,z！阅读时留心）。</p>
+  <p><b>在 ROS2 消息里长什么样</b>：<code>geometry_msgs/msg/Transform</code> = <code>translation(x,y,z)</code> + <code>rotation(x,y,z,w)</code>；<code>Quaternion</code> 四个字段顺序固定为 <strong>x, y, z, w</strong>（不是 w,x,y,z！阅读时留心）。</p>
+  <div class="dock" style="justify-content:center"><span class="ok">✅ 结论：绕 Z 时 z=sin(yaw/2)、w=cos(yaw/2)，反解 yaw=2·atan2(z,w)</span><span class="warn">⚠️ 风险：字段顺序记成 wxyz → 读出的朝向全错</span><span class="evid">🔍 验证：04 节沙盘拖到 180° 看 w=0 的实测</span></div>
 </section>
 
-<section class="blk" id="s3">
-<h2><span class="no">03</span>实验步骤</h2>
-<h3 class="sub">四元数换算 + TF 链查询</h3>
-  <p>上面两块原理，直接上手玩：①拖动偏航角，观察四元数分量与朝向实时变化；②自选两端坐标系，看 TF2 如何拼出查询路径。</p>
+<section class="blk" id="s4">
+<h2><span class="no">04</span>实验步骤</h2>
+
+  <div class="figq"><b>图 19-3 · 工程全景：一个包、一条话题、三处验证｜本图回答：本实验动了哪些文件和话题，谁发谁收，验证信号从哪看？</b></div>
+  <div class="dwrap"><iframe src="diagrams/fig-19-3-project-overview.html" title="图 19-3 工程全景" loading="lazy"></iframe>
+  <div class="dock"><span class="ok">✅ 结论：发布者只写一条边，三重验证共用同一棵树</span><span class="warn">⚠️ 风险：未 source 或入口名写错 → ros2 run 找不到节点</span><span class="evid">🔍 验证：02 节现象 ①~④ + 本节三种手段核对</span></div></div>
+
+<h3 class="sub">创建 tf2_demo 包并发布静态变换</h3>
+  <div class="figq"><b>图 19-4 · 静态变换：从建包到三重验证｜本图回答：写一条 <code>base_link → laser_frame</code> 静态边，必经哪些步骤、各看什么输出？</b></div>
+  <div class="dwrap"><iframe src="diagrams/fig-19-4-static-tf-flow.html" title="图 19-4 静态变换流程" loading="lazy"></iframe>
+  <div class="dock"><span class="ok">✅ 结论：建包→写码→build→run→验证，五步一条线</span><span class="warn">⚠️ 风险：漏 source → 找不到 static_tf_pub 入口</span><span class="evid">🔍 验证：tf2_echo 打印 Translation [0.1, 0.0, 0.2]</span></div></div>
+  <div class="flow">
+    <div class="step"><span class="n">1</span>进入工作空间并创建包（依赖 <code>tf2_ros</code> 负责发布/监听，<code>tf2_tools</code> 提供 view_frames 等调试工具）：<pre data-copy="cmd">cd ~/ros2_ws/src
+ros2 pkg create tf2_demo \
+  --build-type ament_python \
+  --dependencies rclpy tf2_ros tf2_tools geometry_msgs \
+  --destination-directory .</pre></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span>把 <strong>代码 A 的 StaticTfPub</strong> 写入 <code>tf2_demo/static_tf_pub.py</code>，加执行权限；在 <code>setup.py</code> 的 <code>entry_points</code> 注册 <code>static_tf_pub = tf2_demo.static_tf_pub:main</code>（同 EXP-05 要求）。</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span>补一个 <code>main()</code>：<pre data-copy="cmd"><span class="b">def</span> <span class="g">main</span>(args=<span class="b">None</span>):
+    rclpy.init(args=args)
+    node = StaticTfPub()
+    rclpy.spin(node)      <span class="c"># spin 保持节点存活，静态消息靠 QoS 重放</span>
+    node.destroy_node()
+    rclpy.shutdown()</pre></div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span>构建并 source，启动发布者：<pre data-copy="cmd">cd ~/ros2_ws &amp;&amp; colcon build --packages-select tf2_demo
+<span class="b">.</span> install/setup.bash
+ros2 run tf2_demo static_tf_pub</pre></div>
+  </div>
+<h3 class="sub">发布者与查询者</h3>
+
+  <h3>代码 A · 静态发布节点 StaticTfPub</h3>
+<pre data-copy="cmd"><span class="b">import</span> rclpy
+<span class="b">from</span> rclpy.node <span class="b">import</span> Node
+<span class="b">from</span> geometry_msgs.msg <span class="b">import</span> TransformStamped
+<span class="b">from</span> tf2_ros <span class="b">import</span> StaticTransformBroadcaster
+
+<span class="b">class</span> StaticTfPub(Node):
+    <span class="b">def</span> <span class="g">__init__</span>(self):
+        <span class="g">super</span>().__init__(<span class="y">'static_tf_pub'</span>)
+        <span class="c"># ① StaticTransformBroadcaster —— 内部自动用 /tf_static + TransientLocal</span>
+        self.pub = StaticTransformBroadcaster(self)
+        self.send()
+
+    <span class="b">def</span> <span class="g">send</span>(self):
+        t = TransformStamped()
+        t.header.stamp = self.get_clock().now().to_msg()
+        t.header.frame_id  = <span class="y">'base_link'</span>   <span class="c"># 父</span>
+        t.child_frame_id   = <span class="y">'laser_frame'</span>  <span class="c"># 子（只能有一个父！）</span>
+        t.transform.translation.x = <span class="y">0.10</span>    <span class="c"># 雷达在车体前方 10cm</span>
+        t.transform.translation.z = <span class="y">0.20</span>    <span class="c"># 高度 20cm（TF2 支持 3D）</span>
+        <span class="c"># 无旋转 ⇒ 单位四元数 (x=0, y=0, z=0, w=1)</span>
+        t.transform.rotation.w = <span class="y">1.0</span>
+        self.pub.sendTransform(t)   <span class="c"># 只发这一次，后加入的订阅者也能收到</span></pre>
+
+  <h3>代码 B · 查询节点 Buffer + Listener</h3>
+<pre data-copy="cmd"><span class="b">from</span> tf2_ros <span class="b">import</span> Buffer, TransformListener
+
+self.buffer = Buffer()
+self.listener = TransformListener(self.buffer, self)   <span class="c"># 监听 /tf + /tf_static 填充 buffer</span>
+
+<span class="c"># 查询 laser_frame 的数据 → map 系；超时 1.0s（树还没齐时阻塞等待）</span>
+t = self.buffer.lookup_transform(
+    <span class="y">'map'</span>, <span class="y">'laser_frame'</span>,
+    rclpy.time.Time(),      <span class="c"># Time()=最新时刻；传具体时间则做历史插值</span>
+    timeout=rclpy.duration.Duration(seconds=<span class="y">1.0</span>))
+tx = t.transform.translation.x
+qz, qw = t.transform.rotation.z, t.transform.rotation.w
+yaw = <span class="y">2.0</span> * math.atan2(qz, qw)   <span class="c"># 第 4 节半角公式反解</span></pre>
+  <div class="tip tealb"><span class="lab">✦ 设计看点</span>① 查不到时不是崩溃而是<strong>超时等待</strong>——因为发布者可能后启动；② <code>TransformListener</code> 就是普通的订阅节点，把两条话题的值缓存进 <code>Buffer</code>；③ 发布者只发一条静态边，查询者却能跨整棵树——<strong>解耦靠的就是 /tf 这对公共话题</strong>，和 EXP-06 的话题解耦完全同构。</div>
+<h3 class="sub">三种手段验证 TF 树</h3>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><strong>命令行直查</strong>——对应第 3 节动画的一次 lookup：<pre data-copy="cmd">ros2 run tf2_ros tf2_echo base_link laser_frame
+<span class="c"># 输出 Translation: [0.1, 0.0, 0.2]  Rotation: [0,0,0] (x,y,z,w)</span>
+<span class="c"># 至 Ctrl+C 前会持续刷新（动态边场景下数值会变）</span></pre>能打印出变换矩阵 = 链路可用。</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">2</span><strong>导出整棵树</strong>——生成 PDF 树状图（离线图片在 <code>~/.ros</code> 下，名为 <code>frames.pdf</code>）：<pre data-copy="cmd">ros2 run tf2_tools view_frames
+<span class="c"># 订阅 /tf、/tf_static 5 秒 → 打印每个 frame 的发布频率与超时告警 → 生成 frames.pdf</span></pre>检查：是否为<strong>合法树形</strong>（无环、每个 child 只有一个 parent）。</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">3</span><strong>RViz 可视化</strong>——启动 <code>rv2</code>，<code>Add → By display type → TF</code>，勾选 <strong>Frames / Names / Arrows</strong>；若同时播传感器数据（如选用真实小车则执行 <code>ros2 launch car_common car_bringup.launch.py</code>），把 Fixed Frame 设为 <code>map</code>，观察点云/激光是否落在车体与地图的正确相对位置——<strong>对不上 = TF 有问题</strong>。</div>
+    <div class="arr"></div>
+    <div class="step"><span class="n">4</span><strong>纯软件自检（可选）</strong>——再写一个 <code>tf2_echo</code> 风格的查询节点（代码 B），打印 base_link→laser_frame 的 yaw 反解值，应与发布的平移/零旋转一致。</div>
+  </div>
+  <div class="tip amber"><span class="lab">💡 从"验证"学"调试"</span>排查 TF 的三板斧就是本节顺序：<strong>tf2_echo 查单边 → view_frames 查全树 → RViz 查最终效果</strong>。实际项目里 90% 的"数据对不齐"，用这三步五分钟内能定位到是哪条边断了/错了。</div>
+
+
+<h3 class="sub">沙盘探究：四元数换算 + TF 链查询</h3>
+  <p>回到 03 节的两块原理，这里用两块沙盘动手验证：①拖动偏航角，观察四元数分量与朝向实时变化；②自选两端坐标系，看 TF2 如何拼出查询路径。</p>
 
   <div class="ix-panel">
     <div class="ix-title">IX-19A · 四元数 ↔ 偏航角 实时换算台</div>
@@ -457,89 +561,13 @@ w = cos(yaw / 2)<span class="c">   # x = y = 0</span>
     </div>
     <div class="io" id="tfOut"><span class="dim">两坐标系相同或选择无效时也可尝试——TF2 会告诉你"同一坐标系，恒等变换"。</span></div>
   </div>
-<h3 class="sub">发布者与查询者</h3>
 
-  <h3>6.1 发布静态变换（实操 1 要写的）</h3>
-<pre data-copy="cmd"><span class="b">import</span> rclpy
-<span class="b">from</span> rclpy.node <span class="b">import</span> Node
-<span class="b">from</span> geometry_msgs.msg <span class="b">import</span> TransformStamped
-<span class="b">from</span> tf2_ros <span class="b">import</span> StaticTransformBroadcaster
-
-<span class="b">class</span> StaticTfPub(Node):
-    <span class="b">def</span> <span class="g">__init__</span>(self):
-        <span class="g">super</span>().__init__(<span class="y">'static_tf_pub'</span>)
-        <span class="c"># ① StaticTransformBroadcaster —— 内部自动用 /tf_static + TransientLocal</span>
-        self.pub = StaticTransformBroadcaster(self)
-        self.send()
-
-    <span class="b">def</span> <span class="g">send</span>(self):
-        t = TransformStamped()
-        t.header.stamp = self.get_clock().now().to_msg()
-        t.header.frame_id  = <span class="y">'base_link'</span>   <span class="c"># 父</span>
-        t.child_frame_id   = <span class="y">'laser_frame'</span>  <span class="c"># 子（只能有一个父！）</span>
-        t.transform.translation.x = <span class="y">0.10</span>    <span class="c"># 雷达在车体前方 10cm</span>
-        t.transform.translation.z = <span class="y">0.20</span>    <span class="c"># 高度 20cm（TF2 支持 3D）</span>
-        <span class="c"># 无旋转 ⇒ 单位四元数 (x=0, y=0, z=0, w=1)</span>
-        t.transform.rotation.w = <span class="y">1.0</span>
-        self.pub.sendTransform(t)   <span class="c"># 只发这一次，后加入的订阅者也能收到</span></pre>
-
-  <h3>6.2 查询变换（下游节点的标准姿势）</h3>
-<pre data-copy="cmd"><span class="b">from</span> tf2_ros <span class="b">import</span> Buffer, TransformListener
-
-self.buffer = Buffer()
-self.listener = TransformListener(self.buffer, self)   <span class="c"># 监听 /tf + /tf_static 填充 buffer</span>
-
-<span class="c"># 查询 laser_frame 的数据 → map 系；超时 1.0s（树还没齐时阻塞等待）</span>
-t = self.buffer.lookup_transform(
-    <span class="y">'map'</span>, <span class="y">'laser_frame'</span>,
-    rclpy.time.Time(),      <span class="c"># Time()=最新时刻；传具体时间则做历史插值</span>
-    timeout=rclpy.duration.Duration(seconds=<span class="y">1.0</span>))
-tx = t.transform.translation.x
-qz, qw = t.transform.rotation.z, t.transform.rotation.w
-yaw = <span class="y">2.0</span> * math.atan2(qz, qw)   <span class="c"># 第 4 节半角公式反解</span></pre>
-  <div class="tip tealb"><span class="lab">✦ 设计看点</span>① 查不到时不是崩溃而是<strong>超时等待</strong>——因为发布者可能后启动；② <code>TransformListener</code> 就是普通的订阅节点，把两条话题的值缓存进 <code>Buffer</code>；③ 发布者只发一条静态边，查询者却能跨整棵树——<strong>解耦靠的就是 /tf 这对公共话题</strong>，和 EXP-06 的话题解耦完全同构。</div>
-<h3 class="sub">创建 tf2_demo 包并发布静态变换</h3>
-  <div class="flow">
-    <div class="step"><span class="n">1</span>进入工作空间并创建包（依赖 <code>tf2_ros</code> 负责发布/监听，<code>tf2_tools</code> 提供 view_frames 等调试工具）：<pre data-copy="cmd">cd ~/ros2_ws/src
-ros2 pkg create tf2_demo \
-  --build-type ament_python \
-  --dependencies rclpy tf2_ros tf2_tools geometry_msgs \
-  --destination-directory .</pre></div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">2</span>把 <strong>6.1 的 StaticTfPub</strong> 写入 <code>tf2_demo/static_tf_pub.py</code>，加执行权限；在 <code>setup.py</code> 的 <code>entry_points</code> 注册 <code>static_tf_pub = tf2_demo.static_tf_pub:main</code>（同 EXP-05 要求）。</div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">3</span>补一个 <code>main()</code>：<pre data-copy="cmd"><span class="b">def</span> <span class="g">main</span>(args=<span class="b">None</span>):
-    rclpy.init(args=args)
-    node = StaticTfPub()
-    rclpy.spin(node)      <span class="c"># spin 保持节点存活，静态消息靠 QoS 重放</span>
-    node.destroy_node()
-    rclpy.shutdown()</pre></div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">4</span>构建并 source，启动发布者：<pre data-copy="cmd">cd ~/ros2_ws &amp;&amp; colcon build --packages-select tf2_demo
-<span class="b">.</span> install/setup.bash
-ros2 run tf2_demo static_tf_pub</pre></div>
-  </div>
-<h3 class="sub">三种手段验证 TF 树</h3>
-  <div class="flow">
-    <div class="step"><span class="n">1</span><strong>命令行直查</strong>——对应第 3 节动画的一次 lookup：<pre data-copy="cmd">ros2 run tf2_ros tf2_echo base_link laser_frame
-<span class="c"># 输出 Translation: [0.1, 0.0, 0.2]  Rotation: [0,0,0] (x,y,z,w)</span>
-<span class="c"># 至 Ctrl+C 前会持续刷新（动态边场景下数值会变）</span></pre>能打印出变换矩阵 = 链路可用。</div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">2</span><strong>导出整棵树</strong>——生成 PDF 树状图（离线图片在 <code>~/.ros</code> 下，名为 <code>frames.pdf</code>）：<pre data-copy="cmd">ros2 run tf2_tools view_frames
-<span class="c"># 订阅 /tf、/tf_static 5 秒 → 打印每个 frame 的发布频率与超时告警 → 生成 frames.pdf</span></pre>检查：是否为<strong>合法树形</strong>（无环、每个 child 只有一个 parent）。</div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">3</span><strong>RViz 可视化</strong>——启动 <code>rv2</code>，<code>Add → By display type → TF</code>，勾选 <strong>Frames / Names / Arrows</strong>；若同时播传感器数据（如选用真实小车则执行 <code>ros2 launch car_common car_bringup.launch.py</code>），把 Fixed Frame 设为 <code>map</code>，观察点云/激光是否落在车体与地图的正确相对位置——<strong>对不上 = TF 有问题</strong>。</div>
-    <div class="arr"></div>
-    <div class="step"><span class="n">4</span><strong>纯软件自检（可选）</strong>——再写一个 <code>tf2_echo</code> 风格的查询节点（6.2 代码），打印 base_link→laser_frame 的 yaw 反解值，应与发布的平移/零旋转一致。</div>
-  </div>
-  <div class="tip amber"><span class="lab">💡 从"验证"学"调试"</span>排查 TF 的三板斧就是本节顺序：<strong>tf2_echo 查单边 → view_frames 查全树 → RViz 查最终效果</strong>。实际项目里 90% 的"数据对不齐"，用这三步五分钟内能定位到是哪条边断了/错了。</div>
-
-<div class="figs-guide"><h4>📸 指导书实操与现象截图（1 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821185523937.png" alt="| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…" loading="lazy"><figcaption>| v0.2 | 2026-08-10 | 新增实验2（ROS2常用命令工具） | La…</figcaption></figure></div></div>
+<div class="figs-guide"><h4>📸 关键操作与现象截图（1 图）</h4><div class="figgrid"><figure class="fg" onclick="lbShow(this)"><img src="../assets/image-20260821185523937.png" alt="Fixed Frame 设为 lidar_frame，TF 面板列出各坐标系，场景出现 TF 坐标轴" loading="lazy"><figcaption>Fixed Frame = lidar_frame · TF 面板列出 base_link / camera_frame / laser_scan / lidar_frame，场景中出现变换轴</figcaption></figure></div></div>
 </section>
 
-<section class="blk" id="s4">
-  <h2><span class="no">04</span>注意事项与验收</h2>
-  <h3>⚠️ 注意事项</h3>
+<section class="blk" id="s5">
+  <h2><span class="no">05</span>注意事项与验收</h2>
+  <h3 class="sub">注意事项（七条红线）</h3>
   <table>
     <tr><th style="width:170px">类别</th><th>说明</th></tr>
     <tr><td><strong>禁环防空转</strong></td><td>TF2 是有根树，<strong>严禁成环</strong>；同一 child_frame 被两个节点配不同 parent 发布时会报错警告（"frame conflicts"）。</td></tr>
@@ -551,7 +579,7 @@ ros2 run tf2_demo static_tf_pub</pre></div>
     <tr><td><strong>牢记报错就在现场</strong></td><td><code>Lookup would require extrapolation</code> = 时间戳超出缓冲窗口（常见于缓冲太短或时间不同步），先检查各节点 <code>use_sim_time</code> 是否一致。</td></tr>
   </table>
 
-  <h3>✅ 验收标准</h3>
+  <h3 class="sub">验收标准（六条全绿才算过）</h3>
   <ul class="check">
     <li>tf2_demo 包编译通过，<code>ros2 run tf2_demo static_tf_pub</code> 正常启动无异常</li>
     <li><code>tf2_echo base_link laser_frame</code> 输出平移 [0.1, 0, 0.2]、旋转单位四元数</li>
@@ -562,20 +590,42 @@ ros2 run tf2_demo static_tf_pub</pre></div>
   </ul>
 </section>
 
-<section class="blk" id="s5">
-  <h2><span class="no">05</span>实验总结与思考</h2>
+<section class="blk" id="s6">
+  <h2><span class="no">06</span>本课总结与验证题</h2>
   <div class="kgrid">
     <div class="kcard"><div class="kd">成果</div><div class="kt">发布并验证了一条静态 TF 边</div><p>tf2_demo 包 + StaticTransformBroadcaster，三级验证手段（echo / view_frames / RViz）全通过。</p></div>
     <div class="kcard"><div class="kd">原理</div><div class="kt">树 + 连乘 + 缓冲</div><p>TF2 = 有根树（无环保证查询终止）+ 边的连乘合成 + 带时间戳的 Buffer 缓冲插值。</p></div>
     <div class="kcard"><div class="kd">QoS</div><div class="kt">动态 KeepLast vs 静态 Transient Local</div><p>/tf 要"最新"（KeepLast）、/tf_static 要"后到也有"（Transient Local）——同一套 Durability 开关的两种业务化用法，与 EXP-06 的 QoS 三要素一脉相承。</p></div>
     <div class="kcard"><div class="kd">迁移</div><div class="kt">四元数反解 yaw</div><p>2·atan2(z, w) 是读码必备；机械臂姿态、相机位姿都是同一套四元数。</p></div>
   </div>
-  <h3>🧠 思考题</h3>
-  <ol>
-    <li>为什么 <code>/tf_static</code> 只需要发一次，而后启动的 <code>view_frames</code> 依然能看到这条边？如果把它改成默认 QoS（KeepLast、Volatile），会出现什么现象？</li>
-    <li>四元数半角公式里，为什么是 yaw/<strong>2</strong>？当 yaw 从 179°转到 181°时，(z, w) 数值发生了什么变化，这对纯数值插值意味着什么？（提示：对照欧拉角插值的跳变问题）</li>
-    <li>如果里程计节点把 <code>odom→base_link</code> 发到了 <code>/tf_static</code> 上，车开动后 TF 树会发生什么？从 QoS 语义解释。</li>
-  </ol>
+  <div class="tip violet"><span class="lab">验证题（改动型 · 每题先自己作答，再展开核对）</span>
+
+<b>1（目标①②·改 QoS）</b>把发布静态变换的代码从 <code>StaticTransformBroadcaster</code> 换成普通 <code>TransformBroadcaster</code>（默认 KeepLast + Volatile），仍每 100ms 重发一次。之后启动的 <code>view_frames</code> 与新节点还能拿到这条边吗？从 Durability 语义说明。
+<details><summary>参考答案与得分点</summary>
+得分点：①Volatile 不为迟到者保留历史，新订阅者只能等下一条到达——在"只发一次"的静态场景里就是彻底丢失 ②换回 StaticTransformBroadcaster（/tf_static + Transient Local）才对 ③动态边之所以可以 Volatile，是因为它持续重发。（①③各 40%，② 20%）
+</details>
+
+<b>2（目标②·改命令参数）</b>命令里把 <code>--x 0.1</code> 与末尾的 <code>base_link</code>、<code>laser_frame</code> 顺序调换，写成 <code>... --x 0.1 --yaw 0 --pitch 0 --roll 0 laser_frame base_link</code>。<code>tf2_echo base_link laser_frame</code> 会打印什么？坐标还对吗？
+<details><summary>参考答案与得分点</summary>
+得分点：①父子角色互换，查询结果变成平移约 <code>[-0.1, 0, -0.2]</code>（等于原来的逆变换）②坐标"飞出"：换算到 map 的点整体错位 ③记法：static_transform_publisher 的顺序永远是"父 子"，与 lookup_transform 的"目标 源"是两套顺序。（①②各 40%，③ 20%）
+</details>
+
+<b>3（目标②③·改代码）</b>把 <code>lookup_transform('map','laser_frame', ...)</code> 的两个 frame 参数对调成 <code>lookup_transform('laser_frame','map', ...)</code>。返回的平移和四元数与原来是什么关系？
+<details><summary>参考答案与得分点</summary>
+得分点：①结果为原变换的<b>逆</b>：平移取反（旋转取共轭四元数）②语义从"把 laser 数据转到 map"变成"把 map 转到 laser"，用错用途就会把坐标系方向画反 ③参数顺序是（target, source）＝（目标在前、源在后）。（①②各 40%，③ 20%）
+</details>
+
+<b>4（目标①·改结构）</b>如果里程计节点把 <code>odom→base_link</code> 这条一直变化的边发到 <code>/tf_static</code> 上，车开动后 TF 树会发生什么？从 QoS 与更新策略两方面解释。
+<details><summary>参考答案与得分点</summary>
+得分点：①/tf_static 是 latched 的最后一条快照，车开动后新值发不上来（或只在最后一次重发时被覆盖）②树里这条边"冻住"，map/odom 与 base_link 的关系不再更新，定位在 RViz 里纹丝不动 ③正确做法：动态边走 /tf 持续重发 + KeepLast，静态边才走 /tf_static。（①②各 40%，③ 20%）
+</details>
+
+<b>5（目标②③·改时间）</b>查询时把 <code>rclpy.time.Time()</code> 换成数据消息里 <code>header.stamp</code> 对应的时刻，但该时刻早于 buffer 缓存窗口（默认约 10 秒之前）。会得到什么结果？怎么修？
+<details><summary>参考答案与得分点</summary>
+得分点：①抛出/报 <code>Lookup would require extrapolation</code> 类错误——该时刻的变换已被挤出缓存 ②修复方向：调大 Buffer 缓存时长、或让查询近似用最新时刻、或对齐各节点时钟/增大发布缓存 ③这也是"多源数据要带时间戳"的代价：换精度得拿缓存空间换。（①③各 40%，② 20%）
+</details>
+
+  </div>
 </section>
 
 <!-- expnav -->
@@ -585,8 +635,8 @@ ros2 run tf2_demo static_tf_pub</pre></div>
 </div>
 
 <footer>
-  <span>具身智能培训课程 · 机器人 ROS2 应用与开发 · EXP-19</span>
-  <span>硬件：实验箱 B2 / 小车 C1 · 参考核 ros_practice_lab_guide.md 实验19</span>
+  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-19 TF2 坐标系变换</span>
+  <span>2 学时 · 基于 ros_practice 实验讲义改编</span>
 </footer>
 
 </main>

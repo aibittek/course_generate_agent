@@ -662,60 +662,6 @@ ros2 run ros_sensor gas_monitor --ros-args -p alarm_threshold:=<span class="b">1
       <h2><span class="sn violet">03</span>QoS：给话题签一份传输合同，并亲手签坏它</h2>
       <p class="lead">同样是发数据，激光雷达"丢几帧无所谓、延迟必须低"，控制指令却"一条都不能丢"。ROS2 把这个选择权交给了 QoS（Quality of Service）：<b>每个话题都附带一套传输策略</b>——发布端提供一套，订阅端要求一套，DDS 逐项比对，匹配成功才建立连接。</p>
 
-      <figure class="anim2d-block">
-        <svg class="anim2d" viewBox="0 0 680 310" xmlns="http://www.w3.org/2000/svg" role="img"
-             aria-label="QoS 三个维度的档位示意：Reliability、Durability、History">
-          <defs>
-            <linearGradient id="qg1" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#5eead4"/>
-            </linearGradient>
-            <linearGradient id="qg2" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#93c5fd"/>
-            </linearGradient>
-            <linearGradient id="qg3" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="#bbf7d0"/><stop offset="1" stop-color="#c4b5fd"/>
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width="680" height="310" rx="12" fill="#f8fafc"/>
-          <text x="24" y="26" font-size="13" font-weight="700" fill="#0f172a">QoS 三个维度各有两档，像调音台上的推子：越往右越"可靠、越贵"</text>
-
-          <text x="24" y="72" font-size="12.5" font-weight="700" fill="#7c3aed">① Reliability 可靠性</text>
-          <rect x="24" y="82" width="290" height="16" rx="8" fill="url(#qg1)"/>
-          <circle cx="30" cy="90" r="9" fill="#fff" stroke="#d97706" stroke-width="2.5"/>
-          <circle cx="308" cy="90" r="9" fill="#fff" stroke="#0d9488" stroke-width="2.5"/>
-          <text x="24" y="118" font-size="11" fill="#b45309">BEST_EFFORT 尽力而为</text>
-          <text x="24" y="134" font-size="10" fill="#94a3b8">丢了就丢，延迟最低</text>
-          <text x="314" y="118" font-size="11" text-anchor="end" fill="#0f766e">RELIABLE 保证送达</text>
-          <text x="314" y="134" font-size="10" text-anchor="end" fill="#94a3b8">丢了会重传，延迟略高</text>
-          <text x="330" y="100" font-size="10.5" fill="#64748b">例：激光点云用左边，控制指令用右边；<tspan font-weight="700" fill="#0f766e">本实验 /gas_sensor 用 RELIABLE</tspan></text>
-
-          <text x="24" y="168" font-size="12.5" font-weight="700" fill="#7c3aed">② Durability 持久性</text>
-          <rect x="24" y="178" width="290" height="16" rx="8" fill="url(#qg2)"/>
-          <circle cx="30" cy="186" r="9" fill="#fff" stroke="#64748b" stroke-width="2.5"/>
-          <circle cx="308" cy="186" r="9" fill="#fff" stroke="#2563eb" stroke-width="2.5"/>
-          <text x="24" y="214" font-size="11" fill="#475569">VOLATILE 不补发</text>
-          <text x="24" y="230" font-size="10" fill="#94a3b8">订阅者上线前的消息不管</text>
-          <text x="314" y="214" font-size="11" text-anchor="end" fill="#1e40af">TRANSIENT_LOCAL 补发存量</text>
-          <text x="314" y="230" font-size="10" text-anchor="end" fill="#94a3b8">晚到的订阅者先收到"最后一条"</text>
-          <text x="330" y="196" font-size="10.5" fill="#64748b">例：地图、静态配置用右边——<tspan font-weight="700">本实验用 VOLATILE</tspan></text>
-
-          <text x="24" y="264" font-size="12.5" font-weight="700" fill="#7c3aed">③ History 历史 + Depth 深度</text>
-          <rect x="24" y="274" width="290" height="16" rx="8" fill="url(#qg3)"/>
-          <circle cx="30" cy="282" r="9" fill="#fff" stroke="#16a34a" stroke-width="2.5"/>
-          <circle cx="308" cy="282" r="9" fill="#fff" stroke="#7c3aed" stroke-width="2.5"/>
-          <text x="24" y="306" font-size="11" fill="#15803d">KEEP_LAST(N) 只留最近 N 条</text>
-          <text x="314" y="306" font-size="11" text-anchor="end" fill="#6d28d9">KEEP_ALL 全留</text>
-          <text x="330" y="292" font-size="10.5" fill="#64748b">N 越大越抗突发，也越占内存；<tspan font-weight="700" fill="#0f766e">本实验 depth=10</tspan></text>
-        </svg>
-        <figcaption>图 6-3｜QoS 三要素：每个话题都在这三个维度上各取一个档位，合起来就是它的"传输合同"</figcaption>
-      </figure>
-
-      <div class="kgrid">
-        <div class="kcard"><div class="kt">Reliability 可靠性</div><div class="kd"><b>RELIABLE</b>：丢包会重传，保证送达（本实验采用）。<br><b>BEST_EFFORT</b>：丢了不补，换取更低延迟——激光雷达点云、图像流常用。</div></div>
-        <div class="kcard"><div class="kt">Durability 持久性</div><div class="kd"><b>VOLATILE</b>：订阅者上线前的消息一律不管。<br><b>TRANSIENT_LOCAL</b>：为话题保留"最后一条"，晚到的订阅者一上线就补发。</div></div>
-        <div class="kcard"><div class="kt">History + Depth 历史深度</div><div class="kd"><b>KEEP_LAST(N)</b>：队列只留最近 N 条（本实验 N=10）。<br><b>KEEP_ALL</b>：一条不留地全排队——可能撑爆内存，慎用。</div></div>
-      </div>
-
       <h3 style="font-size:16px;color:var(--text-primary);margin:26px 0 0">按下场景选档位</h3>
       <table>
         <thead><tr><th>场景</th><th>Reliability</th><th>Durability</th><th>Depth</th><th>为什么</th></tr></thead>
