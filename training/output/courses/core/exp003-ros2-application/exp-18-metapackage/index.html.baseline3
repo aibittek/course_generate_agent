@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP-18 · 元功能包 — 机器人 ROS2 应用与开发</title>
+<link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
+<style>:root{--theme:#ec4899;--theme-deep:#be185d;--theme-bg:#fce7f3;--theme-bd:#fbcfe8}
+
+/* ===== 图解块：问题行 + iframe 图页 + 三徽标 ===== */
+.figq{font-size:12.5px;color:var(--text-secondary);margin:16px 0 6px;font-weight:600}
+.figq b{color:var(--theme-deep);font-weight:700}
+.dwrap{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:8px 0 4px;background:#fff}
+.dwrap iframe{display:block;width:100%;height:560px;border:0}
+@media(max-width:720px){.dwrap iframe{height:620px}}
+.dock{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:2px 10px 10px}
+.dock span{font-size:12px;border-radius:999px;padding:3px 11px;line-height:1.65}
+.dock .ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.dock .warn{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.dock .evid{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.srcline{font-size:12.5px;color:var(--text-muted);margin:10px 0 0}
+.figcap{font-size:12.5px;color:var(--text-muted);text-align:center;margin:6px 0 0}
+.tip details{margin:7px 0 11px;font-size:12.5px;line-height:1.8}
+.tip details summary{cursor:pointer;color:#5b21b6;font-weight:600}
+
+/* ===== 合并大节内的小标题（原理讲解 / 实验步骤 的 h3） ===== */
+h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
+  color:var(--text-primary);line-height:1.5;
+  border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
+h3.sub:first-of-type{margin-top:18px}
+@media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
+
+/* ===== 追加：无空格长 token 允许断行 + 表格窄屏横向滚动（防溢出） ===== */
+code.longtok{overflow-wrap:anywhere}
+.tblx{overflow-x:auto;max-width:100%}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="../../../index.html" style="text-decoration:none;color:inherit" title="返回课程首页">🧠 具身智能课程 · <i>教程首页</i></a>
+  <div class="crumb"><a href="../../../index.html#core">核心课程</a> / <a href="../index.html">ROS2 应用与开发</a> / EXP-18</div>
+</div>
+<div class="wrap">
+<aside class="side">
+  <h4>本页目录</h4>
+    <a href="#goal" class="now">★ 课程目标</a>
+  <a href="#s1" class="now">01 什么是元功能包</a>
+  <a href="#s2">02 什么时候用、什么时候不用</a>
+  <a href="#s3">03 怎么使用</a>
+  <a href="#s4">04 小结与自测</a>
+  
+  <h4>CH4 · 工具链</h4>
+  <a href="../exp-14-rqt/index.html">EXP-14 rqt 调试工具</a>
+  <a href="../exp-15-rviz2/index.html">EXP-15 rviz2 可视化</a>
+  <a href="../exp-16-rosbag/index.html">EXP-16 rosbag 数据录制</a>
+  <a href="../exp-17-launch/index.html">EXP-17 Launch 启动文件</a>
+  <a href="../exp-18-metapackage/index.html" style="color:var(--theme);font-weight:700">EXP-18 元功能包</a>
+</aside>
+<main class="content">
+<div class="exp-head">
+  <span class="code">EXP-18 · 第 4 章 · 验证性 · 2 学时</span>
+  <h1>元功能包：什么是、什么时候用、怎么用</h1>
+  <p class="desc">有一种包永远不包含代码，却能让一条 apt 命令装齐整套依赖——这就是元功能包（metapackage）。本课只讲三件事：它是什么、什么场景该用（以及什么时候不该用）、怎么创建和验证。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 元功能包 · exec_depend · 一键安装 · bringup</span></div>
+</div>
+
+<section class="blk reveal" id="goal">
+<h2><span class="no">目标</span>本课学完，你应该能做到</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">① 说清定义</div><div class="kt">什么是元功能包</div><p>能用自己的话说出定义：一种不含代码的空壳包，用一串 <code>exec_depend</code> 把一套功能聚合成一个名字。</p></div>
+  <div class="kcard"><div class="kd">② 判断场景</div><div class="kt">该用还是不该用</div><p>拿到真实需求，能判断该建元包、该用 bringup 包，还是 launch 文件就够了，并说出理由。</p></div>
+  <div class="kcard"><div class="kd">③ 动手实践</div><div class="kt">创建并验证</div><p>能用 <code>ros2 pkg create</code> 建一个元包、写好 package.xml，并用一条命令回读验证。</p></div>
+</div>
+<div class="tip tealb"><span class="lab">一句话记住</span>元功能包 = <b>购物清单式的包</b>：自己什么也不干，只负责"装我等于装全家桶"。</div>
+</section>
+
+<section class="blk" id="s1">
+  <h2><span class="no">01</span>什么是元功能包</h2>
+  <div class="tip amber"><span class="lab">定义</span><b>元功能包（metapackage）</b>是一种"空壳"包：自己不包含任何节点、代码或配置，只在 package.xml 里用 <code>&lt;exec_depend&gt;</code> 声明对一组包的依赖。它的作用是把一整套相关功能<b>"打包成一个名字"</b>，方便安装和整体启动。</div>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">特征一</div><div class="kt">零内容</div><p>没有 src/、没有节点、没有配置文件。（ROS 1 硬性规定不能有代码；ROS 2 放宽了，但惯例仍是"纯聚合"。）</p></div>
+    <div class="kcard"><div class="kd">特征二</div><div class="kt">只写运行时依赖</div><p>package.xml 里只用 <code>exec_depend</code> 声明"运行时我需要谁"，不用 build_depend 链接代码。</p></div>
+    <div class="kcard"><div class="kd">特征三</div><div class="kt">export 打标记</div><p>package 格式 3，在 <code>&lt;export&gt;</code> 里写 <code>&lt;metapackage/&gt;</code>，构建类型仍是 ament_cmake。</p></div>
+  </div>
+  <div class="tip"><span class="lab">典型例子</span><b>ros-humble-desktop</b>——装一个就带上整套工具；<b>navigation2</b>——一条 apt 命令装齐 20 余个子包；<b>car1_bringup</b>——工程实践里最接近的思路包（它带 launch 内容，属于聚合包而非纯元包，见 02 节对照）。</div>
+  <div class="figq"><b>图 18-1 · 聚合生效原理｜本图回答：元包没有代码，<code>apt install</code> 它之后为什么整棵子包树都在了？</b></div>
+  <div class="dwrap"><iframe src="diagrams/fig-18-1-apt-aggregate.html" title="图 18-1 聚合生效原理" loading="lazy"></iframe>
+  <div class="dock"><span class="ok">✅ 结论：元包只提供清单，展开由包管理器递归完成</span><span class="warn">⚠️ 风险：绕过元包手敲子包名，漏一个就运行期报错</span><span class="evid">🔍 验证：03 节步骤 ④ 的回读输出</span></div></div>
+</section>
+
+<section class="blk" id="s2">
+<h2><span class="no">02</span>什么时候用、什么时候不用</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">场景一</div><div class="kt">对外交付：一条 apt 装齐</div><p>项目以安装包形式发布给别人：<code>sudo apt install ros-humble-car1</code> 装一个 = 装齐整套驱动。官方 desktop、nav2 正是这么做的。</p></div>
+  <div class="kcard"><div class="kd">场景二</div><div class="kt">多仓库协作：总入口</div><p>底盘组、导航组各发各的仓库，用一个元包声明"完整系统 = 这三者的某个版本组合"，不必搬别人的源码。</p></div>
+  <div class="kcard"><div class="kd">场景三</div><div class="kt">聚合构建：一键带编</div><p><code>colcon build --packages-up-to my_robot_meta</code>：靠元包的依赖关系，把所有兄弟包一次编出来。</p></div>
+</div>
+<div class="tip amber"><span class="lab">这些情况不需要元包</span>
+<b>① 包里有 launch、配置、脚本</b> → 这是 bringup 包（如 car1_bringup：ament_python 包，带 launch/bringup.launch.py，export 里只有 ament_python、没有 metapackage 标记）。<br>
+<b>② 只想一次启动多个节点</b> → launch 文件就够了（EXP-17）。<br>
+<b>③ 单人/小团队直接源码 colcon build</b> → 依赖自动解析，元包没有实际收益。</div>
+<div class="tblx"><table>
+  <tr><th>维度</th><th>纯元包</th><th>bringup 包（如 car1_bringup）</th></tr>
+  <tr><td>内容</td><td>纯依赖清单，零内容</td><td>launch 文件 + 实际代码结构</td></tr>
+  <tr><td>export 标记</td><td>ament_cmake + metapackage</td><td>ament_python / ament_cmake，无 metapackage</td></tr>
+  <tr><td>职责</td><td>安装入口："装我 = 装全家"</td><td>启动入口："一条 launch 拉起整机"</td></tr>
+  <tr><td>常见度</td><td>apt 发布的官方包常用</td><td>ROS 2 日常开发里更常见</td></tr>
+</table></div>
+<div class="tip tealb"><span class="lab">结论</span>对"源码编译 + 单仓库"的开发方式（如本工程），现有 bringup 包模式就是最合适的选择，<b>不需要引入元包</b>；只有走到 apt 发布、或多仓库给不同团队集成时，才值得加一个纯元包当安装入口。</div>
+</section>
+
+<section class="blk" id="s3">
+<h2><span class="no">03</span>怎么使用</h2>
+<p class="srcline">两种用法：<b>用别人提供的元包</b>只要一条命令；<b>自己造一个</b>四步搞定，2 分钟内完成。</p>
+
+<div class="tip violet"><span class="lab">用法一：用别人提供的元包</span>
+<code>sudo apt install ros-humble-&lt;元包名&gt;</code> —— 一条命令装齐整套依赖（官方 desktop、nav2 都提供这种入口）。</div>
+
+<div class="tip violet"><span class="lab">用法二：自己造一个元包</span>跟着下面四步做，命令可直接照抄：</div>
+<div class="flow">
+  <div class="step"><span class="n">1</span><b>创建</b>：<code>ros2 pkg create my_robot_meta --build-type ament_cmake</code>（选 ament_python 会去找 setup.py 直接失败）</div>
+  <div class="step"><span class="n">2</span><b>改 package.xml</b>：删掉自动生成的 build_depend/test 块，只留 <code>&lt;exec_depend&gt;</code>；export 段写上 <code>&lt;metapackage/&gt;</code></div>
+  <div class="step"><span class="n">3</span><b>改 CMakeLists.txt</b>：只留四行，一个字都不用加</div>
+  <div class="step"><span class="n">4</span><b>编译并回读验证</b>：<code>colcon build</code> → <code>source install/setup.bash</code> → <code>ros2 pkg xml my_robot_meta | grep exec_depend</code> 看到清单即成功</div>
+</div>
+
+  <div class="figq"><b>图 18-4 · 自建元包四步流程｜本图回答：从零建一个元包，每一步动什么文件、用什么命令、看什么输出？</b></div>
+  <div class="dwrap"><iframe src="diagrams/fig-18-4-create-flow.html" title="图 18-4 自建元包流程" loading="lazy"></iframe>
+  <div class="dock"><span class="ok">✅ 结论：四步即可得到可安装、可回读的元包</span><span class="warn">⚠️ 风险：build-type 选错或混入 build_depend</span><span class="evid">🔍 验证：下方步骤 ④ 的回读输出</span></div></div>
+  <pre data-copy="cmd"><span class="c"># ① 创建（必须 ament_cmake；选 ament_python 会去找 setup.py 直接失败）</span>
+<span class="b">$</span> cd ~/ros2_ws/src
+<span class="b">$</span> ros2 pkg create my_robot_meta --build-type ament_cmake
+
+<span class="c"># ② package.xml：只留运行时依赖，export 段打上元包标记</span>
+&lt;package format="3"&gt;
+  ...
+  <span class="b">&lt;exec_depend&gt;rclpy&lt;/exec_depend&gt;</span>
+  <span class="b">&lt;exec_depend&gt;sensor_msgs&lt;/exec_depend&gt;</span>
+  <span class="b">&lt;exec_depend&gt;tf2_ros&lt;/exec_depend&gt;</span>
+  &lt;export&gt;
+    &lt;build_type&gt;ament_cmake&lt;/build_type&gt;
+    <span class="b">&lt;metapackage/&gt;</span>
+  &lt;/export&gt;
+&lt;/package&gt;
+
+<span class="c"># ③ CMakeLists.txt 只留四行</span>
+cmake_minimum_required(VERSION 3.8)
+project(my_robot_meta)
+find_package(ament_cmake REQUIRED)
+<span class="b">ament_package()</span>
+
+<span class="c"># ④ 编译（约 0.5 秒，没代码可编，属正常）并回读验证</span>
+<span class="b">$</span> colcon build --packages-select my_robot_meta
+<span class="b">$</span> source install/setup.bash
+<span class="b">$</span> ros2 pkg xml my_robot_meta | grep exec_depend
+  &lt;exec_depend&gt;rclpy&lt;/exec_depend&gt;
+  &lt;exec_depend&gt;sensor_msgs&lt;/exec_depend&gt;
+  <span class="g"># ……能看到全部 exec_depend 即成功</span></pre>
+  <div class="tip teal"><span class="lab">造好之后怎么用</span>
+  <b>给别人安装</b>：<code>sudo apt install ros-humble-my-robot-meta</code> 一键装齐；<b>自己仓库内</b>：<code>colcon build --packages-up-to my_robot_meta</code> 顺带把所有依赖的兄弟包一起编出来。</div>
+  <div class="tip amber"><span class="lab">常见坑（只记两条）</span>
+  ① 回读命令没输出 → 当前终端没 source，先执行 <code>source install/setup.bash</code>。<br>
+  ② 元包里混入 <code>build_depend</code> → 安装时不会拉起该依赖，聚合失效。</div>
+</section>
+
+<section class="blk" id="s4">
+<h2><span class="no">04</span>小结与自测</h2>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">是什么</div><div class="kt">空壳购物清单</div><p>不含代码，只用 <code>exec_depend</code> 聚合依赖——装我等于装全家桶。</p></div>
+    <div class="kcard"><div class="kd">什么时候用</div><div class="kt">apt 发布 / 多仓库</div><p>对外一键安装、多仓库集成时用；带 launch 的工程用 bringup 包更合适。</p></div>
+    <div class="kcard"><div class="kd">怎么用</div><div class="kt">四步 + 回读验证</div><p>create → 改 package.xml → 四行 CMakeLists → build 后用 <code>ros2 pkg xml</code> 回读。</p></div>
+  </div>
+  <div class="tip violet"><span class="lab">自测（3 题 · 先自己作答，再展开核对）</span>
+
+<b>1（考场景）</b>你的项目要以 apt 包发布，用户一条命令装齐 5 个驱动包——该建元包还是 bringup 包？如果用户还要求"一条 launch 拉起整机"呢？
+<details><summary>参考答案与得分点</summary>
+得分点：①只要安装入口 → 建纯元包 ②还要整机启动 → 元包管安装 + bringup/launch 包管启动，或直接用带 launch 的 bringup 包一步到位（ROS 2 里更常见）③能说出"装我=装全家"与"一条 launch 拉起"是两个职责。（①②各 40%，③ 20%）
+</details>
+
+<b>2（改标签）</b>把元包 package.xml 里一行 <code class="longtok">&lt;exec_depend&gt;sensor_msgs&lt;/exec_depend&gt;</code> 改成 <code class="longtok">&lt;build_depend&gt;sensor_msgs&lt;/build_depend&gt;</code>。<code>colcon build</code> 照样秒过，但用户 <code>sudo apt install</code> 你的元包后运行时会怎样？
+<details><summary>参考答案与得分点</summary>
+得分点：①build_depend 只是构建依赖，安装时不会把 sensor_msgs 作为运行时依赖拉起 ②运行期缺包，节点起不来/报缺依赖 ③元包必须只用 exec_depend，聚合才成立。（①②各 40%，③ 20%）
+</details>
+
+<b>3（改创建参数）</b>把创建命令换成 <code>ros2 pkg create home_robot_meta --build-type ament_python</code> 后直接 <code>colcon build</code>，会发生什么？正确写法是什么？
+<details><summary>参考答案与得分点</summary>
+得分点：①ament_python 靠 setup.py 打包，colcon 找不到 setup.py，构建失败或跳过该包 ②正确写法：<code>--build-type ament_cmake</code> ③元包没有可打包的模块，不适合 ament_python。（①②各 40%，③ 20%）
+</details>
+
+</div>
+
+</section>
+
+
+
+<nav class="expnav">
+  <a href="../exp-17-launch/index.html"><span class="lb">← 上一个实验</span>EXP-17 Launch 启动文件</a>
+  <a class="next" href="../exp-20-urdf/index.html"><span class="lb">下一个实验 →</span>EXP-20 URDF 机器人建模</a>
+</nav>
+<footer>
+  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-18 元功能包</span>
+  <span>2 学时 · 验证性 · 基于 ros_practice 实验讲义改编</span>
+</footer>
+</main>
+</div>
+<script src="../shared/tutorial.js?v=20261027a" defer></script>
+</body>
+</html>

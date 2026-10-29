@@ -132,12 +132,34 @@ h3.sub:first-of-type{margin-top:18px}
   <h2><span class="no">02</span>先看现象：录一次，历史就留住了</h2>
   <div class="tip tealb"><span class="lab">2 分钟 0→1</span>先不讲原理——把 talker / listener 起起来、录一段、再回放，你会亲眼看到"已经流走的历史"按原节奏重新发布，订阅端毫无察觉。</div>
   <div class="flow">
-    <div class="step"><div class="n">1</div><b>造现场</b><p>两个终端分别跑 <code>ros2 run demo_nodes_cpp talker</code> 和 <code>listener</code>，确认 listener 每秒打印一条</p></div>
-    <div class="step"><div class="n">2</div><b>开录</b><p>第三个终端 <code>ros2 bag record -a -o exp16_full</code>，保持运行 15 秒（Ctrl+C 停止）</p></div>
-    <div class="step"><div class="n">3</div><b>体检</b><p><code>ros2 bag info exp16_full</code> → Duration 约 13.5s，/chatter Count 约 14 条</p></div>
-    <div class="step"><div class="n">4</div><b>断源</b><p>Ctrl+C 停掉 talker——现场彻底静默，listener 不再收到任何东西</p></div>
-    <div class="step"><div class="n">5</div><b>复活</b><p><code>ros2 bag play exp16_full</code> → listener 又开始逐条打印，节奏与录制时一致</p></div>
-    <div class="step"><div class="n">6</div><b>变速</b><p><code>ros2 bag play exp16_full -r 2.0</code> → 打印速度翻倍，验证时序被完整记录</p></div>
+    <div class="step"><div class="n">1</div><b>造现场</b>
+      <p>开两个终端<b>分别</b>起发布端与订阅端——listener 每秒打印一条 <code>world</code>，就说明"现场"活着：</p>
+      <pre data-copy="cmd"><span class="c"># 终端 A · 发布端</span>
+<span class="g">ros2</span> run demo_nodes_cpp talker
+
+<span class="c"># 终端 B · 订阅端</span>
+<span class="g">ros2</span> run demo_nodes_cpp listener</pre>
+    </div>
+    <div class="step"><div class="n">2</div><b>开录</b>
+      <p>第三个终端开录，<b>保持运行约 15 秒</b>再按 <code>Ctrl+C</code>（SIGINT）优雅停止——这一停决定了 metadata.yaml 会不会被写出来：</p>
+      <pre data-copy="cmd"><span class="c"># 终端 C</span>
+<span class="g">ros2</span> bag record -a -o exp16_full</pre>
+    </div>
+    <div class="step"><div class="n">3</div><b>体检</b>
+      <p>不用回放，<code>info</code> 毫秒级回答"录了多久、有没有这个话题"：预期 <b>Duration 约 13.5s</b>、<b>/chatter Count 约 14 条</b>（14 / 13.55 ≈ 1.03Hz，对得上 talker 的 1Hz）：</p>
+      <pre data-copy="cmd"><span class="g">ros2</span> bag info exp16_full</pre>
+    </div>
+    <div class="step"><div class="n">4</div><b>断源</b>
+      <p>回放前先把<b>真源掐掉</b>：在终端 A 对 <code>talker</code> 按 <code>Ctrl+C</code>（SIGINT）——现场彻底静默、listener 不再收到任何东西，接下来 listener 打印的每一条都必然来自 bag，新旧消息不会混流。<i>（这步是按键动作，没有可复制的命令）</i></p>
+    </div>
+    <div class="step"><div class="n">5</div><b>复活</b>
+      <p>回到终端 C 回放，历史按原节奏重新发布，listener 会像什么都没发生过一样继续逐条打印：</p>
+      <pre data-copy="cmd"><span class="g">ros2</span> bag play exp16_full</pre>
+    </div>
+    <div class="step"><div class="n">6</div><b>变速</b>
+      <p>同一份数据二倍速播放——<b>只改发布节奏，不改消息内容</b>，打印速度翻倍即证明时序被完整记录：</p>
+      <pre data-copy="cmd"><span class="g">ros2</span> bag play exp16_full -r 2.0</pre>
+    </div>
   </div>
   <div class="tip tealb"><span class="lab">此刻你已经验证的两件事</span>
 ① <b>持久化</b>：消息以 CDR 字节写进 .db3，断源后依然存在（info 能数出条数与时间跨度）；<br>
@@ -147,6 +169,22 @@ h3.sub:first-of-type{margin-top:18px}
 <section class="blk" id="s3">
 <h2><span class="no">03</span>原理讲解</h2>
 <h3 class="sub">一个 .db3 文件里到底有什么</h3>
+  <div class="tip tealb"><span class="lab">先看外层：目录树</span>
+  别急着钻进 .db3——先看它待在哪。<b>一个 bag = 一个目录</b>，录完 <code>exp16_full</code> 后里面就两个文件，谁是本体、谁是清单一眼分清：</div>
+  <pre data-copy="cmd"><span class="g">ls</span> -l exp16_full/</pre>
+  <div class="io"><span class="dim"># 目录树（先看结构，再看字节数）</span>
+<span class="ok">exp16_full/</span>                     <span class="c"># bag 目录本身，这就是"一个 bag"</span>
+├── <span class="ok">exp16_full_0.db3</span>            <span class="b">36864 B</span>   <span class="c"># 本体：SQLite3 数据库（两张表在里面）</span>
+└── <span class="ok">metadata.yaml</span>                <span class="b">3297 B</span>   <span class="c"># 清单：记录时长/条数/指向哪个 _0.db3</span></div>
+  <div class="io"><span class="dim">$ ls -l exp16_full/</span>
+total 40
+-rw-r--r-- 1 iflytek iflytek <span class="ok">36864</span> Oct 29 14:10 <span class="ok">exp16_full_0.db3</span>
+-rw-rw-r-- 1 iflytek iflytek  <span class="ok">3297</span> Oct 29 14:10 <span class="ok">metadata.yaml</span>
+<span class="warn"># ⚠ 注意文件名带 _0 分片号，加了 -d 才会出现 _1 _2 ...；查总数要对着目录，别只查单个 _0.db3</span></div>
+  <div class="tip"><span class="lab">读树的三个要点</span>
+  ① <b>目录就是 bag</b>——拷贝/上传/发给别人，拷的是整个 <code>exp16_full/</code>，只发 .db3 会丢清单；<br>
+  ② <b>两个文件缺一不可</b>——yaml 管"找得到"（<code>info</code>/<code>play</code> 先读它），db3 管"内容在"（消息字节全在这）；<br>
+  ③ <b>树只到文件这一层</b>——.db3 <em>里面</em>才是本课真正要拆的两张表，接着往下看图 16-1。</div>
   <div class="figq"><b>图 16-1 · bag 存储结构：清单与本体分工</b>——为什么删掉 metadata.yaml 这个包就"失忆"，而查总数必须对着目录而不是单个 .db3？</div>
   <div class="dwrap"><iframe src="diagrams/fig-16-1-bag-structure.html" title="图 16-1 bag 存储结构" loading="lazy"></iframe></div>
   <div class="dock"><span class="ok">✅ metadata.yaml 管"找得到"、.db3 管"内容在"</span><span class="warn">⚠️ 单查一个 _0.db3 漏分片</span><span class="evid">🔍 04 节 1.6 cat yaml + info 心算 1.03Hz</span></div>
@@ -309,31 +347,48 @@ h3.sub:first-of-type{margin-top:18px}
     <p class="cs-why">这是整份清单的<b>原始出处</b>——<code>ros2 bag info</code> 打印的每个数字都能在这里找到。<b>human-readable，删了它 bag 就"失忆"</b>（<code>info</code> 直接读不出来）：</p>
     <pre data-copy="cmd"><span class="g">cat</span> exp16_full/metadata.yaml</pre>
     <div class="io"><span class="dim">$ cat exp16_full/metadata.yaml</span>
+<span class="c"># 根键：整份清单就这一个顶层块，底下全是缩进的键值/列表</span>
 rosbag2_bagfile_information:
-  version: 5
-  storage_identifier: <span class="ok">sqlite3</span>
-  relative_file_paths:
+  version: <span class="ok">5</span>                        <span class="c"># 清单格式版本，rosbag2 升级会变（跨版本读包先看它）</span>
+  storage_identifier: <span class="ok">sqlite3</span>       <span class="c"># 存储后端 → 决定你能不能用 SQL/python 直接查库</span>
+  relative_file_paths:              <span class="c"># 消息本体在哪：指向 _0.db3（分片多了这里就多行）</span>
     - <span class="ok">exp16_full_0.db3</span>
   duration:
-    nanoseconds: <span class="ok">13554570568</span>        <span class="c"># = 13.55s（注意不是 15s）</span>
+    nanoseconds: <span class="ok">13554570568</span>        <span class="c"># 录制时长（纳秒）= 13.55s，注意不是 15s</span>
   starting_time:
-    nanoseconds_since_epoch: 1760000000000000000
-  message_count: <span class="ok">54</span>
-  topics_with_message_count:
+    nanoseconds_since_epoch: 1760000000000000000   <span class="c"># 起录绝对时刻（Unix 纪元纳秒），多包对齐用</span>
+  message_count: <span class="ok">54</span>                 <span class="c"># 全包总条数，应 = 各话题之和：14+40+0+0</span>
+  topics_with_message_count:        <span class="c"># 每话题一段明细，info 的 Topic 表就是它</span>
     - topic_metadata:
-        name: <span class="ok">/chatter</span>
-        type: <span class="ok">std_msgs/msg/String</span>
-        serialization_format: <span class="ok">cdr</span>
-      offered_qos_profiles: "- reliability: 1 ..."   <span class="c"># QoS 也存这里</span>
-      message_count: <span class="ok">14</span>
+        name: <span class="ok">/chatter</span>              <span class="c"># 话题名（回放时按它重建发布端）</span>
+        type: <span class="ok">std_msgs/msg/String</span>   <span class="c"># 消息类型（类型不对 play 会拒收）</span>
+        serialization_format: <span class="ok">cdr</span>   <span class="c"># 序列化格式，与 DDS 线上字节同源</span>
+      offered_qos_profiles: "- reliability: 1 ..."   <span class="c"># 录时声明的 QoS，回放靠它对齐订阅端</span>
+      message_count: <span class="ok">14</span>             <span class="c"># /chatter 条数 → info 的 Count、心算频率的分子</span>
     - topic_metadata:
         name: /rosout
         type: rcl_interfaces/msg/Log
         serialization_format: cdr
       message_count: 40
-    ...</div>
-    <div class="tip"><span class="lab">三个字段各自有什么用</span>
-    <b><code>storage_identifier: sqlite3</code></b>——存储后端，决定你能不能用 SQL 直查；<b><code>duration.nanoseconds</code></b>——录制时长（纳秒），是算频率的分母；<b><code>topics_with_message_count</code></b>——每个话题的 <code>name / type / serialization_format</code> + <code>message_count</code>，还有 <code>offered_qos_profiles</code>（<b>QoS 就存在这里</b>，回放要用的就是它）。</div>
+    <span class="dim">...</span>                              <span class="c"># 省略 Count=0 的 /parameter_events、/events/write_split</span></div>
+    <p class="cs-see">✔ 这块 YAML 的读法：<b>"−" 开头的是列表项</b>（每个话题一段），<b>缩进 2 格是键值对</b>。上半部分回答"这个包整体是什么"（版本/后端/文件/时长/总数），下半部分 <code>topics_with_message_count</code> 回答"里面有哪些话题、各多少条"——<b><code>ros2 bag info</code> 打印的每个数字，都能在这里指出出处</b>。</p>
+    <table>
+      <tr><th>字段（本例值）</th><th>是什么</th><th>用来干什么 / 不懂会怎样</th></tr>
+      <tr><td><code>version: 5</code></td><td>清单格式版本号</td><td>新版 rosbag2 读旧包、字段增减时的兼容依据；报"不支持的 bag 格式"先看它</td></tr>
+      <tr><td><code>storage_identifier: sqlite3</code></td><td>存储后端（不是文件后缀决定的）</td><td>声明是 SQLite → 可用 <code>python3 -c "import sqlite3; ..."</code> 直查；换成 mcap 就得换工具</td></tr>
+      <tr><td><code>relative_file_paths</code></td><td>本体文件的<b>相对路径</b>（分片多则多行）</td><td><b>yaml 靠它找到 .db3</b>——所以两者必须同目录：只拷 .db3 或移动不同步，<code>info/play</code> 就找不到</td></tr>
+      <tr><td><code>duration.nanoseconds: 13554570568</code></td><td>真实录制时长 = 13.55s（纳秒）</td><td>是 <code>info</code> 的 Duration，也是<b>算频率的分母</b>；比"按了约 15 秒"短，因为开录/停止有开销</td></tr>
+      <tr><td><code>starting_time.nanoseconds_since_epoch</code></td><td>起录的绝对时刻（Unix 纪元纳秒）</td><td>多段 bag 拼接、和其他数据源（日志/里程计）对齐时间轴时的基准</td></tr>
+      <tr><td><code>message_count: 54</code></td><td><b>全包</b>总条数</td><td>应等于各话题之和（14+40+0+0=54）；对不上说明清单与库不同步，先 <code>ros2 bag reindex</code></td></tr>
+      <tr><td><code>name / type / serialization_format</code></td><td>话题名、消息类型、序列化格式</td><td><code>play</code> 据此重建发布端；<b>类型或格式不匹配的订阅端收不到</b>（自定义消息尤其要先 <code>ros2 interface show</code> 核对）</td></tr>
+      <tr><td><code>offered_qos_profiles</code></td><td>录这个话题时声明的 QoS（reliability/durability…）</td><td><b>QoS 就存在这里</b>：best_effort 传感器消息回放时按它对齐，否则"包在、却收不到"（见坑表 <code>--qos-profile-overrides-path</code>）</td></tr>
+      <tr><td><code>message_count: 14</code>（每话题）</td><td>该话题条数</td><td><code>info</code> 的 Count、<b>频率心算的分子</b>：14 / 13.55 ≈ 1.03Hz ✓</td></tr>
+    </table>
+    <div class="tip tealb"><span class="lab">三处心算，30 秒自检这个包</span>
+    ① <b>加法</b>：总 <code>54</code> = 各话题 <code>14+40+0+0</code>，对得上 → 清单和 .db3 是同步的；<br>
+    ② <b>换算</b>：<code>13554570568 ns ÷ 10⁹ = 13.55s</code>（纳秒 → 秒），和 <code>info</code> 的 Duration 一致；<br>
+    ③ <b>频率</b>：<code>14 ÷ 13.55 ≈ 1.03Hz</code>，对得上 talker 标称 1Hz → 数据完整没丢帧。<br>
+    三处都对，才轮到 <code>play</code> 回放；任何一处对不上，先回查录制过程（是否 <code>Ctrl+C</code>、有没有 <code>kill -9</code>）。</div>
   </div>
 
   <div class="termbar"><span class="tl">终端 C</span><b>第 2 步 · 定量体检：ros2 bag info</b><span class="note">同终端</span></div>
@@ -342,19 +397,42 @@ rosbag2_bagfile_information:
     <p class="cs-why">继承别人的 bag、或几周后回头查时，先回答三个问题：录了多久？有这个话题吗？频率对不对？<code>info</code> 毫秒级给出答案，不必回放整个文件：</p>
     <pre data-copy="cmd"><span class="g">ros2 bag info</span> exp16_full</pre>
     <div class="io"><span class="dim">$ ros2 bag info exp16_full</span>
-Files:             exp16_full_0.db3
-Bag size:          50.9 KiB
-Storage id:        sqlite3
-<span class="ok">Duration:          13.5s</span>
-Messages:          54
+<span class="dim"># ——— 上半 · 包级档案：这个包是什么样 ———</span>
+Files:             exp16_full_0.db3  <span class="c"># 构成本体的文件（切片多了这里多行）</span>
+Bag size:          50.9 KiB          <span class="c"># 包体积（1KiB=1024B），话题越多/频率越高越大</span>
+Storage id:        sqlite3            <span class="c"># 存储后端 → 可用 python sqlite3 直查库</span>
+<span class="ok">Duration:          13.5s</span>               <span class="c"># 真实时长 ← 三问之①；yaml 里精确值 13.55s（此处四舍五入）</span>
+Messages:          54                <span class="c"># 全包总条数 = 下面各话题 Count 之和</span>
+<span class="dim"># ——— 下半 · 逐话题账本：这个包里有什么数据 ———</span>
 Topic information:
   Topic: <span class="ok">/chatter</span> | Type: std_msgs/msg/String | <span class="ok">Count: 14</span> | Serialization Format: cdr
+         <span class="c">#↑业务话题    ↑类型要与订阅端一致        ↑频率分子         ↑与 DDS 线上字节同源</span>
   Topic: /rosout | Type: rcl_interfaces/msg/Log | Count: 40 | Serialization Format: cdr
+         <span class="c"># 系统话题，条数偏多属正常——为什么见下方"反直觉现象"表</span>
   Topic: /parameter_events | Type: rcl_interfaces/msg/ParameterEvent | Count: 0 | Serialization Format: cdr
+         <span class="c"># 系统话题，0 条属正常——为什么见下方"反直觉现象"表</span>
   Topic: /events/write_split | Type: rosbag2_interfaces/msg/WriteSplitEvent | Count: 0 | Serialization Format: cdr
+         <span class="c"># rosbag2 内部"切片通知"话题，只在切出 _1/_2 时才有事件，平时 0 条</span>
 <span class="warn"># 频率心算 = Count / Duration：/chatter 14/13.55 ≈ 1.03Hz ✓（与 talker 标称 1Hz 一致）</span>
 <span class="warn"># 某话题 Count 异常低 → 录漏了；Duration=0 → 空包，重录</span></div>
-    <p class="cs-see">✔ <b>Duration</b>=真实录制时长；<b>Bag size</b>=磁盘占用（话题越多/频率越高/消息越大，文件越大）；<b>Count</b>=该话题条数，<b>Count / Duration ≈ 录制时段的平均频率</b>——这是判断"数据完不完整"的第一把尺。</p>
+    <p class="cs-see">✔ <b>输出分两段</b>：上半 5 行是<b>包级档案</b>（哪些文件、多大、什么后端、多久、多少条），下半 <code>Topic information</code> 是<b>逐话题账本</b>。上面三问各看一行——<b>"录了多久"</b>看 <b>Duration</b>（=0 即废包）；<b>"有这个话题吗"</b>扫 <b>Topic</b> 列并核对 <b>Type</b>；<b>"频率对不对"</b>算 <b>Count ÷ Duration</b>。十秒钟读完，不必回放。</p>
+    <table>
+      <tr><th>输出行（本例值）</th><th>是什么</th><th>怎么用 / 异常长什么样</th></tr>
+      <tr><td><code>Files: exp16_full_0.db3</code></td><td>构成这个包的本体文件，分片会各占一行</td><td>和 1.5 步 <code>ls</code> 对一眼，文件数一致才说明目录没拷漏；<b>只发一个 .db3 不等于发了这个包</b>（缺 metadata.yaml）</td></tr>
+      <tr><td><code>Bag size: 50.9 KiB</code></td><td>包占的磁盘空间</td><td>估存储/上传成本；说了只点名录几个话题，它还猛涨 → 混进了大流量话题（如未压缩相机 <code>image_raw</code>）</td></tr>
+      <tr><td><code>Storage id: sqlite3</code></td><td>存储后端，与 yaml 的 <code>storage_identifier</code> 一致</td><td>是 sqlite3 就能 <code>python3 -c "import sqlite3; ..."</code> 直查两张表（<b>本机没有 sqlite3 命令行</b>）</td></tr>
+      <tr><td><code>Duration: 13.5s</code></td><td><b>真实</b>录制时长（不是你按住命令的秒数），显示值四舍五入到 0.1s</td><td>频率公式的<b>分母</b>，精确值看 1.6 的 <code>duration.nanoseconds</code>；<b>= 0 即废包</b>（录晚了/录太短），直接重录</td></tr>
+      <tr><td><code>Messages: 54</code></td><td>全包总条数</td><td>应 = 14+40+0+0；对不上说明索引与库不同步 → <code>ros2 bag reindex</code></td></tr>
+      <tr><td><code>Topic: /chatter</code></td><td>话题名——<b>继承别人的包，第一眼扫这列</b></td><td>要的话题不在列表里 = 白录；在，才有下两列可看</td></tr>
+      <tr><td><code>Type: std_msgs/msg/String</code></td><td>消息类型（含所属包/命名空间）</td><td><b>回放端与订阅端类型必须一字不差</b>；自定义消息先 <code>ros2 interface show &lt;type&gt;</code> 核对两端是不是同一份 .msg</td></tr>
+      <tr><td><code>Count: 14</code></td><td>该话题条数，频率公式的<b>分子</b></td><td>业务话题的 Count÷Duration 与标称频率差一个量级 → 录漏了；系统话题 0/40 条属噪声，不作判据</td></tr>
+      <tr><td><code>Serialization Format: cdr</code></td><td>序列化格式</td><td>与 DDS 线上传输的字节同源 → 回放<b>零转换</b>、100% 保真；<code>--compression-mode</code> 只改存储编码，不改这个字段</td></tr>
+    </table>
+    <div class="tip tealb"><span class="lab">三问 → 三行，十秒走完</span>
+    <b>① 录了多久？</b> → <code>Duration: 13.5s</code>（精确值 13.55s；<b>=0 就别往下走了</b>）<br>
+    <b>② 有这个话题吗？</b> → 扫 <code>Topic:</code> 列找 <code>/chatter</code>，顺手核对 <code>Type</code> 和 <code>Serialization Format</code>；<br>
+    <b>③ 频率对不对？</b> → <code>Count ÷ Duration = 14 ÷ 13.55 ≈ 1.03Hz</code> ✓ 与 talker 标称 1Hz 相符。<br>
+    三问都过，才值得 <code>play</code>；有一问不过，先回查录制——是 <code>Ctrl+C</code> 停的吗？中途被 <code>kill -9</code> 了吗？</div>
     <table>
       <tr><th>反直觉现象</th><th>真相</th></tr>
       <tr><td><code>/parameter_events</code> 常常是 0</td><td>节点启动后不再发参数事件，所以录到 0 条（不是 3 条）——<b>正常</b></td></tr>

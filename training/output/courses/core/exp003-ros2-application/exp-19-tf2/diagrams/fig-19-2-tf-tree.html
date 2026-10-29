@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>图 19-1 · TF2 变换树</title>
+<title>图 19-2 · TF2 变换树</title>
 <style>
 :root{--bg-page:#ffffff;--text:#0f172a;--text2:#475569;--muted:#94a3b8;--border:#e2e8f0;
   --teal:#0891b2;--green:#059669;--purple:#7c3aed;--orange:#ea580c;--red:#e11d48;--gray:#64748b;
@@ -28,7 +28,7 @@ svg{width:100%;height:auto;display:block}
 </head>
 <body>
 <div class="hd">
-  <h1>图 19-1 · TF2 变换树：一个 child 只能有一个 parent</h1>
+  <h1>图 19-2 · TF2 变换树：一个 child 只能有一个 parent</h1>
   <p class="q">本图回答的问题：机器人身上的坐标系怎么组织，为什么必须是一棵树？</p>
 </div>
 <svg viewBox="0 0 760 520" role="img" aria-label="TF2 变换树框架图">
@@ -101,8 +101,11 @@ svg{width:100%;height:auto;display:block}
 <div class="dock">
   <span class="ok">✅ 结论：单父、无环、路径唯一，查询必有解</span>
   <span class="warn">⚠️ 风险：两个节点抢同一 child 配不同 parent → TF2 报冲突</span>
-  <span class="evid">🔍 验证：04 节 view_frames 生成的 frames.pdf 树形核对</span>
+  <span class="evid">🔍 验证：02 节步骤 ② 生成的 frames.pdf 树形核对 · 04 节第 4 步检查要点</span>
 </div>
 <div class="ft">EXP-19 · TF2 坐标系变换</div>
+<script>
+(function(){if(window===parent)return;function send(){try{parent.postMessage({type:'figh',h:document.body.scrollHeight},'*')}catch(e){}}window.addEventListener('load',send);window.addEventListener('resize',function(){clearTimeout(window.__fighT);window.__fighT=setTimeout(send,120)});send();})();
+</script>
 </body>
 </html>

@@ -1059,7 +1059,7 @@ function sandLink(a,b){
   });});
   var io = new IntersectionObserver(function(es){
     es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('visible'); io.unobserve(e.target);} });
-  },{threshold:.10});
+  },{threshold:0,rootMargin:'0px 0px -60px 0px'});
   document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
 })();
 </script>

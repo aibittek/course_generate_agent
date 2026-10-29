@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXP-18 · 元功能包与依赖聚合 — 机器人 ROS2 应用与开发</title>
+<title>EXP-18 · 元功能包 — 机器人 ROS2 应用与开发</title>
 <link rel="stylesheet" href="../shared/tutorial.css?v=20261027b">
 <style>:root{--theme:#ec4899;--theme-deep:#be185d;--theme-bg:#fce7f3;--theme-bd:#fbcfe8}
 
@@ -29,6 +29,10 @@ h3.sub{margin:26px 0 12px;padding:9px 0 9px 14px;font-size:16px;font-weight:700;
   border-left:4px solid var(--theme);background:linear-gradient(90deg,var(--theme-bg) 0%,transparent 72%)}
 h3.sub:first-of-type{margin-top:18px}
 @media (max-width:720px){h3.sub{font-size:15px;margin:22px 0 10px}}
+
+/* ===== 追加：无空格长 token 允许断行 + 表格窄屏横向滚动（防溢出） ===== */
+code.longtok{overflow-wrap:anywhere}
+.tblx{overflow-x:auto;max-width:100%}
 </style>
 </head>
 <body>
@@ -40,12 +44,11 @@ h3.sub:first-of-type{margin-top:18px}
 <aside class="side">
   <h4>本页目录</h4>
     <a href="#goal" class="now">★ 课程目标</a>
-  <a href="#s1" class="now">01 问题引入：装个 navigation2，要背 20 个包名吗</a>
-  <a href="#s2">02 先看现象：一条命令，全家到位</a>
-  <a href="#s3">03 原理讲解</a>
-  <a href="#s4">04 实验步骤</a>
-  <a href="#s5">05 注意事项与避坑清单</a>
-  <a href="#s6">06 本课总结与验证题</a>
+  <a href="#s1" class="now">01 是什么</a>
+  <a href="#s2">02 和普通包有什么区别</a>
+  <a href="#s3">03 什么时候用、什么时候不用</a>
+  <a href="#s4">04 怎么用</a>
+  <a href="#s5">05 小结与自测</a>
   
   <h4>CH4 · 工具链</h4>
   <a href="../exp-14-rqt/index.html">EXP-14 rqt 调试工具</a>
@@ -57,318 +60,207 @@ h3.sub:first-of-type{margin-top:18px}
 <main class="content">
 <div class="exp-head">
   <span class="code">EXP-18 · 第 4 章 · 验证性 · 2 学时</span>
-  <h1>元功能包与依赖聚合：一条命令装齐全家桶</h1>
-  <p class="desc">有一种包永远不包含代码、编译只需 0.5 秒，却能让一条 apt 命令装齐 20 余个子包——这就是元功能包（metapackage）。本实验解剖 navigation2 的聚合结构，讲清 build_depend / exec_depend / depend 三种依赖的语义分野，并亲手打造属于自己的全家桶。</p>
-  <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 元功能包 · exec_depend · 依赖传递 · nav2</span></div>
+  <h1>元功能包：是什么、和普通包什么区别、什么时候用、怎么用</h1>
+  <p class="desc">有一种包永远不包含代码，却能让一条 apt 命令装齐整套依赖——这就是元功能包（metapackage）。本课按四问展开：是什么、和普通包什么区别、什么时候该用（以及什么时候不该用）、怎么用——从场景自建到打成 apt 可装的 .deb。</p>
+  <div class="meta"><span class="tag hl">难度 ⭐</span><span class="tag">2 学时</span><span class="tag">验证性</span><span class="tag">关键词 元功能包 · 普通包区别 · apt 打包 · bringup</span></div>
 </div>
 
 <section class="blk reveal" id="goal">
 <h2><span class="no">目标</span>本课学完，你应该能做到</h2>
 <div class="kgrid">
-  <div class="kcard"><div class="kd">① 说清初衷</div><div class="kt">为什么要空包</div><p>能阐述元功能包的设计初衷——为什么需要"不含代码、仅聚合依赖"的包类型，以及它与普通包集合的本质区别。</p></div>
-  <div class="kcard"><div class="kd">② 掌握创建</div><div class="kt">ament_cmake + exec_depend</div><p>能正确创建基于 <code>ament_cmake</code> 的元包，写只含 <code>&lt;exec_depend&gt;</code> 的 package.xml，并用 <code>colcon build</code> 验证。</p></div>
-  <div class="kcard"><div class="kd">③ 独立分析</div><div class="kt">解剖 navigation2</div><p>能用 <code>ros2 pkg xml</code> 查依赖树，以 navigation2 为例分析它聚合的子包结构与三层组织逻辑。</p></div>
-  <div class="kcard"><div class="kd">④ 迁移应用</div><div class="kt">打包成逻辑整体</div><p>当需要把传感器驱动包 + 数据处理包 + 可视化包作为一个整体发布时，能选择元包作为组织方案。</p></div>
+  <div class="kcard"><div class="kd">① 是什么</div><div class="kt">元功能包的定义</div><p>能用自己的话说出定义：不含代码的空壳包，用一串 <code>exec_depend</code> 把一套功能聚合成一个名字。</p></div>
+  <div class="kcard"><div class="kd">② 什么区别</div><div class="kt">对比普通功能包</div><p>能从源代码、依赖声明、构建产物三方面，说清元包和普通功能包的差别。</p></div>
+  <div class="kcard"><div class="kd">③ 什么时候用</div><div class="kt">该用还是不该用</div><p>拿到真实需求，能判断该建元包、该用 bringup 包，还是 launch 文件就够了。</p></div>
+  <div class="kcard"><div class="kd">④ 怎么用</div><div class="kt">创建、验证并发布</div><p>能按"交付 car1"的场景建出 <code>car1_meta</code>、一条命令回读验证，并说清怎么打成 apt 能装的 .deb。</p></div>
 </div>
-<div class="tip tealb"><span class="lab">本课的重点与难点</span>
-<b>重点</b>：元包只能用 <code>exec_depend</code>（不能写 build_depend），且必须带 <code>&lt;export&gt;&lt;build_type&gt;ament_cmake&lt;/build_type&gt;&lt;/export&gt;</code>。<br>
-<b>难点</b>：理解"元包不产生任何代码，它的价值全在依赖图上"——依赖即产品。</div>
-<div class="tip amber"><span class="lab">和前后的关系</span>
-本课与 <b>EXP-17 launch</b> 是"从单点到系统"的两块拼图：launch 管启动顺序，元包管安装单元。</div>
+<div class="tip tealb"><span class="lab">一句话记住</span>元功能包 = <b>购物清单式的包</b>：自己什么也不干，只负责"装我等于装全家桶"。</div>
 </section>
 
 <section class="blk" id="s1">
-  <h2><span class="no">01</span>问题引入：装个 navigation2，要背 20 个包名吗</h2>
-  <div class="tip"><span class="lab">先回忆</span>你已经用过 <code>colcon build --packages-select</code> 一次编一个包，也在 package.xml 里声明过依赖——当依赖膨胀到 20 个包时（比如 navigation2），就需要一层<b>聚合打包</b>：装一个名字，全家到位。</div>
-  <div class="flow">
-    <div class="step"><span class="n">1</span>想试用导航栈，文档说"安装 navigation2"</div>
-    <div class="step"><span class="n">2</span>细看依赖清单：nav2_amcl、nav2_planner、nav2_controller、nav2_map_server、nav2_behavior_tree、nav2_bt_navigator……足足 20 + 个子包</div>
-    <div class="step"><span class="n">3</span>手敲 apt 安装，漏掉 nav2_costmap_2d，运行时 <code>ModuleNotFoundError</code>，排查半小时</div>
-    <div class="step"><span class="n">4</span>其实只需 <code>sudo apt install ros-humble-navigation2</code>——一个"包"，装齐全家</div>
+  <h2><span class="no">01</span>是什么</h2>
+  <div class="tip amber"><span class="lab">定义</span><b>元功能包（metapackage）</b>是一种"空壳"包：自己不包含任何节点、代码或配置，只在 package.xml 里用 <code>&lt;exec_depend&gt;</code> 声明对一组包的依赖。它的作用是把一整套相关功能<b>"打包成一个名字"</b>，方便安装和整体启动。</div>
+  <div class="kgrid">
+    <div class="kcard"><div class="kd">特征一</div><div class="kt">零内容</div><p>没有 src/、没有节点、没有配置文件。（ROS 1 硬性规定不能有代码；ROS 2 放宽了，但惯例仍是"纯聚合"。）</p></div>
+    <div class="kcard"><div class="kd">特征二</div><div class="kt">只写运行时依赖</div><p>package.xml 里只用 <code>exec_depend</code> 声明"运行时我需要谁"，不用 build_depend 链接代码。</p></div>
+    <div class="kcard"><div class="kd">特征三</div><div class="kt">export 打标记</div><p>package 格式 3，在 <code>&lt;export&gt;</code> 里写 <code>&lt;metapackage/&gt;</code>，构建类型仍是 ament_cmake。</p></div>
   </div>
-  <div class="tip amber"><span class="lab">定义</span><b>元功能包（metapackage）</b>：不含任何代码（无 <code>src/</code>、无可执行文件），唯一职能是在 <code>package.xml</code> 里用一串 <code>&lt;exec_depend&gt;</code> 声明"运行时我需要谁"。装它 = 装全部子包，编它 = 什么都不编——纯粹的<b>依赖清单聚合器</b>。</div>
+  <div class="tip"><span class="lab">典型例子</span><b>ros-humble-desktop</b>——装一个就带上整套工具；<b>navigation2</b>——一条 apt 命令装齐 20 余个子包（完整拆解见 02 节）；<b>car1_bringup</b>——本仓库最接近的思路包（它带 launch 内容，属于聚合包而非纯元包，对照见 03 节）。</div>
+  <div class="figq"><b>图 18-1 · 聚合生效原理｜本图回答：元包没有代码，<code>apt install</code> 它之后为什么整棵子包树都在了？</b></div>
+  <div class="dwrap"><iframe src="diagrams/fig-18-1-apt-aggregate.html" title="图 18-1 聚合生效原理" loading="lazy"></iframe>
+  <div class="dock"><span class="ok">✅ 结论：元包只提供清单，展开由包管理器递归完成</span><span class="warn">⚠️ 风险：绕过元包手敲子包名，漏一个就运行期报错</span><span class="evid">🔍 验证：04 节步骤 ④ 的回读输出</span></div></div>
 </section>
 
 <section class="blk" id="s2">
-<h2><span class="no">02</span>先看现象：一条命令，全家到位</h2>
-<p class="srcline">三步、两分钟，先看清"元包"到底是实体还是清单。</p>
-<div class="flow">
-  <div class="step"><span class="n">1</span><b>看清单</b>：navigation2 这个"包"里面究竟写了什么</div>
-  <div class="step"><span class="n">2</span><b>数子包</b>：它一口气管着多少个 nav2_* 包</div>
-  <div class="step"><span class="n">3</span><b>自己编一个</b>：colcon build 多久完成、有没有编译产物</div>
-</div>
-<pre data-copy="cmd"><span class="c"># ① 看清单（navigation2 本体没有代码，只有一串 exec_depend）</span>
+<h2><span class="no">02</span>和普通包有什么区别</h2>
+<div class="tip tealb"><span class="lab">一句话区别</span>
+<b>普通包"干活"，元包"点单"</b>：普通功能包有代码、编译出节点或库，负责实现功能；元功能包零代码，只有一张依赖清单，负责"装我时带上谁"。</div>
+<div class="tblx"><table>
+  <tr><th>维度</th><th>普通功能包</th><th>元功能包</th></tr>
+  <tr><td>源代码</td><td>有 src/ 或 Python 模块</td><td>完全没有</td></tr>
+  <tr><td>可执行文件</td><td>有节点 / 库</td><td>无</td></tr>
+  <tr><td>build 类型</td><td>ament_cmake / ament_python</td><td>仅 ament_cmake</td></tr>
+  <tr><td>CMakeLists</td><td>完整构建逻辑</td><td>仅 ament_package() 一行有效指令</td></tr>
+  <tr><td>依赖声明</td><td>build_depend + exec_depend 按需</td><td>只写 exec_depend（聚合用）</td></tr>
+  <tr><td>colcon build</td><td>编译本包</td><td>空操作，约 0.5 秒仅注册关系</td></tr>
+  <tr><td>典型用途</td><td>实现功能</td><td>一键安装 / 版本锁定一套子包</td></tr>
+</table></div>
+<p class="srcline">拆开一对真实样本对照——nav2 家族里正好一个元包 + 一个普通包：</p>
+<pre data-copy="cmd"><span class="c"># 元包 navigation2：本体没有代码，清单里全是运行时依赖</span>
 $ ros2 pkg xml navigation2 | grep exec_depend
   &lt;exec_depend&gt;nav2_amcl&lt;/exec_depend&gt;
   &lt;exec_depend&gt;nav2_planner&lt;/exec_depend&gt;
   &lt;exec_depend&gt;nav2_controller&lt;/exec_depend&gt;
-  <span class="g"># ……一口气 20 余行</span>
+  <span class="g"># ……一口气 20 余行：这就是它"聚合"的全部内容</span>
 
-<span class="c"># ② 数子包：与清单逐条对得上</span>
-$ ros2 pkg list | grep nav2 | sort
-nav2_amcl
-nav2_behavior_tree
-nav2_bt_navigator
-nav2_common
-nav2_controller
-...
-  <span class="g"># 20 余个，一个不多一个不少</span>
-
-<span class="c"># ③ 自建元包的"编译"：0.5 秒，零编译产物</span>
-$ colcon build --packages-select my_robot_meta
-[0.5s] [1/1] Completed 'my_robot_meta'</pre>
-<div class="tip tealb"><span class="lab">先记住这个反差</span>清单 20 余行、子包 20 余个、编译 0.5 秒——<b>包本体什么都没产出</b>。它凭什么让 <code>apt install</code> 装齐全家？答案在下一节。</div>
+<span class="c"># 普通包 nav2_planner：有代码要编译，所以多了 build_depend</span>
+$ ros2 pkg xml nav2_planner | grep -E <span class="y">"depend"</span>
+  &lt;build_depend&gt;nav2_core&lt;/build_depend&gt;
+  &lt;depend&gt;nav2_msgs&lt;/depend&gt;
+  &lt;exec_depend&gt;nav2_costmap_2d&lt;/exec_depend&gt;
+  <span class="g"># 它还有 src/ 与编译目标——这正是两类包的分界线</span></pre>
+<div class="tip tealb"><span class="lab">观察结论</span>元包的行行都是 exec_depend（只要运行）；普通包出现 build_depend（编译要用头文件），且自身有实现代码。<b>看清单里有没有"干活的部分"，一眼分清两类包。</b></div>
 </section>
 
 <section class="blk" id="s3">
-<h2><span class="no">03</span>原理讲解</h2>
-<h3 class="sub">一个"空包"凭什么工作：format 3 + exec_depend</h3>
-  <p class="srcline">接住 02 节的反差——清单 20 余行、编译 0.5 秒、零产物：元包的全部本事都写在 <code>package.xml</code> 上。</p>
-
-  <div class="figq"><b>图 18-1 · 聚合生效原理｜本图回答：元包没有代码，<code>apt install</code> 它之后为什么整棵子包树都在了？</b></div>
-  <div class="dwrap"><iframe src="diagrams/fig-18-1-apt-aggregate.html" title="图 18-1 聚合生效原理" loading="lazy"></iframe>
-  <div class="dock"><span class="ok">✅ 结论：元包只提供清单，展开由包管理器递归完成</span><span class="warn">⚠️ 风险：绕过元包手敲子包名，漏一个就运行期报错</span><span class="evid">🔍 验证：02 节现象 ①</span></div></div>
-
-  <div class="kgrid">
-    <div class="kcard"><div class="kd">零代码</div><div class="kt">没有 src/ 与可执行文件</div><p>一切"功能"都在 package.xml 的依赖声明里：一张购物清单，自己不生产任何东西。</p></div>
-    <div class="kcard"><div class="kd">极简构建</div><div class="kt">CMakeLists 仅四行</div><p>cmake_minimum_required + project + find_package + ament_package()。没有 add_executable——colcon 只是<b>注册集合关系</b>。</p></div>
-    <div class="kcard"><div class="kd">秒级完成</div><div class="kt">build 耗时约 0.5 秒</div><p>无代码可编，走一遍 ament_package() 的清单注册流程就结束（02 节现象 ③ 实测）。</p></div>
-    <div class="kcard"><div class="kd">安装触发</div><div class="kt">apt 拉起整棵依赖树</div><p>包管理器遇到 exec_depend 递归解析：装我 → 先装我声明的全部运行时依赖。</p></div>
-  </div>
-  <table>
-    <tr><th>维度</th><th>普通功能包</th><th>元功能包</th></tr>
-    <tr><td>源代码</td><td>有 src/ 或 Python 模块</td><td>完全没有</td></tr>
-    <tr><td>可执行文件</td><td>有节点/库</td><td>无</td></tr>
-    <tr><td>build 类型</td><td>ament_cmake / ament_python</td><td>仅 ament_cmake</td></tr>
-    <tr><td>CMakeLists</td><td>完整构建逻辑</td><td>仅 ament_package() 一行有效指令</td></tr>
-    <tr><td>依赖声明</td><td>build_depend + exec_depend 按需</td><td>只写 exec_depend（聚合用）</td></tr>
-    <tr><td>colcon build</td><td>编译本包</td><td>空操作，仅注册集合关系</td></tr>
-    <tr><td>典型用途</td><td>实现功能</td><td>一键安装 / 版本锁定一套子包</td></tr>
-  </table>
-
-  <div class="tip teal"><span class="lab">三种依赖的语义分野（判断口诀）</span><b>build_depend</b> = 编译期需要（头文件、静态链接），只影响 colcon build 能否通过；<b>exec_depend</b> = 运行期需要（动态库、可执行文件、被 launch 启动的节点）；<b>depend</b> = 上面两者的语法糖，等价同时写 build + exec。<b>报错发生在编译阶段用 build_depend，发生在运行阶段用 exec_depend。</b></div>
-
-  <div class="tip violet"><span class="lab">怎么设置（可照抄入口）</span>
-<b>① 元包身份三要素</b>：<code>format="3"</code> + 只写 <code>&lt;exec_depend&gt;</code> + <code>&lt;export&gt;&lt;build_type&gt;ament_cmake&lt;/build_type&gt;&lt;metapackage/&gt;&lt;/export&gt;</code>。<br>
-<b>② 判断谁该被聚合</b>：装齐后能 <code>ros2 run</code> 起来的包 → 写 <code>exec_depend</code>；只需要它头文件才能编译的 → 写 <code>build_depend</code>；两者都要 → 写 <code>depend</code>。</div>
-  <pre data-copy="cmd"><span class="c"># 元包 package.xml 的依赖段（可整段照抄，包名换成你的）</span>
-&lt;package format="3"&gt;
-  &lt;name&gt;my_robot_meta&lt;/name&gt;
-  ...
-  <span class="b">&lt;exec_depend&gt;rclpy&lt;/exec_depend&gt;</span>
-  <span class="b">&lt;exec_depend&gt;sensor_msgs&lt;/exec_depend&gt;</span>
-  <span class="b">&lt;exec_depend&gt;tf2_ros&lt;/exec_depend&gt;</span>
-  &lt;export&gt;
-    <span class="b">&lt;build_type&gt;ament_cmake&lt;/build_type&gt;</span>
-    &lt;metapackage/&gt;
-  &lt;/export&gt;
-&lt;/package&gt;
-
-<span class="c"># 配套 CMakeLists.txt（四行，一个字都不用加）</span>
-cmake_minimum_required(VERSION 3.8)
-project(my_robot_meta)
-find_package(ament_cmake REQUIRED)
-<span class="b">ament_package()</span></pre>
-  <div class="dock" style="justify-content:center"><span class="ok">✅ 结论：三要素齐 = 合法元包，colcon 秒过</span><span class="warn">⚠️ 风险：混入 build_depend 或选了 ament_python，身份即失真</span><span class="evid">🔍 验证：04 节 · 打造 my_robot_meta ⑤ 的回读输出</span></div>
-  <div class="tip amber"><span class="lab">本课案例里的用法</span>04 节 step ② 改 package.xml、step ③ 改 CMakeLists，用的正是上面这段骨架；失败模式（build-type 选错、依赖混写）在 04 节末尾的坑表逐条对号。</div>
-<h3 class="sub">nav2 的三层聚合结构</h3>
-
-  <div class="tip"><span class="lab">接住上一节的悬念</span>
-  02 节看到 <code>navigation2</code> 一个包管着 20 多个子包——<b>这 20 多个包为什么不合成 1 个？</b> 答案是三层的依赖方向正好相反。看懂这三层，就知道任何一个大型 ROS2 项目该怎么分层。</div>
-
-  <div class="figq"><b>图 18-2 · 三层聚合结构｜本图回答：navigation2 的 20 余个子包按什么规则分层，每层的依赖箭头朝哪指？</b></div>
-  <div class="dwrap"><iframe src="diagrams/fig-18-2-nav2-layers.html" title="图 18-2 三层聚合结构" loading="lazy"></iframe>
-  <div class="dock"><span class="ok">✅ 结论：第 1 层管安装、第 2 层管功能、第 3 层管接口</span><span class="warn">⚠️ 风险：子包 depend 元包即成环，colcon 直接报错</span><span class="evid">🔍 验证：04 节 · 解剖 nav2_planner 的 depend 标签</span></div></div>
-
-  <table>
-    <tr><th>层</th><th>代表包</th><th>它的角色</th><th>依赖关系</th></tr>
-    <tr><td><b>第 1 层</b><br>总装</td><td><code>navigation2</code></td><td>元功能包 = 购物清单。用户只需认识它一个名字</td><td><b>没人依赖它</b>——它只依赖别人（这是元包的标志性特征）</td></tr>
-    <tr><td rowspan="2"><b>第 2 层</b><br>实现</td><td><code>nav2_planner</code><br><code>nav2_controller</code></td><td>路径规划、轨迹跟踪——"怎么走"</td><td>被元包 <code>exec_depend</code>；彼此之间也互相 <code>depend</code>（引用对方的算法接口）</td></tr>
-    <tr><td><code>nav2_amcl</code><br><code>nav2_map_server</code><br><code>nav2_bt_navigator</code></td><td>定位、地图服务、行为树调度——"我在哪 / 地图长啥样 / 听谁指挥"</td><td>同上；这一层里"能跑起来的节点"就是 <code>ros2 run</code> 能直接启动的那些</td></tr>
-    <tr><td rowspan="3"><b>第 3 层</b><br>地基</td><td><code>nav2_msgs</code></td><td>接口定义（.msg/.srv/.action 文件）</td><td>被<b>几乎所有</b>算法包 <code>depend</code>——因为大家都要用同一套消息格式对话</td></tr>
-    <tr><td><code>nav2_core</code></td><td>插件基类（纯虚接口）</td><td>被 planner / controller 等 <code>build_depend</code>——继承基类才能编译出自己的插件</td></tr>
-    <tr><td><code>nav2_common</code></td><td>CMake 宏与工具函数</td><td>被子包 <code>build_depend</code>——复用样板代码，避免每个包重写一遍</td></tr>
-  </table>
-
-  <div class="tip tealb"><span class="lab">一句话记住这三层</span>
-  <b>第 1 层是「购物清单」</b>（不干活，只列要买什么）→ <b>第 2 层是「工人」</b>（真正干活的岗位）→ <b>第 3 层是「工具和图纸」</b>（每个工人都要用的公共标准）。</div>
-  <div class="tip violet"><span class="lab">怎么读这三层（可照抄入口）</span>
-  <code>ros2 pkg xml &lt;包名&gt;</code> 看某包自己的依赖标签，<code>ros2 pkg list | grep nav2 | sort</code> 数同族子包——命令原文见 04 节 step ②③。<br>
-  <b>传递闭包</b>：若 A depends B、B depends C，安装 A 会自动递归拉起 C，这就是一条 apt 命令装齐全家的数学基础。</div>
-
-  <div class="tip amber"><span class="lab">🚫 失败模式：层层都依赖元包会炸</span>
-  让每个子包也 <code>depend</code> 元包会形成 <b>循环依赖</b>：navigation2 → nav2_planner → navigation2。colcon 按 package.xml 拓扑排序定编译顺序，遇到环<b>无法确定谁先编，直接报错退出</b>。<br>
-  <b>正确心智模型</b>：元包是消费者视角的入口，不是生产者视角的基类——<b>子包永远不该认识元包</b>（验证题 3 专考这条）。</div>
-  <div class="dock" style="justify-content:center"><span class="ok">✅ 结论：依赖单向朝下，编译顺序自动朝上</span><span class="warn">⚠️ 风险：反向依赖成环 → colcon 拓扑排序失败</span><span class="evid">🔍 验证：04 节 step 4 实测 nav2_planner 的 depend 标签</span></div>
+<h2><span class="no">03</span>什么时候用、什么时候不用</h2>
+<div class="kgrid">
+  <div class="kcard"><div class="kd">场景一</div><div class="kt">对外交付：一条 apt 装齐</div><p>项目以安装包形式发布给别人：<code>sudo apt install ros-humble-car1</code> 装一个 = 装齐整套驱动。官方 desktop、nav2 正是这么做的。</p></div>
+  <div class="kcard"><div class="kd">场景二</div><div class="kt">多仓库协作：总入口</div><p>底盘组、导航组各发各的仓库，用一个元包声明"完整系统 = 这三者的某个版本组合"，不必搬别人的源码。</p></div>
+  <div class="kcard"><div class="kd">场景三</div><div class="kt">聚合构建：一键带编</div><p><code>colcon build --packages-up-to car1_meta</code>：靠元包的依赖关系，把所有兄弟包一次编出来。</p></div>
+</div>
+<div class="tip amber"><span class="lab">这些情况不需要元包</span>
+<b>① 包里有 launch、配置、脚本</b> → 这是 bringup 包（如 car1_bringup：ament_python 包，带 launch/bringup.launch.py，export 里只有 ament_python、没有 metapackage 标记）。<br>
+<b>② 只想一次启动多个节点</b> → launch 文件就够了（EXP-17）。<br>
+<b>③ 单人/小团队直接源码 colcon build</b> → 依赖自动解析，元包没有实际收益。</div>
+<div class="tblx"><table>
+  <tr><th>维度</th><th>纯元包</th><th>bringup 包（如 car1_bringup）</th></tr>
+  <tr><td>内容</td><td>纯依赖清单，零内容</td><td>launch 文件 + 实际代码结构</td></tr>
+  <tr><td>export 标记</td><td>ament_cmake + metapackage</td><td>ament_python / ament_cmake，无 metapackage</td></tr>
+  <tr><td>职责</td><td>安装入口："装我 = 装全家"</td><td>启动入口："一条 launch 拉起整机"</td></tr>
+  <tr><td>常见度</td><td>apt 发布的官方包常用</td><td>ROS 2 日常开发里更常见</td></tr>
+</table></div>
+<div class="tip tealb"><span class="lab">结论</span>对"源码编译 + 单仓库"的开发方式（如本工程），现有 bringup 包模式就是最合适的选择，<b>不需要引入元包</b>；只有走到 apt 发布、或多仓库给不同团队集成时，才值得加一个纯元包当安装入口。</div>
 </section>
 
 <section class="blk" id="s4">
-<h2><span class="no">04</span>实验步骤</h2>
-<p class="srcline">工程化顺序：先看全景（图 18-3）→ 再按流程自建（图 18-4）→ 最后逐条命令执行。</p>
+<h2><span class="no">04</span>怎么用</h2>
+<p class="srcline">先定场景，再照四步做——2 分钟从零到一个可回读的元包。</p>
 
-<div class="figq"><b>图 18-3 · 工程全景｜本图回答：本实验动了哪两个文件、命令在哪个环节介入、输出从哪来？</b></div>
-<div class="dwrap"><iframe src="diagrams/fig-18-3-project-overview.html" title="图 18-3 工程全景" loading="lazy"></iframe>
-<div class="dock"><span class="ok">✅ 结论：只有两个文件要写，构建只注册关系</span><span class="warn">⚠️ 风险：改完依赖不重新 build + source，索引里读不到</span><span class="evid">🔍 验证：02 节现象 ① ② 与 step ⑤ 实测</span></div></div>
+<div class="tip violet"><span class="lab">实战场景（就用本课程仓库 ros2_ws/src/xflz_eai_car1）</span>
+假设你要走 03 节"对外交付"路线：把 car1 打成 deb 包给客户，一条 <code>sudo apt install</code> 装齐能跑的最小集合——<b>car1_base_driver</b>（底盘驱动）、<b>controller</b>（控制）、<b>car1_description</b>（模型）、<b>car1_navigation</b>（导航）。现在给这四个包造一个安装入口：<b>car1_meta</b>。</div>
 
-<h3 class="sub">把元包看个底朝天</h3>
-  <pre data-copy="cmd"><span class="c"># ① 打开 navigation2 的"购物清单"——元包的 package.xml</span>
-$ ros2 pkg xml navigation2
+<div class="tip violet"><span class="lab">先看别人怎么用</span>
+拿到现成元包只需一条命令：<code>sudo apt install ros-humble-&lt;元包名&gt;</code>（官方 desktop、nav2 都提供这种入口）。自己造，跟下面四步走：</div>
+<div class="flow">
+  <div class="step"><span class="n">1</span><b>创建</b>：<code>ros2 pkg create car1_meta --build-type ament_cmake</code>（选 ament_python 会去找 setup.py 直接失败）</div>
+  <div class="step"><span class="n">2</span><b>改 package.xml</b>：删掉自动生成的 build_depend/test 块，把场景里的四个包写成 <code>&lt;exec_depend&gt;</code>；export 段写上 <code>&lt;metapackage/&gt;</code></div>
+  <div class="step"><span class="n">3</span><b>改 CMakeLists.txt</b>：只留四行，project 换成 car1_meta</div>
+  <div class="step"><span class="n">4</span><b>编译并回读验证</b>：<code>colcon build</code> → <code>source install/setup.bash</code> → <code>ros2 pkg xml car1_meta | grep exec_depend</code> 看到四行清单即成功</div>
+</div>
 
-<span class="c"># ② 数一数 nav2 家族到底有多少子包（至少 15~20 个）</span>
-$ ros2 pkg list | grep nav2 | <span class="b">sort</span>
-nav2_amcl
-nav2_behavior_tree
-nav2_bt_navigator
-nav2_common
-nav2_controller
-nav2_core
-nav2_costmap_2d
-nav2_map_server
-nav2_msgs
-nav2_planner
-... <span class="g"># 共 20 余个</span></pre>
-  <div class="tip amber"><span class="lab">自建元包的最小 CMakeLists</span>整个文件只有四行有效内容——没有任何编译目标：
-<code style="display:block;margin-top:6px">cmake_minimum_required(VERSION 3.8)<br>project(my_robot_meta)<br>find_package(ament_cmake REQUIRED)<br>ament_package()</code>
-<code>ament_package()</code> 是 ament_cmake 的收尾宏，负责生成索引与注册包信息；它同时是这个包唯一的"工作"。</div>
-  <pre data-copy="cmd"><span class="c"># FAQ 三连：Unknown CMake command "ament_package" →</span>
-$ sudo apt install ros-humble-ament-cmake
-
-<span class="c"># ros2 pkg xml 无输出 → 当前终端没 source，找不到包索引</span>
-$ source /opt/ros/humble/setup.bash
-
-<span class="c"># ros2 pkg list 列表里不显示自己刚编的包 → 忘了 source 工作空间</span>
-$ source install/setup.bash</pre>
-<h3 class="sub">解剖 navigation2（验证性）</h3>
-  <div class="flow">
-    <div class="step"><span class="n">1</span>确认安装并 source：安装 ros-humble-navigation2 后 <code>source /opt/ros/humble/setup.bash</code></div>
-    <div class="step"><span class="n">2</span>看清单：<code>ros2 pkg xml navigation2</code>，逐行统计 &lt;exec_depend&gt;</div>
-    <div class="step"><span class="n">3</span>数子包：<code>ros2 pkg list | grep nav2 | sort</code>，与清单对照</div>
-    <div class="step"><span class="n">4</span>找地基：查看 <code>ros2 pkg xml nav2_planner</code>，确认它 build_depend 了 nav2_core / nav2_msgs</div>
-  </div>
-  <pre data-copy="cmd"><span class="b">$</span> ros2 pkg xml navigation2 | grep exec_depend
-  &lt;exec_depend&gt;nav2_amcl&lt;/exec_depend&gt;
-  &lt;exec_depend&gt;nav2_planner&lt;/exec_depend&gt;
-  &lt;exec_depend&gt;nav2_controller&lt;/exec_depend&gt;
-  <span class="g"># ……一口气 20 余行，这就是"全家桶"的账本</span>
-
-<span class="b">$</span> ros2 pkg xml nav2_planner | grep -E <span class="y">"depend"</span>
-  &lt;build_depend&gt;nav2_core&lt;/build_depend&gt;
-  &lt;depend&gt;nav2_msgs&lt;/depend&gt;
-  &lt;exec_depend&gt;nav2_costmap_2d&lt;/exec_depend&gt;</pre>
-  <div class="tip tealb"><span class="lab">观察结论</span>元包对子包全是 exec_depend（我只要运行你们）；子包对基础包却出现 build_depend（编译时要 include 它的头文件）——同一份 XML 里，<b>箭头方向决定了依赖语义</b>。</div>
-<h3 class="sub">打造 my_robot_meta（设计性任务）</h3>
   <div class="figq"><b>图 18-4 · 自建元包四步流程｜本图回答：从零建一个元包，每一步动什么文件、用什么命令、看什么输出？</b></div>
   <div class="dwrap"><iframe src="diagrams/fig-18-4-create-flow.html" title="图 18-4 自建元包流程" loading="lazy"></iframe>
-  <div class="dock"><span class="ok">✅ 结论：四步即可得到可安装、可回读的元包</span><span class="warn">⚠️ 风险：build-type 选错或混入 build_depend</span><span class="evid">🔍 验证：下方 step ⑤ 的回读输出</span></div></div>
-  <pre data-copy="cmd"><span class="c"># ① 创建（必须 --build-type ament_cmake，选 ament_python 会去找 setup.py 直接失败）</span>
-<span class="b">$</span> cd ~/ros2_ws/src
-<span class="b">$</span> ros2 pkg create my_robot_meta --build-type ament_cmake
+  <div class="dock"><span class="ok">✅ 结论：四步即可得到可安装、可回读的元包</span><span class="warn">⚠️ 风险：build-type 选错或混入 build_depend</span><span class="evid">🔍 验证：下方步骤 ④ 的回读输出</span></div></div>
+  <pre data-copy="cmd"><span class="c"># ① 进工作空间创建（必须 ament_cmake；选 ament_python 会去找 setup.py 直接失败）</span>
+<span class="b">$</span> cd ros2_ws/src/xflz_eai_car1
+<span class="b">$</span> ros2 pkg create car1_meta --build-type ament_cmake
 
-<span class="c"># ② 改 package.xml：删掉自动生成的 build_depend 与 test 块，只留 exec_depend</span>
-&lt;?xml version="1.0"?&gt;
-&lt;?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?&gt;
+<span class="c"># ② package.xml：换成场景四个包，export 段打上元包标记</span>
 &lt;package format="3"&gt;
-  &lt;name&gt;my_robot_meta&lt;/name&gt;
-  &lt;version&gt;0.1.0&lt;/version&gt;
-  &lt;description&gt;Aggregate all runtime packages of my robot&lt;/description&gt;
-  &lt;maintainer email="you@example.com"&gt;you&lt;/maintainer&gt;
-  &lt;license&gt;Apache-2.0&lt;/license&gt;
-
-  <span class="g">&lt;!-- 元功能包只声明运行时依赖 --&gt;</span>
-  &lt;exec_depend&gt;rclpy&lt;/exec_depend&gt;
-  &lt;exec_depend&gt;std_msgs&lt;/exec_depend&gt;
-  &lt;exec_depend&gt;sensor_msgs&lt;/exec_depend&gt;
-  &lt;exec_depend&gt;geometry_msgs&lt;/exec_depend&gt;
-  &lt;exec_depend&gt;tf2_ros&lt;/exec_depend&gt;
-
+  ...
+  <span class="b">&lt;exec_depend&gt;car1_base_driver&lt;/exec_depend&gt;</span>
+  <span class="b">&lt;exec_depend&gt;controller&lt;/exec_depend&gt;</span>
+  <span class="b">&lt;exec_depend&gt;car1_description&lt;/exec_depend&gt;</span>
+  <span class="b">&lt;exec_depend&gt;car1_navigation&lt;/exec_depend&gt;</span>
   &lt;export&gt;
     &lt;build_type&gt;ament_cmake&lt;/build_type&gt;
-    &lt;metapackage/&gt;
+    <span class="b">&lt;metapackage/&gt;</span>
   &lt;/export&gt;
-&lt;/package&gt;</pre>
-  <pre data-copy="cmd"><span class="c"># ③ CMakeLists.txt 只留四行</span>
+&lt;/package&gt;
+
+<span class="c"># ③ CMakeLists.txt 只留四行（project 换成 car1_meta）</span>
 cmake_minimum_required(VERSION 3.8)
-project(my_robot_meta)
+project(car1_meta)
 find_package(ament_cmake REQUIRED)
 <span class="b">ament_package()</span>
 
-<span class="c"># ④ 编译——注意日志：0.5 秒左右完成，无任何编译产物</span>
-<span class="b">$</span> colcon build --packages-select my_robot_meta
-[0.5s] [1/1] Completed 'my_robot_meta'
-
-<span class="c"># ⑤ 验证身份：能看到全部 exec_depend 即成功</span>
+<span class="c"># ④ 编译（约 0.5 秒，没代码可编，属正常）→ source → 回读验证</span>
+<span class="b">$</span> colcon build --packages-select car1_meta
 <span class="b">$</span> source install/setup.bash
-<span class="b">$</span> ros2 pkg xml my_robot_meta | grep exec_depend</pre>
-  <table>
-    <tr><th>坑</th><th>症状</th><th>解法</th></tr>
-    <tr><td>build-type 选了 ament_python</td><td>colcon 找不到 setup.py，包直接跳过</td><td>重新 create 时用 --build-type ament_cmake</td></tr>
-    <tr><td>元包里写了 build_depend</td><td>ament 包检查报依赖语义不正确</td><td>元包只保留 exec_depend，编译无关</td></tr>
-    <tr><td>exec_depend 的子包系统里不存在</td><td>rosdep 报 missing keys / apt 装不上</td><td>先 apt 安装该子包，或从清单移除</td></tr>
-    <tr><td>子包只在 apt 安装、源码空间缺失</td><td>发布源码时别人编不过</td><td>需要分发的子包统一放 src/ 下一并提交</td></tr>
-    <tr><td>version 与子包脱节</td><td>版本锁定失效，混装新旧接口</td><td>元包 version 与主要子包同步演进</td></tr>
-  </table>
+<span class="b">$</span> ros2 pkg xml car1_meta | grep exec_depend
+  &lt;exec_depend&gt;car1_base_driver&lt;/exec_depend&gt;
+  &lt;exec_depend&gt;controller&lt;/exec_depend&gt;
+  &lt;exec_depend&gt;car1_description&lt;/exec_depend&gt;
+  &lt;exec_depend&gt;car1_navigation&lt;/exec_depend&gt;
+  <span class="g"># 四行齐 = 成功，这就是 car1_meta 的全部"内容"</span></pre>
+  <div class="tip teal"><span class="lab">造好之后怎么用</span>
+  <b>给别人安装</b>：<code>sudo apt install ros-humble-car1-meta</code> 一键装齐（这个 .deb 从哪来，见下方进阶）；<b>自己仓库内</b>：<code>colcon build --packages-up-to car1_meta</code> 顺带把所有依赖的兄弟包一起编出来。</div>
+
+<h3 class="sub">进阶：打成 apt 能装的 .deb，发布出去</h3>
+<div class="tip violet"><span class="lab">承接场景</span>
+上面四步只让 <code>car1_meta</code> 在<b>你自己的工作空间</b>里可用。要让客户执行 <code>sudo apt install ros-humble-car1-meta</code>，还得把源码打成 Debian 安装包（.deb）：自建交付源用 <b>bloom</b> 本地打包（四条命令见下）；进 ROS 官方 apt 源则走 bloom-release → rosdistro → buildfarm，打包逻辑相同、只是托管平台不同。</div>
+<pre data-copy="cmd"><span class="c"># ① 装打包工具（一台机器装一次即可）</span>
+<span class="b">$</span> sudo apt install python3-bloom build-essential
+
+<span class="c"># ② 进入元包目录：补构建依赖 → 生成 Debian 打包骨架</span>
+<span class="b">$</span> cd ros2_ws/src/xflz_eai_car1/car1_meta
+<span class="b">$</span> rosdep install --from-paths . --ignore-src -y
+<span class="b">$</span> bloom-generate rosdebian --ros-distro humble
+
+<span class="c"># ③ 真正产出 .deb（产物落在包目录的上一级）</span>
+<span class="b">$</span> fakeroot debian/rules binary
+  <span class="g"># → ../ros-humble-car1-meta_0.1.0-1jammy..._amd64.deb</span>
+
+<span class="c"># ④ 本机试装，并查看它到底会拉起哪些子包</span>
+<span class="b">$</span> sudo dpkg -i ../ros-humble-car1-meta_*.deb
+<span class="b">$</span> apt show ros-humble-car1-meta | grep Depends
+  Depends: ros-humble-car1-base-driver, ros-humble-controller,
+           ros-humble-car1-description, ros-humble-car1-navigation, ...
+  <span class="g"># 这串 Depends 就是"装我=装全家"在 apt 里的真身</span></pre>
+<div class="tip amber"><span class="lab">发布关键坑：壳能装 ≠ 全家桶到位</span>
+<code>ros-humble-car1-meta</code> 这个 .deb 本体几乎为空，全家桶全靠 Depends 字段拉起——所以 <b>四个子包也要各自用 bloom 打出 .deb</b>（ros-humble-car1-base-driver 等），和元包一起放进<b>同一个 apt 源</b>（reprepro / aptly 自建内网源即可）。少任何一个，客户安装时直接报 <code>unmet dependencies</code>。</div>
+  <div class="tip amber"><span class="lab">常见坑（只记两条）</span>
+  ① 回读命令没输出 → 当前终端没 source，先执行 <code>source install/setup.bash</code>。<br>
+  ② 元包里混入 <code>build_depend</code> → 安装时不会拉起该依赖，聚合失效。</div>
 </section>
 
 <section class="blk" id="s5">
-  <h2><span class="no">05</span>注意事项与避坑清单</h2>
-  <div class="check">
-    <ul>
-      <li>元功能包<b>永远不含代码</b>——发现它有 src/，要么是普通包，要么是写错了。</li>
-      <li>build 类型必须是 ament_cmake，且 CMakeLists 只需四行。</li>
-      <li>依赖方向铁律：<b>子包不许依赖元包</b>（循环依赖），元包单向聚合子包。</li>
-      <li>colcon build 对元包是"注册"而非"编译"，0.5 秒完成属正常，不是构建失败。</li>
-      <li>apt 安装会自动递归拉起 exec_depend；但源码工作空间里，被依赖的包必须真实存在于 src/ 或已 source 的系统路径。</li>
-      <li>命名建议带 _meta 后缀，并在 &lt;export&gt; 声明 &lt;metapackage/&gt;（format 3）。</li>
-      <li>改了 package.xml 的依赖后需重新 colcon build + source 才能反映到 install/ 索引。</li>
-    </ul>
-  </div>
-  <div class="tip"><span class="lab">验证三件套</span><code>ros2 pkg xml &lt;元包&gt;</code> 看清单 → <code>ros2 pkg list | grep &lt;前缀&gt;</code> 数子包 → <code>colcon build --packages-select &lt;元包&gt;</code> 确认秒过。三步全绿，聚合关系即生效。</div>
-</section>
-
-<section class="blk" id="s6">
-  <h2><span class="no">06</span>本课总结与验证题</h2>
+<h2><span class="no">05</span>小结与自测</h2>
   <div class="kgrid">
-    <div class="kcard"><div class="kd">概念</div><div class="kt">元功能包 = 零代码聚合器</div><p>没有 src、没有可执行文件，全部价值在于 package.xml 中一串 exec_depend——一条命令装齐全家桶。</p></div>
-    <div class="kcard"><div class="kd">依赖语义</div><div class="kt">build / exec / depend</div><p>编译期头文件用 build_depend，运行期库与节点用 exec_depend，depend 是两者合体。按报错发生的阶段选依赖。</p></div>
-    <div class="kcard"><div class="kd">工程纪律</div><div class="kt">单向聚合，禁反向</div><p>元包依赖子包、子包声明自身真实依赖；子包依赖元包会造成环。传递依赖让安装自动展开整棵树。</p></div>
-    <div class="kcard"><div class="kd">黄金案例</div><div class="kt">navigation2</div><p>门面元包 + 20 余功能子包 + nav2_common/core/msgs 地基三层结构，是理解 ROS2 包组织方式的最佳标本。</p></div>
+    <div class="kcard"><div class="kd">是什么</div><div class="kt">空壳购物清单</div><p>不含代码，只用 <code>exec_depend</code> 聚合依赖——装我等于装全家桶。</p></div>
+    <div class="kcard"><div class="kd">什么区别</div><div class="kt">干活 vs 点单</div><p>普通包有代码实现功能；元包零代码，只有一张依赖清单。</p></div>
+    <div class="kcard"><div class="kd">什么时候用</div><div class="kt">apt 发布 / 多仓库</div><p>源码小团队用 bringup 包即可；对外交付、多仓库集成才上元包。</p></div>
+    <div class="kcard"><div class="kd">怎么用</div><div class="kt">四步创建 + 打包发布</div><p>create → 改 package.xml → 四行 CMakeLists → 回读验证；对外交付再用 bloom 打成 .deb 放进 apt 源。</p></div>
   </div>
-  <div class="tip violet"><span class="lab">验证题（改动型 · 每题先自己作答，再展开核对）</span>
+  <div class="tip violet"><span class="lab">自测（3 题 · 先自己作答，再展开核对）</span>
 
-<b>1（目标②·改创建参数）</b>把创建命令改成 <code>ros2 pkg create home_robot_meta --build-type ament_python</code> 后直接 <code>colcon build --packages-select home_robot_meta</code>。会发生什么？正确的创建命令该写什么？
+<b>1（考场景）</b>你的项目要以 apt 包发布，用户一条命令装齐 5 个驱动包——该建元包还是 bringup 包？如果用户还要求"一条 launch 拉起整机"呢？
 <details><summary>参考答案与得分点</summary>
-得分点：①colcon 找不到 setup.py，包被跳过或直接报错，构建不成功 ②元包必须 <code>--build-type ament_cmake</code> ③根因：ament_python 的包靠 setup.py 打包，而元包没有任何可打包的模块。（①②各 40%，③ 20%）
+得分点：①只要安装入口 → 建纯元包 ②还要整机启动 → 元包管安装 + bringup/launch 包管启动，或直接用带 launch 的 bringup 包一步到位（ROS 2 里更常见）③能说出"装我=装全家"与"一条 launch 拉起"是两个职责。（①②各 40%，③ 20%）
 </details>
 
-<b>2（目标②·改标签）</b>把 <code>home_robot_meta</code> 里某一行 <code>&lt;exec_depend&gt;sensor_msgs&lt;/exec_depend&gt;</code> 改成 <code>&lt;build_depend&gt;sensor_msgs&lt;/build_depend&gt;</code>，其余不动。<code>colcon build</code> 与 <code>apt install ros-humble-home-robot-meta</code> 分别会怎样？还会算"合法元包"吗？
+<b>2（改标签）</b>把元包 package.xml 里一行 <code class="longtok">&lt;exec_depend&gt;sensor_msgs&lt;/exec_depend&gt;</code> 改成 <code class="longtok">&lt;build_depend&gt;sensor_msgs&lt;/build_depend&gt;</code>。<code>colcon build</code> 照样秒过，但用户 <code>sudo apt install</code> 你的元包后运行时会怎样？
 <details><summary>参考答案与得分点</summary>
-得分点：①colcon build 依旧 0.5 秒通过（元包没代码可编，build_depend 不触发任何编译）②apt 安装时不再把 sensor_msgs 当运行时依赖拉起——它只在编译期生效，聚合功能被削弱 ③语义失真：元包只靠 exec_depend 聚合，混入 build_depend 即不符合元包约定。（①②各 40%，③ 20%）
+得分点：①build_depend 只是构建依赖，安装时不会把 sensor_msgs 作为运行时依赖拉起 ②运行期缺包，节点起不来/报缺依赖 ③元包必须只用 exec_depend，聚合才成立。（①②各 40%，③ 20%）
 </details>
 
-<b>3（目标③·改依赖树）</b>假设从 <code>navigation2</code> 的清单里删掉 <code>&lt;exec_depend&gt;nav2_costmap_2d&lt;/exec_depend&gt;</code>，再在一台干净机器上执行 <code>sudo apt install ros-humble-navigation2</code>。运行规划时会看到什么现象？用"依赖即产品"解释。
+<b>3（改创建参数）</b>把创建命令换成 <code>ros2 pkg create home_robot_meta --build-type ament_python</code> 后直接 <code>colcon build</code>，会发生什么？正确写法是什么？
 <details><summary>参考答案与得分点</summary>
-得分点：①costmap_2d 不再被递归安装，运行时报找不到该包/插件（如 ModuleNotFoundError 或 plugin 加载失败）②元包的产品就是这份清单，清单缺一行=产品缺一个件 ③修复：补回该行或单独 apt 安装该子包。（①②各 40%，③ 20%）
-</details>
-
-<b>4（目标①·改依赖方向）</b>为了让 nav2 家族"自成一体"，把 <code>&lt;depend&gt;navigation2&lt;/depend&gt;</code> 写进 <code>nav2_planner</code> 的 package.xml。<code>colcon build</code> 会给出什么结果？这条边为什么必须不存在？
-<details><summary>参考答案与得分点</summary>
-得分点：①形成环 navigation2 → nav2_planner → navigation2，colcon 拓扑排序无法确定编译顺序，构建报错退出 ②依赖方向铁律：元包单向聚合子包，子包永远不该认识元包 ③正确做法：子包只声明自己真正需要的依赖。（①②各 40%，③ 20%）
-</details>
-
-<b>5（目标④·改场景设计）</b>要把 voice_recognition、face_detection、navigation_planner、arm_controller、sensor_fusion 五个包做成一键安装的 <code>home_robot_meta</code>。写出它 package.xml 的依赖段与 export 段，并回答：CMakeLists.txt 里为什么不能写 <code>add_executable</code>？
-<details><summary>参考答案与得分点</summary>
-得分点：①五行 <code>&lt;exec_depend&gt;…&lt;/exec_depend&gt;</code> + <code>&lt;export&gt;&lt;build_type&gt;ament_cmake&lt;/build_type&gt;&lt;metapackage/&gt;&lt;/export&gt;</code> ②全部用 exec_depend：五个包只在运行期被用到，元包不参与编译 ③没有源文件可编，add_executable 会因找不到目标源而 CMake 配置失败。（①③各 40%，② 20%）
+得分点：①ament_python 靠 setup.py 打包，colcon 找不到 setup.py，构建失败或跳过该包 ②正确写法：<code>--build-type ament_cmake</code> ③元包没有可打包的模块，不适合 ament_python。（①②各 40%，③ 20%）
 </details>
 
 </div>
+
 </section>
+
+
 
 <nav class="expnav">
   <a href="../exp-17-launch/index.html"><span class="lb">← 上一个实验</span>EXP-17 Launch 启动文件</a>
   <a class="next" href="../exp-20-urdf/index.html"><span class="lb">下一个实验 →</span>EXP-20 URDF 机器人建模</a>
 </nav>
 <footer>
-  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-18 元功能包与依赖聚合</span>
+  <span>CORE-01 · 机器人 ROS2 应用与开发 · EXP-18 元功能包</span>
   <span>2 学时 · 验证性 · 基于 ros_practice 实验讲义改编</span>
 </footer>
 </main>
